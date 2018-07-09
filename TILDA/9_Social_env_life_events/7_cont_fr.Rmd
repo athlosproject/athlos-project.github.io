@@ -1,0 +1,251 @@
+---
+title: "Are the contacts with friends/neighbours frequent (i.e. contact once a month or more often)"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_ania.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variables is the following:
+
+* Short name: `cont_fr`
+* Variable label: `Are the contacts with friends/neighbours frequent (i.e. contact once a month or more often)`
+* Domain: `Social environment`
+* Value type: `cathegorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Irish population
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `SCQsocact13`
+* Label: `Visit, phone family, friends`
+* Categories:
+    + `1 = Daily, almost daily`
+    + `2 = Once a week, +`
+    + `3 = Twice a month, +`
+    + `4 = Once a month`
+    + `5 = Every few months`
+    + `6 = Once or twice a year`
+    + `7 = < once a year`
+    + `8 = Never`
+* Missings:
+    + `-878 = Adjacent boxes 7&8 ticked` 
+    + `-867 = Adjacent boxes 6&7 ticked` 
+    + `-856 = Adjacent boxes 5&6 ticked` 
+    + `-845 = Adjacent boxes 4&5 ticked` 
+    + `-834 = Adjacent boxes 3&4 ticked` 
+    + `-823 = Adjacent boxes 2&3 ticked` 
+    + `-812 = Adjacent boxes 1&2 ticked`
+    + `-99 = Refused`
+    + `-98 = Don't Know`
+    + `-9 = Refused`
+
+* Description: 
+```{r assign1}
+opal.assign.table.tibble(o, 'TILDA_w1_cont_fr','TILDA.TILDA-AMF-v16',variables=list('SCQsocact13'), missings = TRUE)
+```
+
+```{r local1}
+TILDA_w1_cont_fr <- opal.execute(o,'TILDA_w1_cont_fr')
+vari <- TILDA_w1_cont_fr$SCQsocact13
+kable(Categorical_summary(vari, missing_values = c(-878,-867,-856,-845,-834,-823,-812,-99,-98,-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-878,-867,-856,-845,-834,-823,-812,-99,-98,-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-878,-867,-856,-845,-834,-823,-812,-99,-98,-9))[2], caption = "Type of missing")
+#Categorical_summary(var = TILDA_w1_cont_fr$SCQsocact13, missing_values = NA)
+ggplot(TILDA_w1_cont_fr, aes(x=factor(SCQsocact13))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Visit, phone family, friends") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1:4 into 1`
+* `5:8 into 0`
+* `-99 Refused into 997`
+* `-98 Don't know into 998`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo1, echo=TRUE}
+TILDA_ds_w1 <- tibble(id=TILDA_w1_cont_fr$id)
+TILDA_ds_w1$cont_fr <- car::recode(as.vector(TILDA_w1_cont_fr$SCQsocact13), "1:4='1'; 5:8='0'; -99='997'; -98='998'; -878:-812='999'; NA='999'")
+TILDA_ds_w1$cont_fr <- labelled(TILDA_ds_w1$cont_fr, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1}
+vari <- TILDA_ds_w1$cont_fr
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = TILDA_ds_w1$cont_fr, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(TILDA_ds_w1, aes(x=factor(cont_fr))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are the contacts with friends/neighbours frequent") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1}
+AfterH <- table(TILDA_ds_w1$cont_fr)
+BeforeH <- table(TILDA_w1_cont_fr$SCQsocact13, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[1]] <- sum(BeforeH[c(7:10)])
+BeforeH1[[2]] <- sum(BeforeH[c(3:6)])
+BeforeH1[[3]] <- sum(BeforeH[c(1,2,11)])
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("0","1","NA,-823,-812->999")
+
+kable(C)
+```
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `SCQSocAct13`
+* Label: `Visit to or from family or friends, either in person or talking on`
+* Categories:
+    + `1 = Daily, almost daily` 
+    + `2 = Once a week, or more` 
+    + `3 = Twice a month, or more`
+    + `4 = about once a month`
+    + `5 = Every few months` 
+    + `6 = about once or twice a year`
+    + `7 = less than once a year`
+    + `8 = Never`
+* Missings:
+    + `-878 = Adjacent boxes 7&8 ticked` 
+    + `-867 = Adjacent boxes 6&7 ticked` 
+    + `-856 = Adjacent boxes 5&6 ticked` 
+    + `-845 = Adjacent boxes 4&5 ticked` 
+    + `-834 = Adjacent boxes 3&4 ticked` 
+    + `-823 = Adjacent boxes 2&3 ticked` 
+    + `-812 = Adjacent boxes 1&2 ticked`
+    + `-99 = No Response`
+
+
+* Description: 
+```{r assign2}
+opal.assign.table.tibble(o, 'TILDA_w2_cont_fr','TILDA.TILDA-AMF-v23',variables=list('SCQSocAct13'), missings = TRUE)
+```
+
+```{r local2}
+TILDA_w2_cont_fr <- opal.execute(o,'TILDA_w2_cont_fr')
+vari <-  TILDA_w2_cont_fr$SCQSocAct13
+kable(Categorical_summary(vari, missing_values = c(-878,-867,-856,-845,-834,-823,-812,-99))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-878,-867,-856,-845,-834,-823,-812,-99))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-878,-867,-856,-845,-834,-823,-812,-99))[2], caption = "Type of missing")
+#Categorical_summary(var = TILDA_w2_cont_fr$SCQSocAct13, missing_values = NA)
+ggplot(TILDA_w2_cont_fr, aes(x=factor(SCQSocAct13))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Visit to or from family or friends, either in person or talking on") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To recode the harmonize variable from the study-specific variable it has to be recoded as follows:  
+
+* `1:4 into 1`
+* `5:8 into 0`
+* `-99 into 995`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo2, echo=TRUE}
+TILDA_ds_w2 <- tibble(id=TILDA_w2_cont_fr$id)
+TILDA_ds_w2$cont_fr <- car::recode(as.vector(TILDA_w2_cont_fr$SCQSocAct13), "1:4='1'; 5:8='0';-99='995'; NA='999'")
+TILDA_ds_w2$cont_fr <- labelled(TILDA_ds_w2$cont_fr, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2}
+vari <- TILDA_ds_w2$cont_fr
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = TILDA_ds_w2$cont_fr, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(TILDA_ds_w2, aes(x=factor(cont_fr))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are the contacts with friends/neighbours frequent") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2}
+AfterH <- table(TILDA_ds_w2$cont_fr)
+BeforeH <- table(TILDA_w2_cont_fr$SCQSocAct13, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[1]] <- sum(BeforeH[c(6:9)])
+BeforeH1[[2]] <- sum(BeforeH[c(2:5)])
+BeforeH1[[3]] <- BeforeH[[1]]
+BeforeH1[[4]] <- BeforeH[[10]]
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("0","1","-99->995","NA->999")
+
+kable(C)
+```
+
+
+```{r save, echo=FALSE}
+cont_fr <- TILDA_ds_w1
+save(cont_fr, file = "../RData/w1/cont_fr.RData")
+rm(cont_fr)
+
+cont_fr <- TILDA_ds_w2
+save(cont_fr, file = "../RData/w2/cont_fr.RData")
+rm(cont_fr)
+```
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+

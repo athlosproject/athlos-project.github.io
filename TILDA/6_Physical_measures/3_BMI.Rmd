@@ -1,0 +1,270 @@
+---
+title: "BMI"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ############################################################################# --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ############################################################################# --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `bmi`
+* Variable label: `Body Mass Index calculated as weight (kg)/height(m)^2`
+* Variable description: `the BMI variable should be created by dividing weight and heigh variables with the following equation= weight (kg)/height(m)^2`
+* Domain: `Physical measures`
+* Value type: `continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, include=FALSE}
+ds_label <- "bmi"
+ds_label_all <- "Body Mass Index calculated as weight (kg)/height(m)^2"
+```
+
+
+# Data process
+
+## Ireland
+
+### Wave 1 
+
+#### Study-specific variable description
+
+
+
+
+| **Name** | `FRbmi`|
+|-|-|
+| **Label** |  |
+| **Table name** | `TILDA-AMF-v16` |
+| **Categories** | `continuous; 18 = <18.5; 36 = [36,40); 40 = [40,45); 45 = >=45` |
+| **Description** |  |
+
+
+
+```{r assign1, echo=FALSE}
+opal.assign.table.tibble(o, 'TILDA_w1_bmi','TILDA.TILDA-AMF-v16',
+                         variables=list('FRbmi'), missings = TRUE)
+TILDA_w1_bmi <- opal.execute(o,'TILDA_w1_bmi')
+```
+
+```{r local1, echo=FALSE}
+vari <- TILDA_w1_bmi$FRbmi
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(TILDA_w1_bmi, aes(FRbmi)) + geom_histogram(stat="count", width=0.1, fill="steelblue") + xlab("BMI") + ylab("Frequency") 
+```
+
+The variable 'weight' is categorized on the extreme values and the intervals [36,40) and [40,45).
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo1}
+TILDA_ds_w1 <- tibble(id=TILDA_w1_bmi$id)
+TILDA_ds_w1$bmi  <- car::recode(TILDA_w1_bmi$FRbmi, "NA=999")
+TILDA_ds_w1$bmi <- labelled(TILDA_ds_w1$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=FALSE}
+vari <- TILDA_ds_w1$bmi
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(TILDA_ds_w1, aes(bmi)) + geom_histogram(stat="count", width=0.1, fill="steelblue") + xlab("BMI") + ylab("Frequency")+xlim(17,46)
+```
+
+#### Validation
+It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
+
+```{r crosstabulation1}
+opal.assign.table.tibble(o, 'TILDA_w1_whb','TILDA.TILDA-AMF-v16',
+                         variables=list('weight', 'height', 'FRbmi'), missings = TRUE)
+TILDA_w1_whb <- opal.execute(o,'TILDA_w1_whb')
+
+TILDA_w1_whb$bmi_c <- TILDA_w1_whb$weight/(TILDA_w1_whb$height/100)^2
+
+TILDA_w1_whb$proff <- TILDA_w1_whb$FRbmi - TILDA_w1_whb$bmi_c
+pander(summary(TILDA_w1_whb$proff))
+
+kable(head(TILDA_w1_whb[which(TILDA_w1_whb$proff>2 | TILDA_w1_whb$proff<(-2)),]),align = 'c')
+```
+
+```{r importOPAL1, echo=FALSE}
+label(TILDA_ds_w1$bmi) <- ds_label_all
+bmi <- TILDA_ds_w1
+save(bmi, file = "../RData/w1/bmi.RData")
+#opal.assign.data(o, 'TILDA_ds_w1', TILDA_ds_w1)
+#opal.symbol_import(o,'TILDA_ds_w1', project='_Athlos_Harm_Dataset')
+
+TILDA_m_ds_w1 <- TILDA_ds_w1
+TILDA_m_ds_w1$bmi <- car::recode(TILDA_m_ds_w1$bmi, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'TILDA_m_ds_w1', TILDA_m_ds_w1)
+#opal.symbol_import(o,'TILDA_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+
+
+| **Name** | `ph720`|`ph723`|
+|-|-|-|
+| **Label** | `Weight in kilograms` | `Height of Subjects (cm)` |
+| **Table name** | `TILDA-AMF-v23` |`TILDA-AMF-v23` |
+| **Categories** | `continuous; 49 = Less than 50; 100 = 100+`|`continuous; 149 = Less than 150; 186 = Greater than 185` |
+| **Missings** | `-99 = Refused; -98 = Don't know; -1 = Not applicable or skipped due to routing patterns` | `-1 = Not applicable or skipped due to routing patterns` |
+| **Description** |  |
+
+
+
+
+```{r assign2, echo=FALSE}
+opal.assign.table.tibble(o, 'TILDA_w2_bmi','TILDA.TILDA-AMF-v23',
+                         variables=list('ph720', 'ph723'), missings = TRUE)
+TILDA_w2_bmi <- opal.execute(o,'TILDA_w2_bmi')
+```
+
+```{r local2, echo=FALSE}
+vari <- TILDA_w2_bmi$ph720
+kable(Continuous_summary(var = vari, missing_values = c(-99, -98, -1 ))[3], caption = 'Weight')
+kable(Continuous_summary(vari, missing_values = c(-99, -98, -1 ))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-99, -98, -1 ))$summary, caption = "Summary")
+ggplot(TILDA_w2_bmi, aes(ph720)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency") + xlim(50,100)
+
+vari <- TILDA_w2_bmi$ph723
+kable(Continuous_summary(var = vari, missing_values = c( -1 ))[3], caption = 'Height')
+#kable(Continuous_summary(vari, missing_values = c(149, 186, -99, -98, -1 ))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-1 ))$summary, caption = "Summary")
+ggplot(TILDA_w2_bmi, aes(ph723)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(140,200)
+```
+
+The variables `ph720` and `ph723` are categorized on the extreme values.
+
+#### Harmonisation algorithm
+The harmonized variable will be calculate from the study-specific variables using this formula
+
+bmi=weight/height^2
+
+The missing values have to be recoded as follows:
+
+* `recode -99 "Refused" to 997`
+* `recode -98 "Don't know" to 998`
+* `recode -1 "Not applicable or skipped due to routing patterns" to 996`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo2}
+compute_bmi <- function(Heigth, Weigth, miss, heigth_m = TRUE){
+  Heigth <- car::recode(Heigth, "NA=999")
+  Weigth <- car::recode(Weigth, "NA=999")
+  
+  if(heigth_m){
+    bmi <- Weigth/(Heigth^2)
+    
+    bmi[Heigth==999] <- 999
+    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
+    
+    bmi[Weigth==999] <- 999
+    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
+  } else {
+    bmi <- Weigth/((Heigth/100)^2)
+    
+    bmi[Heigth==999] <- 999
+    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
+    
+    bmi[Weigth==999] <- 999
+    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
+  }
+  bmi
+}
+
+TILDA_w2_bmi$bmi_c <- compute_bmi(Heigth = TILDA_w2_bmi$ph723, 
+                        Weigth = TILDA_w2_bmi$ph720, miss = c(-1), 
+                        heigth_m = FALSE)
+
+TILDA_ds_w2 <- tibble(id=TILDA_w2_bmi$id)
+TILDA_ds_w2$bmi <- car::recode(TILDA_w2_bmi$bmi_c, "NA=999; -99=997; -98=998; -1=996")
+TILDA_ds_w2$bmi <- labelled(TILDA_ds_w2$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2, echo=FALSE}
+vari <- TILDA_ds_w2$bmi
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(TILDA_ds_w2, aes(round(bmi,3))) + geom_histogram(stat="count", width=0.1, fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,50)
+```
+
+#### Validation
+```{r crosstabulation2, echo=FALSE}
+```
+
+```{r importOPAL2, echo=FALSE}
+label(TILDA_ds_w2$bmi) <- ds_label_all
+bmi <- TILDA_ds_w2
+save(bmi, file = "../RData/w2/bmi.RData")
+#opal.assign.data(o, 'TILDA_ds_w2', TILDA_ds_w2)
+#opal.symbol_import(o,'TILDA_ds_w2', project='_Athlos_Harm_Dataset')
+
+TILDA_m_ds_w2 <- TILDA_ds_w2
+TILDA_m_ds_w2$bmi <- car::recode(TILDA_m_ds_w2$bmi, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'TILDA_m_ds_w2', TILDA_m_ds_w2)
+#opal.symbol_import(o,'TILDA_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+# Quality estimation
+No comments.
+
+
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```

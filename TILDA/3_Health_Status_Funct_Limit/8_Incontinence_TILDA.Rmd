@@ -1,0 +1,236 @@
+---
+title: "Incontinence"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+
+* Short name: `incontinence`
+* Variable label: `Incontinence`
+* Variable description: `It measures if the participant has experienced loss of urine (or has used any special device for urine leakage) or not.`
+* Domain: `Health status and functional limitations`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | Yes
+1        | No
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+# Data process
+
+
+## Ireland
+
+### Wave 1 
+
+#### Study-specific variable description
+
+
+
+
+| **Name** | `ph601`|
+|-|-|
+| **Label** | `During the last 12 months, have you lost any amount of urine beyond your control?` |
+| **Table name** | `TILDA-AMF-v16` |
+| **Categories** |`1 = Yes; 5 = No` |
+| **Missings** | `98 = Don't Know; 99 = Refusal` |
+| **Description** |  |
+
+
+```{r assign w1, echo=F}
+opal.assign.table.tibble(o, 'TILDA_w1_incontinence','TILDA.TILDA-AMF-v16', variables=list('ph601'), missings = TRUE)
+```
+
+```{r local w1, echo=F}
+TILDA_w1_incontinence <- opal.execute(o,'TILDA_w1_incontinence')
+vari <- TILDA_w1_incontinence$ph601
+kable(Categorical_summary(vari, missing_values = c(98,99))[3], caption = "ph601")
+kable(Categorical_summary(vari, missing_values = c(98,99))[1], caption = "Category")
+ggplot(TILDA_w1_incontinence, aes(x=factor(ph601))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Incontinence") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 0` 
+* `5 into 1` 
+* `99 Refusal into 997` 
+* `98 Don't know into 998` 
+
+**R script:**
+```{r harmo w1}
+TILDA_ds_w1 <- tibble(id=TILDA_w1_incontinence$id)
+TILDA_ds_w1$incontinence <- car::recode(TILDA_w1_incontinence$ph601, "1 = '0';5 = '1';99 = '997';98 = '998' ")
+TILDA_ds_w1$incontinence <- labelled(TILDA_ds_w1$incontinence, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=F}
+vari <- TILDA_ds_w1$incontinence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "incontinence")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(TILDA_ds_w1, aes(x=factor(incontinence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Incontinence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1, echo=F}
+AfterH <- table(TILDA_ds_w1$incontinence)
+X<-table(TILDA_w1_incontinence$ph601)
+BeforeH <- X[c(1,2,4,3)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","5->1","99->997","98->998") 
+kable(C)
+```
+
+
+
+
+
+
+```{r importOPAL w1, echo=FALSE}
+
+label(TILDA_ds_w1$incontinence) <- "During the last 12 months, have you lost any amount of urine beyond your control?"
+#opal.assign.data(o, 'TILDA_ds_w1', TILDA_ds_w1)
+#opal.symbol_import(o,'TILDA_ds_w1', project='_Athlos_Harm_Dataset')
+incontinence <- TILDA_ds_w1
+save(incontinence, file = "../RData/w1/incontinence.RData")
+
+TILDA_m_ds_w1 <- TILDA_ds_w1
+TILDA_m_ds_w1$incontinence <- car::recode(TILDA_m_ds_w1$incontinence, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'TILDA_m_ds_w1', TILDA_m_ds_w1)
+#opal.symbol_import(o,'TILDA_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+
+
+
+| **Name** | `ph601`|
+|-|-|
+| **Label** | `ph601 - During the last 12 months, [have/has] [you/Rname] lost any amount of urine` |
+| **Table name** | `TILDA-AMF-v23` |
+| **Categories** |`1 = Yes; 5 = No` |
+| **Missings** | `100` |
+| **Description** |  |
+
+
+```{r assign w2, echo=F}
+opal.assign.table.tibble(o, 'TILDA_w2_incontinence','TILDA.TILDA-AMF-v23', variables=list('ph601'), missings = TRUE)
+```
+
+```{r local w2, echo=F}
+TILDA_w2_incontinence <- opal.execute(o,'TILDA_w2_incontinence')
+vari <- TILDA_w2_incontinence$ph601
+kable(Categorical_summary(vari, missing_values = c(100))[3], caption = "ph601")
+kable(Categorical_summary(vari, missing_values = c(100))[1], caption = "Category")
+ggplot(TILDA_w2_incontinence, aes(x=factor(ph601))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Incontinence") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 0` 
+* `2 into 1` 
+* `100 into 999`
+
+**R script:**
+```{r harmo w2}
+TILDA_ds_w2 <- tibble(id=TILDA_w2_incontinence$id)
+TILDA_ds_w2$incontinence <- car::recode(TILDA_w2_incontinence$ph601, "1 = '0';2 = '1';100 = '999' ")
+TILDA_ds_w2$incontinence <- labelled(TILDA_ds_w2$incontinence, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w2, echo=F}
+vari <- TILDA_ds_w2$incontinence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "incontinence")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(TILDA_ds_w2, aes(x=factor(incontinence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Incontinence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w2, echo=F}
+AfterH <- table(TILDA_ds_w2$incontinence)
+X<-table(TILDA_w2_incontinence$ph601)
+BeforeH <- X[c(1,2,3)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","5->1","100->999") 
+kable(C)
+```
+
+
+
+
+
+
+```{r importOPAL w2, echo=FALSE}
+
+label(TILDA_ds_w2$incontinence) <- "During the last 12 months, have you lost any amount of urine beyond your control?"
+#opal.assign.data(o, 'TILDA_ds_w2', TILDA_ds_w2)
+#opal.symbol_import(o,'TILDA_ds_w2', project='_Athlos_Harm_Dataset')
+incontinence <- TILDA_ds_w2
+save(incontinence, file = "../RData/w2/incontinence.RData")
+
+TILDA_m_ds_w2 <- TILDA_ds_w2
+TILDA_m_ds_w2$incontinence <- car::recode(TILDA_m_ds_w2$incontinence, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'TILDA_m_ds_w2', TILDA_m_ds_w2)
+#opal.symbol_import(o,'TILDA_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+# Quality estimation
+No comments.
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

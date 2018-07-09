@@ -1,0 +1,177 @@
+---
+title: "Non paid work"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/nonpaid_workDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/nonpaid_workDS.R')
+```
+
+
+
+# Data process
+
+
+
+## Ireland
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+
+
+| **Name** | `we001`|
+|-|-|
+| **Label** | `Which one of these would you say best describes your current situation?`|
+| **Table name**  | `TILDA-AMF-v16`|
+| **Categories** | `1 =  Retired`<br/>`2 = Employed`<br/>`3 = Self-employed (including farming)`<br/>`4 = Unemployed`<br/>`5 = Permanently sick or disabled`<br/>`6 = Looking after home or family`<br/>`7 = In education or training`<br/>`95 = Other`|
+| **Missings** |`98 = Don't Know`<br/>`99 = Refused` |
+| **Description** |  |
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'TILDA_w1','TILDA.TILDA-AMF-v16',variables=list('we001'), missings = T)
+TILDA_w1 <- opal.execute(o,'TILDA_w1')
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- TILDA_w1$we001
+kable(Categorical_summary(vbl, missing_values = c(98,99))[3], caption = names(TILDA_w1)[2])
+kable(Categorical_summary(vbl, missing_values = c(98,99))[1], caption = "Category")
+ggplot(TILDA_w1, aes(x=factor(we001))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `nonpaid_work` from the study-specific variable it has to be recoded as follows:
+
+* `7  into 3`
+* `6 into 1`
+* `5,95,1,2,3,4 into 996`
+* `98 into 998`
+* `99 into 997`
+
+
+**R script:**
+
+```{r harmo w1}
+
+# Categorical variable harmonization
+TILDA_ds_w1 <- tibble(id=TILDA_w1$id)
+TILDA_ds_w1$nonpaid_work <-car::recode(TILDA_w1$we001, "c(1,2,3,4,5,95)=996; c(6)=1; 7=3; 98=998; 99=997")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- TILDA_ds_w1$nonpaid_work
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(TILDA_ds_w1, aes(x=factor(nonpaid_work))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+
+```
+
+
+
+### Wave 2
+
+Not found harmonizable variable.
+
+
+
+
+## Descriptive statistics of the harmonised variable accross populations and waves
+
+Percentages of categories in each harmonised variable:
+
+
+**R script:**
+
+```{r summ}
+TILDA_ds_w1$nonpaid_work <- labelled(TILDA_ds_w1$nonpaid_work, labels = cat_label)
+label(TILDA_ds_w1$nonpaid_work) <- ds_label
+
+TILDA_m_ds_w1 <- TILDA_ds_w1
+TILDA_m_ds_w1$nonpaid_work <- car::recode(TILDA_m_ds_w1$nonpaid_work, "miss_values_vector=NA")
+
+tt <- frq(TILDA_ds_w1$nonpaid_work)[[1]][,c(1:2,4)]
+tt[14,] <- c("n", "sample size", 
+             length(TILDA_ds_w1$nonpaid_work)
+             )
+names(tt)<-c("val", "label", "w1")
+kable(tt)
+
+
+```
+
+
+
+# Quality estimation
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+l.TILDA <- list(w1 = TILDA_ds_w1)
+
+for(index in seq_along(l.TILDA)){
+  nonpaid_work <- l.TILDA[[index]]
+  save(nonpaid_work, file = paste0(datafolder,names(l.TILDA)[index],"/nonpaid_work.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

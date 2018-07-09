@@ -1,0 +1,115 @@
+---
+title: "Number of cigarettes"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/n_cigarettesDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/n_cigarettesDS.R')
+```
+
+
+
+# Data process
+
+## Ireland
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `bh006` |
+|-|-|
+| **Label** | `How many cigarettes do/did you smoke on average per day?` |
+| **Table name** | `TILDA-AMF-v16` |
+| **Categories:**| `continuous`|
+| **Missings:**| `-98 = Don't Know` <br/> `-1 = Not applicable`|
+| **Description** |  |
+
+```{r assign w1, echo=F}
+opal.assign.table.tibble(o, 'TILDA_w1','TILDA.TILDA-AMF-v16', variables=list('bh006'), missings = TRUE)
+TILDA_w1 <- opal.execute(o,'TILDA_w1')
+```
+
+```{r local w1, echo=F}
+vbl <- TILDA_w1$bh006
+kable(Continuous_summary(vbl, missing_values = c(-98,-1))[3], caption = "Number of cigarettes") 
+pander(Continuous_summary(vbl, missing_values = c(-98,-1))$summary, caption = "Summary")
+ggplot(TILDA_w1, aes(bh006)) + geom_histogram(stat="count", fill="steelblue") + xlab("Number of cigarettes") + ylab("Frequency") + xlim(0,65)
+```
+
+#### Harmonisation algorithm
+
+To compute `n_cigarettes` from the study-specific variable it has to be recoded as follows:
+
+* `20 into 210`
+* `40 into 350`
+* `60 into 525`
+* `bh006*7`
+* `-98 into 998`
+* `-1 into 996`
+
+**R script:**
+
+```{r harmo w1}
+TILDA_ds_w1 <- tibble(id=TILDA_w1$id)
+TILDA_ds_w1$n_cigarettes <- car::recode(TILDA_w1$bh006*7, "20*7 = 210;40*7 = 350;60*7 = 525;-98*7 = 998;-1*7 = 996 ")
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=F}
+vbl <- TILDA_ds_w1$n_cigarettes
+kable(Continuous_summary(var = vbl, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(TILDA_ds_w1, aes(n_cigarettes)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,535) 
+```
+
+#### Validation
+```{r crosstabulation w1, echo=F}
+```
+
+```{r importOPAL w1, echo=F}
+n_cigarettes <- TILDA_ds_w1 
+save(n_cigarettes, file = paste0(datafolder,"w1/n_cigarettes.RData"))
+rm(n_cigarettes)
+```
+
+
+
+
+
+### Wave 2
+
+Not found.
+
+
+
+
+
+# Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

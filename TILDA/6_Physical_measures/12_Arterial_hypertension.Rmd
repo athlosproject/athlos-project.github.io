@@ -1,0 +1,178 @@
+---
+title: "Arterial hypertension"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `ah`
+* Variable label: `Arterial hypertension`
+* Variable description: `Arterial hypertension. Means of all diastolic blood pressure measures.`
+* Domain: `Physical Measures`
+* Value type: `Categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | no hypertension
+1        | hypertension
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done 
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Arterial hypertension"
+ds_label_all <- "Arterial hypertension. Means of all diastolic blood pressure measures."
+```
+
+# Data process
+
+## Ireland
+
+### Wave 1 
+
+#### Study-specific variable description
+
+
+| **Name** | `sbp`|`dbp`|
+|-|-|-|
+| **Label** | `Systolic blood pressure of participant at each wave` |`Diastolic blood pressure of participantat at each wave` |
+| **Table name** | `sbp` |`dbp` |
+| **Categories** | `continuous` |`continuous` |
+| **Missings** |`991 = CAPI/interviewer error` | `991 = CAPI/interviewer error` |
+| | `992 = Impute` | `992 = Impute` |
+| | `993 = Disable to measure` | `993 = Disable to measure` | 
+| | `994 = Not attempt/not done` | `994 = Not attempt/not done` |
+| | `995 = Does not answer` | `995 = Does not answer` |
+| | `996 = Not applicable`| `996 = Not applicable`| 
+| | `997 = Refuse` | `997 = Refuse` |
+| | `998 = Do not know` | `998 = Do not know` |
+| | `999 = Missing`| `999 = Missing`|
+| **Description** |  |  |
+
+```{r assign1, echo=FALSE}
+load("M:/WPs/WP1/Maelstrom/data_process/Rmds/TILDA/RData/w1/sbp.RData")
+load("M:/WPs/WP1/Maelstrom/data_process/Rmds/TILDA/RData/w1/dbp.RData")
+TILDA_ah <- merge(sbp, dbp, by = "id")
+```
+
+```{r local1, echo=FALSE}
+vari <- TILDA_ah$sbp
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(TILDA_ah, aes(sbp)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency") + xlim(75,230)
+
+vari <- TILDA_ah$dbp
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(TILDA_ah, aes(dbp)) + geom_histogram(stat="count", fill="steelblue") + xlab("Siastolic Blood Pressure") + ylab("Frequency") + xlim(40,140)
+```
+
+
+#### Harmonisation algorithm
+To compute the harmonized variable, first of all, it has to be created two categorical variables as follows:
+
+* dh:
+  + `dbp >= 90 into 1`
+  + `dbp < 90 into 0`
+
+* sh:
+  + `sbp >= 140 into 1`
+  + `sbp < 140 into 0`
+
+After that, to compute the harmonized variable from this two variables has to be recoded as follows:
+
+* `if dh = 0 and sh = 0 into 0`
+* `if dh = 1 and sh = 0 into 1`
+* `if dh = 0 and sh = 1 into 1`
+* `if dh = 1 and sh = 1 into 1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1}
+TILDA_ah$dh <- car::recode(TILDA_ah$dbp, "0:89.99999999=0; 90:900=1")
+TILDA_ah$sh <- car::recode(TILDA_ah$sbp, "0:139.9999999=0; 140:900=1")
+
+TILDA_ds_w1 <- tibble(id=TILDA_ah$id)
+TILDA_ds_w1$ah <- NA
+TILDA_ds_w1$ah[which(TILDA_ah$dh==0 & TILDA_ah$sh==0)] <- 0
+TILDA_ds_w1$ah[which(TILDA_ah$dh==1 & TILDA_ah$sh==0)] <- 1
+TILDA_ds_w1$ah[which(TILDA_ah$dh==0 & TILDA_ah$sh==1)] <- 1
+TILDA_ds_w1$ah[which(TILDA_ah$dh==1 & TILDA_ah$sh==1)] <- 1
+TILDA_ds_w1$ah[which(TILDA_ah$dh==999 & TILDA_ah$sh==999)] <- 999
+TILDA_ds_w1$ah <- labelled(TILDA_ds_w1$ah, labels = c("no hypertension"=0, "hypertension"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=FALSE}
+vari <- TILDA_ds_w1$ah
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(TILDA_ds_w1, aes(x=factor(ah))) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Validation
+```{r crosstabulation1, echo=FALSE}
+```
+
+```{r importOPAL1, echo=FALSE}
+#val_labels(TILDA_ds_w1) <- NULL
+#opal.assign.data(o, 'TILDA_ds_w1', TILDA_ds_w1)
+#opal.symbol_import(o,'TILDA_ds_w1', project='_Athlos_Harm_Dataset')
+
+
+label(TILDA_ds_w1$ah) <- ds_label_all
+ah <- TILDA_ds_w1
+save(ah, file = "../RData/w1/ah.RData")
+```
+
+
+
+
+
+
+
+### Wave 2 
+
+There is no variable. 
+
+# Quality estimation
+
+No comments.
+
+
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```

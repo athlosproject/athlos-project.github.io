@@ -1,0 +1,355 @@
+---
+title: "Orientation in time"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+
+* Short name: `orientation`
+* Variable label: `Orientation in time`
+* Variable description: `Difficulties for orientation in time, evaluated by a set of questions about the date and day of the week.`
+* Domain: `Health status and functional limitations`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | Yes
+1        | No
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+
+<!-- ########################################################## --> 
+<!-- # Global variables -->
+```{r global, include=FALSE, echo=F}
+miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
+ds_label <- "Orientation in time"
+cat_label <- c("Yes" = 0, "No" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
+datafolder <- "../RData/"
+#sing_idlist <- c()
+```
+<!-- ########################################################## --> 
+
+
+
+# Data process
+
+
+
+
+## Ireland
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+
+
+| **Name** | `ph121` |`ph122`|`ph123`|`ph124`|
+|-|-|-|-|-|
+| **Label** | `Please tell me what year it is`|`What month it is?`|`Can you tell me what day of the week it is?`|`Can you tell me what today's date is?`|
+| **Table name**  | `TILDA-AMF-v16`| `TILDA-AMF-v16`| `TILDA-AMF-v16`| `TILDA-AMF-v16`|
+| **Categories** | `1 = Year given correctly`<br/>`2 = Year given incorrectly` | `1 = Month given correctly`<br/>`2 = Month given incorrectly` | `1 = Day of week given correctly`<br/>`2 = Day of week given incorrectly` | `1 = Date given correctly`<br/>`2 = Date given incorrectly` |
+| **Missings** | `98 = Don't know`<br/>`99 = Refused` |`98 = Don't know`<br/>`99 = Refused` |`98 = Don't know`<br/>`99 = Refused` |`98 = Don't know`<br/>`99 = Refused` |
+| **Description** |  |  |  |  |
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'TILDA_w1','TILDA.TILDA-AMF-v16',variables=list('ph121','ph122','ph123','ph124'), missings = T)
+TILDA_w1 <- opal.execute(o,'TILDA_w1')
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- TILDA_w1$ph121
+kable(Categorical_summary(vbl, missing_values = c(98,99))[3], caption = names(TILDA_w1)[2])
+kable(Categorical_summary(vbl, missing_values = c(98,99))[1], caption = "Category")
+ggplot(TILDA_w1, aes(x=factor(ph121))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- TILDA_w1$ph122
+kable(Categorical_summary(vbl, missing_values = c(98,99))[3], caption = names(TILDA_w1)[3])
+kable(Categorical_summary(vbl, missing_values = c(98,99))[1], caption = "Category")
+ggplot(TILDA_w1, aes(x=factor(ph122))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- TILDA_w1$ph123
+kable(Categorical_summary(vbl, missing_values = c(98,99))[3], caption = names(TILDA_w1)[4])
+kable(Categorical_summary(vbl, missing_values = c(98,99))[1], caption = "Category")
+ggplot(TILDA_w1, aes(x=factor(ph123))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- TILDA_w1$ph124
+kable(Categorical_summary(vbl, missing_values = c(98,99))[3], caption = names(TILDA_w1)[5])
+kable(Categorical_summary(vbl, missing_values = c(98,99))[1], caption = "Category")
+ggplot(TILDA_w1, aes(x=factor(ph124))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `orientation` from the study-specific variable it has to be recoded as follows:
+
+* `all 1  into 1`
+* `some 2 into 0`
+* `some 98 and no 2 into 998`
+* `some 99 and no 2 into 997`
+
+**R script:**
+
+```{r harmo w1}
+
+TILDA_ds_w1 <- tibble(id=TILDA_w1$id)
+TILDA_ds_w1$orientation <-rep(999,length(TILDA_w1$id))
+TILDA_ds_w1$orientation[which(TILDA_w1$ph121==1 & TILDA_w1$ph122==1 & TILDA_w1$ph123==1 & TILDA_w1$ph124==1)] <- 1
+TILDA_ds_w1$orientation[which(TILDA_w1$ph121==98 | TILDA_w1$ph122==98 | TILDA_w1$ph123==98 | TILDA_w1$ph124==98)] <- 998
+TILDA_ds_w1$orientation[which(TILDA_w1$ph121==99 | TILDA_w1$ph122==99 | TILDA_w1$ph123==99 | TILDA_w1$ph124==99)] <- 997
+TILDA_ds_w1$orientation[which(TILDA_w1$ph121==2 | TILDA_w1$ph122==2 | TILDA_w1$ph123==2 | TILDA_w1$ph124==2)] <- 0
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- TILDA_ds_w1$orientation
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(TILDA_ds_w1, aes(x=factor(orientation))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+AfterH <- table(TILDA_ds_w1$orientation)
+BeforeH <- c(
+  sum(TILDA_w1$ph121==2 | TILDA_w1$ph122==2 | TILDA_w1$ph123==2 | TILDA_w1$ph124==2,na.rm=T),
+  sum(TILDA_w1$ph121==1 & TILDA_w1$ph122==1 & TILDA_w1$ph123==1 & TILDA_w1$ph124==1,na.rm=T),
+  sum(TILDA_w1$ph121==99 | TILDA_w1$ph122==99 | TILDA_w1$ph123==99 | TILDA_w1$ph124==99,na.rm=T),
+  sum((TILDA_w1$ph121==98 | TILDA_w1$ph122==98 | TILDA_w1$ph123==98 | TILDA_w1$ph124==98) & !(TILDA_w1$ph121==2 | TILDA_w1$ph122==2 | TILDA_w1$ph123==2 | TILDA_w1$ph124==2),na.rm=T)
+)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("some 2->0","all 1->1","some 99 and no 2->997","some 98 and no 2->998")
+kable(C)
+
+```
+
+
+
+### Wave 2
+
+
+#### Study-specific variable description
+
+
+
+| **Name** | `ph121` |`ph122`|`ph123`|`ph124`|`ph126`|
+|-|-|-|-|-|-|
+| **Label** | `Please tell me what year it is`|`What month it is?`|`Can you tell me what day of the week it is?`|`Can you tell me what today's date is?`|`What season it is.`|
+| **Table name**  | `TILDA-AMF-v23`| `TILDA-AMF-v23`| `TILDA-AMF-v23`| `TILDA-AMF-v23`| `TILDA-AMF-v23`|
+| **Categories** | `1 = Year given correctly`<br/>`0 = Year given incorrectly` | `1 = Month given correctly`<br/>`0 = Month given incorrectly` | `1 = Day of week given correctly`<br/>`0 = Day of week given incorrectly` | `1 = Date given correctly`<br/>`0 = Date given incorrectly` | `1 = Season  given correctly`<br/>`0 = Season  given incorrectly` |
+| **Missings** | `100 = Task not done` |`100 = Task not done` |`100 = Task not done` |`100 = Task not done` |`100 = Task not done`|
+| **Description** |  |  |  |  |  |
+
+```{r assign w2, echo=F}
+
+opal.assign.table.tibble(o, 'TILDA_w2','TILDA.TILDA-AMF-v23',variables=list('ph121','ph122','ph123','ph124','ph126'), missings = T)
+TILDA_w2 <- opal.execute(o,'TILDA_w2')
+
+```
+
+```{r local w2, echo=F}
+
+vbl <- TILDA_w2$ph121
+kable(Categorical_summary(vbl, missing_values = c(100))[3], caption = names(TILDA_w2)[2])
+kable(Categorical_summary(vbl, missing_values = c(100))[1], caption = "Category")
+ggplot(TILDA_w2, aes(x=factor(ph121))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- TILDA_w2$ph122
+kable(Categorical_summary(vbl, missing_values = c(100))[3], caption = names(TILDA_w2)[4])
+kable(Categorical_summary(vbl, missing_values = c(100))[1], caption = "Category")
+ggplot(TILDA_w2, aes(x=factor(ph122))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- TILDA_w2$ph123
+kable(Categorical_summary(vbl, missing_values = c(100))[3], caption = names(TILDA_w2)[5])
+kable(Categorical_summary(vbl, missing_values = c(100))[1], caption = "Category")
+ggplot(TILDA_w2, aes(x=factor(ph123))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- TILDA_w2$ph124
+kable(Categorical_summary(vbl, missing_values = c(100))[3], caption = names(TILDA_w2)[6])
+kable(Categorical_summary(vbl, missing_values = c(100))[1], caption = "Category")
+ggplot(TILDA_w2, aes(x=factor(ph124))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- TILDA_w2$ph126
+kable(Categorical_summary(vbl, missing_values = c(100))[3], caption = names(TILDA_w2)[3])
+kable(Categorical_summary(vbl, missing_values = c(100))[1], caption = "Category")
+ggplot(TILDA_w2, aes(x=factor(ph126))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `orientation` from the study-specific variable it has to be recoded as follows:
+
+* `all 1  into 1`
+* `some 0 into 0`
+* `some 100 into 994`
+
+**R script:**
+
+```{r harmo w2}
+
+TILDA_ds_w2 <- tibble(id=TILDA_w2$id)
+TILDA_ds_w2$orientation <-rep(999,length(TILDA_w2$id))
+TILDA_ds_w2$orientation[which(TILDA_w2$ph121==1 & TILDA_w2$ph122==1 & TILDA_w2$ph123==1 & TILDA_w2$ph124==1 & TILDA_w2$ph126==1)] <- 1
+TILDA_ds_w2$orientation[which(TILDA_w2$ph121==100 | TILDA_w2$ph122==100 | TILDA_w2$ph123==100 | TILDA_w2$ph124==100 | TILDA_w2$ph126==100)] <- 994
+TILDA_ds_w2$orientation[which(TILDA_w2$ph121==0 | TILDA_w2$ph122==0 | TILDA_w2$ph123==0 | TILDA_w2$ph124==0 | TILDA_w2$ph126==0)] <- 0
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w2, echo=F}
+
+vbl <- TILDA_ds_w2$orientation
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(TILDA_ds_w2, aes(x=factor(orientation))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w2, echo=F}
+AfterH <- table(TILDA_ds_w2$orientation)
+BeforeH <- c(
+  sum(TILDA_w2$ph121==0 | TILDA_w2$ph122==0 | TILDA_w2$ph123==0 | TILDA_w2$ph124==0 | TILDA_w2$ph126==0,na.rm=T),
+  sum(TILDA_w2$ph121==1 & TILDA_w2$ph122==1 & TILDA_w2$ph123==1 & TILDA_w2$ph124==1 & TILDA_w2$ph126==1,na.rm=T),
+  sum((TILDA_w2$ph121==100 | TILDA_w2$ph122==100 | TILDA_w2$ph123==100 | TILDA_w2$ph124==100 | TILDA_w2$ph126==100) & !(TILDA_w2$ph121==0 | TILDA_w2$ph122==0 | TILDA_w2$ph123==0 | TILDA_w2$ph124==0 | TILDA_w2$ph126==0),na.rm=T)
+)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("some 2->0","all 1->1","some 100 and no 2->994")
+kable(C)
+
+```
+
+
+
+
+## Descriptive statistics of the harmonised variable accross populations and waves
+
+Percentages of categories in each harmonised variable:
+
+
+**R script:**
+
+```{r summ}
+TILDA_ds_w1$orientation <- labelled(TILDA_ds_w1$orientation, labels = cat_label)
+label(TILDA_ds_w1$orientation) <- ds_label
+TILDA_ds_w2$orientation <- labelled(TILDA_ds_w2$orientation, labels = cat_label)
+label(TILDA_ds_w2$orientation) <- ds_label
+
+TILDA_m_ds_w1 <- TILDA_ds_w1
+TILDA_m_ds_w1$orientation <- car::recode(TILDA_m_ds_w1$orientation, "miss_values_vector=NA")
+TILDA_m_ds_w2 <- TILDA_ds_w2
+TILDA_m_ds_w2$orientation <- car::recode(TILDA_m_ds_w2$orientation, "miss_values_vector=NA")
+
+tt <- frq(TILDA_ds_w1$orientation)[[1]][,c(1:2,4)]
+tt[4] <- frq(TILDA_ds_w2$orientation)[[1]][,c(4)]
+tt[13,] <- c("n", "sample size", 
+             length(TILDA_ds_w1$orientation), length(TILDA_ds_w2$orientation)
+             )
+names(tt)<-c("val", "label", "w1", "w2")
+kable(tt)
+
+dbb <- merge(TILDA_m_ds_w1, TILDA_m_ds_w2, by="id", suffixes = c(".w1",".w2"), all=T)
+names(dbb) <- c("id", "w1", "w2")
+v.dbb <- paste(dbb[,2],dbb[,3],sep="")
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb[f.dbb[,3]>=0.3,])
+
+```
+
+
+
+# Quality estimation
+
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+l.TILDA <- list(w1 = TILDA_ds_w1, w2 = TILDA_ds_w2)
+
+for(index in seq_along(l.TILDA)){
+  orientation <- l.TILDA[[index]]
+  save(orientation, file = paste0(datafolder,names(l.TILDA)[index],"/orientation.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

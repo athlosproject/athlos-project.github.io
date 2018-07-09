@@ -1,0 +1,258 @@
+---
+title: "Employed"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/employedDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/employedDS.R')
+```
+
+
+
+# Data process
+
+
+
+## Ireland
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+
+
+| **Name** | `we001`|
+|-|-|
+| **Label** | `Which one of these would you say best describes your current situation?`|
+| **Table name**  | `TILDA-AMF-v16`|
+| **Categories** | `1 =  Retired`<br/>`2 = Employed`<br/>`3 = Self-employed (including farming)`<br/>`4 = Unemployed`<br/>`5 = Permanently sick or disabled`<br/>`6 = Looking after home or family`<br/>`7 = In education or training`<br/>`95 = Other`|
+| **Missings** |`98 = Don't Know`<br/>`99 = Refused` |
+| **Description** |  |
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'TILDA_w1','TILDA.TILDA-AMF-v16',variables=list('we001'), missings = T)
+TILDA_w1 <- opal.execute(o,'TILDA_w1')
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- TILDA_w1$we001
+kable(Categorical_summary(vbl, missing_values = c(98,99))[3], caption = names(TILDA_w1)[2])
+kable(Categorical_summary(vbl, missing_values = c(98,99))[1], caption = "Category")
+ggplot(TILDA_w1, aes(x=factor(we001))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `employed` from the study-specific variable it has to be recoded as follows:
+
+* `1,4,5,6,7,95  into 0`
+* `2,3 into 1`
+* `98 into 998`
+* `99 into 997`
+
+
+**R script:**
+
+```{r harmo w1}
+
+# Categorical variable harmonization
+TILDA_ds_w1 <- tibble(id=TILDA_w1$id)
+TILDA_ds_w1$employed <-car::recode(TILDA_w1$we001, "c(1,4,5,6,7,95)=0; c(2,3)=1; 98=998; 99=997")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- TILDA_ds_w1$employed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(TILDA_ds_w1, aes(x=factor(employed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+
+```
+
+
+
+### Wave 2
+
+
+#### Study-specific variable description
+
+
+
+| **Name** | `employ`|
+|-|-|
+| **Label** | `Are you currently employed/self-employed?`|
+| **Table name**  | `TILDA-AMF-v23`|
+| **Categories** |  `1 =  Yes`<br/>`0 = No`  |
+| **Missings** | `NA` |
+| **Description** |  |
+
+```{r assign w2, echo=F}
+
+opal.assign.table.tibble(o, 'TILDA_w2','TILDA.TILDA-AMF-v23',variables=list('employ'), missings = T)
+TILDA_w2 <- opal.execute(o,'TILDA_w2')
+
+```
+
+```{r local w2, echo=F}
+
+vbl <- TILDA_w2$employ
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(TILDA_w2)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(TILDA_w2, aes(x=factor(employ))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `employed` from the study-specific variable it has to be recoded as follows:
+
+* `0 into 0`
+* `1 into 1`
+* `98 into 998`
+* `99 into 997`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo w2}
+
+
+# Categorical variable harmonization
+TILDA_ds_w2 <- tibble(id=TILDA_w2$id)
+TILDA_ds_w2$employed <- car::recode(TILDA_w2$employ, "98=998; 99=997; NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w2, echo=F}
+
+vbl <- TILDA_ds_w2$employed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(TILDA_ds_w2, aes(x=factor(employed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w2, echo=F}
+
+```
+
+
+
+
+
+## Descriptive statistics of the harmonised variable accross populations and waves
+
+Percentages of categories in each harmonised variable:
+
+
+**R script:**
+
+```{r summ}
+TILDA_ds_w1$employed <- labelled(TILDA_ds_w1$employed, labels = cat_label)
+label(TILDA_ds_w1$employed) <- ds_label
+TILDA_ds_w2$employed <- labelled(TILDA_ds_w2$employed, labels = cat_label)
+label(TILDA_ds_w2$employed) <- ds_label
+
+TILDA_m_ds_w1 <- TILDA_ds_w1
+TILDA_m_ds_w1$employed <- car::recode(TILDA_m_ds_w1$employed, "miss_values_vector=NA")
+TILDA_m_ds_w2 <- TILDA_ds_w1
+TILDA_m_ds_w2$employed <- car::recode(TILDA_m_ds_w2$employed, "miss_values_vector=NA")
+
+tt <- frq(TILDA_ds_w1$employed)[[1]][,c(1:2,4)]
+tt[4] <- frq(TILDA_ds_w2$employed)[[1]][,c(4)]
+tt[13,] <- c("n", "sample size", 
+             length(TILDA_ds_w1$employed), length(TILDA_ds_w2$employed)
+             )
+names(tt)<-c("val", "label", "w1", "w2")
+kable(tt)
+
+dbb <- merge(TILDA_m_ds_w1[,c("id","employed")], TILDA_m_ds_w2[,c("id","employed")], by="id", suffixes = c(".w1",".w2"), all=T)
+names(dbb) <- c("id", "w1", "w2")
+v.dbb <- paste(dbb[,2],dbb[,3],sep="")
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb)
+
+```
+
+
+
+# Quality estimation
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+l.TILDA <- list(w1 = TILDA_ds_w1, w2 = TILDA_ds_w2)
+
+for(index in seq_along(l.TILDA)){
+  employed <- l.TILDA[[index]]
+  save(employed, file = paste0(datafolder,names(l.TILDA)[index],"/employed.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

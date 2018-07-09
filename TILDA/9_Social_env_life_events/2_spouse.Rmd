@@ -1,0 +1,147 @@
+---
+title: "Has spouse/partner"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_ania.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `spouse`
+* Variable label: `Has spouse/partner`
+* Domain: `Social environment`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Irish population
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `cs006`
+* Label: `Are you...?`
+* Categories: 
+    + `1 = Married`
+    + `2 = Living with a partner as if married`
+    + `3 = Single (never married)`
+    + `4 = Separated`
+    + `5 = Divorced`
+    + `6 = Widowed`
+* Description: 
+```{r assign1}
+opal.assign.table.tibble(o, 'TILDA_w1_spouse','TILDA.TILDA-AMF-v16', variables=list('cs006'), missings = TRUE)
+```
+
+```{r local1}
+TILDA_w1_spouse <- opal.execute(o,'TILDA_w1_spouse')
+vari <- TILDA_w1_spouse$cs006
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = TILDA_w1_spouse$cs006, missing_values = NA)
+ggplot(TILDA_w1_spouse, aes(x=factor(cs006))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 or 2 into 1`
+* `3:6 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1}
+TILDA_ds_w1 <- tibble(id=TILDA_w1_spouse$id)
+TILDA_ds_w1$spouse <- car::recode(as.vector(TILDA_w1_spouse$cs006), "1:2='1'; 3:6='0'; NA='999'")
+TILDA_ds_w1$spouse <- labelled(TILDA_ds_w1$spouse, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1}
+vari <- TILDA_ds_w1$spouse
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = TILDA_ds_w1$spouse, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(TILDA_ds_w1, aes(x=factor(spouse))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has spouse/partner") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1}
+AfterH <- table(TILDA_ds_w1$spouse)
+BeforeH <- table(TILDA_w1_spouse$cs006, useNA='ifany')
+BeforeH[[1]] <- sum(BeforeH[1],BeforeH[2])
+BeforeH[[2]] <- sum(BeforeH[3],BeforeH[4],BeforeH[5],BeforeH[6])
+BeforeH <- BeforeH[c(2,1)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("3:6->0","1,2->1")
+
+kable(C)
+```
+
+## Wave 2
+Not found.
+
+
+ 
+```{r save, echo=FALSE}
+spouse <- TILDA_ds_w1
+save(spouse, file = "../RData/w1/spouse.RData")
+rm(spouse)
+
+```
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+

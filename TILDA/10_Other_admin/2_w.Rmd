@@ -1,0 +1,137 @@
+---
+title: "Sample weights"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/weightsDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/weightsDS.R')
+```
+
+
+
+# Data process
+
+
+
+## Ireland
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+
+
+| **Name** | `capiweight`|
+|-|-|
+| **Label** | `CAPI weight based on age/sex/edu crosstab from 2010 QNHS`|
+| **Table name**  | `TILDA-AMF-v16`|
+| **Categories** | `continuous`|
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'TILDA_w1','TILDA.TILDA-AMF-v16',variables=list('capiweight'), missings = T)
+TILDA_w1 <- opal.execute(o,'TILDA_w1')
+
+```
+
+```{r local w1, echo=F}
+
+
+vbl <- TILDA_w1$capiweight
+vbl_miss <- NA
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'capiweight')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(TILDA_w1,!vbl %in% vbl_miss), aes(capiweight)) + geom_bar(stat="bin",  fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+
+```
+
+
+#### Harmonisation algorithm
+
+
+**R script:**
+
+```{r harmo w1}
+
+# Categorical variable harmonization
+TILDA_ds_w1 <- tibble(id=TILDA_w1$id)
+n <- length(TILDA_w1$id[which(!is.na(TILDA_w1$capiweight))])
+N <- sum(TILDA_w1$capiweight,na.rm = T)
+TILDA_ds_w1$w <- car::recode(TILDA_w1$capiweight*n/N,"NA=999")
+
+```
+
+
+
+```{r descript w1, echo=F}
+
+vbl <- TILDA_ds_w1$w
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(filter(TILDA_ds_w1,!vbl %in% miss_values_vector), aes(w)) + geom_bar(stat="bin",  fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+### Wave 2
+
+
+
+Not found.
+
+
+
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+label(TILDA_ds_w1$w) <- ds_label
+
+l.TILDA <- list(w1 = TILDA_ds_w1)
+
+for(index in seq_along(l.TILDA)){
+  w <- l.TILDA[[index]]
+  save(w, file = paste0(datafolder,names(l.TILDA)[index],"/w.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

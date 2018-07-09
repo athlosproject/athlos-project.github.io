@@ -1,0 +1,169 @@
+---
+title: "ADL - Using the toilet"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+
+```{r setup, include=FALSE, echo= FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `adl_toilet`
+* Variable label: `ADL-Difficulties for using the toilet`
+* Domain: `Health status and functional limitations`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | yes
+1        | no
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+```{r, dataDirectory, echo=FALSE}
+datafolder <- "../RData"
+``` 
+<!-- ########################################################## --> 
+
+# Data process
+## Ireland
+### Wave 1
+
+#### Study-specific variable description
+
+ 
+
+
+| **Name** | `fl019`|
+|-|-|
+| **Label** | `Does anyone ever help you with using the toilet, including getting on and off` |
+| **Table name** | `TILDA-AMF-v16` |
+| **Categories** |`1 = Yes; 5 = No`|
+| **Missings** |`-1 = Not applicable`|
+| **Description** |  |
+
+
+```{r assign w1, echo=FALSE}
+opal.assign.table.tibble(o, 'TILDA_w1_adl_toilet','TILDA.TILDA-AMF-v16', variables=list('fl019'), missings = TRUE)
+```
+
+
+```{r local w1, , echo=FALSE}
+TILDA_w1_adl_toilet <- opal.execute(o,'TILDA_w1_adl_toilet')
+vari <- TILDA_w1_adl_toilet$fl019 # VARIABLE
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+# SI NO HAY ATRIBUTO SHORT-NAME, A MANO
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+
+
+#Categorical_summary(TILDA_w1_adl_toilet$fl019)
+ggplot(TILDA_w1_adl_toilet, aes(x=factor(fl019))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Difficulty using the toilet") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 0` 
+* `5 into 1` 
+* `-1 Not applicable into 996` 
+
+**R script:**
+
+```{r harmo w1, echo=TRUE}
+TILDA_ds_w1 <- tibble(id=TILDA_w1_adl_toilet$id)
+TILDA_ds_w1$adl_toilet <- car::recode(TILDA_w1_adl_toilet$fl019, "1 = '0';5 = '1';-1 = '996' ")
+TILDA_ds_w1$adl_toilet <- labelled(TILDA_ds_w1$adl_toilet, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+
+```{r descript w1, echo= FALSE}
+vari <- TILDA_ds_w1$adl_toilet # variable you want to descrive
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+
+
+
+
+#Categorical_summary(var = TILDA_ds_w1$adl_toilet, missing_values = c(991, 992, 993, 994, 995, 991, 992, 993, 994, 995, 996, 997, 998, 999, 999))
+ggplot(TILDA_ds_w1, aes(x=factor(adl_toilet))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Difficulty using the toilet") + ylab("Frequency")
+```
+
+#### Validation
+  
+```{r crosstabulation w1, echo= FALSE}
+AfterH <- table(TILDA_ds_w1$adl_toilet)
+X<-table(TILDA_w1_adl_toilet$fl019)
+BeforeH <- X[c(2,3,1)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","5->1","-1->996") 
+kable(C)
+```
+
+
+```{r importOPAL w1, echo=FALSE}
+val_labels(TILDA_ds_w1) <- NULL
+label(TILDA_ds_w1$adl_toilet) <- "Difficulties for using the toilet"
+opal.assign.data(o, 'TILDA_ds_w1', TILDA_ds_w1)
+#opal.symbol_import(o,'TILDA_ds_w1', project='_Athlos_Harm_Dataset')
+
+TILDA_m_ds_w1 <- TILDA_ds_w1
+TILDA_m_ds_w1$adl_toilet <- car::recode(TILDA_m_ds_w1$adl_toilet, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+opal.assign.data(o, 'TILDA_m_ds_w1', TILDA_m_ds_w1)
+#opal.symbol_import(o,'TILDA_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+```{r,  echo=FALSE}
+adl_toilet <- TILDA_ds_w1
+save(adl_toilet, file = paste0(datafolder, "/w1/adl_toilet.RData"))
+```
+
+### Wave 2
+
+Not found
+
+
+
+# Quality estimation
+
+No comments
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

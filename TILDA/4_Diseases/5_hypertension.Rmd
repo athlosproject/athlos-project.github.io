@@ -1,0 +1,397 @@
+---
+title: "Hypertension"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `h_hypertension`
+* Variable label: `History of Hypertension`
+* Variable description: `history of hypertension or high blood pressure`
+* Domain: `Diseases`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | NOT High blood pressure or hypertension 
+1        | High blood pressure or hypertension
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+* Short name: `h_hypertension_age`
+* Variable label: `Age first diagnosed hypertension`
+* Variable description: `The age first told had hypertension diagnosis`
+* Domain: `Diseases`
+* Value type: `Continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+<!-- # Global variables -->
+```{r global, include=FALSE, echo=F}
+miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
+ds_label <- "History of Hypertension"
+ds_label_age <- "Age first diagnosed hypertension"
+cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
+cont_label <- cat_label[3:11]
+datafolder <- "../RData/"
+#sing_idlist <- c()
+```
+<!-- ########################################################## --> 
+
+
+
+# Data process
+
+
+
+## Ireland
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+
+
+| **Name** | `ph201_01` |`ph202`|
+|-|-|-|
+| **Label** | `Has a doctor ever told you that you have any of the conditions on this card?`|`Approximately how old were you when you were first told by a doctor that you .`|
+| **Table name**  | `TILDA-AMF-v16`| `TILDA-AMF-v16`|
+| **Categories** | `1 = High blood pressure or hypertension`<br/>`0 = NOT High blood pressure or hypertension` |`continuous`<br/>`29 = Less than 30`<br/>`80 = 80+`|
+| **Missings** |  | `-98 = Don't Know`<br/>`-1 = Not applicable` |
+| **Description** |  |  |
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'TILDA_w1','TILDA.TILDA-AMF-v16',variables=list('ph201_01','ph202'), missings = T)
+TILDA_w1 <- opal.execute(o,'TILDA_w1')
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- TILDA_w1$ph201_01
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(TILDA_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(TILDA_w1, aes(x=factor(ph201_01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- TILDA_w1$ph202
+kable(Continuous_summary(var = vbl, missing_values = c(-1,-98))[3], caption = names(TILDA_w1)[3])
+pander(Continuous_summary(vbl, missing_values = c(-1,-98))$summary, caption = "Summary")
+ggplot(TILDA_w1, aes(ph202)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(25,85)
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_hypertension` from the study-specific variable it has to be recoded as follows:
+
+* `ph201_01 == 0  into 0`
+* `ph201_01 == 1 into 1`
+
+To compute `h_hypertension_age` from the study-specific variable it has to be recoded as follows:
+
+* `if h_hypertension == 1, h_hypertension_age = ph202`
+* `if h_hypertension == 0 (<==> ph202 == -1), h_hypertension_age = 996`
+* `otherwise into 999`
+**R script:**
+
+```{r harmo w1}
+
+# Categorical variable harmonization
+TILDA_ds_w1 <- tibble(id=TILDA_w1$id)
+TILDA_ds_w1$h_hypertension <-TILDA_w1$ph201_01
+
+# Continuous variable harmonization
+hypertension_age <- car::recode(as.numeric(TILDA_w1$ph202[TILDA_ds_w1$h_hypertension==1]),"-98=998")
+TILDA_ds_w1$h_hypertension_age <- car::recode(TILDA_ds_w1$h_hypertension, "0=996; 1=hypertension_age")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- TILDA_ds_w1$h_hypertension
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(TILDA_ds_w1, aes(x=factor(h_hypertension))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- TILDA_ds_w1$h_hypertension_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(TILDA_ds_w1, aes(h_hypertension_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(25,85)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+
+continuous <- c(sum(TILDA_ds_w1$h_hypertension_age==996),sum(TILDA_ds_w1$h_hypertension_age!=996))
+dichotomous <- table(TILDA_ds_w1$h_hypertension, useNA = "ifany")
+C <- rbind(continuous,dichotomous)
+colnames(C) <- c("0<-->996","1<-->(possibly missings) age values")
+kable(C,caption = "Continuous vs Dichotomous")
+
+```
+
+
+
+### Wave 2
+
+
+#### Study-specific variable description
+
+
+
+| **Name** | `ph201_01` |`age`|`yintw (w1)`|`yintw (w2)`|
+|-|-|-|-|-|
+| **Label** | `ph201 - [Since our last interview] has a doctor ever told [you/Rname] that [you/`|`Age`|`Year of interview`|`Year of interview`|
+| **Table name**  | `TILDA-AMF-v23`| `age`|`yintw`|`yintw`|
+| **Categories** | `1 = High blood pressure or hypertension`<br/>`0 = NOT High blood pressure or hypertension` |`continuous`|`continuous`|`continuous`|
+| **Missings** |  |  |  |  |
+| **Description** |  |  |  |  |
+
+```{r assign w2, echo=F}
+
+opal.assign.table.tibble(o, 'TILDA_w2','TILDA.TILDA-AMF-v23',variables=list('ph201_01'), missings = T)
+TILDA_w2 <- opal.execute(o,'TILDA_w2')
+load(paste0(datafolder,"w2/age.RData"))
+TILDA_w2 <- left_join(TILDA_w2,age,by="id")
+rm(age)
+load(paste0(datafolder,"w1/yintw.RData"))
+TILDA_w2 <- left_join(TILDA_w2,yintw, by="id")
+names(TILDA_w2)[4] <- "yintw_w1"
+rm(yintw)
+load(paste0(datafolder,"w2/yintw.RData"))
+TILDA_w2 <- left_join(TILDA_w2,yintw, by="id")
+names(TILDA_w2)[5] <- "yintw_w2"
+rm(yintw)
+
+```
+
+```{r local w2, echo=F}
+
+vbl <- TILDA_w2$ph201_01
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(TILDA_w2)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(TILDA_w2, aes(x=factor(ph201_01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- TILDA_w2$age
+kable(Continuous_summary(var = vbl, missing_values = NA)[3], caption = names(TILDA_w2)[3])
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(TILDA_w2, aes(age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(50,85)
+
+vbl <- TILDA_w2$yintw_w1
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(TILDA_w2)[4])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(TILDA_w2, aes(x=factor(yintw_w1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- TILDA_w2$yintw_w2
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(TILDA_w2)[5])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(TILDA_w2, aes(x=factor(yintw_w2))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_hypertension` from the study-specific variable it has to be recoded as follows:
+
+* `ph201_01 (w1) == 0 and ph201_01 (w2) == 0 into 0`
+* `ph201_01 (w1) == 1 or ph201_01 (w2) == 1 into 1`
+* `otherwise into 999`
+
+To compute `h_hypertension_age` from the study-specific variable it has to be recoded as follows:
+
+* `if h_hypertension == 1 in w2 and 0 in w1, h_hypertension_age = age - (year of interview (w2) - year of interview (w1))/2`
+* `if h_hypertension == 1 in w2 and 1 in w1, h_hypertension_age = age from w1`
+* `if h_hypertension == 0 (<==> ph202 == -1), h_hypertension_age = 996`
+* `otherwise into 999`
+**R script:**
+
+```{r harmo w2}
+
+TILDA_w2 <- left_join(TILDA_w2,TILDA_ds_w1, by = "id")
+
+# Categorical variable harmonization
+TILDA_ds_w2 <- tibble(id=TILDA_w2$id)
+TILDA_ds_w2$h_hypertension <- rep(999,length(TILDA_w2$id))
+TILDA_ds_w2$h_hypertension[which(TILDA_w2$ph201_01==0 & (TILDA_w2$h_hypertension != 1 | is.na(TILDA_w2$h_hypertension)))] <- 0
+TILDA_ds_w2$h_hypertension[which(TILDA_w2$ph201_01==1 | (!is.na(TILDA_w2$ph201_01) & TILDA_w2$h_hypertension == 1))] <- 1
+
+# Continuous variable harmonization
+TILDA_ds_w2$h_hypertension_age <- rep(999,length(TILDA_w2$id))
+TILDA_ds_w2$h_hypertension_age[which(TILDA_ds_w2$h_hypertension == 1 & !is.na(TILDA_w2$h_hypertension_age) & !TILDA_w2$h_hypertension_age %in% miss_values_vector)] <- TILDA_w2$h_hypertension_age[which(TILDA_ds_w2$h_hypertension == 1 & !is.na(TILDA_w2$h_hypertension_age) & !TILDA_w2$h_hypertension_age %in% miss_values_vector)]
+TILDA_ds_w2$h_hypertension_age[which(TILDA_ds_w2$h_hypertension == 1 & TILDA_w2$h_hypertension == 0)] <- TILDA_w2$age[which(TILDA_ds_w2$h_hypertension == 1 & TILDA_w2$h_hypertension == 0)] - (TILDA_w2$yintw_w2[which(TILDA_ds_w2$h_hypertension == 1 & TILDA_w2$h_hypertension == 0)] - TILDA_w2$yintw_w1[which(TILDA_ds_w2$h_hypertension == 1 & TILDA_w2$h_hypertension == 0)])/2
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w2, echo=F}
+
+vbl <- TILDA_ds_w2$h_hypertension
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(TILDA_ds_w2, aes(x=factor(h_hypertension))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- TILDA_ds_w2$h_hypertension_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(TILDA_ds_w2, aes(h_hypertension_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(25,85)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w2, echo=F}
+
+AfterH <- table(TILDA_ds_w2$h_hypertension)
+X <- c(
+  sum(TILDA_w2$ph201_01==0 & (TILDA_w2$h_hypertension != 1 | is.na(TILDA_w2$h_hypertension))),
+  sum(TILDA_w2$ph201_01==1 | (!is.na(TILDA_w2$ph201_01) & TILDA_w2$h_hypertension == 1))
+)
+BeforeH <- c(X[1:2])
+C <- rbind(continuous,dichotomous)
+colnames(C) <- c("0->0","1->1")
+kable(C)
+
+```
+
+
+
+
+
+## Descriptive statistics of the harmonised variable accross populations and waves
+
+Percentages of categories in each harmonised variable:
+
+
+**R script:**
+
+```{r summ}
+TILDA_ds_w1$h_hypertension <- labelled(TILDA_ds_w1$h_hypertension, labels = cat_label)
+label(TILDA_ds_w1$h_hypertension) <- ds_label
+TILDA_ds_w1$h_hypertension_age <- labelled(TILDA_ds_w1$h_hypertension_age, labels = cont_label)
+label(TILDA_ds_w1$h_hypertension_age) <- ds_label_age
+TILDA_ds_w2$h_hypertension <- labelled(TILDA_ds_w2$h_hypertension, labels = cat_label)
+label(TILDA_ds_w2$h_hypertension) <- ds_label
+TILDA_ds_w2$h_hypertension_age <- labelled(TILDA_ds_w2$h_hypertension_age, labels = cont_label)
+label(TILDA_ds_w2$h_hypertension_age) <- ds_label_age
+
+TILDA_m_ds_w1 <- TILDA_ds_w1
+TILDA_m_ds_w1$h_hypertension <- car::recode(TILDA_m_ds_w1$h_hypertension, "miss_values_vector=NA")
+TILDA_m_ds_w2 <- TILDA_ds_w1
+TILDA_m_ds_w2$h_hypertension <- car::recode(TILDA_m_ds_w2$h_hypertension, "miss_values_vector=NA")
+
+tt <- frq(TILDA_ds_w1$h_hypertension)[[1]][,c(1:2,4)]
+tt[4] <- frq(TILDA_ds_w2$h_hypertension)[[1]][,c(4)]
+tt[13,] <- c("n", "sample size", 
+             length(TILDA_ds_w1$h_hypertension), length(TILDA_ds_w2$h_hypertension)
+             )
+names(tt)<-c("val", "label", "w1", "w2")
+kable(tt)
+
+dbb <- merge(TILDA_m_ds_w1[,c("id","h_hypertension")], TILDA_m_ds_w2[,c("id","h_hypertension")], by="id", suffixes = c(".w1",".w2"), all=T)
+names(dbb) <- c("id", "w1", "w2")
+v.dbb <- paste(dbb[,2],dbb[,3],sep="")
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb[f.dbb[,3]>=0.3,])
+
+```
+
+
+
+# Quality estimation
+
+* To compute age of diagnostic in the second wave we use the harmonized variable age, which is identical with the study-specific variable age. We have to note that in this variable, the individuals with ages less than 52 and greater or equal than 82 are collapsed to 51 and 82 years old respectively.
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+l.TILDA <- list(w1 = TILDA_ds_w1, w2 = TILDA_ds_w2)
+
+for(index in seq_along(l.TILDA)){
+  h_hypertension <- l.TILDA[[index]]
+  save(h_hypertension, file = paste0(datafolder,names(l.TILDA)[index],"/h_hypertension.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

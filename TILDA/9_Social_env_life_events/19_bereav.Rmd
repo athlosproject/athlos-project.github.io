@@ -1,0 +1,302 @@
+---
+title: "Experience of a loss of any close person"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_ania.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variables is the following:
+
+* Short name: `bereav`
+* Variable label: `Experience of a loss of any close person`
+* Domain: `Social environment`
+* Value type: `cathegorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Irish population
+
+
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variables elected to be harmonised are:
+
+* Name: `cs006`
+* Label: `Are you...?`
+* Categories: 
+    + `1 = Married`
+    + `2 = Living with a partner as if married`
+    + `3 = Single (never married)`
+    + `4 = Separated`
+    + `5 = Divorced`
+    + `6 = Widowed`
+
+
+* Name: `SCQfriendied`
+* Label: `friends died in past 5 years`
+* Categories:
+    + `1 = yes`
+    + `2 = no`
+* Missings:
+    + `-99 = not answered`
+    
+    
+* Name: `SCQlifeev6`
+* Label: `Child died`
+* Categories:
+    + `1 = yes`
+    + `2 = no`
+* Missings:
+    + `-878 = Adjacent boxes 7&8 ticked`
+    + `-867 = Adjacent boxes 6&7 ticked`
+    + `-856 = Adjacent boxes 5&6 ticked`
+    + `-845 = Adjacent boxes 4&5 ticked`
+    + `-834 = Adjacent boxes 3&4 ticked`
+    + `-823 = Adjacent boxes 2&3 ticked`
+    + `-812 = Adjacent boxes 1&2 ticked`
+    + `-99 = Refused`
+    + `-98 = Don't Know`
+    + `-9 = Refused`
+
+
+* Description: 
+```{r assign1}
+opal.assign.table.tibble(o, 'TILDA_w1_bereav','TILDA.TILDA-AMF-v16', 
+                        variables=list('cs006','SCQfriendied','SCQlifeev6'), missings = TRUE)
+```
+
+```{r local1}
+TILDA_w1_bereav <- opal.execute(o,'TILDA_w1_bereav')
+vari <- TILDA_w1_bereav$cs006
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = TILDA_w1_bereav$cs006, missing_values = NA)
+ggplot(TILDA_w1_bereav, aes(x=factor(cs006))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital status") + ylab("Frequency")
+
+
+vari <- TILDA_w1_bereav$SCQfriendied
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = TILDA_w1_bereav$SCQfriendied, missing_values = NA)
+ggplot(TILDA_w1_bereav, aes(x=factor(SCQfriendied))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("friends died in past 5 years") + ylab("Frequency")
+
+
+vari <- TILDA_w1_bereav$SCQlifeev6
+kable(Categorical_summary(vari, missing_values = c(-99))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-99))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-99))[2], caption = "Type of missing")
+#Categorical_summary(var = TILDA_w1_bereav$SCQlifeev6, missing_values = NA)
+ggplot(TILDA_w1_bereav, aes(x=factor(SCQlifeev6))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Child died") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `cs006=6 or SCQfriendied=1 or SCQlifeev6=1 into 1`
+* `cs006 in (1,2,3,4,5) AND SCQfriendied=2 AND SCQlifeev6=2 into 0`
+* `SCQfriendied=-99 into 995`
+* `SCQlifeev6 in (-878,-867,-856,-845,-834,-823,-812) into 999`
+* `SCQlifeev6 in (-99, -9) into 997`
+* `SCQlifeev6 = -98 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1, echo=TRUE}
+TILDA_ds_w1 <- tibble(id=TILDA_w1_bereav$id)
+
+TILDA_w1_bereav$cs006 <- car::recode(as.vector(TILDA_w1_bereav$cs006), "NA='-999'")
+TILDA_w1_bereav$SCQfriendied <- car::recode(as.vector(TILDA_w1_bereav$SCQfriendied), "NA='-999'")
+TILDA_w1_bereav$SCQlifeev6 <- car::recode(as.vector(TILDA_w1_bereav$SCQlifeev6), "NA='-999'")
+
+TILDA_ds_w1$bereav <- c(NA)  
+
+for(i in 1:dim(TILDA_w1_bereav)[1]){
+  if(TILDA_w1_bereav$cs006[i] == 6 | TILDA_w1_bereav$SCQfriendied[i] == 1 | TILDA_w1_bereav$SCQlifeev6[i] == 1) { 
+    TILDA_ds_w1$bereav[i] = 1 }
+  else if(TILDA_w1_bereav$cs006[i] %in% c(1,2,3,4,5) & TILDA_w1_bereav$SCQfriendied[i]==2 & TILDA_w1_bereav$SCQlifeev6[i]==2) { 
+    TILDA_ds_w1$bereav[i] = 0 }
+  else if(TILDA_w1_bereav$SCQfriendied[i] == -99 ) { 
+    TILDA_ds_w1$bereav[i] = 995 }
+  else if(TILDA_w1_bereav$SCQlifeev6[i] %in% c(-878,-867,-856,-845,-834,-823,-812) ) { 
+    TILDA_ds_w1$bereav[i] = 999 }
+  else if(TILDA_w1_bereav$SCQlifeev6[i] %in% c(-99, -9) ) { 
+    TILDA_ds_w1$bereav[i] = 997 }
+  else if(TILDA_w1_bereav$SCQlifeev6[i] == -98 ) { 
+    TILDA_ds_w1$bereav[i] = 998 }
+}
+
+TILDA_ds_w1$bereav <- car::recode(as.vector(TILDA_ds_w1$bereav), "NA='999'")
+TILDA_ds_w1$bereav <- labelled(TILDA_ds_w1$bereav, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1}
+vari <- TILDA_ds_w1$bereav
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = TILDA_ds_w1$bereav, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(TILDA_ds_w1, aes(x=factor(bereav))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bereavement") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1} 
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+
+* Name: `SCQFriendied`
+* Label: `SCQFriendied: Have any of your close friends died in the past two years?`
+* Categories:
+    + `1 = Yes`
+    + `2 = No`
+* Missings:
+    + `-99 = No Response`
+    
+
+* Description: 
+```{r assign2}
+opal.assign.table.tibble(o, 'TILDA_w2_bereav','TILDA.TILDA-AMF-v23',variables=list('SCQFriendied'), missings = TRUE)
+```
+
+```{r local2}
+TILDA_w2_bereav <- opal.execute(o,'TILDA_w2_bereav')
+vari <- TILDA_w2_bereav$SCQFriendied
+kable(Categorical_summary(vari, missing_values = c(-99))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-99))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-99))[2], caption = "Type of missing")
+#Categorical_summary(var = TILDA_w2_bereav$SCQFriendied, missing_values = NA)
+ggplot(TILDA_w2_bereav, aes(x=factor(SCQFriendied))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Have any of your close friends died in the past two years?") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `SCQFriendied=1 into 1`
+* `SCQFriendied=2 into 0`
+* `SCQFriendied = -99 into 995`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2.1, eval=FALSE, echo=FALSE}
+### IF cs006 WAS AVAILABLE, THEN USE THIS CODE:
+#
+# TILDA_ds_w2 <- tibble(id=TILDA_w2_bereav$id)
+# TILDA_w2_bereav$cs006 <- car::recode(as.vector(TILDA_w2_bereav$cs006), "NA='-999'")
+# TILDA_w2_bereav$SCQFriendied <- car::recode(as.vector(TILDA_w2_bereav$SCQFriendied), "NA='-999'")
+# TILDA_ds_w2$bereav <- c(NA)  
+# for(i in 1:dim(TILDA_w2_bereav)[1]){
+#   if(TILDA_w2_bereav$cs006[i] == 6 | TILDA_w2_bereav$SCQFriendied[i] == 1 ) {
+#     TILDA_ds_w2$bereav[i] = 1 }
+#   else if(TILDA_w2_bereav$cs006[i] %in% c(1,2,3,4,5) & TILDA_w2_bereav$SCQFriendied[i]==2) {
+#     TILDA_ds_w2$bereav[i] = 0 }
+#   else if(TILDA_w2_bereav$SCQFriendied[i] == -99 ) {
+#     TILDA_ds_w2$bereav[i] = 995 }
+# }
+# TILDA_ds_w2$bereav <- car::recode(as.vector(TILDA_ds_w2$bereav), "NA='999'")
+# TILDA_ds_w2$bereav <- labelled(TILDA_ds_w2$bereav, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+```{r harmo2, echo=TRUE}
+TILDA_ds_w2 <- tibble(id=TILDA_w2_bereav$id)
+TILDA_ds_w2$bereav <- car::recode(as.vector(TILDA_w2_bereav$SCQFriendied), "1='1'; 2='0'; -99='995'; NA='999'")
+TILDA_ds_w2$bereav <- labelled(TILDA_ds_w2$bereav, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2}
+vari <- TILDA_ds_w2$bereav
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = TILDA_ds_w2$bereav, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(TILDA_ds_w2, aes(x=factor(bereav))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bereavement") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2}
+AfterH <- table(TILDA_ds_w2$bereav)
+BeforeH <- table(TILDA_w2_bereav$SCQFriendied, useNA='ifany')[c(3,2,1,4)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","-99->995","NA->999")
+kable(C)
+```
+
+
+```{r save, echo=FALSE}
+bereav <- TILDA_ds_w1
+save(bereav, file = "../RData/w1/bereav.RData")
+rm(bereav)
+
+bereav <- TILDA_ds_w2
+save(bereav, file = "../RData/w2/bereav.RData")
+rm(bereav)
+
+
+```
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+
+
+
