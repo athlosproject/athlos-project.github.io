@@ -1,0 +1,2088 @@
+---
+title: "Has other (living) family members (e.g. parents, siblings, in-laws, etc.)"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_ania.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variables is the following:
+
+* Short name: `oth_fam`
+* Variable label: `Has other (living) family members (e.g. parents, siblings, in-laws, etc.)`
+* Domain: `Social environment`
+* Value type: `cathegorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Cuba
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `r_inlaw`
+* Label: `number of coresident sons and daughters-in-law`
+
+* Name: `r_othrel`
+* Label: `number of coresident other relatives`
+
+* Name: `r_sibs`
+* Label: `number of coresident siblings`
+
+
+* Description: 
+```{r assign1 cuba}
+opal.assign.table.tibble(o, 't1066_cuba_w1_oth_fam','10-66.1066-Cuba-Baseline',variables=list('r_inlaw','r_othrel','r_sibs'), missings = TRUE)
+```
+
+```{r local1 cuba}
+t1066_cuba_w1_oth_fam <- opal.execute(o,'t1066_cuba_w1_oth_fam')
+
+vari <-  t1066_cuba_w1_oth_fam$r_inlaw
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_cuba_w1_oth_fam$r_inlaw, missing_values = NA)
+ggplot(t1066_cuba_w1_oth_fam, aes(x=factor(r_inlaw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident sons and daughters-in-law") + ylab("Frequency")
+
+vari <-  t1066_cuba_w1_oth_fam$r_othrel
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_cuba_w1_oth_fam$r_othrel, missing_values = NA)
+ggplot(t1066_cuba_w1_oth_fam, aes(x=factor(r_othrel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident other relatives") + ylab("Frequency")
+
+vari <-  t1066_cuba_w1_oth_fam$r_sibs
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_cuba_w1_oth_fam$r_sibs, missing_values = NA)
+ggplot(t1066_cuba_w1_oth_fam, aes(x=factor(r_sibs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident siblings") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any > 0 then 1`
+* `if all then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1 cuba, echo=TRUE}
+t1066_ds_cuba_w1 <- tibble(id=t1066_cuba_w1_oth_fam$id)
+
+t1066_cuba_w1_oth_fam$r_inlaw <- car::recode(as.vector(t1066_cuba_w1_oth_fam$r_inlaw), "NA='-999'")
+t1066_cuba_w1_oth_fam$r_sibs <- car::recode(as.vector(t1066_cuba_w1_oth_fam$r_sibs), "NA='-999'")
+t1066_cuba_w1_oth_fam$r_othrel <- car::recode(as.vector(t1066_cuba_w1_oth_fam$r_othrel), "NA='-999'")
+
+t1066_ds_cuba_w1$oth_fam <- c(NA)  
+for(i in 1:dim(t1066_cuba_w1_oth_fam)[1]){
+  if( t1066_cuba_w1_oth_fam$r_inlaw[i] >0 | t1066_cuba_w1_oth_fam$r_sibs[i] >0 | t1066_cuba_w1_oth_fam$r_othrel[i] >0 ){
+    t1066_ds_cuba_w1$oth_fam[i] = 1 }
+  else if( t1066_cuba_w1_oth_fam$r_inlaw[i] == 0 & t1066_cuba_w1_oth_fam$r_sibs[i] == 0 & t1066_cuba_w1_oth_fam$r_othrel[i] == 0 ){
+    t1066_ds_cuba_w1$oth_fam[i] = 0 }
+}
+  
+t1066_ds_cuba_w1$oth_fam <- car::recode(as.vector(t1066_ds_cuba_w1$oth_fam), "NA='999'")
+t1066_ds_cuba_w1$oth_fam <- labelled(t1066_ds_cuba_w1$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 cuba}
+vari <- t1066_ds_cuba_w1$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_cuba_w1$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_cuba_w1, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 cuba}
+
+```
+
+ 
+ 
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_r_inlaw`
+* Label: `number of coresident sons and daughters-in-law`
+
+* Name: `f_r_othrel`
+* Label: `number of coresident other relatives`
+
+* Name: `f_r_sibs`
+* Label: `number of coresident siblings`
+
+
+* Description: 
+```{r assign2 cuba}
+opal.assign.table.tibble(o, 't1066_cuba_w2_oth_fam','10-66.1066-Cuba-Followup', 
+                        variables=list('f_r_inlaw','f_r_othrel','f_r_sibs'), missings = TRUE)
+```
+
+```{r local2 cuba}
+t1066_cuba_w2_oth_fam <- opal.execute(o,'t1066_cuba_w2_oth_fam')
+
+vari <-  t1066_cuba_w2_oth_fam$f_r_inlaw
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_cuba_w2_oth_fam$f_r_inlaw, missing_values = NA)
+ggplot(t1066_cuba_w2_oth_fam, aes(x=factor(f_r_inlaw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident sons and daughters-in-law") + ylab("Frequency")
+
+vari <-  t1066_cuba_w2_oth_fam$f_r_othrel
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_cuba_w2_oth_fam$f_r_othrel, missing_values = NA)
+ggplot(t1066_cuba_w2_oth_fam, aes(x=factor(f_r_othrel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident other relatives") + ylab("Frequency")
+
+vari <-  t1066_cuba_w2_oth_fam$f_r_sibs
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_cuba_w2_oth_fam$f_r_sibs, missing_values = NA)
+ggplot(t1066_cuba_w2_oth_fam, aes(x=factor(f_r_sibs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident siblings") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any > 0 then 1`
+* `if all then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2 cuba, echo=TRUE}
+t1066_ds_cuba_w2 <- tibble(id=t1066_cuba_w2_oth_fam$id)
+
+t1066_cuba_w2_oth_fam$f_r_inlaw <- car::recode(as.vector(t1066_cuba_w2_oth_fam$f_r_inlaw), "NA='-999'")
+t1066_cuba_w2_oth_fam$f_r_sibs <- car::recode(as.vector(t1066_cuba_w2_oth_fam$f_r_sibs), "NA='-999'")
+t1066_cuba_w2_oth_fam$f_r_othrel <- car::recode(as.vector(t1066_cuba_w2_oth_fam$f_r_othrel), "NA='-999'")
+
+t1066_ds_cuba_w2$oth_fam <- c(NA)  
+for(i in 1:dim(t1066_cuba_w2_oth_fam)[1]){
+  if( t1066_cuba_w2_oth_fam$f_r_inlaw[i] >0 | t1066_cuba_w2_oth_fam$f_r_sibs[i] >0 | t1066_cuba_w2_oth_fam$f_r_othrel[i] >0 ){
+    t1066_ds_cuba_w2$oth_fam[i] = 1 }
+  else if( t1066_cuba_w2_oth_fam$f_r_inlaw[i] == 0 & t1066_cuba_w2_oth_fam$f_r_sibs[i] == 0 & t1066_cuba_w2_oth_fam$f_r_othrel[i] == 0 ){
+    t1066_ds_cuba_w2$oth_fam[i] = 0 }
+}
+  
+t1066_ds_cuba_w2$oth_fam <- car::recode(as.vector(t1066_ds_cuba_w2$oth_fam), "NA='999'")
+t1066_ds_cuba_w2$oth_fam <- labelled(t1066_ds_cuba_w2$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 cuba}
+vari <- t1066_ds_cuba_w2$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_cuba_w2$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_cuba_w2, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 cuba}
+
+```
+
+ 
+ 
+
+
+## Dominican Republic
+
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `r_inlaw`
+* Label: `number of coresident sons and daughters-in-law`
+
+* Name: `r_othrel`
+* Label: `number of coresident other relatives`
+
+* Name: `r_sibs`
+* Label: `number of coresident siblings`
+
+
+* Description: 
+```{r assign1 DR}
+opal.assign.table.tibble(o, 't1066_DR_w1_oth_fam','10-66.1066-DominicanRepublic-Baseline', 
+                        variables=list('r_inlaw','r_othrel','r_sibs'), missings = TRUE)
+```
+
+```{r local1 DR}
+t1066_DR_w1_oth_fam <- opal.execute(o,'t1066_DR_w1_oth_fam')
+
+vari <-  t1066_DR_w1_oth_fam$r_inlaw
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_DR_w1_oth_fam$r_inlaw, missing_values = NA)
+ggplot(t1066_DR_w1_oth_fam, aes(x=factor(r_inlaw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident sons and daughters-in-law") + ylab("Frequency")
+
+vari <-  t1066_cuba_w1_oth_fam$r_othrel
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_DR_w1_oth_fam$r_othrel, missing_values = NA)
+ggplot(t1066_DR_w1_oth_fam, aes(x=factor(r_othrel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident other relatives") + ylab("Frequency")
+
+vari <-  t1066_DR_w1_oth_fam$r_sibs
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_DR_w1_oth_fam$r_sibs, missing_values = NA)
+ggplot(t1066_DR_w1_oth_fam, aes(x=factor(r_sibs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident siblings") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any > 0 then 1`
+* `if all then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1 DR, echo=TRUE}
+t1066_ds_DR_w1 <- tibble(id=t1066_DR_w1_oth_fam$id)
+
+t1066_DR_w1_oth_fam$r_inlaw <- car::recode(as.vector(t1066_DR_w1_oth_fam$r_inlaw), "NA='-999'")
+t1066_DR_w1_oth_fam$r_sibs <- car::recode(as.vector(t1066_DR_w1_oth_fam$r_sibs), "NA='-999'")
+t1066_DR_w1_oth_fam$r_othrel <- car::recode(as.vector(t1066_DR_w1_oth_fam$r_othrel), "NA='-999'")
+
+t1066_ds_DR_w1$oth_fam <- c(NA)  
+for(i in 1:dim(t1066_DR_w1_oth_fam)[1]){
+  if( t1066_DR_w1_oth_fam$r_inlaw[i] >0 | t1066_DR_w1_oth_fam$r_sibs[i] >0 | t1066_DR_w1_oth_fam$r_othrel[i] >0 ){
+    t1066_ds_DR_w1$oth_fam[i] = 1 }
+  else if( t1066_DR_w1_oth_fam$r_inlaw[i] == 0 & t1066_DR_w1_oth_fam$r_sibs[i] == 0 & t1066_DR_w1_oth_fam$r_othrel[i] == 0 ){
+    t1066_ds_DR_w1$oth_fam[i] = 0 }
+}
+  
+t1066_ds_DR_w1$oth_fam <- car::recode(as.vector(t1066_ds_DR_w1$oth_fam), "NA='999'")
+t1066_ds_DR_w1$oth_fam <- labelled(t1066_ds_DR_w1$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 DR}
+vari <- t1066_ds_DR_w1$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_DR_w1$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_DR_w1, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 DR}
+
+```
+
+ 
+ 
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_r_inlaw`
+* Label: `number of coresident sons and daughters-in-law`
+
+* Name: `f_r_othrel`
+* Label: `number of coresident other relatives`
+
+* Name: `f_r_sibs`
+* Label: `number of coresident siblings`
+
+
+* Description: 
+```{r assign2 DR}
+opal.assign.table.tibble(o, 't1066_DR_w2_oth_fam','10-66.1066-DominicanRepublic-Followup', 
+                        variables=list('f_r_inlaw','f_r_othrel','f_r_sibs'), missings = TRUE)
+```
+
+```{r local2 DR}
+t1066_DR_w2_oth_fam <- opal.execute(o,'t1066_DR_w2_oth_fam')
+
+vari <-  t1066_DR_w2_oth_fam$f_r_inlaw
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_DR_w2_oth_fam$f_r_inlaw, missing_values = NA)
+ggplot(t1066_DR_w2_oth_fam, aes(x=factor(f_r_inlaw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident sons and daughters-in-law") + ylab("Frequency")
+
+vari <-  t1066_DR_w2_oth_fam$f_r_othrel
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_DR_w2_oth_fam$f_r_othrel, missing_values = NA)
+ggplot(t1066_DR_w2_oth_fam, aes(x=factor(f_r_othrel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident other relatives") + ylab("Frequency")
+
+vari <-  t1066_DR_w2_oth_fam$f_r_sibs
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_DR_w2_oth_fam$f_r_sibs, missing_values = NA)
+ggplot(t1066_DR_w2_oth_fam, aes(x=factor(f_r_sibs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident siblings") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any > 0 then 1`
+* `if all then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2 DR, echo=TRUE}
+t1066_ds_DR_w2 <- tibble(id=t1066_DR_w2_oth_fam$id)
+
+t1066_DR_w2_oth_fam$f_r_inlaw <- car::recode(as.vector(t1066_DR_w2_oth_fam$f_r_inlaw), "NA='-999'")
+t1066_DR_w2_oth_fam$f_r_sibs <- car::recode(as.vector(t1066_DR_w2_oth_fam$f_r_sibs), "NA='-999'")
+t1066_DR_w2_oth_fam$f_r_othrel <- car::recode(as.vector(t1066_DR_w2_oth_fam$f_r_othrel), "NA='-999'")
+
+t1066_ds_DR_w2$oth_fam <- c(NA)  
+for(i in 1:dim(t1066_DR_w2_oth_fam)[1]){
+  if( t1066_DR_w2_oth_fam$f_r_inlaw[i] >0 | t1066_DR_w2_oth_fam$f_r_sibs[i] >0 | t1066_DR_w2_oth_fam$f_r_othrel[i] >0 ){
+    t1066_ds_DR_w2$oth_fam[i] = 1 }
+  else if( t1066_DR_w2_oth_fam$f_r_inlaw[i] == 0 & t1066_DR_w2_oth_fam$f_r_sibs[i] == 0 & t1066_DR_w2_oth_fam$f_r_othrel[i] == 0 ){
+    t1066_ds_DR_w2$oth_fam[i] = 0 }
+}
+  
+t1066_ds_DR_w2$oth_fam <- car::recode(as.vector(t1066_ds_DR_w2$oth_fam), "NA='999'")
+t1066_ds_DR_w2$oth_fam <- labelled(t1066_ds_DR_w2$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 DR}
+vari <- t1066_ds_DR_w2$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_DR_w2$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_DR_w2, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 DR}
+
+```
+
+ 
+ 
+
+
+
+## India
+
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `r_inlaw`
+* Label: `number of coresident sons and daughters-in-law`
+
+* Name: `r_othrel`
+* Label: `number of coresident other relatives`
+
+* Name: `r_sibs`
+* Label: `number of coresident siblings`
+
+
+* Description: 
+```{r assign1 india}
+opal.assign.table.tibble(o, 't1066_india_w1_oth_fam','10-66.1066-India-Baseline', 
+                        variables=list('r_inlaw','r_othrel','r_sibs'), missings = TRUE)
+```
+
+```{r local1 india}
+t1066_india_w1_oth_fam <- opal.execute(o,'t1066_india_w1_oth_fam')
+
+vari <-  t1066_india_w1_oth_fam$r_inlaw
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_india_w1_oth_fam$r_inlaw, missing_values = NA)
+ggplot(t1066_india_w1_oth_fam, aes(x=factor(r_inlaw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident sons and daughters-in-law") + ylab("Frequency")
+
+vari <-  t1066_india_w1_oth_fam$r_othrel
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_india_w1_oth_fam$r_othrel, missing_values = NA)
+ggplot(t1066_india_w1_oth_fam, aes(x=factor(r_othrel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident other relatives") + ylab("Frequency")
+
+vari <-  t1066_india_w1_oth_fam$r_sibs
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_india_w1_oth_fam$r_sibs, missing_values = NA)
+ggplot(t1066_india_w1_oth_fam, aes(x=factor(r_sibs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident siblings") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any > 0 then 1`
+* `if all then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1 india, echo=TRUE}
+t1066_ds_india_w1 <- tibble(id=t1066_india_w1_oth_fam$id)
+
+t1066_india_w1_oth_fam$r_inlaw <- car::recode(as.vector(t1066_india_w1_oth_fam$r_inlaw), "NA='-999'")
+t1066_india_w1_oth_fam$r_sibs <- car::recode(as.vector(t1066_india_w1_oth_fam$r_sibs), "NA='-999'")
+t1066_india_w1_oth_fam$r_othrel <- car::recode(as.vector(t1066_india_w1_oth_fam$r_othrel), "NA='-999'")
+
+t1066_ds_india_w1$oth_fam <- c(NA)  
+for(i in 1:dim(t1066_india_w1_oth_fam)[1]){
+  if( t1066_india_w1_oth_fam$r_inlaw[i] >0 | t1066_india_w1_oth_fam$r_sibs[i] >0 | t1066_india_w1_oth_fam$r_othrel[i] >0 ){
+    t1066_ds_india_w1$oth_fam[i] = 1 }
+  else if( t1066_india_w1_oth_fam$r_inlaw[i] == 0 & t1066_india_w1_oth_fam$r_sibs[i] == 0 & t1066_india_w1_oth_fam$r_othrel[i] == 0 ){
+    t1066_ds_india_w1$oth_fam[i] = 0 }
+}
+  
+t1066_ds_india_w1$oth_fam <- car::recode(as.vector(t1066_ds_india_w1$oth_fam), "NA='999'")
+t1066_ds_india_w1$oth_fam <- labelled(t1066_ds_india_w1$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 india}
+vari <- t1066_ds_india_w1$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_india_w1$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_india_w1, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 india}
+
+```
+
+ 
+ 
+
+
+
+### Wave 2
+Not found.
+
+## Puerto Rico
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `r_inlaw`
+* Label: `number of coresident sons and daughters-in-law`
+
+* Name: `r_othrel`
+* Label: `number of coresident other relatives`
+
+* Name: `r_sibs`
+* Label: `number of coresident siblings`
+
+
+* Description: 
+```{r assign1 PR}
+opal.assign.table.tibble(o, 't1066_PR_w1_oth_fam','10-66.1066-PuertoRico-Baseline', 
+                        variables=list('r_inlaw','r_othrel','r_sibs'), missings = TRUE)
+```
+
+```{r local1 PR}
+t1066_PR_w1_oth_fam <- opal.execute(o,'t1066_PR_w1_oth_fam')
+
+vari <-  t1066_PR_w1_oth_fam$r_inlaw
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_PR_w1_oth_fam$r_inlaw, missing_values = NA)
+ggplot(t1066_PR_w1_oth_fam, aes(x=factor(r_inlaw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident sons and daughters-in-law") + ylab("Frequency")
+
+vari <-  t1066_PR_w1_oth_fam$r_othrel
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_PR_w1_oth_fam$r_othrel, missing_values = NA)
+ggplot(t1066_PR_w1_oth_fam, aes(x=factor(r_othrel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident other relatives") + ylab("Frequency")
+
+vari <-  t1066_PR_w1_oth_fam$r_sibs
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_PR_w1_oth_fam$r_sibs, missing_values = NA)
+ggplot(t1066_PR_w1_oth_fam, aes(x=factor(r_sibs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident siblings") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any > 0 then 1`
+* `if all then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1 PR, echo=TRUE}
+t1066_ds_PR_w1 <- tibble(id=t1066_PR_w1_oth_fam$id)
+
+t1066_PR_w1_oth_fam$r_inlaw <- car::recode(as.vector(t1066_PR_w1_oth_fam$r_inlaw), "NA='-999'")
+t1066_PR_w1_oth_fam$r_sibs <- car::recode(as.vector(t1066_PR_w1_oth_fam$r_sibs), "NA='-999'")
+t1066_PR_w1_oth_fam$r_othrel <- car::recode(as.vector(t1066_PR_w1_oth_fam$r_othrel), "NA='-999'")
+
+t1066_ds_PR_w1$oth_fam <- c(NA)  
+for(i in 1:dim(t1066_PR_w1_oth_fam)[1]){
+  if( t1066_PR_w1_oth_fam$r_inlaw[i] >0 | t1066_PR_w1_oth_fam$r_sibs[i] >0 | t1066_PR_w1_oth_fam$r_othrel[i] >0 ){
+    t1066_ds_PR_w1$oth_fam[i] = 1 }
+  else if( t1066_PR_w1_oth_fam$r_inlaw[i] == 0 & t1066_PR_w1_oth_fam$r_sibs[i] == 0 & t1066_PR_w1_oth_fam$r_othrel[i] == 0 ){
+    t1066_ds_PR_w1$oth_fam[i] = 0 }
+}
+  
+t1066_ds_PR_w1$oth_fam <- car::recode(as.vector(t1066_ds_PR_w1$oth_fam), "NA='999'")
+t1066_ds_PR_w1$oth_fam <- labelled(t1066_ds_PR_w1$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 PR}
+vari <- t1066_ds_PR_w1$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_PR_w1$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_PR_w1, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 PR}
+
+```
+
+ 
+ 
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_r_inlaw`
+* Label: `number of coresident sons and daughters-in-law`
+
+* Name: `f_r_othrel`
+* Label: `number of coresident other relatives`
+
+* Name: `f_r_sibs`
+* Label: `number of coresident siblings`
+
+
+* Description: 
+```{r assign2 PR}
+opal.assign.table.tibble(o, 't1066_PR_w2_oth_fam','10-66.1066-PuertoRico-Followup', 
+                        variables=list('f_r_inlaw','f_r_othrel','f_r_sibs'), missings = TRUE)
+```
+
+```{r local2 PR}
+t1066_PR_w2_oth_fam <- opal.execute(o,'t1066_PR_w2_oth_fam')
+
+vari <- t1066_PR_w2_oth_fam$f_r_inlaw
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_PR_w2_oth_fam$f_r_inlaw, missing_values = NA)
+ggplot(t1066_PR_w2_oth_fam, aes(x=factor(f_r_inlaw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident sons and daughters-in-law") + ylab("Frequency")
+
+vari <-  t1066_PR_w2_oth_fam$f_r_othrel
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_PR_w2_oth_fam$f_r_othrel, missing_values = NA)
+ggplot(t1066_PR_w2_oth_fam, aes(x=factor(f_r_othrel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident other relatives") + ylab("Frequency")
+
+vari <-  t1066_PR_w2_oth_fam$f_r_sibs
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_PR_w2_oth_fam$f_r_sibs, missing_values = NA)
+ggplot(t1066_PR_w2_oth_fam, aes(x=factor(f_r_sibs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident siblings") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any > 0 then 1`
+* `if all then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2 PR, echo=TRUE}
+t1066_ds_PR_w2 <- tibble(id=t1066_PR_w2_oth_fam$id)
+
+t1066_PR_w2_oth_fam$f_r_inlaw <- car::recode(as.vector(t1066_PR_w2_oth_fam$f_r_inlaw), "NA='-999'")
+t1066_PR_w2_oth_fam$f_r_sibs <- car::recode(as.vector(t1066_PR_w2_oth_fam$f_r_sibs), "NA='-999'")
+t1066_PR_w2_oth_fam$f_r_othrel <- car::recode(as.vector(t1066_PR_w2_oth_fam$f_r_othrel), "NA='-999'")
+
+t1066_ds_PR_w2$oth_fam <- c(NA)  
+for(i in 1:dim(t1066_PR_w2_oth_fam)[1]){
+  if( t1066_PR_w2_oth_fam$f_r_inlaw[i] >0 | t1066_PR_w2_oth_fam$f_r_sibs[i] >0 | t1066_PR_w2_oth_fam$f_r_othrel[i] >0 ){
+    t1066_ds_PR_w2$oth_fam[i] = 1 }
+  else if( t1066_PR_w2_oth_fam$f_r_inlaw[i] == 0 & t1066_PR_w2_oth_fam$f_r_sibs[i] == 0 & t1066_PR_w2_oth_fam$f_r_othrel[i] == 0 ){
+    t1066_ds_PR_w2$oth_fam[i] = 0 }
+}
+  
+t1066_ds_PR_w2$oth_fam <- car::recode(as.vector(t1066_ds_PR_w2$oth_fam), "NA='999'")
+t1066_ds_PR_w2$oth_fam <- labelled(t1066_ds_PR_w2$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 PR}
+vari <- t1066_ds_PR_w2$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_PR_w2$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_PR_w2, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 PR}
+
+```
+
+ 
+ 
+
+
+
+## Rural China
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `r_inlaw`
+* Label: `number of coresident sons and daughters-in-law`
+
+* Name: `r_othrel`
+* Label: `number of coresident other relatives`
+
+* Name: `r_sibs`
+* Label: `number of coresident siblings`
+
+
+* Description: 
+```{r assign1 RCh}
+opal.assign.table.tibble(o, 't1066_RCh_w1_oth_fam','10-66.1066-RuralChina-Baseline', 
+                        variables=list('r_inlaw','r_othrel','r_sibs'), missings = TRUE)
+```
+
+```{r local1 RCh}
+t1066_RCh_w1_oth_fam <- opal.execute(o,'t1066_RCh_w1_oth_fam')
+
+vari <-  t1066_RCh_w1_oth_fam$r_inlaw
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_RCh_w1_oth_fam$r_inlaw, missing_values = NA)
+ggplot(t1066_RCh_w1_oth_fam, aes(x=factor(r_inlaw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident sons and daughters-in-law") + ylab("Frequency")
+
+vari <-  t1066_RCh_w1_oth_fam$r_othrel
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_RCh_w1_oth_fam$r_othrel, missing_values = NA)
+ggplot(t1066_RCh_w1_oth_fam, aes(x=factor(r_othrel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident other relatives") + ylab("Frequency")
+
+vari <-  t1066_RCh_w1_oth_fam$r_sibs
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_RCh_w1_oth_fam$r_sibs, missing_values = NA)
+ggplot(t1066_RCh_w1_oth_fam, aes(x=factor(r_sibs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident siblings") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any > 0 then 1`
+* `if all then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1 RCh, echo=TRUE}
+t1066_ds_RCh_w1 <- tibble(id=t1066_RCh_w1_oth_fam$id)
+
+t1066_RCh_w1_oth_fam$r_inlaw <- car::recode(as.vector(t1066_RCh_w1_oth_fam$r_inlaw), "NA='-999'")
+t1066_RCh_w1_oth_fam$r_sibs <- car::recode(as.vector(t1066_RCh_w1_oth_fam$r_sibs), "NA='-999'")
+t1066_RCh_w1_oth_fam$r_othrel <- car::recode(as.vector(t1066_RCh_w1_oth_fam$r_othrel), "NA='-999'")
+
+t1066_ds_RCh_w1$oth_fam <- c(NA)  
+for(i in 1:dim(t1066_RCh_w1_oth_fam)[1]){
+  if( t1066_RCh_w1_oth_fam$r_inlaw[i] >0 | t1066_RCh_w1_oth_fam$r_sibs[i] >0 | t1066_RCh_w1_oth_fam$r_othrel[i] >0 ){
+    t1066_ds_RCh_w1$oth_fam[i] = 1 }
+  else if( t1066_RCh_w1_oth_fam$r_inlaw[i] == 0 & t1066_RCh_w1_oth_fam$r_sibs[i] == 0 & t1066_RCh_w1_oth_fam$r_othrel[i] == 0 ){
+    t1066_ds_RCh_w1$oth_fam[i] = 0 }
+}
+  
+t1066_ds_RCh_w1$oth_fam <- car::recode(as.vector(t1066_ds_RCh_w1$oth_fam), "NA='999'")
+t1066_ds_RCh_w1$oth_fam <- labelled(t1066_ds_RCh_w1$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 RCh}
+vari <- t1066_ds_RCh_w1$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_RCh_w1$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_RCh_w1, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 RCh}
+
+```
+
+ 
+ 
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_r_inlaw`
+* Label: `number of coresident sons and daughters-in-law`
+
+* Name: `f_r_othrel`
+* Label: `number of coresident other relatives`
+
+* Name: `f_r_sibs`
+* Label: `number of coresident siblings`
+
+
+* Description: 
+```{r assign2 RCh}
+opal.assign.table.tibble(o, 't1066_RCh_w2_oth_fam','10-66.1066-RuralChina-Followup', 
+                        variables=list('f_r_inlaw','f_r_othrel','f_r_sibs'), missings = TRUE)
+```
+
+```{r local2 RCh}
+t1066_RCh_w2_oth_fam <- opal.execute(o,'t1066_RCh_w2_oth_fam')
+
+vari <-  t1066_RCh_w2_oth_fam$f_r_inlaw
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_RCh_w2_oth_fam$f_r_inlaw, missing_values = NA)
+ggplot(t1066_RCh_w2_oth_fam, aes(x=factor(f_r_inlaw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident sons and daughters-in-law") + ylab("Frequency")
+
+vari <-  t1066_RCh_w2_oth_fam$f_r_othrel
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_RCh_w2_oth_fam$f_r_othrel, missing_values = NA)
+ggplot(t1066_RCh_w2_oth_fam, aes(x=factor(f_r_othrel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident other relatives") + ylab("Frequency")
+
+vari <-  t1066_RCh_w2_oth_fam$f_r_sibs
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_RCh_w2_oth_fam$f_r_sibs, missing_values = NA)
+ggplot(t1066_RCh_w2_oth_fam, aes(x=factor(f_r_sibs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident siblings") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any > 0 then 1`
+* `if all then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2 RCh, echo=TRUE}
+t1066_ds_RCh_w2 <- tibble(id=t1066_RCh_w2_oth_fam$id)
+
+t1066_RCh_w2_oth_fam$f_r_inlaw <- car::recode(as.vector(t1066_RCh_w2_oth_fam$f_r_inlaw), "NA='-999'")
+t1066_RCh_w2_oth_fam$f_r_sibs <- car::recode(as.vector(t1066_RCh_w2_oth_fam$f_r_sibs), "NA='-999'")
+t1066_RCh_w2_oth_fam$f_r_othrel <- car::recode(as.vector(t1066_RCh_w2_oth_fam$f_r_othrel), "NA='-999'")
+
+t1066_ds_RCh_w2$oth_fam <- c(NA)  
+for(i in 1:dim(t1066_RCh_w2_oth_fam)[1]){
+  if( t1066_RCh_w2_oth_fam$f_r_inlaw[i] >0 | t1066_RCh_w2_oth_fam$f_r_sibs[i] >0 | t1066_RCh_w2_oth_fam$f_r_othrel[i] >0 ){
+    t1066_ds_RCh_w2$oth_fam[i] = 1 }
+  else if( t1066_RCh_w2_oth_fam$f_r_inlaw[i] == 0 & t1066_RCh_w2_oth_fam$f_r_sibs[i] == 0 & t1066_RCh_w2_oth_fam$f_r_othrel[i] == 0 ){
+    t1066_ds_RCh_w2$oth_fam[i] = 0 }
+}
+  
+t1066_ds_RCh_w2$oth_fam <- car::recode(as.vector(t1066_ds_RCh_w2$oth_fam), "NA='999'")
+t1066_ds_RCh_w2$oth_fam <- labelled(t1066_ds_RCh_w2$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 RCh}
+vari <- t1066_ds_RCh_w2$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_RCh_w2$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_RCh_w2, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 RCh}
+
+```
+
+ 
+ 
+
+
+
+## Rural Mexico
+
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `r_inlaw`
+* Label: `number of coresident sons and daughters-in-law`
+
+* Name: `r_othrel`
+* Label: `number of coresident other relatives`
+
+* Name: `r_sibs`
+* Label: `number of coresident siblings`
+
+
+* Description: 
+```{r assign1 RM}
+opal.assign.table.tibble(o, 't1066_RM_w1_oth_fam','10-66.1066-RuralMexico-Baseline', 
+                        variables=list('r_inlaw','r_othrel','r_sibs'), missings = TRUE)
+```
+
+```{r local1 RM}
+t1066_RM_w1_oth_fam <- opal.execute(o,'t1066_RM_w1_oth_fam')
+
+vari <-  t1066_RM_w1_oth_fam$r_inlaw
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#(var = t1066_RM_w1_oth_fam$r_inlaw, missing_values = NA)
+ggplot(t1066_RM_w1_oth_fam, aes(x=factor(r_inlaw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident sons and daughters-in-law") + ylab("Frequency")
+
+vari <-  t1066_RM_w1_oth_fam$r_othrel
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_RM_w1_oth_fam$r_othrel, missing_values = NA)
+ggplot(t1066_RM_w1_oth_fam, aes(x=factor(r_othrel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident other relatives") + ylab("Frequency")
+
+vari <-  t1066_RM_w1_oth_fam$r_sibs
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_RM_w1_oth_fam$r_sibs, missing_values = NA)
+ggplot(t1066_RM_w1_oth_fam, aes(x=factor(r_sibs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident siblings") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any > 0 then 1`
+* `if all then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1 RM, echo=TRUE}
+t1066_ds_RM_w1 <- tibble(id=t1066_RM_w1_oth_fam$id)
+
+t1066_RM_w1_oth_fam$r_inlaw <- car::recode(as.vector(t1066_RM_w1_oth_fam$r_inlaw), "NA='-999'")
+t1066_RM_w1_oth_fam$r_sibs <- car::recode(as.vector(t1066_RM_w1_oth_fam$r_sibs), "NA='-999'")
+t1066_RM_w1_oth_fam$r_othrel <- car::recode(as.vector(t1066_RM_w1_oth_fam$r_othrel), "NA='-999'")
+
+t1066_ds_RM_w1$oth_fam <- c(NA)  
+for(i in 1:dim(t1066_RM_w1_oth_fam)[1]){
+  if( t1066_RM_w1_oth_fam$r_inlaw[i] >0 | t1066_RM_w1_oth_fam$r_sibs[i] >0 | t1066_RM_w1_oth_fam$r_othrel[i] >0 ){
+    t1066_ds_RM_w1$oth_fam[i] = 1 }
+  else if( t1066_RM_w1_oth_fam$r_inlaw[i] == 0 & t1066_RM_w1_oth_fam$r_sibs[i] == 0 & t1066_RM_w1_oth_fam$r_othrel[i] == 0 ){
+    t1066_ds_RM_w1$oth_fam[i] = 0 }
+}
+  
+t1066_ds_RM_w1$oth_fam <- car::recode(as.vector(t1066_ds_RM_w1$oth_fam), "NA='999'")
+t1066_ds_RM_w1$oth_fam <- labelled(t1066_ds_RM_w1$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 RM}
+vari <- t1066_ds_RM_w1$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_RM_w1$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_RM_w1, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 RM}
+
+```
+
+ 
+ 
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_r_inlaw`
+* Label: `number of coresident sons and daughters-in-law`
+
+* Name: `f_r_othrel`
+* Label: `number of coresident other relatives`
+
+* Name: `f_r_sibs`
+* Label: `number of coresident siblings`
+
+
+* Description: 
+```{r assign2 RM}
+opal.assign.table.tibble(o, 't1066_RM_w2_oth_fam','10-66.1066-RuralMexico-Followup', 
+                        variables=list('f_r_inlaw','f_r_othrel','f_r_sibs'), missings = TRUE)
+```
+
+```{r local2 RM}
+t1066_RM_w2_oth_fam <- opal.execute(o,'t1066_RM_w2_oth_fam')
+
+vari <-  t1066_RM_w2_oth_fam$f_r_inlaw
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_RM_w2_oth_fam$f_r_inlaw, missing_values = NA)
+ggplot(t1066_RM_w2_oth_fam, aes(x=factor(f_r_inlaw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident sons and daughters-in-law") + ylab("Frequency")
+
+vari <-  t1066_RM_w2_oth_fam$f_r_othrel
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_RM_w2_oth_fam$f_r_othrel, missing_values = NA)
+ggplot(t1066_RM_w2_oth_fam, aes(x=factor(f_r_othrel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident other relatives") + ylab("Frequency")
+
+vari <-  t1066_RM_w2_oth_fam$f_r_sibs
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_RM_w2_oth_fam$f_r_sibs, missing_values = NA)
+ggplot(t1066_RM_w2_oth_fam, aes(x=factor(f_r_sibs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident siblings") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any > 0 then 1`
+* `if all then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2 RM, echo=TRUE}
+t1066_ds_RM_w2 <- tibble(id=t1066_RM_w2_oth_fam$id)
+
+t1066_RM_w2_oth_fam$f_r_inlaw <- car::recode(as.vector(t1066_RM_w2_oth_fam$f_r_inlaw), "NA='-999'")
+t1066_RM_w2_oth_fam$f_r_sibs <- car::recode(as.vector(t1066_RM_w2_oth_fam$f_r_sibs), "NA='-999'")
+t1066_RM_w2_oth_fam$f_r_othrel <- car::recode(as.vector(t1066_RM_w2_oth_fam$f_r_othrel), "NA='-999'")
+
+t1066_ds_RM_w2$oth_fam <- c(NA)  
+for(i in 1:dim(t1066_RM_w2_oth_fam)[1]){
+  if( t1066_RM_w2_oth_fam$f_r_inlaw[i] >0 | t1066_RM_w2_oth_fam$f_r_sibs[i] >0 | t1066_RM_w2_oth_fam$f_r_othrel[i] >0 ){
+    t1066_ds_RM_w2$oth_fam[i] = 1 }
+  else if( t1066_RM_w2_oth_fam$f_r_inlaw[i] == 0 & t1066_RM_w2_oth_fam$f_r_sibs[i] == 0 & t1066_RM_w2_oth_fam$f_r_othrel[i] == 0 ){
+    t1066_ds_RM_w2$oth_fam[i] = 0 }
+}
+  
+t1066_ds_RM_w2$oth_fam <- car::recode(as.vector(t1066_ds_RM_w2$oth_fam), "NA='999'")
+t1066_ds_RM_w2$oth_fam <- labelled(t1066_ds_RM_w2$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 RM}
+vari <- t1066_ds_RM_w2$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_RM_w2$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_RM_w2, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 RM}
+
+```
+
+ 
+ 
+
+
+
+## Rural Peru
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `r_inlaw`
+* Label: `number of coresident sons and daughters-in-law`
+
+* Name: `r_othrel`
+* Label: `number of coresident other relatives`
+
+* Name: `r_sibs`
+* Label: `number of coresident siblings`
+
+
+* Description: 
+```{r assign1 RP}
+opal.assign.table.tibble(o, 't1066_RP_w1_oth_fam','10-66.1066-RuralPeru-Baseline', 
+                        variables=list('r_inlaw','r_othrel','r_sibs'), missings = TRUE)
+```
+
+```{r local1 RP}
+t1066_RP_w1_oth_fam <- opal.execute(o,'t1066_RP_w1_oth_fam')
+
+vari <-  t1066_RP_w1_oth_fam$r_inlaw
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_RP_w1_oth_fam$r_inlaw, missing_values = NA)
+ggplot(t1066_RP_w1_oth_fam, aes(x=factor(r_inlaw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident sons and daughters-in-law") + ylab("Frequency")
+
+vari <-  t1066_RP_w1_oth_fam$r_othrel
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_RP_w1_oth_fam$r_othrel, missing_values = NA)
+ggplot(t1066_RP_w1_oth_fam, aes(x=factor(r_othrel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident other relatives") + ylab("Frequency")
+
+vari <-  t1066_RP_w1_oth_fam$r_sibs
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_RP_w1_oth_fam$r_sibs, missing_values = NA)
+ggplot(t1066_RP_w1_oth_fam, aes(x=factor(r_sibs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident siblings") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any > 0 then 1`
+* `if all then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1 RP, echo=TRUE}
+t1066_ds_RP_w1 <- tibble(id=t1066_RP_w1_oth_fam$id)
+
+t1066_RP_w1_oth_fam$r_inlaw <- car::recode(as.vector(t1066_RP_w1_oth_fam$r_inlaw), "NA='-999'")
+t1066_RP_w1_oth_fam$r_sibs <- car::recode(as.vector(t1066_RP_w1_oth_fam$r_sibs), "NA='-999'")
+t1066_RP_w1_oth_fam$r_othrel <- car::recode(as.vector(t1066_RP_w1_oth_fam$r_othrel), "NA='-999'")
+
+t1066_ds_RP_w1$oth_fam <- c(NA)  
+for(i in 1:dim(t1066_RP_w1_oth_fam)[1]){
+  if( t1066_RP_w1_oth_fam$r_inlaw[i] >0 | t1066_RP_w1_oth_fam$r_sibs[i] >0 | t1066_RP_w1_oth_fam$r_othrel[i] >0 ){
+    t1066_ds_RP_w1$oth_fam[i] = 1 }
+  else if( t1066_RP_w1_oth_fam$r_inlaw[i] == 0 & t1066_RP_w1_oth_fam$r_sibs[i] == 0 & t1066_RP_w1_oth_fam$r_othrel[i] == 0 ){
+    t1066_ds_RP_w1$oth_fam[i] = 0 }
+}
+  
+t1066_ds_RP_w1$oth_fam <- car::recode(as.vector(t1066_ds_RP_w1$oth_fam), "NA='999'")
+t1066_ds_RP_w1$oth_fam <- labelled(t1066_ds_RP_w1$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 RP}
+vari <- t1066_ds_RP_w1$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_RP_w1$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_RP_w1, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 RP}
+
+```
+
+ 
+ 
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_r_inlaw`
+* Label: `number of coresident sons and daughters-in-law`
+
+* Name: `f_r_othrel`
+* Label: `number of coresident other relatives`
+
+* Name: `f_r_sibs`
+* Label: `number of coresident siblings`
+
+
+* Description: 
+```{r assign2 RP}
+opal.assign.table.tibble(o, 't1066_RP_w2_oth_fam','10-66.1066-RuralPeru-Followup', 
+                        variables=list('f_r_inlaw','f_r_othrel','f_r_sibs'), missings = TRUE)
+```
+
+```{r local2 RP}
+t1066_RP_w2_oth_fam <- opal.execute(o,'t1066_RP_w2_oth_fam')
+
+vari <-  t1066_RP_w2_oth_fam$f_r_inlaw
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_RP_w2_oth_fam$f_r_inlaw, missing_values = NA)
+ggplot(t1066_RP_w2_oth_fam, aes(x=factor(f_r_inlaw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident sons and daughters-in-law") + ylab("Frequency")
+
+vari <-  t1066_RP_w2_oth_fam$f_r_othrel
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_RP_w2_oth_fam$f_r_othrel, missing_values = NA)
+ggplot(t1066_RP_w2_oth_fam, aes(x=factor(f_r_othrel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident other relatives") + ylab("Frequency")
+
+vari <-  t1066_RP_w2_oth_fam$f_r_sibs
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_RP_w2_oth_fam$f_r_sibs, missing_values = NA)
+ggplot(t1066_RP_w2_oth_fam, aes(x=factor(f_r_sibs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident siblings") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any > 0 then 1`
+* `if all then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2 RP, echo=TRUE}
+t1066_ds_RP_w2 <- tibble(id=t1066_RP_w2_oth_fam$id)
+
+t1066_RP_w2_oth_fam$f_r_inlaw <- car::recode(as.vector(t1066_RP_w2_oth_fam$f_r_inlaw), "NA='-999'")
+t1066_RP_w2_oth_fam$f_r_sibs <- car::recode(as.vector(t1066_RP_w2_oth_fam$f_r_sibs), "NA='-999'")
+t1066_RP_w2_oth_fam$f_r_othrel <- car::recode(as.vector(t1066_RP_w2_oth_fam$f_r_othrel), "NA='-999'")
+
+t1066_ds_RP_w2$oth_fam <- c(NA)  
+for(i in 1:dim(t1066_RP_w2_oth_fam)[1]){
+  if( t1066_RP_w2_oth_fam$f_r_inlaw[i] >0 | t1066_RP_w2_oth_fam$f_r_sibs[i] >0 | t1066_RP_w2_oth_fam$f_r_othrel[i] >0 ){
+    t1066_ds_RP_w2$oth_fam[i] = 1 }
+  else if( t1066_RP_w2_oth_fam$f_r_inlaw[i] == 0 & t1066_RP_w2_oth_fam$f_r_sibs[i] == 0 & t1066_RP_w2_oth_fam$f_r_othrel[i] == 0 ){
+    t1066_ds_RP_w2$oth_fam[i] = 0 }
+}
+  
+t1066_ds_RP_w2$oth_fam <- car::recode(as.vector(t1066_ds_RP_w2$oth_fam), "NA='999'")
+t1066_ds_RP_w2$oth_fam <- labelled(t1066_ds_RP_w2$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 RP}
+vari <- t1066_ds_RP_w2$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_RP_w2$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_RP_w2, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 RP}
+
+```
+
+ 
+ 
+
+
+## Urban China
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `r_inlaw`
+* Label: `number of coresident sons and daughters-in-law`
+
+* Name: `r_othrel`
+* Label: `number of coresident other relatives`
+
+* Name: `r_sibs`
+* Label: `number of coresident siblings`
+
+
+* Description: 
+```{r assign1 UCh}
+opal.assign.table.tibble(o, 't1066_UCh_w1_oth_fam','10-66.1066-UrbanChina-Baseline', 
+                        variables=list('r_inlaw','r_othrel','r_sibs'), missings = TRUE)
+```
+
+```{r local1 UCh}
+t1066_UCh_w1_oth_fam <- opal.execute(o,'t1066_UCh_w1_oth_fam')
+
+vari <-  t1066_UCh_w1_oth_fam$r_inlaw
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_UCh_w1_oth_fam$r_inlaw, missing_values = NA)
+ggplot(t1066_UCh_w1_oth_fam, aes(x=factor(r_inlaw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident sons and daughters-in-law") + ylab("Frequency")
+
+vari <-  t1066_UCh_w1_oth_fam$r_othrel
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_UCh_w1_oth_fam$r_othrel, missing_values = NA)
+ggplot(t1066_UCh_w1_oth_fam, aes(x=factor(r_othrel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident other relatives") + ylab("Frequency")
+
+vari <- t1066_UCh_w1_oth_fam$r_sibs
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_UCh_w1_oth_fam$r_sibs, missing_values = NA)
+ggplot(t1066_UCh_w1_oth_fam, aes(x=factor(r_sibs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident siblings") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any > 0 then 1`
+* `if all then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1 UCh, echo=TRUE}
+t1066_ds_UCh_w1 <- tibble(id=t1066_UCh_w1_oth_fam$id)
+
+t1066_UCh_w1_oth_fam$r_inlaw <- car::recode(as.vector(t1066_UCh_w1_oth_fam$r_inlaw), "NA='-999'")
+t1066_UCh_w1_oth_fam$r_sibs <- car::recode(as.vector(t1066_UCh_w1_oth_fam$r_sibs), "NA='-999'")
+t1066_UCh_w1_oth_fam$r_othrel <- car::recode(as.vector(t1066_UCh_w1_oth_fam$r_othrel), "NA='-999'")
+
+t1066_ds_UCh_w1$oth_fam <- c(NA)  
+for(i in 1:dim(t1066_UCh_w1_oth_fam)[1]){
+  if( t1066_UCh_w1_oth_fam$r_inlaw[i] >0 | t1066_UCh_w1_oth_fam$r_sibs[i] >0 | t1066_UCh_w1_oth_fam$r_othrel[i] >0 ){
+    t1066_ds_UCh_w1$oth_fam[i] = 1 }
+  else if( t1066_UCh_w1_oth_fam$r_inlaw[i] == 0 & t1066_UCh_w1_oth_fam$r_sibs[i] == 0 & t1066_UCh_w1_oth_fam$r_othrel[i] == 0 ){
+    t1066_ds_UCh_w1$oth_fam[i] = 0 }
+}
+  
+t1066_ds_UCh_w1$oth_fam <- car::recode(as.vector(t1066_ds_UCh_w1$oth_fam), "NA='999'")
+t1066_ds_UCh_w1$oth_fam <- labelled(t1066_ds_UCh_w1$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 UCh}
+vari <- t1066_ds_UCh_w1$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_UCh_w1$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_UCh_w1, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 UCh}
+
+```
+
+ 
+ 
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_r_inlaw`
+* Label: `number of coresident sons and daughters-in-law`
+
+* Name: `f_r_othrel`
+* Label: `number of coresident other relatives`
+
+* Name: `f_r_sibs`
+* Label: `number of coresident siblings`
+
+
+* Description: 
+```{r assign2 UCh}
+opal.assign.table.tibble(o, 't1066_UCh_w2_oth_fam','10-66.1066-UrbanChina-Followup', 
+                        variables=list('f_r_inlaw','f_r_othrel','f_r_sibs'), missings = TRUE)
+```
+
+```{r local2 UCh}
+t1066_UCh_w2_oth_fam <- opal.execute(o,'t1066_UCh_w2_oth_fam')
+
+vari <-   t1066_UCh_w2_oth_fam$f_r_inlaw
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_UCh_w2_oth_fam$f_r_inlaw, missing_values = NA)
+ggplot(t1066_UCh_w2_oth_fam, aes(x=factor(f_r_inlaw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident sons and daughters-in-law") + ylab("Frequency")
+
+vari <-  t1066_UCh_w2_oth_fam$f_r_othrel
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_UCh_w2_oth_fam$f_r_othrel, missing_values = NA)
+ggplot(t1066_UCh_w2_oth_fam, aes(x=factor(f_r_othrel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident other relatives") + ylab("Frequency")
+
+vari <- t1066_UCh_w2_oth_fam$f_r_sibs
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_UCh_w2_oth_fam$f_r_sibs, missing_values = NA)
+ggplot(t1066_UCh_w2_oth_fam, aes(x=factor(f_r_sibs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident siblings") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any > 0 then 1`
+* `if all then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2 UCh, echo=TRUE}
+t1066_ds_UCh_w2 <- tibble(id=t1066_UCh_w2_oth_fam$id)
+
+t1066_UCh_w2_oth_fam$f_r_inlaw <- car::recode(as.vector(t1066_UCh_w2_oth_fam$f_r_inlaw), "NA='-999'")
+t1066_UCh_w2_oth_fam$f_r_sibs <- car::recode(as.vector(t1066_UCh_w2_oth_fam$f_r_sibs), "NA='-999'")
+t1066_UCh_w2_oth_fam$f_r_othrel <- car::recode(as.vector(t1066_UCh_w2_oth_fam$f_r_othrel), "NA='-999'")
+
+t1066_ds_UCh_w2$oth_fam <- c(NA)  
+for(i in 1:dim(t1066_UCh_w2_oth_fam)[1]){
+  if( t1066_UCh_w2_oth_fam$f_r_inlaw[i] >0 | t1066_UCh_w2_oth_fam$f_r_sibs[i] >0 | t1066_UCh_w2_oth_fam$f_r_othrel[i] >0 ){
+    t1066_ds_UCh_w2$oth_fam[i] = 1 }
+  else if( t1066_UCh_w2_oth_fam$f_r_inlaw[i] == 0 & t1066_UCh_w2_oth_fam$f_r_sibs[i] == 0 & t1066_UCh_w2_oth_fam$f_r_othrel[i] == 0 ){
+    t1066_ds_UCh_w2$oth_fam[i] = 0 }
+}
+  
+t1066_ds_UCh_w2$oth_fam <- car::recode(as.vector(t1066_ds_UCh_w2$oth_fam), "NA='999'")
+t1066_ds_UCh_w2$oth_fam <- labelled(t1066_ds_UCh_w2$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 UCh}
+vari <- t1066_ds_UCh_w2$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_UCh_w2$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_UCh_w2, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 UCh}
+
+```
+
+ 
+ 
+
+
+## Urban Mexico
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `r_inlaw`
+* Label: `number of coresident sons and daughters-in-law`
+
+* Name: `r_othrel`
+* Label: `number of coresident other relatives`
+
+* Name: `r_sibs`
+* Label: `number of coresident siblings`
+
+
+* Description: 
+```{r assign1 UM}
+opal.assign.table.tibble(o, 't1066_UM_w1_oth_fam','10-66.1066-UrbanMexico-Baseline', 
+                        variables=list('r_inlaw','r_othrel','r_sibs'), missings = TRUE)
+```
+
+```{r local1 UM}
+t1066_UM_w1_oth_fam <- opal.execute(o,'t1066_UM_w1_oth_fam')
+
+vari <- t1066_UM_w1_oth_fam$r_inlaw
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_UM_w1_oth_fam$r_inlaw, missing_values = NA)
+ggplot(t1066_UM_w1_oth_fam, aes(x=factor(r_inlaw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident sons and daughters-in-law") + ylab("Frequency")
+
+vari <-  t1066_UM_w1_oth_fam$r_othrel
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_UM_w1_oth_fam$r_othrel, missing_values = NA)
+ggplot(t1066_UM_w1_oth_fam, aes(x=factor(r_othrel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident other relatives") + ylab("Frequency")
+
+vari <-  t1066_UM_w1_oth_fam$r_sibs
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_UM_w1_oth_fam$r_sibs, missing_values = NA)
+ggplot(t1066_UM_w1_oth_fam, aes(x=factor(r_sibs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident siblings") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any > 0 then 1`
+* `if all then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1 UM, echo=TRUE}
+t1066_ds_UM_w1 <- tibble(id=t1066_UM_w1_oth_fam$id)
+
+t1066_UM_w1_oth_fam$r_inlaw <- car::recode(as.vector(t1066_UM_w1_oth_fam$r_inlaw), "NA='-999'")
+t1066_UM_w1_oth_fam$r_sibs <- car::recode(as.vector(t1066_UM_w1_oth_fam$r_sibs), "NA='-999'")
+t1066_UM_w1_oth_fam$r_othrel <- car::recode(as.vector(t1066_UM_w1_oth_fam$r_othrel), "NA='-999'")
+
+t1066_ds_UM_w1$oth_fam <- c(NA)  
+for(i in 1:dim(t1066_UM_w1_oth_fam)[1]){
+  if( t1066_UM_w1_oth_fam$r_inlaw[i] >0 | t1066_UM_w1_oth_fam$r_sibs[i] >0 | t1066_UM_w1_oth_fam$r_othrel[i] >0 ){
+    t1066_ds_UM_w1$oth_fam[i] = 1 }
+  else if( t1066_UM_w1_oth_fam$r_inlaw[i] == 0 & t1066_UM_w1_oth_fam$r_sibs[i] == 0 & t1066_UM_w1_oth_fam$r_othrel[i] == 0 ){
+    t1066_ds_UM_w1$oth_fam[i] = 0 }
+}
+  
+t1066_ds_UM_w1$oth_fam <- car::recode(as.vector(t1066_ds_UM_w1$oth_fam), "NA='999'")
+t1066_ds_UM_w1$oth_fam <- labelled(t1066_ds_UM_w1$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 UM}
+vari <- t1066_ds_UM_w1$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_UM_w1$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_UM_w1, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 UM}
+
+```
+
+ 
+ 
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_r_inlaw`
+* Label: `number of coresident sons and daughters-in-law`
+
+* Name: `f_r_othrel`
+* Label: `number of coresident other relatives`
+
+* Name: `f_r_sibs`
+* Label: `number of coresident siblings`
+
+
+* Description: 
+```{r assign2 UM}
+opal.assign.table.tibble(o, 't1066_UM_w2_oth_fam','10-66.1066-UrbanMexico-Followup', 
+                        variables=list('f_r_inlaw','f_r_othrel','f_r_sibs'), missings = TRUE)
+```
+
+```{r local2 UM}
+t1066_UM_w2_oth_fam <- opal.execute(o,'t1066_UM_w2_oth_fam')
+
+vari <-  t1066_UM_w2_oth_fam$f_r_inlaw
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_UM_w2_oth_fam$f_r_inlaw, missing_values = NA)
+ggplot(t1066_UM_w2_oth_fam, aes(x=factor(f_r_inlaw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident sons and daughters-in-law") + ylab("Frequency")
+
+vari <-  t1066_UM_w2_oth_fam$f_r_othrel
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_UM_w2_oth_fam$f_r_othrel, missing_values = NA)
+ggplot(t1066_UM_w2_oth_fam, aes(x=factor(f_r_othrel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident other relatives") + ylab("Frequency")
+
+vari <-  t1066_UM_w2_oth_fam$f_r_sibs
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_UM_w2_oth_fam$f_r_sibs, missing_values = NA)
+ggplot(t1066_UM_w2_oth_fam, aes(x=factor(f_r_sibs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident siblings") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any > 0 then 1`
+* `if all then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2 UM, echo=TRUE}
+t1066_ds_UM_w2 <- tibble(id=t1066_UM_w2_oth_fam$id)
+
+t1066_UM_w2_oth_fam$f_r_inlaw <- car::recode(as.vector(t1066_UM_w2_oth_fam$f_r_inlaw), "NA='-999'")
+t1066_UM_w2_oth_fam$f_r_sibs <- car::recode(as.vector(t1066_UM_w2_oth_fam$f_r_sibs), "NA='-999'")
+t1066_UM_w2_oth_fam$f_r_othrel <- car::recode(as.vector(t1066_UM_w2_oth_fam$f_r_othrel), "NA='-999'")
+
+t1066_ds_UM_w2$oth_fam <- c(NA)  
+for(i in 1:dim(t1066_UM_w2_oth_fam)[1]){
+  if( t1066_UM_w2_oth_fam$f_r_inlaw[i] >0 | t1066_UM_w2_oth_fam$f_r_sibs[i] >0 | t1066_UM_w2_oth_fam$f_r_othrel[i] >0 ){
+    t1066_ds_UM_w2$oth_fam[i] = 1 }
+  else if( t1066_UM_w2_oth_fam$f_r_inlaw[i] == 0 & t1066_UM_w2_oth_fam$f_r_sibs[i] == 0 & t1066_UM_w2_oth_fam$f_r_othrel[i] == 0 ){
+    t1066_ds_UM_w2$oth_fam[i] = 0 }
+}
+  
+t1066_ds_UM_w2$oth_fam <- car::recode(as.vector(t1066_ds_UM_w2$oth_fam), "NA='999'")
+t1066_ds_UM_w2$oth_fam <- labelled(t1066_ds_UM_w2$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 UM}
+vari <- t1066_ds_UM_w2$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_UM_w2$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_UM_w2, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 UM}
+
+```
+
+ 
+ 
+
+
+
+## Urban Peru
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `r_inlaw`
+* Label: `number of coresident sons and daughters-in-law`
+
+* Name: `r_othrel`
+* Label: `number of coresident other relatives`
+
+* Name: `r_sibs`
+* Label: `number of coresident siblings`
+
+
+* Description: 
+```{r assign1 UP}
+opal.assign.table.tibble(o, 't1066_UP_w1_oth_fam','10-66.1066-UrbanPeru-Baseline', 
+                        variables=list('r_inlaw','r_othrel','r_sibs'), missings = TRUE)
+```
+
+```{r local1 UP}
+t1066_UP_w1_oth_fam <- opal.execute(o,'t1066_UP_w1_oth_fam')
+
+vari <-  t1066_UP_w1_oth_fam$r_inlaw
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_UP_w1_oth_fam$r_inlaw, missing_values = NA)
+ggplot(t1066_UP_w1_oth_fam, aes(x=factor(r_inlaw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident sons and daughters-in-law") + ylab("Frequency")
+
+vari <-  t1066_UP_w1_oth_fam$r_othrel
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_UP_w1_oth_fam$r_othrel, missing_values = NA)
+ggplot(t1066_UP_w1_oth_fam, aes(x=factor(r_othrel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident other relatives") + ylab("Frequency")
+
+vari <-  t1066_UP_w1_oth_fam$r_sibs
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_UP_w1_oth_fam$r_sibs, missing_values = NA)
+ggplot(t1066_UP_w1_oth_fam, aes(x=factor(r_sibs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident siblings") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any > 0 then 1`
+* `if all then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1 UP, echo=TRUE}
+t1066_ds_UP_w1 <- tibble(id=t1066_UP_w1_oth_fam$id)
+
+t1066_UP_w1_oth_fam$r_inlaw <- car::recode(as.vector(t1066_UP_w1_oth_fam$r_inlaw), "NA='-999'")
+t1066_UP_w1_oth_fam$r_sibs <- car::recode(as.vector(t1066_UP_w1_oth_fam$r_sibs), "NA='-999'")
+t1066_UP_w1_oth_fam$r_othrel <- car::recode(as.vector(t1066_UP_w1_oth_fam$r_othrel), "NA='-999'")
+
+t1066_ds_UP_w1$oth_fam <- c(NA)  
+for(i in 1:dim(t1066_UP_w1_oth_fam)[1]){
+  if( t1066_UP_w1_oth_fam$r_inlaw[i] >0 | t1066_UP_w1_oth_fam$r_sibs[i] >0 | t1066_UP_w1_oth_fam$r_othrel[i] >0 ){
+    t1066_ds_UP_w1$oth_fam[i] = 1 }
+  else if( t1066_UP_w1_oth_fam$r_inlaw[i] == 0 & t1066_UP_w1_oth_fam$r_sibs[i] == 0 & t1066_UP_w1_oth_fam$r_othrel[i] == 0 ){
+    t1066_ds_UP_w1$oth_fam[i] = 0 }
+}
+  
+t1066_ds_UP_w1$oth_fam <- car::recode(as.vector(t1066_ds_UP_w1$oth_fam), "NA='999'")
+t1066_ds_UP_w1$oth_fam <- labelled(t1066_ds_UP_w1$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 UP}
+vari <- t1066_ds_UP_w1$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_UP_w1$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_UP_w1, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 UP}
+
+```
+
+ 
+ 
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_r_inlaw`
+* Label: `number of coresident sons and daughters-in-law`
+
+* Name: `f_r_othrel`
+* Label: `number of coresident other relatives`
+
+* Name: `f_r_sibs`
+* Label: `number of coresident siblings`
+
+
+* Description: 
+```{r assign2 UP}
+opal.assign.table.tibble(o, 't1066_UP_w2_oth_fam','10-66.1066-UrbanPeru-Followup', 
+                        variables=list('f_r_inlaw','f_r_othrel','f_r_sibs'), missings = TRUE)
+```
+
+```{r local2 UP}
+t1066_UP_w2_oth_fam <- opal.execute(o,'t1066_UP_w2_oth_fam')
+
+vari <- t1066_UP_w2_oth_fam$f_r_inlaw
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_UP_w2_oth_fam$f_r_inlaw, missing_values = NA)
+ggplot(t1066_UP_w2_oth_fam, aes(x=factor(f_r_inlaw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident sons and daughters-in-law") + ylab("Frequency")
+
+vari <-  t1066_UP_w2_oth_fam$f_r_othrel
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_UP_w2_oth_fam$f_r_othrel, missing_values = NA)
+ggplot(t1066_UP_w2_oth_fam, aes(x=factor(f_r_othrel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident other relatives") + ylab("Frequency")
+
+vari <-  t1066_UP_w2_oth_fam$f_r_sibs
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_UP_w2_oth_fam$f_r_sibs, missing_values = NA)
+ggplot(t1066_UP_w2_oth_fam, aes(x=factor(f_r_sibs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident siblings") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any > 0 then 1`
+* `if all then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2 UP, echo=TRUE}
+t1066_ds_UP_w2 <- tibble(id=t1066_UP_w2_oth_fam$id)
+
+t1066_UP_w2_oth_fam$f_r_inlaw <- car::recode(as.vector(t1066_UP_w2_oth_fam$f_r_inlaw), "NA='-999'")
+t1066_UP_w2_oth_fam$f_r_sibs <- car::recode(as.vector(t1066_UP_w2_oth_fam$f_r_sibs), "NA='-999'")
+t1066_UP_w2_oth_fam$f_r_othrel <- car::recode(as.vector(t1066_UP_w2_oth_fam$f_r_othrel), "NA='-999'")
+
+t1066_ds_UP_w2$oth_fam <- c(NA)  
+for(i in 1:dim(t1066_UP_w2_oth_fam)[1]){
+  if( t1066_UP_w2_oth_fam$f_r_inlaw[i] >0 | t1066_UP_w2_oth_fam$f_r_sibs[i] >0 | t1066_UP_w2_oth_fam$f_r_othrel[i] >0 ){
+    t1066_ds_UP_w2$oth_fam[i] = 1 }
+  else if( t1066_UP_w2_oth_fam$f_r_inlaw[i] == 0 & t1066_UP_w2_oth_fam$f_r_sibs[i] == 0 & t1066_UP_w2_oth_fam$f_r_othrel[i] == 0 ){
+    t1066_ds_UP_w2$oth_fam[i] = 0 }
+}
+  
+t1066_ds_UP_w2$oth_fam <- car::recode(as.vector(t1066_ds_UP_w2$oth_fam), "NA='999'")
+t1066_ds_UP_w2$oth_fam <- labelled(t1066_ds_UP_w2$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 UP}
+vari <- t1066_ds_UP_w2$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_UP_w2$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_UP_w2, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 UP}
+
+```
+
+ 
+ 
+
+
+## Venezuela
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `r_inlaw`
+* Label: `number of coresident sons and daughters-in-law`
+
+* Name: `r_othrel`
+* Label: `number of coresident other relatives`
+
+* Name: `r_sibs`
+* Label: `number of coresident siblings`
+
+
+* Description: 
+```{r assign1 Ven}
+opal.assign.table.tibble(o, 't1066_Ven_w1_oth_fam','10-66.1066-Venezuela-Baseline', 
+                        variables=list('r_inlaw','r_othrel','r_sibs'), missings = TRUE)
+```
+
+```{r local1 Ven}
+t1066_Ven_w1_oth_fam <- opal.execute(o,'t1066_Ven_w1_oth_fam')
+
+vari <-  t1066_Ven_w1_oth_fam$r_inlaw
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_Ven_w1_oth_fam$r_inlaw, missing_values = NA)
+ggplot(t1066_Ven_w1_oth_fam, aes(x=factor(r_inlaw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident sons and daughters-in-law") + ylab("Frequency")
+
+vari <-  t1066_Ven_w1_oth_fam$r_othrel
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_Ven_w1_oth_fam$r_othrel, missing_values = NA)
+ggplot(t1066_Ven_w1_oth_fam, aes(x=factor(r_othrel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident other relatives") + ylab("Frequency")
+
+vari <-  t1066_Ven_w1_oth_fam$r_sibs
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_Ven_w1_oth_fam$r_sibs, missing_values = NA)
+ggplot(t1066_Ven_w1_oth_fam, aes(x=factor(r_sibs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident siblings") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any > 0 then 1`
+* `if all then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1 Ven, echo=TRUE}
+t1066_ds_Ven_w1 <- tibble(id=t1066_Ven_w1_oth_fam$id)
+
+t1066_Ven_w1_oth_fam$r_inlaw <- car::recode(as.vector(t1066_Ven_w1_oth_fam$r_inlaw), "NA='-999'")
+t1066_Ven_w1_oth_fam$r_sibs <- car::recode(as.vector(t1066_Ven_w1_oth_fam$r_sibs), "NA='-999'")
+t1066_Ven_w1_oth_fam$r_othrel <- car::recode(as.vector(t1066_Ven_w1_oth_fam$r_othrel), "NA='-999'")
+
+t1066_ds_Ven_w1$oth_fam <- c(NA)  
+for(i in 1:dim(t1066_Ven_w1_oth_fam)[1]){
+  if( t1066_Ven_w1_oth_fam$r_inlaw[i] >0 | t1066_Ven_w1_oth_fam$r_sibs[i] >0 | t1066_Ven_w1_oth_fam$r_othrel[i] >0 ){
+    t1066_ds_Ven_w1$oth_fam[i] = 1 }
+  else if( t1066_Ven_w1_oth_fam$r_inlaw[i] == 0 & t1066_Ven_w1_oth_fam$r_sibs[i] == 0 & t1066_Ven_w1_oth_fam$r_othrel[i] == 0 ){
+    t1066_ds_Ven_w1$oth_fam[i] = 0 }
+}
+  
+t1066_ds_Ven_w1$oth_fam <- car::recode(as.vector(t1066_ds_Ven_w1$oth_fam), "NA='999'")
+t1066_ds_Ven_w1$oth_fam <- labelled(t1066_ds_Ven_w1$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 Ven}
+vari <- t1066_ds_Ven_w1$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_Ven_w1$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_Ven_w1, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 Ven}
+
+```
+
+ 
+ 
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_r_inlaw`
+* Label: `number of coresident sons and daughters-in-law`
+
+* Name: `f_r_othrel`
+* Label: `number of coresident other relatives`
+
+* Name: `f_r_sibs`
+* Label: `number of coresident siblings`
+
+
+* Description: 
+```{r assign2 Ven}
+opal.assign.table.tibble(o, 't1066_Ven_w2_oth_fam','10-66.1066-Venezuela-Followup', 
+                        variables=list('f_r_inlaw','f_r_othrel','f_r_sibs'), missings = TRUE)
+```
+
+```{r local2 Ven}
+t1066_Ven_w2_oth_fam <- opal.execute(o,'t1066_Ven_w2_oth_fam')
+
+vari <- t1066_Ven_w2_oth_fam$f_r_inlaw
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_Ven_w2_oth_fam$f_r_inlaw, missing_values = NA)
+ggplot(t1066_Ven_w2_oth_fam, aes(x=factor(f_r_inlaw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident sons and daughters-in-law") + ylab("Frequency")
+
+vari <-   t1066_Ven_w2_oth_fam$f_r_othrel
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_Ven_w2_oth_fam$f_r_othrel, missing_values = NA)
+ggplot(t1066_Ven_w2_oth_fam, aes(x=factor(f_r_othrel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident other relatives") + ylab("Frequency")
+
+vari <-  t1066_Ven_w2_oth_fam$f_r_sibs
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = t1066_Ven_w2_oth_fam$f_r_sibs, missing_values = NA)
+ggplot(t1066_Ven_w2_oth_fam, aes(x=factor(f_r_sibs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("number of coresident siblings") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any > 0 then 1`
+* `if all then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2 Ven, echo=TRUE}
+t1066_ds_Ven_w2 <- tibble(id=t1066_Ven_w2_oth_fam$id)
+
+t1066_Ven_w2_oth_fam$f_r_inlaw <- car::recode(as.vector(t1066_Ven_w2_oth_fam$f_r_inlaw), "NA='-999'")
+t1066_Ven_w2_oth_fam$f_r_sibs <- car::recode(as.vector(t1066_Ven_w2_oth_fam$f_r_sibs), "NA='-999'")
+t1066_Ven_w2_oth_fam$f_r_othrel <- car::recode(as.vector(t1066_Ven_w2_oth_fam$f_r_othrel), "NA='-999'")
+
+t1066_ds_Ven_w2$oth_fam <- c(NA)  
+for(i in 1:dim(t1066_Ven_w2_oth_fam)[1]){
+  if( t1066_Ven_w2_oth_fam$f_r_inlaw[i] >0 | t1066_Ven_w2_oth_fam$f_r_sibs[i] >0 | t1066_Ven_w2_oth_fam$f_r_othrel[i] >0 ){
+    t1066_ds_Ven_w2$oth_fam[i] = 1 }
+  else if( t1066_Ven_w2_oth_fam$f_r_inlaw[i] == 0 & t1066_Ven_w2_oth_fam$f_r_sibs[i] == 0 & t1066_Ven_w2_oth_fam$f_r_othrel[i] == 0 ){
+    t1066_ds_Ven_w2$oth_fam[i] = 0 }
+}
+  
+t1066_ds_Ven_w2$oth_fam <- car::recode(as.vector(t1066_ds_Ven_w2$oth_fam), "NA='999'")
+t1066_ds_Ven_w2$oth_fam <- labelled(t1066_ds_Ven_w2$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 Ven}
+vari <- t1066_ds_Ven_w2$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_Ven_w2$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_Ven_w2, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 Ven}
+
+```
+
+ 
+ 
+
+```{r save,  echo=FALSE}
+oth_fam <- t1066_ds_cuba_w1
+save(oth_fam, file = "../RData/cuba_w1/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- t1066_ds_cuba_w2
+save(oth_fam, file = "../RData/cuba_w2/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- t1066_ds_india_w1
+save(oth_fam, file = "../RData/india_w1/oth_fam.RData")
+rm(oth_fam)
+
+
+oth_fam <- t1066_ds_UCh_w1
+save(oth_fam, file = "../RData/UCh_w1/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- t1066_ds_UCh_w2
+save(oth_fam, file = "../RData/UCh_w2/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- t1066_ds_RCh_w1
+save(oth_fam, file = "../RData/RCh_w1/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- t1066_ds_RCh_w2
+save(oth_fam, file = "../RData/RCh_w2/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- t1066_ds_DR_w1
+save(oth_fam, file = "../RData/DR_w1/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- t1066_ds_DR_w2
+save(oth_fam, file = "../RData/DR_w2/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- t1066_ds_Ven_w1
+save(oth_fam, file = "../RData/Ven_w1/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- t1066_ds_Ven_w2
+save(oth_fam, file = "../RData/Ven_w2/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- t1066_ds_UP_w1
+save(oth_fam, file = "../RData/UP_w1/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- t1066_ds_UP_w2
+save(oth_fam, file = "../RData/UP_w2/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- t1066_ds_RP_w1
+save(oth_fam, file = "../RData/RP_w1/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- t1066_ds_RP_w2
+save(oth_fam, file = "../RData/RP_w2/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- t1066_ds_UM_w1
+save(oth_fam, file = "../RData/UM_w1/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- t1066_ds_UM_w2
+save(oth_fam, file = "../RData/UM_w2/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- t1066_ds_RM_w1
+save(oth_fam, file = "../RData/RM_w1/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- t1066_ds_RM_w2
+save(oth_fam, file = "../RData/RM_w2/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- t1066_ds_PR_w1
+save(oth_fam, file = "../RData/PR_w1/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- t1066_ds_PR_w2
+save(oth_fam, file = "../RData/PR_w2/oth_fam.RData")
+rm(oth_fam)
+
+```
+
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```

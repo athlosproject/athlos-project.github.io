@@ -1,0 +1,2561 @@
+---
+title: "Felt loneliness"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_albert.r")
+```
+
+<!-- ########################################################## --> 
+
+
+# Description of DataSchema variable
+
+The description of harmonised variables is the following:
+
+* Short name: `loneliness`
+* Variable label: `felt loneliness?`
+* Domain: `Social environment`
+* Value type: `categorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Cuba
+
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `Q871`
+* Label: `Admits to feeling loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes but mild to moderate intensity, infrequent or fleeting`
+    + `2 = Yes and severe, frequent or persistent`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `Q881`
+* Label: `88.1 Feels loneliness and cannot turn away from it`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `Q882`
+* Label: `88.2 Bothered or depressed by current loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+  
+
+* Description: 
+```{r assign1 cuba}
+opal.assign.table.tibble(o, 't1066_cuba_w1_loneliness','10-66.1066-Cuba-Baseline',variables=list('Q871','Q881','Q882'), missings = TRUE)
+```
+
+```{r local1 cuba}
+t1066_cuba_w1_loneliness <- opal.execute(o,'t1066_cuba_w1_loneliness')
+
+vari <-  t1066_cuba_w1_loneliness$Q871
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_cuba_w1_loneliness$Q871, missing_values = NA)
+ggplot(t1066_cuba_w1_loneliness, aes(x=factor(Q871))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Admits to feeling loneliness") + ylab("Frequency")
+
+vari <-t1066_cuba_w1_loneliness$Q881
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_cuba_w1_loneliness$Q881, missing_values = NA)
+ggplot(t1066_cuba_w1_loneliness, aes(x=factor(Q881))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Feels loneliness and cannot turn away from it") + ylab("Frequency")
+
+vari <-  t1066_cuba_w1_loneliness$Q882
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_cuba_w1_loneliness$Q882, missing_values = NA)
+ggplot(t1066_cuba_w1_loneliness, aes(x=factor(Q882))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bothered or depressed by current loneliness") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any equals 1 (or 2) then 1`
+* `else if all are equal 0 then 0`
+* `8 into 995`
+* `9 or NA into 999`
+
+**R script:**
+
+```{r harmo1 cuba, echo=TRUE}
+t1066_ds_cuba_w1 <- tibble(id=t1066_cuba_w1_loneliness$id)
+
+t1066_cuba_w1_loneliness$Q871 <- car::recode(as.vector(t1066_cuba_w1_loneliness$Q871), "NA='-999'")
+t1066_cuba_w1_loneliness$Q881 <- car::recode(as.vector(t1066_cuba_w1_loneliness$Q881), "NA='-999'")
+t1066_cuba_w1_loneliness$Q882 <- car::recode(as.vector(t1066_cuba_w1_loneliness$Q882), "NA='-999'")
+
+t1066_ds_cuba_w1$loneliness <- c(NA)
+for(i in 1:dim(t1066_cuba_w1_loneliness)[1]){
+  if( t1066_cuba_w1_loneliness$Q871[i] %in% c(1,2) | t1066_cuba_w1_loneliness$Q881[i] == 1 | t1066_cuba_w1_loneliness$Q882[i] == 1 ) {
+    t1066_ds_cuba_w1$loneliness[i] = 1 }
+  else if( t1066_cuba_w1_loneliness$Q871[i] == 0 & t1066_cuba_w1_loneliness$Q881[i] == 0 & t1066_cuba_w1_loneliness$Q882[i] == 0 ) {
+    t1066_ds_cuba_w1$loneliness[i] = 0 }
+  else if(  t1066_cuba_w1_loneliness$Q871[i] == 8 | t1066_cuba_w1_loneliness$Q881[i] == 8 | t1066_cuba_w1_loneliness$Q882[i] == 8 ) { 
+    t1066_ds_cuba_w1$loneliness[i] = 995 }
+  else if( t1066_cuba_w1_loneliness$Q871[i] == 9 | t1066_cuba_w1_loneliness$Q881[i] == 9 | t1066_cuba_w1_loneliness$Q882[i] == 9 ) { 
+    t1066_ds_cuba_w1$loneliness[i] = 999 }
+}
+
+t1066_ds_cuba_w1$loneliness <- car::recode(as.vector(t1066_ds_cuba_w1$loneliness), "NA='999'")
+t1066_ds_cuba_w1$loneliness <- labelled(t1066_ds_cuba_w1$loneliness, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 cuba}
+vari <- t1066_ds_cuba_w1$loneliness
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_cuba_w1$loneliness, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_cuba_w1, aes(x=factor(loneliness))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("felt loneliness?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 cuba}
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_Q871`
+* Label: `Admits to feeling loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes but mild to moderate intensity, infrequent or fleeting`
+    + `2 = Yes and severe, frequent or persistent`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `f_Q881`
+* Label: `88.1 Feels loneliness and cannot turn away from it`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `f_Q882`
+* Label: `88.2 Bothered or depressed by current loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+  
+
+* Description: 
+```{r assign2 cuba}
+opal.assign.table.tibble(o, 't1066_cuba_w2_loneliness','10-66.1066-Cuba-Followup', variables=list('f_Q871','f_Q881','f_Q882'), missings = TRUE)
+```
+
+```{r local2 cuba}
+t1066_cuba_w2_loneliness <- opal.execute(o,'t1066_cuba_w2_loneliness')
+
+vari <- t1066_cuba_w2_loneliness$f_Q871
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_cuba_w2_loneliness$f_Q871, missing_values = NA)
+ggplot(t1066_cuba_w2_loneliness, aes(x=factor(f_Q871))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Admits to feeling loneliness") + ylab("Frequency")
+
+vari <- t1066_cuba_w2_loneliness$f_Q881
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_cuba_w2_loneliness$f_Q881, missing_values = NA)
+ggplot(t1066_cuba_w2_loneliness, aes(x=factor(f_Q881))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Feels loneliness and cannot turn away from it") + ylab("Frequency")
+
+vari <- t1066_cuba_w2_loneliness$f_Q882
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_cuba_w2_loneliness$f_Q882, missing_values = NA)
+ggplot(t1066_cuba_w2_loneliness, aes(x=factor(f_Q882))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bothered or depressed by current loneliness") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any equals 1 (or 2) then 1`
+* `else if all are equal 0 then 0`
+* `8 into 995`
+* `9 or NA into 999`
+
+**R script:**
+
+```{r harmo2 cuba, echo=TRUE}
+t1066_ds_cuba_w2 <- tibble(id=t1066_cuba_w2_loneliness$id)
+
+t1066_cuba_w2_loneliness$f_Q871 <- car::recode(as.vector(t1066_cuba_w2_loneliness$f_Q871), "NA='-999'")
+t1066_cuba_w2_loneliness$f_Q881 <- car::recode(as.vector(t1066_cuba_w2_loneliness$f_Q881), "NA='-999'")
+t1066_cuba_w2_loneliness$f_Q882 <- car::recode(as.vector(t1066_cuba_w2_loneliness$f_Q882), "NA='-999'")
+
+t1066_ds_cuba_w2$loneliness <- c(NA)
+for(i in 1:dim(t1066_cuba_w2_loneliness)[1]){
+  if( t1066_cuba_w2_loneliness$f_Q871[i] %in% c(1,2) | t1066_cuba_w2_loneliness$f_Q881[i] == 1 | t1066_cuba_w2_loneliness$f_Q882[i] == 1 ) {
+    t1066_ds_cuba_w2$loneliness[i] = 1 }
+  else if( t1066_cuba_w2_loneliness$f_Q871[i] == 0 & t1066_cuba_w2_loneliness$f_Q881[i] == 0 & t1066_cuba_w2_loneliness$f_Q882[i] == 0 ) {
+    t1066_ds_cuba_w2$loneliness[i] = 0 }
+  else if(  t1066_cuba_w2_loneliness$f_Q871[i] == 8 | t1066_cuba_w2_loneliness$f_Q881[i] == 8 | t1066_cuba_w2_loneliness$f_Q882[i] == 8 ) { 
+    t1066_ds_cuba_w2$loneliness[i] = 995 }
+  else if( t1066_cuba_w2_loneliness$f_Q871[i] == 9 | t1066_cuba_w2_loneliness$f_Q881[i] == 9 | t1066_cuba_w2_loneliness$f_Q882[i] == 9 ) { 
+    t1066_ds_cuba_w2$loneliness[i] = 999 }
+}
+
+t1066_ds_cuba_w2$loneliness <- car::recode(as.vector(t1066_ds_cuba_w2$loneliness), "NA='999'")
+t1066_ds_cuba_w2$loneliness <- labelled(t1066_ds_cuba_w2$loneliness, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 cuba}
+vari <- t1066_ds_cuba_w2$loneliness
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_cuba_w2$loneliness, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_cuba_w2, aes(x=factor(loneliness))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("felt loneliness?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 cuba}
+
+```
+
+## Dominican Republic
+
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `Q871`
+* Label: `Admits to feeling loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes but mild to moderate intensity, infrequent or fleeting`
+    + `2 = Yes and severe, frequent or persistent`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `Q881`
+* Label: `88.1 Feels loneliness and cannot turn away from it`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `Q882`
+* Label: `88.2 Bothered or depressed by current loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+  
+
+* Description: 
+```{r assign1 dr}
+opal.assign.table.tibble(o, 't1066_DR_w1_loneliness','10-66.1066-DominicanRepublic-Baseline', variables=list('Q871','Q881','Q882'), missings = TRUE)
+```
+
+```{r local1 dr}
+t1066_DR_w1_loneliness <- opal.execute(o,'t1066_DR_w1_loneliness')
+
+vari <- t1066_DR_w1_loneliness$Q871
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_DR_w1_loneliness$Q871, missing_values = NA)
+ggplot(t1066_DR_w1_loneliness, aes(x=factor(Q871))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Admits to feeling loneliness") + ylab("Frequency")
+
+vari <- t1066_DR_w1_loneliness$Q881
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_DR_w1_loneliness$Q881, missing_values = NA)
+ggplot(t1066_DR_w1_loneliness, aes(x=factor(Q881))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Feels loneliness and cannot turn away from it") + ylab("Frequency")
+
+vari <- t1066_DR_w1_loneliness$Q882
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_DR_w1_loneliness$Q882, missing_values = NA)
+ggplot(t1066_DR_w1_loneliness, aes(x=factor(Q882))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bothered or depressed by current loneliness") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any equals 1 (or 2) then 1`
+* `else if all are equal 0 then 0`
+* `8 into 995`
+* `9 or NA into 999`
+
+**R script:**
+
+```{r harmo1 dr, echo=TRUE}
+t1066_ds_DR_w1 <- tibble(id=t1066_DR_w1_loneliness$id)
+
+t1066_DR_w1_loneliness$Q871 <- car::recode(as.vector(t1066_DR_w1_loneliness$Q871), "NA='-999'")
+t1066_DR_w1_loneliness$Q881 <- car::recode(as.vector(t1066_DR_w1_loneliness$Q881), "NA='-999'")
+t1066_DR_w1_loneliness$Q882 <- car::recode(as.vector(t1066_DR_w1_loneliness$Q882), "NA='-999'")
+
+t1066_ds_DR_w1$loneliness <- c(NA)
+for(i in 1:dim(t1066_DR_w1_loneliness)[1]){
+  if( t1066_DR_w1_loneliness$Q871[i] %in% c(1,2) | t1066_DR_w1_loneliness$Q881[i] == 1 | t1066_DR_w1_loneliness$Q882[i] == 1 ) {
+    t1066_ds_DR_w1$loneliness[i] = 1 }
+  else if( t1066_DR_w1_loneliness$Q871[i] == 0 & t1066_DR_w1_loneliness$Q881[i] == 0 & t1066_DR_w1_loneliness$Q882[i] == 0 ) {
+    t1066_ds_DR_w1$loneliness[i] = 0 }
+  else if(  t1066_DR_w1_loneliness$Q871[i] == 8 | t1066_DR_w1_loneliness$Q881[i] == 8 | t1066_DR_w1_loneliness$Q882[i] == 8 ) { 
+    t1066_ds_DR_w1$loneliness[i] = 995 }
+  else if( t1066_DR_w1_loneliness$Q871[i] == 9 | t1066_DR_w1_loneliness$Q881[i] == 9 | t1066_DR_w1_loneliness$Q882[i] == 9 ) { 
+    t1066_ds_DR_w1$loneliness[i] = 999 }
+}
+
+t1066_ds_DR_w1$loneliness <- car::recode(as.vector(t1066_ds_DR_w1$loneliness), "NA='999'")
+t1066_ds_DR_w1$loneliness <- labelled(t1066_ds_DR_w1$loneliness, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 dr}
+vari <- t1066_ds_DR_w1$loneliness
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_DR_w1$loneliness, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_DR_w1, aes(x=factor(loneliness))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("felt loneliness?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 dr}
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_Q871`
+* Label: `Admits to feeling loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes but mild to moderate intensity, infrequent or fleeting`
+    + `2 = Yes and severe, frequent or persistent`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `f_Q881`
+* Label: `88.1 Feels loneliness and cannot turn away from it`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `f_Q882`
+* Label: `88.2 Bothered or depressed by current loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+  
+
+* Description: 
+```{r assign2 dr}
+opal.assign.table.tibble(o, 't1066_DR_w2_loneliness','10-66.1066-DominicanRepublic-Followup', variables=list('f_Q871','f_Q881','f_Q882'), missings = TRUE)
+```
+
+```{r local2 dr}
+t1066_DR_w2_loneliness <- opal.execute(o,'t1066_DR_w2_loneliness')
+
+vari <-t1066_DR_w2_loneliness$f_Q871
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_DR_w2_loneliness$f_Q871, missing_values = NA)
+ggplot(t1066_DR_w2_loneliness, aes(x=factor(f_Q871))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Admits to feeling loneliness") + ylab("Frequency")
+
+vari <- t1066_DR_w2_loneliness$f_Q881
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_DR_w2_loneliness$f_Q881, missing_values = NA)
+ggplot(t1066_DR_w2_loneliness, aes(x=factor(f_Q881))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Feels loneliness and cannot turn away from it") + ylab("Frequency")
+
+vari <- t1066_DR_w2_loneliness$f_Q882
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_DR_w2_loneliness$f_Q882, missing_values = NA)
+ggplot(t1066_DR_w2_loneliness, aes(x=factor(f_Q882))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bothered or depressed by current loneliness") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any equals 1 (or 2) then 1`
+* `else if all are equal 0 then 0`
+* `8 into 995`
+* `9 or NA into 999`
+
+**R script:**
+
+```{r harmo2 dr, echo=TRUE}
+t1066_ds_DR_w2 <- tibble(id=t1066_DR_w2_loneliness$id)
+
+t1066_DR_w2_loneliness$f_Q871 <- car::recode(as.vector(t1066_DR_w2_loneliness$f_Q871), "NA='-999'")
+t1066_DR_w2_loneliness$f_Q881 <- car::recode(as.vector(t1066_DR_w2_loneliness$f_Q881), "NA='-999'")
+t1066_DR_w2_loneliness$f_Q882 <- car::recode(as.vector(t1066_DR_w2_loneliness$f_Q882), "NA='-999'")
+
+t1066_ds_DR_w2$loneliness <- c(NA)
+for(i in 1:dim(t1066_DR_w2_loneliness)[1]){
+  if( t1066_DR_w2_loneliness$f_Q871[i] %in% c(1,2) | t1066_DR_w2_loneliness$f_Q881[i] == 1 | t1066_DR_w2_loneliness$f_Q882[i] == 1 ) {
+    t1066_ds_DR_w2$loneliness[i] = 1 }
+  else if( t1066_DR_w2_loneliness$f_Q871[i] == 0 & t1066_DR_w2_loneliness$f_Q881[i] == 0 & t1066_DR_w2_loneliness$f_Q882[i] == 0 ) {
+    t1066_ds_DR_w2$loneliness[i] = 0 }
+  else if(  t1066_DR_w2_loneliness$f_Q871[i] == 8 | t1066_DR_w2_loneliness$f_Q881[i] == 8 | t1066_DR_w2_loneliness$f_Q882[i] == 8 ) { 
+    t1066_ds_DR_w2$loneliness[i] = 995 }
+  else if( t1066_DR_w2_loneliness$f_Q871[i] == 9 | t1066_DR_w2_loneliness$f_Q881[i] == 9 | t1066_DR_w2_loneliness$f_Q882[i] == 9 ) { 
+    t1066_ds_DR_w2$loneliness[i] = 999 }
+}
+
+t1066_ds_DR_w2$loneliness <- car::recode(as.vector(t1066_ds_DR_w2$loneliness), "NA='999'")
+t1066_ds_DR_w2$loneliness <- labelled(t1066_ds_DR_w2$loneliness, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 dr}
+vari <- t1066_ds_DR_w2$loneliness
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_DR_w2$loneliness, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_DR_w2, aes(x=factor(loneliness))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("felt loneliness?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 dr}
+
+```
+
+## India
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `Q871`
+* Label: `Admits to feeling loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes but mild to moderate intensity, infrequent or fleeting`
+    + `2 = Yes and severe, frequent or persistent`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `Q881`
+* Label: `88.1 Feels loneliness and cannot turn away from it`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `Q882`
+* Label: `88.2 Bothered or depressed by current loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+  
+
+* Description: 
+```{r assign1 india}
+opal.assign.table.tibble(o, 't1066_india_w1_loneliness','10-66.1066-India-Baseline', variables=list('Q871','Q881','Q882'), missings = TRUE)
+```
+
+```{r local1 india}
+t1066_india_w1_loneliness <- opal.execute(o,'t1066_india_w1_loneliness')
+
+vari <-t1066_india_w1_loneliness$Q871
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_india_w1_loneliness$Q871, missing_values = NA)
+ggplot(t1066_india_w1_loneliness, aes(x=factor(Q871))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Admits to feeling loneliness") + ylab("Frequency")
+
+vari <- t1066_india_w1_loneliness$Q881
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_india_w1_loneliness$Q881, missing_values = NA)
+ggplot(t1066_india_w1_loneliness, aes(x=factor(Q881))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Feels loneliness and cannot turn away from it") + ylab("Frequency")
+
+vari <- t1066_india_w1_loneliness$Q882
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_india_w1_loneliness$Q882, missing_values = NA)
+ggplot(t1066_india_w1_loneliness, aes(x=factor(Q882))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bothered or depressed by current loneliness") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any equals 1 (or 2) then 1`
+* `else if all are equal 0 then 0`
+* `8 into 995`
+* `9 or NA into 999`
+
+**R script:**
+
+```{r harmo1 india, echo=TRUE}
+t1066_ds_india_w1 <- tibble(id=t1066_india_w1_loneliness$id)
+
+t1066_india_w1_loneliness$Q871 <- car::recode(as.vector(t1066_india_w1_loneliness$Q871), "NA='-999'")
+t1066_india_w1_loneliness$Q881 <- car::recode(as.vector(t1066_india_w1_loneliness$Q881), "NA='-999'")
+t1066_india_w1_loneliness$Q882 <- car::recode(as.vector(t1066_india_w1_loneliness$Q882), "NA='-999'")
+
+t1066_ds_india_w1$loneliness <- c(NA)
+for(i in 1:dim(t1066_india_w1_loneliness)[1]){
+  if( t1066_india_w1_loneliness$Q871[i] %in% c(1,2) | t1066_india_w1_loneliness$Q881[i] == 1 | t1066_india_w1_loneliness$Q882[i] == 1 ) {
+    t1066_ds_india_w1$loneliness[i] = 1 }
+  else if( t1066_india_w1_loneliness$Q871[i] == 0 & t1066_india_w1_loneliness$Q881[i] == 0 & t1066_india_w1_loneliness$Q882[i] == 0 ) {
+    t1066_ds_india_w1$loneliness[i] = 0 }
+  else if(  t1066_india_w1_loneliness$Q871[i] == 8 | t1066_india_w1_loneliness$Q881[i] == 8 | t1066_india_w1_loneliness$Q882[i] == 8 ) { 
+    t1066_ds_india_w1$loneliness[i] = 995 }
+  else if( t1066_india_w1_loneliness$Q871[i] == 9 | t1066_india_w1_loneliness$Q881[i] == 9 | t1066_india_w1_loneliness$Q882[i] == 9 ) { 
+    t1066_ds_india_w1$loneliness[i] = 999 }
+}
+
+t1066_ds_india_w1$loneliness <- car::recode(as.vector(t1066_ds_india_w1$loneliness), "NA='999'")
+t1066_ds_india_w1$loneliness <- labelled(t1066_ds_india_w1$loneliness, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 india}
+vari <- t1066_ds_india_w1$loneliness
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_india_w1$loneliness, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_india_w1, aes(x=factor(loneliness))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("felt loneliness?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 india}
+
+```
+
+## Puerto Rico
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `Q871`
+* Label: `Admits to feeling loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes but mild to moderate intensity, infrequent or fleeting`
+    + `2 = Yes and severe, frequent or persistent`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `Q881`
+* Label: `88.1 Feels loneliness and cannot turn away from it`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `Q882`
+* Label: `88.2 Bothered or depressed by current loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+  
+
+* Description: 
+```{r assign1 pr}
+opal.assign.table.tibble(o, 't1066_PR_w1_loneliness','10-66.1066-PuertoRico-Baseline', variables=list('Q871','Q881','Q882'), missings = TRUE)
+```
+
+```{r local1 pr}
+t1066_PR_w1_loneliness <- opal.execute(o,'t1066_PR_w1_loneliness')
+
+vari <- t1066_PR_w1_loneliness$Q871
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_PR_w1_loneliness$Q871, missing_values = NA)
+ggplot(t1066_PR_w1_loneliness, aes(x=factor(Q871))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Admits to feeling loneliness") + ylab("Frequency")
+
+vari <- t1066_PR_w1_loneliness$Q881
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_PR_w1_loneliness$Q881, missing_values = NA)
+ggplot(t1066_PR_w1_loneliness, aes(x=factor(Q881))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Feels loneliness and cannot turn away from it") + ylab("Frequency")
+
+vari <- t1066_PR_w1_loneliness$Q882
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_PR_w1_loneliness$Q882, missing_values = NA)
+ggplot(t1066_PR_w1_loneliness, aes(x=factor(Q882))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bothered or depressed by current loneliness") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any equals 1 (or 2) then 1`
+* `else if all are equal 0 then 0`
+* `8 into 995`
+* `9 or NA into 999`
+
+**R script:**
+
+```{r harmo1 pr, echo=TRUE}
+t1066_ds_PR_w1 <- tibble(id=t1066_PR_w1_loneliness$id)
+
+t1066_PR_w1_loneliness$Q871 <- car::recode(as.vector(t1066_PR_w1_loneliness$Q871), "NA='-999'")
+t1066_PR_w1_loneliness$Q881 <- car::recode(as.vector(t1066_PR_w1_loneliness$Q881), "NA='-999'")
+t1066_PR_w1_loneliness$Q882 <- car::recode(as.vector(t1066_PR_w1_loneliness$Q882), "NA='-999'")
+
+t1066_ds_PR_w1$loneliness <- c(NA)
+for(i in 1:dim(t1066_PR_w1_loneliness)[1]){
+  if( t1066_PR_w1_loneliness$Q871[i] %in% c(1,2) | t1066_PR_w1_loneliness$Q881[i] == 1 | t1066_PR_w1_loneliness$Q882[i] == 1 ) {
+    t1066_ds_PR_w1$loneliness[i] = 1 }
+  else if( t1066_PR_w1_loneliness$Q871[i] == 0 & t1066_PR_w1_loneliness$Q881[i] == 0 & t1066_PR_w1_loneliness$Q882[i] == 0 ) {
+    t1066_ds_PR_w1$loneliness[i] = 0 }
+  else if(  t1066_PR_w1_loneliness$Q871[i] == 8 | t1066_PR_w1_loneliness$Q881[i] == 8 | t1066_PR_w1_loneliness$Q882[i] == 8 ) { 
+    t1066_ds_PR_w1$loneliness[i] = 995 }
+  else if( t1066_PR_w1_loneliness$Q871[i] == 9 | t1066_PR_w1_loneliness$Q881[i] == 9 | t1066_PR_w1_loneliness$Q882[i] == 9 ) { 
+    t1066_ds_PR_w1$loneliness[i] = 999 }
+}
+
+t1066_ds_PR_w1$loneliness <- car::recode(as.vector(t1066_ds_PR_w1$loneliness), "NA='999'")
+t1066_ds_PR_w1$loneliness <- labelled(t1066_ds_PR_w1$loneliness, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 pr}
+vari <- t1066_ds_PR_w1$loneliness
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_PR_w1$loneliness, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_PR_w1, aes(x=factor(loneliness))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("felt loneliness?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 pr}
+
+```
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_Q871`
+* Label: `Admits to feeling loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes but mild to moderate intensity, infrequent or fleeting`
+    + `2 = Yes and severe, frequent or persistent`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `f_Q881`
+* Label: `88.1 Feels loneliness and cannot turn away from it`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `f_Q882`
+* Label: `88.2 Bothered or depressed by current loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+  
+
+* Description: 
+```{r assign2 pr}
+opal.assign.table.tibble(o, 't1066_PR_w2_loneliness','10-66.1066-PuertoRico-Followup', variables=list('f_Q871','f_Q881','f_Q882'), missings = TRUE)
+```
+
+```{r local2 pr}
+t1066_PR_w2_loneliness <- opal.execute(o,'t1066_PR_w2_loneliness')
+
+vari <- t1066_PR_w2_loneliness$f_Q871
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_PR_w2_loneliness$f_Q871, missing_values = NA)
+ggplot(t1066_PR_w2_loneliness, aes(x=factor(f_Q871))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Admits to feeling loneliness") + ylab("Frequency")
+
+vari <- t1066_PR_w2_loneliness$f_Q881
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_PR_w2_loneliness$f_Q881, missing_values = NA)
+ggplot(t1066_PR_w2_loneliness, aes(x=factor(f_Q881))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Feels loneliness and cannot turn away from it") + ylab("Frequency")
+
+vari <- t1066_PR_w2_loneliness$f_Q882
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_PR_w2_loneliness$f_Q882, missing_values = NA)
+ggplot(t1066_PR_w2_loneliness, aes(x=factor(f_Q882))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bothered or depressed by current loneliness") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any equals 1 (or 2) then 1`
+* `else if all are equal 0 then 0`
+* `8 into 995`
+* `9 or NA into 999`
+
+**R script:**
+
+```{r harmo2 pr, echo=TRUE}
+t1066_ds_PR_w2 <- tibble(id=t1066_PR_w2_loneliness$id)
+
+t1066_PR_w2_loneliness$f_Q871 <- car::recode(as.vector(t1066_PR_w2_loneliness$f_Q871), "NA='-999'")
+t1066_PR_w2_loneliness$f_Q881 <- car::recode(as.vector(t1066_PR_w2_loneliness$f_Q881), "NA='-999'")
+t1066_PR_w2_loneliness$f_Q882 <- car::recode(as.vector(t1066_PR_w2_loneliness$f_Q882), "NA='-999'")
+
+t1066_ds_PR_w2$loneliness <- c(NA)
+for(i in 1:dim(t1066_PR_w2_loneliness)[1]){
+  if( t1066_PR_w2_loneliness$f_Q871[i] %in% c(1,2) | t1066_PR_w2_loneliness$f_Q881[i] == 1 | t1066_PR_w2_loneliness$f_Q882[i] == 1 ) {
+    t1066_ds_PR_w2$loneliness[i] = 1 }
+  else if( t1066_PR_w2_loneliness$f_Q871[i] == 0 & t1066_PR_w2_loneliness$f_Q881[i] == 0 & t1066_PR_w2_loneliness$f_Q882[i] == 0 ) {
+    t1066_ds_PR_w2$loneliness[i] = 0 }
+  else if(  t1066_PR_w2_loneliness$f_Q871[i] == 8 | t1066_PR_w2_loneliness$f_Q881[i] == 8 | t1066_PR_w2_loneliness$f_Q882[i] == 8 ) { 
+    t1066_ds_PR_w2$loneliness[i] = 995 }
+  else if( t1066_PR_w2_loneliness$f_Q871[i] == 9 | t1066_PR_w2_loneliness$f_Q881[i] == 9 | t1066_PR_w2_loneliness$f_Q882[i] == 9 ) { 
+    t1066_ds_PR_w2$loneliness[i] = 999 }
+}
+
+t1066_ds_PR_w2$loneliness <- car::recode(as.vector(t1066_ds_PR_w2$loneliness), "NA='999'")
+t1066_ds_PR_w2$loneliness <- labelled(t1066_ds_PR_w2$loneliness, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 pr}
+vari <- t1066_ds_PR_w2$loneliness
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_PR_w2$loneliness, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_PR_w2, aes(x=factor(loneliness))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("felt loneliness?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 pr}
+
+```
+## Rural China
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `Q871`
+* Label: `Admits to feeling loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes but mild to moderate intensity, infrequent or fleeting`
+    + `2 = Yes and severe, frequent or persistent`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `Q881`
+* Label: `88.1 Feels loneliness and cannot turn away from it`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `Q882`
+* Label: `88.2 Bothered or depressed by current loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+  
+
+* Description: 
+```{r assign1 rch}
+opal.assign.table.tibble(o, 't1066_RCh_w1_loneliness','10-66.1066-RuralChina-Baseline',variables=list('Q871','Q881','Q882'), missings = TRUE)
+```
+
+```{r local1 rch}
+t1066_RCh_w1_loneliness <- opal.execute(o,'t1066_RCh_w1_loneliness')
+
+vari <- t1066_RCh_w1_loneliness$Q871
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_RCh_w1_loneliness$Q871, missing_values = NA)
+ggplot(t1066_RCh_w1_loneliness, aes(x=factor(Q871))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Admits to feeling loneliness") + ylab("Frequency")
+
+vari <- t1066_RCh_w1_loneliness$Q881
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_RCh_w1_loneliness$Q881, missing_values = NA)
+ggplot(t1066_RCh_w1_loneliness, aes(x=factor(Q881))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Feels loneliness and cannot turn away from it") + ylab("Frequency")
+
+vari <- t1066_RCh_w1_loneliness$Q882
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_RCh_w1_loneliness$Q882, missing_values = NA)
+ggplot(t1066_RCh_w1_loneliness, aes(x=factor(Q882))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bothered or depressed by current loneliness") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any equals 1 (or 2) then 1`
+* `else if all are equal 0 then 0`
+* `8 into 995`
+* `9 or NA into 999`
+
+**R script:**
+
+```{r harmo1 rch, echo=TRUE}
+t1066_ds_RCh_w1 <- tibble(id=t1066_RCh_w1_loneliness$id)
+
+t1066_RCh_w1_loneliness$Q871 <- car::recode(as.vector(t1066_RCh_w1_loneliness$Q871), "NA='-999'")
+t1066_RCh_w1_loneliness$Q881 <- car::recode(as.vector(t1066_RCh_w1_loneliness$Q881), "NA='-999'")
+t1066_RCh_w1_loneliness$Q882 <- car::recode(as.vector(t1066_RCh_w1_loneliness$Q882), "NA='-999'")
+
+t1066_ds_RCh_w1$loneliness <- c(NA)
+for(i in 1:dim(t1066_RCh_w1_loneliness)[1]){
+  if( t1066_RCh_w1_loneliness$Q871[i] %in% c(1,2) | t1066_RCh_w1_loneliness$Q881[i] == 1 | t1066_RCh_w1_loneliness$Q882[i] == 1 ) {
+    t1066_ds_RCh_w1$loneliness[i] = 1 }
+  else if( t1066_RCh_w1_loneliness$Q871[i] == 0 & t1066_RCh_w1_loneliness$Q881[i] == 0 & t1066_RCh_w1_loneliness$Q882[i] == 0 ) {
+    t1066_ds_RCh_w1$loneliness[i] = 0 }
+  else if(  t1066_RCh_w1_loneliness$Q871[i] == 8 | t1066_RCh_w1_loneliness$Q881[i] == 8 | t1066_RCh_w1_loneliness$Q882[i] == 8 ) { 
+    t1066_ds_RCh_w1$loneliness[i] = 995 }
+  else if( t1066_RCh_w1_loneliness$Q871[i] == 9 | t1066_RCh_w1_loneliness$Q881[i] == 9 | t1066_RCh_w1_loneliness$Q882[i] == 9 ) { 
+    t1066_ds_RCh_w1$loneliness[i] = 999 }
+}
+
+t1066_ds_RCh_w1$loneliness <- car::recode(as.vector(t1066_ds_RCh_w1$loneliness), "NA='999'")
+t1066_ds_RCh_w1$loneliness <- labelled(t1066_ds_RCh_w1$loneliness, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 rch}
+vari <- t1066_ds_RCh_w1$loneliness
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_RCh_w1$loneliness, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_RCh_w1, aes(x=factor(loneliness))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("felt loneliness?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 rch}
+
+```
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_Q871`
+* Label: `Admits to feeling loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes but mild to moderate intensity, infrequent or fleeting`
+    + `2 = Yes and severe, frequent or persistent`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `f_Q881`
+* Label: `88.1 Feels loneliness and cannot turn away from it`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `f_Q882`
+* Label: `88.2 Bothered or depressed by current loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+  
+
+* Description: 
+```{r assign2 rch}
+opal.assign.table.tibble(o, 't1066_RCh_w2_loneliness','10-66.1066-RuralChina-Followup', variables=list('f_Q871','f_Q881','f_Q882'), missings = TRUE)
+```
+
+```{r local2 rch}
+t1066_RCh_w2_loneliness <- opal.execute(o,'t1066_RCh_w2_loneliness')
+
+vari <- t1066_RCh_w2_loneliness$f_Q871
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_RCh_w2_loneliness$f_Q871, missing_values = NA)
+ggplot(t1066_RCh_w2_loneliness, aes(x=factor(f_Q871))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Admits to feeling loneliness") + ylab("Frequency")
+
+vari <- t1066_RCh_w2_loneliness$f_Q881
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_RCh_w2_loneliness$f_Q881, missing_values = NA)
+ggplot(t1066_RCh_w2_loneliness, aes(x=factor(f_Q881))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Feels loneliness and cannot turn away from it") + ylab("Frequency")
+
+vari <- t1066_RCh_w2_loneliness$f_Q882
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_RCh_w2_loneliness$f_Q882, missing_values = NA)
+ggplot(t1066_RCh_w2_loneliness, aes(x=factor(f_Q882))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bothered or depressed by current loneliness") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any equals 1 (or 2) then 1`
+* `else if all are equal 0 then 0`
+* `8 into 995`
+* `9 or NA into 999`
+
+**R script:**
+
+```{r harmo2 rch, echo=TRUE}
+t1066_ds_RCh_w2 <- tibble(id=t1066_RCh_w2_loneliness$id)
+
+t1066_RCh_w2_loneliness$f_Q871 <- car::recode(as.vector(t1066_RCh_w2_loneliness$f_Q871), "NA='-999'")
+t1066_RCh_w2_loneliness$f_Q881 <- car::recode(as.vector(t1066_RCh_w2_loneliness$f_Q881), "NA='-999'")
+t1066_RCh_w2_loneliness$f_Q882 <- car::recode(as.vector(t1066_RCh_w2_loneliness$f_Q882), "NA='-999'")
+
+t1066_ds_RCh_w2$loneliness <- c(NA)
+for(i in 1:dim(t1066_RCh_w2_loneliness)[1]){
+  if( t1066_RCh_w2_loneliness$f_Q871[i] %in% c(1,2) | t1066_RCh_w2_loneliness$f_Q881[i] == 1 | t1066_RCh_w2_loneliness$f_Q882[i] == 1 ) {
+    t1066_ds_RCh_w2$loneliness[i] = 1 }
+  else if( t1066_RCh_w2_loneliness$f_Q871[i] == 0 & t1066_RCh_w2_loneliness$f_Q881[i] == 0 & t1066_RCh_w2_loneliness$f_Q882[i] == 0 ) {
+    t1066_ds_RCh_w2$loneliness[i] = 0 }
+  else if(  t1066_RCh_w2_loneliness$f_Q871[i] == 8 | t1066_RCh_w2_loneliness$f_Q881[i] == 8 | t1066_RCh_w2_loneliness$f_Q882[i] == 8 ) { 
+    t1066_ds_RCh_w2$loneliness[i] = 995 }
+  else if( t1066_RCh_w2_loneliness$f_Q871[i] == 9 | t1066_RCh_w2_loneliness$f_Q881[i] == 9 | t1066_RCh_w2_loneliness$f_Q882[i] == 9 ) { 
+    t1066_ds_RCh_w2$loneliness[i] = 999 }
+}
+
+t1066_ds_RCh_w2$loneliness <- car::recode(as.vector(t1066_ds_RCh_w2$loneliness), "NA='999'")
+t1066_ds_RCh_w2$loneliness <- labelled(t1066_ds_RCh_w2$loneliness, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 rch}
+vari <- t1066_ds_RCh_w2$loneliness
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_RCh_w2$loneliness, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_RCh_w2, aes(x=factor(loneliness))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("felt loneliness?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 rch}
+
+```
+
+## Rural Mexico
+
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `Q871`
+* Label: `Admits to feeling loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes but mild to moderate intensity, infrequent or fleeting`
+    + `2 = Yes and severe, frequent or persistent`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `Q881`
+* Label: `88.1 Feels loneliness and cannot turn away from it`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `Q882`
+* Label: `88.2 Bothered or depressed by current loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+  
+
+* Description: 
+```{r assign1 rm}
+opal.assign.table.tibble(o, 't1066_RM_w1_loneliness','10-66.1066-RuralMexico-Baseline', variables=list('Q871','Q881','Q882'), missings = TRUE)
+```
+
+```{r local1 rm}
+t1066_RM_w1_loneliness <- opal.execute(o,'t1066_RM_w1_loneliness')
+
+vari <- t1066_RM_w1_loneliness$Q871
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_RM_w1_loneliness$Q871, missing_values = NA)
+ggplot(t1066_RM_w1_loneliness, aes(x=factor(Q871))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Admits to feeling loneliness") + ylab("Frequency")
+
+vari <- t1066_RM_w1_loneliness$Q881
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_RM_w1_loneliness$Q881, missing_values = NA)
+ggplot(t1066_RM_w1_loneliness, aes(x=factor(Q881))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Feels loneliness and cannot turn away from it") + ylab("Frequency")
+
+vari <- t1066_RM_w1_loneliness$Q882
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_RM_w1_loneliness$Q882, missing_values = NA)
+ggplot(t1066_RM_w1_loneliness, aes(x=factor(Q882))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bothered or depressed by current loneliness") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any equals 1 (or 2) then 1`
+* `else if all are equal 0 then 0`
+* `8 into 995`
+* `9 or NA into 999`
+
+**R script:**
+
+```{r harmo1 rm, echo=TRUE}
+t1066_ds_RM_w1 <- tibble(id=t1066_RM_w1_loneliness$id)
+
+t1066_RM_w1_loneliness$Q871 <- car::recode(as.vector(t1066_RM_w1_loneliness$Q871), "NA='-999'")
+t1066_RM_w1_loneliness$Q881 <- car::recode(as.vector(t1066_RM_w1_loneliness$Q881), "NA='-999'")
+t1066_RM_w1_loneliness$Q882 <- car::recode(as.vector(t1066_RM_w1_loneliness$Q882), "NA='-999'")
+
+t1066_ds_RM_w1$loneliness <- c(NA)
+for(i in 1:dim(t1066_RM_w1_loneliness)[1]){
+  if( t1066_RM_w1_loneliness$Q871[i] %in% c(1,2) | t1066_RM_w1_loneliness$Q881[i] == 1 | t1066_RM_w1_loneliness$Q882[i] == 1 ) {
+    t1066_ds_RM_w1$loneliness[i] = 1 }
+  else if( t1066_RM_w1_loneliness$Q871[i] == 0 & t1066_RM_w1_loneliness$Q881[i] == 0 & t1066_RM_w1_loneliness$Q882[i] == 0 ) {
+    t1066_ds_RM_w1$loneliness[i] = 0 }
+  else if(  t1066_RM_w1_loneliness$Q871[i] == 8 | t1066_RM_w1_loneliness$Q881[i] == 8 | t1066_RM_w1_loneliness$Q882[i] == 8 ) { 
+    t1066_ds_RM_w1$loneliness[i] = 995 }
+  else if( t1066_RM_w1_loneliness$Q871[i] == 9 | t1066_RM_w1_loneliness$Q881[i] == 9 | t1066_RM_w1_loneliness$Q882[i] == 9 ) { 
+    t1066_ds_RM_w1$loneliness[i] = 999 }
+}
+
+t1066_ds_RM_w1$loneliness <- car::recode(as.vector(t1066_ds_RM_w1$loneliness), "NA='999'")
+t1066_ds_RM_w1$loneliness <- labelled(t1066_ds_RM_w1$loneliness, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 rm}
+vari <- t1066_ds_RM_w1$loneliness
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_RM_w1$loneliness, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_RM_w1, aes(x=factor(loneliness))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("felt loneliness?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 rm}
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_Q871`
+* Label: `Admits to feeling loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes but mild to moderate intensity, infrequent or fleeting`
+    + `2 = Yes and severe, frequent or persistent`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `f_Q881`
+* Label: `88.1 Feels loneliness and cannot turn away from it`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `f_Q882`
+* Label: `88.2 Bothered or depressed by current loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+  
+
+* Description: 
+```{r assign2 rm}
+opal.assign.table.tibble(o, 't1066_RM_w2_loneliness','10-66.1066-RuralMexico-Followup', variables=list('f_Q871','f_Q881','f_Q882'), missings = TRUE)
+```
+
+```{r local2 rm}
+t1066_RM_w2_loneliness <- opal.execute(o,'t1066_RM_w2_loneliness')
+
+vari <- t1066_RM_w2_loneliness$f_Q871
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_RM_w2_loneliness$f_Q871, missing_values = NA)
+ggplot(t1066_RM_w2_loneliness, aes(x=factor(f_Q871))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Admits to feeling loneliness") + ylab("Frequency")
+
+vari <- t1066_RM_w2_loneliness$f_Q881
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_RM_w2_loneliness$f_Q881, missing_values = NA)
+ggplot(t1066_RM_w2_loneliness, aes(x=factor(f_Q881))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Feels loneliness and cannot turn away from it") + ylab("Frequency")
+
+vari <- t1066_RM_w2_loneliness$f_Q882
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_RM_w2_loneliness$f_Q882, missing_values = NA)
+ggplot(t1066_RM_w2_loneliness, aes(x=factor(f_Q882))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bothered or depressed by current loneliness") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any equals 1 (or 2) then 1`
+* `else if all are equal 0 then 0`
+* `8 into 995`
+* `9 or NA into 999`
+
+**R script:**
+
+```{r harmo2 rm, echo=TRUE}
+t1066_ds_RM_w2 <- tibble(id=t1066_RM_w2_loneliness$id)
+
+t1066_RM_w2_loneliness$f_Q871 <- car::recode(as.vector(t1066_RM_w2_loneliness$f_Q871), "NA='-999'")
+t1066_RM_w2_loneliness$f_Q881 <- car::recode(as.vector(t1066_RM_w2_loneliness$f_Q881), "NA='-999'")
+t1066_RM_w2_loneliness$f_Q882 <- car::recode(as.vector(t1066_RM_w2_loneliness$f_Q882), "NA='-999'")
+
+t1066_ds_RM_w2$loneliness <- c(NA)
+for(i in 1:dim(t1066_RM_w2_loneliness)[1]){
+  if( t1066_RM_w2_loneliness$f_Q871[i] %in% c(1,2) | t1066_RM_w2_loneliness$f_Q881[i] == 1 | t1066_RM_w2_loneliness$f_Q882[i] == 1 ) {
+    t1066_ds_RM_w2$loneliness[i] = 1 }
+  else if( t1066_RM_w2_loneliness$f_Q871[i] == 0 & t1066_RM_w2_loneliness$f_Q881[i] == 0 & t1066_RM_w2_loneliness$f_Q882[i] == 0 ) {
+    t1066_ds_RM_w2$loneliness[i] = 0 }
+  else if(  t1066_RM_w2_loneliness$f_Q871[i] == 8 | t1066_RM_w2_loneliness$f_Q881[i] == 8 | t1066_RM_w2_loneliness$f_Q882[i] == 8 ) { 
+    t1066_ds_RM_w2$loneliness[i] = 995 }
+  else if( t1066_RM_w2_loneliness$f_Q871[i] == 9 | t1066_RM_w2_loneliness$f_Q881[i] == 9 | t1066_RM_w2_loneliness$f_Q882[i] == 9 ) { 
+    t1066_ds_RM_w2$loneliness[i] = 999 }
+}
+
+t1066_ds_RM_w2$loneliness <- car::recode(as.vector(t1066_ds_RM_w2$loneliness), "NA='999'")
+t1066_ds_RM_w2$loneliness <- labelled(t1066_ds_RM_w2$loneliness, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 rm}
+vari <- t1066_ds_RM_w2$loneliness
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_RM_w2$loneliness, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_RM_w2, aes(x=factor(loneliness))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("felt loneliness?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 rm}
+
+```
+
+## Rural Peru
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `Q871`
+* Label: `Admits to feeling loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes but mild to moderate intensity, infrequent or fleeting`
+    + `2 = Yes and severe, frequent or persistent`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `Q881`
+* Label: `88.1 Feels loneliness and cannot turn away from it`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `Q882`
+* Label: `88.2 Bothered or depressed by current loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+  
+
+* Description: 
+```{r assign1 rp}
+opal.assign.table.tibble(o, 't1066_RP_w1_loneliness','10-66.1066-RuralPeru-Baseline', variables=list('Q871','Q881','Q882'), missings = TRUE)
+```
+
+```{r local1 rp}
+t1066_RP_w1_loneliness <- opal.execute(o,'t1066_RP_w1_loneliness')
+
+vari <- t1066_RP_w1_loneliness$Q871
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_RP_w1_loneliness$Q871, missing_values = NA)
+ggplot(t1066_RP_w1_loneliness, aes(x=factor(Q871))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Admits to feeling loneliness") + ylab("Frequency")
+
+vari <- t1066_RP_w1_loneliness$Q881
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_RP_w1_loneliness$Q881, missing_values = NA)
+ggplot(t1066_RP_w1_loneliness, aes(x=factor(Q881))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Feels loneliness and cannot turn away from it") + ylab("Frequency")
+
+vari <- t1066_RP_w1_loneliness$Q882
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_RP_w1_loneliness$Q882, missing_values = NA)
+ggplot(t1066_RP_w1_loneliness, aes(x=factor(Q882))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bothered or depressed by current loneliness") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any equals 1 (or 2) then 1`
+* `else if all are equal 0 then 0`
+* `8 into 995`
+* `9 or NA into 999`
+
+**R script:**
+
+```{r harmo1 rp, echo=TRUE}
+t1066_ds_RP_w1 <- tibble(id=t1066_RP_w1_loneliness$id)
+
+t1066_RP_w1_loneliness$Q871 <- car::recode(as.vector(t1066_RP_w1_loneliness$Q871), "NA='-999'")
+t1066_RP_w1_loneliness$Q881 <- car::recode(as.vector(t1066_RP_w1_loneliness$Q881), "NA='-999'")
+t1066_RP_w1_loneliness$Q882 <- car::recode(as.vector(t1066_RP_w1_loneliness$Q882), "NA='-999'")
+
+t1066_ds_RP_w1$loneliness <- c(NA)
+for(i in 1:dim(t1066_RP_w1_loneliness)[1]){
+  if( t1066_RP_w1_loneliness$Q871[i] %in% c(1,2) | t1066_RP_w1_loneliness$Q881[i] == 1 | t1066_RP_w1_loneliness$Q882[i] == 1 ) {
+    t1066_ds_RP_w1$loneliness[i] = 1 }
+  else if( t1066_RP_w1_loneliness$Q871[i] == 0 & t1066_RP_w1_loneliness$Q881[i] == 0 & t1066_RP_w1_loneliness$Q882[i] == 0 ) {
+    t1066_ds_RP_w1$loneliness[i] = 0 }
+  else if(  t1066_RP_w1_loneliness$Q871[i] == 8 | t1066_RP_w1_loneliness$Q881[i] == 8 | t1066_RP_w1_loneliness$Q882[i] == 8 ) { 
+    t1066_ds_RP_w1$loneliness[i] = 995 }
+  else if( t1066_RP_w1_loneliness$Q871[i] == 9 | t1066_RP_w1_loneliness$Q881[i] == 9 | t1066_RP_w1_loneliness$Q882[i] == 9 ) { 
+    t1066_ds_RP_w1$loneliness[i] = 999 }
+}
+
+t1066_ds_RP_w1$loneliness <- car::recode(as.vector(t1066_ds_RP_w1$loneliness), "NA='999'")
+t1066_ds_RP_w1$loneliness <- labelled(t1066_ds_RP_w1$loneliness, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 rp}
+vari <- t1066_ds_RP_w1$loneliness
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_RP_w1$loneliness, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_RP_w1, aes(x=factor(loneliness))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("felt loneliness?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 rp}
+
+```
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_Q871`
+* Label: `Admits to feeling loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes but mild to moderate intensity, infrequent or fleeting`
+    + `2 = Yes and severe, frequent or persistent`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `f_Q881`
+* Label: `88.1 Feels loneliness and cannot turn away from it`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `f_Q882`
+* Label: `88.2 Bothered or depressed by current loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+  
+
+* Description: 
+```{r assign2 rp}
+opal.assign.table.tibble(o, 't1066_RP_w2_loneliness','10-66.1066-RuralPeru-Followup', variables=list('f_Q871','f_Q881','f_Q882'), missings = TRUE)
+```
+
+```{r local2 rp}
+t1066_RP_w2_loneliness <- opal.execute(o,'t1066_RP_w2_loneliness')
+
+vari <- t1066_RP_w2_loneliness$f_Q871
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_RP_w2_loneliness$f_Q871, missing_values = NA)
+ggplot(t1066_RP_w2_loneliness, aes(x=factor(f_Q871))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Admits to feeling loneliness") + ylab("Frequency")
+
+vari <- t1066_RP_w2_loneliness$f_Q881
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_RP_w2_loneliness$f_Q881, missing_values = NA)
+ggplot(t1066_RP_w2_loneliness, aes(x=factor(f_Q881))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Feels loneliness and cannot turn away from it") + ylab("Frequency")
+
+vari <- t1066_RP_w2_loneliness$f_Q882
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_RP_w2_loneliness$f_Q882, missing_values = NA)
+ggplot(t1066_RP_w2_loneliness, aes(x=factor(f_Q882))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bothered or depressed by current loneliness") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any equals 1 (or 2) then 1`
+* `else if all are equal 0 then 0`
+* `8 into 995`
+* `9 or NA into 999`
+
+**R script:**
+
+```{r harmo2 rp, echo=TRUE}
+t1066_ds_RP_w2 <- tibble(id=t1066_RP_w2_loneliness$id)
+
+t1066_RP_w2_loneliness$f_Q871 <- car::recode(as.vector(t1066_RP_w2_loneliness$f_Q871), "NA='-999'")
+t1066_RP_w2_loneliness$f_Q881 <- car::recode(as.vector(t1066_RP_w2_loneliness$f_Q881), "NA='-999'")
+t1066_RP_w2_loneliness$f_Q882 <- car::recode(as.vector(t1066_RP_w2_loneliness$f_Q882), "NA='-999'")
+
+t1066_ds_RP_w2$loneliness <- c(NA)
+for(i in 1:dim(t1066_RP_w2_loneliness)[1]){
+  if( t1066_RP_w2_loneliness$f_Q871[i] %in% c(1,2) | t1066_RP_w2_loneliness$f_Q881[i] == 1 | t1066_RP_w2_loneliness$f_Q882[i] == 1 ) {
+    t1066_ds_RP_w2$loneliness[i] = 1 }
+  else if( t1066_RP_w2_loneliness$f_Q871[i] == 0 & t1066_RP_w2_loneliness$f_Q881[i] == 0 & t1066_RP_w2_loneliness$f_Q882[i] == 0 ) {
+    t1066_ds_RP_w2$loneliness[i] = 0 }
+  else if(  t1066_RP_w2_loneliness$f_Q871[i] == 8 | t1066_RP_w2_loneliness$f_Q881[i] == 8 | t1066_RP_w2_loneliness$f_Q882[i] == 8 ) { 
+    t1066_ds_RP_w2$loneliness[i] = 995 }
+  else if( t1066_RP_w2_loneliness$f_Q871[i] == 9 | t1066_RP_w2_loneliness$f_Q881[i] == 9 | t1066_RP_w2_loneliness$f_Q882[i] == 9 ) { 
+    t1066_ds_RP_w2$loneliness[i] = 999 }
+}
+
+t1066_ds_RP_w2$loneliness <- car::recode(as.vector(t1066_ds_RP_w2$loneliness), "NA='999'")
+t1066_ds_RP_w2$loneliness <- labelled(t1066_ds_RP_w2$loneliness, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 rp}
+vari <- t1066_ds_RP_w2$loneliness
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_RP_w2$loneliness, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_RP_w2, aes(x=factor(loneliness))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("felt loneliness?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 rp}
+
+```
+
+## Urban China
+
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `Q871`
+* Label: `Admits to feeling loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes but mild to moderate intensity, infrequent or fleeting`
+    + `2 = Yes and severe, frequent or persistent`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `Q881`
+* Label: `88.1 Feels loneliness and cannot turn away from it`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `Q882`
+* Label: `88.2 Bothered or depressed by current loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+  
+
+* Description: 
+```{r assign1 uch}
+opal.assign.table.tibble(o, 't1066_UCh_w1_loneliness','10-66.1066-UrbanChina-Baseline', variables=list('Q871','Q881','Q882'), missings = TRUE)
+```
+
+```{r local1 uch}
+t1066_UCh_w1_loneliness <- opal.execute(o,'t1066_UCh_w1_loneliness')
+
+vari <- t1066_UCh_w1_loneliness$Q871
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_UCh_w1_loneliness$Q871, missing_values = NA)
+ggplot(t1066_UCh_w1_loneliness, aes(x=factor(Q871))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Admits to feeling loneliness") + ylab("Frequency")
+
+vari <- t1066_UCh_w1_loneliness$Q881
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_UCh_w1_loneliness$Q881, missing_values = NA)
+ggplot(t1066_UCh_w1_loneliness, aes(x=factor(Q881))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Feels loneliness and cannot turn away from it") + ylab("Frequency")
+
+vari <- t1066_UCh_w1_loneliness$Q882
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_UCh_w1_loneliness$Q882, missing_values = NA)
+ggplot(t1066_UCh_w1_loneliness, aes(x=factor(Q882))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bothered or depressed by current loneliness") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any equals 1 (or 2) then 1`
+* `else if all are equal 0 then 0`
+* `8 into 995`
+* `9 or NA into 999`
+
+**R script:**
+
+```{r harmo1 uch, echo=TRUE}
+t1066_ds_UCh_w1 <- tibble(id=t1066_UCh_w1_loneliness$id)
+
+t1066_UCh_w1_loneliness$Q871 <- car::recode(as.vector(t1066_UCh_w1_loneliness$Q871), "NA='-999'")
+t1066_UCh_w1_loneliness$Q881 <- car::recode(as.vector(t1066_UCh_w1_loneliness$Q881), "NA='-999'")
+t1066_UCh_w1_loneliness$Q882 <- car::recode(as.vector(t1066_UCh_w1_loneliness$Q882), "NA='-999'")
+
+t1066_ds_UCh_w1$loneliness <- c(NA)
+for(i in 1:dim(t1066_UCh_w1_loneliness)[1]){
+  if( t1066_UCh_w1_loneliness$Q871[i] %in% c(1,2) | t1066_UCh_w1_loneliness$Q881[i] == 1 | t1066_UCh_w1_loneliness$Q882[i] == 1 ) {
+    t1066_ds_UCh_w1$loneliness[i] = 1 }
+  else if( t1066_UCh_w1_loneliness$Q871[i] == 0 & t1066_UCh_w1_loneliness$Q881[i] == 0 & t1066_UCh_w1_loneliness$Q882[i] == 0 ) {
+    t1066_ds_UCh_w1$loneliness[i] = 0 }
+  else if(  t1066_UCh_w1_loneliness$Q871[i] == 8 | t1066_UCh_w1_loneliness$Q881[i] == 8 | t1066_UCh_w1_loneliness$Q882[i] == 8 ) { 
+    t1066_ds_UCh_w1$loneliness[i] = 995 }
+  else if( t1066_UCh_w1_loneliness$Q871[i] == 9 | t1066_UCh_w1_loneliness$Q881[i] == 9 | t1066_UCh_w1_loneliness$Q882[i] == 9 ) { 
+    t1066_ds_UCh_w1$loneliness[i] = 999 }
+}
+
+t1066_ds_UCh_w1$loneliness <- car::recode(as.vector(t1066_ds_UCh_w1$loneliness), "NA='999'")
+t1066_ds_UCh_w1$loneliness <- labelled(t1066_ds_UCh_w1$loneliness, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 uch}
+vari <- t1066_ds_UCh_w1$loneliness
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_UCh_w1$loneliness, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_UCh_w1, aes(x=factor(loneliness))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("felt loneliness?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 uch}
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_Q871`
+* Label: `Admits to feeling loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes but mild to moderate intensity, infrequent or fleeting`
+    + `2 = Yes and severe, frequent or persistent`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `f_Q881`
+* Label: `88.1 Feels loneliness and cannot turn away from it`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `f_Q882`
+* Label: `88.2 Bothered or depressed by current loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+  
+
+* Description: 
+```{r assign2 uch}
+opal.assign.table.tibble(o, 't1066_UCh_w2_loneliness','10-66.1066-UrbanChina-Followup', variables=list('f_Q871','f_Q881','f_Q882'), missings = TRUE)
+```
+
+```{r local2 uch}
+t1066_UCh_w2_loneliness <- opal.execute(o,'t1066_UCh_w2_loneliness')
+
+vari <- t1066_UCh_w2_loneliness$f_Q871
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_UCh_w2_loneliness$f_Q871, missing_values = NA)
+ggplot(t1066_UCh_w2_loneliness, aes(x=factor(f_Q871))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Admits to feeling loneliness") + ylab("Frequency")
+
+vari <- t1066_UCh_w2_loneliness$f_Q881
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_UCh_w2_loneliness$f_Q881, missing_values = NA)
+ggplot(t1066_UCh_w2_loneliness, aes(x=factor(f_Q881))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Feels loneliness and cannot turn away from it") + ylab("Frequency")
+
+vari <-t1066_UCh_w2_loneliness$f_Q882
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_UCh_w2_loneliness$f_Q882, missing_values = NA)
+ggplot(t1066_UCh_w2_loneliness, aes(x=factor(f_Q882))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bothered or depressed by current loneliness") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any equals 1 (or 2) then 1`
+* `else if all are equal 0 then 0`
+* `8 into 995`
+* `9 or NA into 999`
+
+**R script:**
+
+```{r harmo2 uch, echo=TRUE}
+t1066_ds_UCh_w2 <- tibble(id=t1066_UCh_w2_loneliness$id)
+
+t1066_UCh_w2_loneliness$f_Q871 <- car::recode(as.vector(t1066_UCh_w2_loneliness$f_Q871), "NA='-999'")
+t1066_UCh_w2_loneliness$f_Q881 <- car::recode(as.vector(t1066_UCh_w2_loneliness$f_Q881), "NA='-999'")
+t1066_UCh_w2_loneliness$f_Q882 <- car::recode(as.vector(t1066_UCh_w2_loneliness$f_Q882), "NA='-999'")
+
+t1066_ds_UCh_w2$loneliness <- c(NA)
+for(i in 1:dim(t1066_UCh_w2_loneliness)[1]){
+  if( t1066_UCh_w2_loneliness$f_Q871[i] %in% c(1,2) | t1066_UCh_w2_loneliness$f_Q881[i] == 1 | t1066_UCh_w2_loneliness$f_Q882[i] == 1 ) {
+    t1066_ds_UCh_w2$loneliness[i] = 1 }
+  else if( t1066_UCh_w2_loneliness$f_Q871[i] == 0 & t1066_UCh_w2_loneliness$f_Q881[i] == 0 & t1066_UCh_w2_loneliness$f_Q882[i] == 0 ) {
+    t1066_ds_UCh_w2$loneliness[i] = 0 }
+  else if(  t1066_UCh_w2_loneliness$f_Q871[i] == 8 | t1066_UCh_w2_loneliness$f_Q881[i] == 8 | t1066_UCh_w2_loneliness$f_Q882[i] == 8 ) { 
+    t1066_ds_UCh_w2$loneliness[i] = 995 }
+  else if( t1066_UCh_w2_loneliness$f_Q871[i] == 9 | t1066_UCh_w2_loneliness$f_Q881[i] == 9 | t1066_UCh_w2_loneliness$f_Q882[i] == 9 ) { 
+    t1066_ds_UCh_w2$loneliness[i] = 999 }
+}
+
+t1066_ds_UCh_w2$loneliness <- car::recode(as.vector(t1066_ds_UCh_w2$loneliness), "NA='999'")
+t1066_ds_UCh_w2$loneliness <- labelled(t1066_ds_UCh_w2$loneliness, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 uch}
+vari <- t1066_ds_UCh_w2$loneliness
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_UCh_w2$loneliness, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_UCh_w2, aes(x=factor(loneliness))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("felt loneliness?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 uch}
+
+```
+
+## Urban Mexico
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `Q871`
+* Label: `Admits to feeling loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes but mild to moderate intensity, infrequent or fleeting`
+    + `2 = Yes and severe, frequent or persistent`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `Q881`
+* Label: `88.1 Feels loneliness and cannot turn away from it`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `Q882`
+* Label: `88.2 Bothered or depressed by current loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+  
+
+* Description: 
+```{r assign1 um}
+opal.assign.table.tibble(o, 't1066_UM_w1_loneliness','10-66.1066-UrbanMexico-Baseline',variables=list('Q871','Q881','Q882'), missings = TRUE)
+```
+
+```{r local1 um}
+t1066_UM_w1_loneliness <- opal.execute(o,'t1066_UM_w1_loneliness')
+
+vari <-t1066_UM_w1_loneliness$Q871
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_UM_w1_loneliness$Q871, missing_values = NA)
+ggplot(t1066_UM_w1_loneliness, aes(x=factor(Q871))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Admits to feeling loneliness") + ylab("Frequency")
+
+vari <- t1066_UM_w1_loneliness$Q881
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_UM_w1_loneliness$Q881, missing_values = NA)
+ggplot(t1066_UM_w1_loneliness, aes(x=factor(Q881))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Feels loneliness and cannot turn away from it") + ylab("Frequency")
+
+vari <-t1066_UM_w1_loneliness$Q882
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_UM_w1_loneliness$Q882, missing_values = NA)
+ggplot(t1066_UM_w1_loneliness, aes(x=factor(Q882))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bothered or depressed by current loneliness") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any equals 1 (or 2) then 1`
+* `else if all are equal 0 then 0`
+* `8 into 995`
+* `9 or NA into 999`
+
+**R script:**
+
+```{r harmo1 um, echo=TRUE}
+t1066_ds_UM_w1 <- tibble(id=t1066_UM_w1_loneliness$id)
+
+t1066_UM_w1_loneliness$Q871 <- car::recode(as.vector(t1066_UM_w1_loneliness$Q871), "NA='-999'")
+t1066_UM_w1_loneliness$Q881 <- car::recode(as.vector(t1066_UM_w1_loneliness$Q881), "NA='-999'")
+t1066_UM_w1_loneliness$Q882 <- car::recode(as.vector(t1066_UM_w1_loneliness$Q882), "NA='-999'")
+
+t1066_ds_UM_w1$loneliness <- c(NA)
+for(i in 1:dim(t1066_UM_w1_loneliness)[1]){
+  if( t1066_UM_w1_loneliness$Q871[i] %in% c(1,2) | t1066_UM_w1_loneliness$Q881[i] == 1 | t1066_UM_w1_loneliness$Q882[i] == 1 ) {
+    t1066_ds_UM_w1$loneliness[i] = 1 }
+  else if( t1066_UM_w1_loneliness$Q871[i] == 0 & t1066_UM_w1_loneliness$Q881[i] == 0 & t1066_UM_w1_loneliness$Q882[i] == 0 ) {
+    t1066_ds_UM_w1$loneliness[i] = 0 }
+  else if(  t1066_UM_w1_loneliness$Q871[i] == 8 | t1066_UM_w1_loneliness$Q881[i] == 8 | t1066_UM_w1_loneliness$Q882[i] == 8 ) { 
+    t1066_ds_UM_w1$loneliness[i] = 995 }
+  else if( t1066_UM_w1_loneliness$Q871[i] == 9 | t1066_UM_w1_loneliness$Q881[i] == 9 | t1066_UM_w1_loneliness$Q882[i] == 9 ) { 
+    t1066_ds_UM_w1$loneliness[i] = 999 }
+}
+
+t1066_ds_UM_w1$loneliness <- car::recode(as.vector(t1066_ds_UM_w1$loneliness), "NA='999'")
+t1066_ds_UM_w1$loneliness <- labelled(t1066_ds_UM_w1$loneliness, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 um}
+vari <- t1066_ds_UM_w1$loneliness
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_UM_w1$loneliness, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_UM_w1, aes(x=factor(loneliness))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("felt loneliness?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 um}
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_Q871`
+* Label: `Admits to feeling loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes but mild to moderate intensity, infrequent or fleeting`
+    + `2 = Yes and severe, frequent or persistent`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `f_Q881`
+* Label: `88.1 Feels loneliness and cannot turn away from it`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `f_Q882`
+* Label: `88.2 Bothered or depressed by current loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+  
+
+* Description: 
+```{r assign2 um}
+opal.assign.table.tibble(o, 't1066_UM_w2_loneliness','10-66.1066-UrbanMexico-Followup', variables=list('f_Q871','f_Q881','f_Q882'), missings = TRUE)
+```
+
+```{r local2 um}
+t1066_UM_w2_loneliness <- opal.execute(o,'t1066_UM_w2_loneliness')
+
+vari <-  t1066_UM_w2_loneliness$f_Q871
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_UM_w2_loneliness$f_Q871, missing_values = NA)
+ggplot(t1066_UM_w2_loneliness, aes(x=factor(f_Q871))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Admits to feeling loneliness") + ylab("Frequency")
+
+vari <- t1066_UM_w2_loneliness$f_Q881
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_UM_w2_loneliness$f_Q881, missing_values = NA)
+ggplot(t1066_UM_w2_loneliness, aes(x=factor(f_Q881))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Feels loneliness and cannot turn away from it") + ylab("Frequency")
+
+vari <- t1066_UM_w2_loneliness$f_Q882
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_UM_w2_loneliness$f_Q882, missing_values = NA)
+ggplot(t1066_UM_w2_loneliness, aes(x=factor(f_Q882))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bothered or depressed by current loneliness") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any equals 1 (or 2) then 1`
+* `else if all are equal 0 then 0`
+* `8 into 995`
+* `9 or NA into 999`
+
+**R script:**
+
+```{r harmo2 um, echo=TRUE}
+t1066_ds_UM_w2 <- tibble(id=t1066_UM_w2_loneliness$id)
+
+t1066_UM_w2_loneliness$f_Q871 <- car::recode(as.vector(t1066_UM_w2_loneliness$f_Q871), "NA='-999'")
+t1066_UM_w2_loneliness$f_Q881 <- car::recode(as.vector(t1066_UM_w2_loneliness$f_Q881), "NA='-999'")
+t1066_UM_w2_loneliness$f_Q882 <- car::recode(as.vector(t1066_UM_w2_loneliness$f_Q882), "NA='-999'")
+
+t1066_ds_UM_w2$loneliness <- c(NA)
+for(i in 1:dim(t1066_UM_w2_loneliness)[1]){
+  if( t1066_UM_w2_loneliness$f_Q871[i] %in% c(1,2) | t1066_UM_w2_loneliness$f_Q881[i] == 1 | t1066_UM_w2_loneliness$f_Q882[i] == 1 ) {
+    t1066_ds_UM_w2$loneliness[i] = 1 }
+  else if( t1066_UM_w2_loneliness$f_Q871[i] == 0 & t1066_UM_w2_loneliness$f_Q881[i] == 0 & t1066_UM_w2_loneliness$f_Q882[i] == 0 ) {
+    t1066_ds_UM_w2$loneliness[i] = 0 }
+  else if(  t1066_UM_w2_loneliness$f_Q871[i] == 8 | t1066_UM_w2_loneliness$f_Q881[i] == 8 | t1066_UM_w2_loneliness$f_Q882[i] == 8 ) { 
+    t1066_ds_UM_w2$loneliness[i] = 995 }
+  else if( t1066_UM_w2_loneliness$f_Q871[i] == 9 | t1066_UM_w2_loneliness$f_Q881[i] == 9 | t1066_UM_w2_loneliness$f_Q882[i] == 9 ) { 
+    t1066_ds_UM_w2$loneliness[i] = 999 }
+}
+
+t1066_ds_UM_w2$loneliness <- car::recode(as.vector(t1066_ds_UM_w2$loneliness), "NA='999'")
+t1066_ds_UM_w2$loneliness <- labelled(t1066_ds_UM_w2$loneliness, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 um}
+vari <- t1066_ds_UM_w2$loneliness
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_UM_w2$loneliness, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_UM_w2, aes(x=factor(loneliness))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("felt loneliness?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 um}
+
+```
+## Urban Peru
+
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `Q871`
+* Label: `Admits to feeling loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes but mild to moderate intensity, infrequent or fleeting`
+    + `2 = Yes and severe, frequent or persistent`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `Q881`
+* Label: `88.1 Feels loneliness and cannot turn away from it`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `Q882`
+* Label: `88.2 Bothered or depressed by current loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+  
+
+* Description: 
+```{r assign1  up}
+opal.assign.table.tibble(o, 't1066_UP_w1_loneliness','10-66.1066-UrbanPeru-Baseline',variables=list('Q871','Q881','Q882'), missings = TRUE)
+```
+
+```{r local1  up}
+t1066_UP_w1_loneliness <- opal.execute(o,'t1066_UP_w1_loneliness')
+
+vari <- t1066_UP_w1_loneliness$Q871
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_UP_w1_loneliness$Q871, missing_values = NA)
+ggplot(t1066_UP_w1_loneliness, aes(x=factor(Q871))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Admits to feeling loneliness") + ylab("Frequency")
+
+vari <-t1066_UP_w1_loneliness$Q881
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_UP_w1_loneliness$Q881, missing_values = NA)
+ggplot(t1066_UP_w1_loneliness, aes(x=factor(Q881))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Feels loneliness and cannot turn away from it") + ylab("Frequency")
+
+vari <-t1066_UP_w1_loneliness$Q882
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_UP_w1_loneliness$Q882, missing_values = NA)
+ggplot(t1066_UP_w1_loneliness, aes(x=factor(Q882))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bothered or depressed by current loneliness") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any equals 1 (or 2) then 1`
+* `else if all are equal 0 then 0`
+* `8 into 995`
+* `9 or NA into 999`
+
+**R script:**
+
+```{r harmo1  up, echo=TRUE}
+t1066_ds_UP_w1 <- tibble(id=t1066_UP_w1_loneliness$id)
+
+t1066_UP_w1_loneliness$Q871 <- car::recode(as.vector(t1066_UP_w1_loneliness$Q871), "NA='-999'")
+t1066_UP_w1_loneliness$Q881 <- car::recode(as.vector(t1066_UP_w1_loneliness$Q881), "NA='-999'")
+t1066_UP_w1_loneliness$Q882 <- car::recode(as.vector(t1066_UP_w1_loneliness$Q882), "NA='-999'")
+
+t1066_ds_UP_w1$loneliness <- c(NA)
+for(i in 1:dim(t1066_UP_w1_loneliness)[1]){
+  if( t1066_UP_w1_loneliness$Q871[i] %in% c(1,2) | t1066_UP_w1_loneliness$Q881[i] == 1 | t1066_UP_w1_loneliness$Q882[i] == 1 ) {
+    t1066_ds_UP_w1$loneliness[i] = 1 }
+  else if( t1066_UP_w1_loneliness$Q871[i] == 0 & t1066_UP_w1_loneliness$Q881[i] == 0 & t1066_UP_w1_loneliness$Q882[i] == 0 ) {
+    t1066_ds_UP_w1$loneliness[i] = 0 }
+  else if(  t1066_UP_w1_loneliness$Q871[i] == 8 | t1066_UP_w1_loneliness$Q881[i] == 8 | t1066_UP_w1_loneliness$Q882[i] == 8 ) { 
+    t1066_ds_UP_w1$loneliness[i] = 995 }
+  else if( t1066_UP_w1_loneliness$Q871[i] == 9 | t1066_UP_w1_loneliness$Q881[i] == 9 | t1066_UP_w1_loneliness$Q882[i] == 9 ) { 
+    t1066_ds_UP_w1$loneliness[i] = 999 }
+}
+
+t1066_ds_UP_w1$loneliness <- car::recode(as.vector(t1066_ds_UP_w1$loneliness), "NA='999'")
+t1066_ds_UP_w1$loneliness <- labelled(t1066_ds_UP_w1$loneliness, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1  up}
+vari <- t1066_ds_UP_w1$loneliness
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_UP_w1$loneliness, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_UP_w1, aes(x=factor(loneliness))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("felt loneliness?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1  up}
+
+```
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_Q871`
+* Label: `Admits to feeling loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes but mild to moderate intensity, infrequent or fleeting`
+    + `2 = Yes and severe, frequent or persistent`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `f_Q881`
+* Label: `88.1 Feels loneliness and cannot turn away from it`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `f_Q882`
+* Label: `88.2 Bothered or depressed by current loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+  
+
+* Description: 
+```{r assign2  up}
+opal.assign.table.tibble(o, 't1066_UP_w2_loneliness','10-66.1066-UrbanPeru-Followup',variables=list('f_Q871','f_Q881','f_Q882'), missings = TRUE)
+```
+
+```{r local2  up}
+t1066_UP_w2_loneliness <- opal.execute(o,'t1066_UP_w2_loneliness')
+
+vari <- t1066_UP_w2_loneliness$f_Q871
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_UP_w2_loneliness$f_Q871, missing_values = NA)
+ggplot(t1066_UP_w2_loneliness, aes(x=factor(f_Q871))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Admits to feeling loneliness") + ylab("Frequency")
+
+vari <- t1066_UP_w2_loneliness$f_Q881
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_UP_w2_loneliness$f_Q881, missing_values = NA)
+ggplot(t1066_UP_w2_loneliness, aes(x=factor(f_Q881))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Feels loneliness and cannot turn away from it") + ylab("Frequency")
+
+vari <- t1066_UP_w2_loneliness$f_Q882
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_UP_w2_loneliness$f_Q882, missing_values = NA)
+ggplot(t1066_UP_w2_loneliness, aes(x=factor(f_Q882))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bothered or depressed by current loneliness") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any equals 1 (or 2) then 1`
+* `else if all are equal 0 then 0`
+* `8 into 995`
+* `9 or NA into 999`
+
+**R script:**
+
+```{r harmo2  up, echo=TRUE}
+t1066_ds_UP_w2 <- tibble(id=t1066_UP_w2_loneliness$id)
+
+t1066_UP_w2_loneliness$f_Q871 <- car::recode(as.vector(t1066_UP_w2_loneliness$f_Q871), "NA='-999'")
+t1066_UP_w2_loneliness$f_Q881 <- car::recode(as.vector(t1066_UP_w2_loneliness$f_Q881), "NA='-999'")
+t1066_UP_w2_loneliness$f_Q882 <- car::recode(as.vector(t1066_UP_w2_loneliness$f_Q882), "NA='-999'")
+
+t1066_ds_UP_w2$loneliness <- c(NA)
+for(i in 1:dim(t1066_UP_w2_loneliness)[1]){
+  if( t1066_UP_w2_loneliness$f_Q871[i] %in% c(1,2) | t1066_UP_w2_loneliness$f_Q881[i] == 1 | t1066_UP_w2_loneliness$f_Q882[i] == 1 ) {
+    t1066_ds_UP_w2$loneliness[i] = 1 }
+  else if( t1066_UP_w2_loneliness$f_Q871[i] == 0 & t1066_UP_w2_loneliness$f_Q881[i] == 0 & t1066_UP_w2_loneliness$f_Q882[i] == 0 ) {
+    t1066_ds_UP_w2$loneliness[i] = 0 }
+  else if(  t1066_UP_w2_loneliness$f_Q871[i] == 8 | t1066_UP_w2_loneliness$f_Q881[i] == 8 | t1066_UP_w2_loneliness$f_Q882[i] == 8 ) { 
+    t1066_ds_UP_w2$loneliness[i] = 995 }
+  else if( t1066_UP_w2_loneliness$f_Q871[i] == 9 | t1066_UP_w2_loneliness$f_Q881[i] == 9 | t1066_UP_w2_loneliness$f_Q882[i] == 9 ) { 
+    t1066_ds_UP_w2$loneliness[i] = 999 }
+}
+
+t1066_ds_UP_w2$loneliness <- car::recode(as.vector(t1066_ds_UP_w2$loneliness), "NA='999'")
+t1066_ds_UP_w2$loneliness <- labelled(t1066_ds_UP_w2$loneliness, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2  up}
+vari <- t1066_ds_UP_w2$loneliness
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_UP_w2$loneliness, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_UP_w2, aes(x=factor(loneliness))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("felt loneliness?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2  up}
+
+```
+
+## Venezuela
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `Q871`
+* Label: `Admits to feeling loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes but mild to moderate intensity, infrequent or fleeting`
+    + `2 = Yes and severe, frequent or persistent`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `Q881`
+* Label: `88.1 Feels loneliness and cannot turn away from it`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `Q882`
+* Label: `88.2 Bothered or depressed by current loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+  
+
+* Description: 
+```{r assign1  ven}
+opal.assign.table.tibble(o, 't1066_Ven_w1_loneliness','10-66.1066-Venezuela-Baseline',variables=list('Q871','Q881','Q882'), missings = TRUE)
+```
+
+```{r local1  ven}
+t1066_Ven_w1_loneliness <- opal.execute(o,'t1066_Ven_w1_loneliness')
+
+vari <- t1066_Ven_w1_loneliness$Q871
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_Ven_w1_loneliness$Q871, missing_values = NA)
+ggplot(t1066_Ven_w1_loneliness, aes(x=factor(Q871))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Admits to feeling loneliness") + ylab("Frequency")
+
+vari <- t1066_Ven_w1_loneliness$Q881
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_Ven_w1_loneliness$Q881, missing_values = NA)
+ggplot(t1066_Ven_w1_loneliness, aes(x=factor(Q881))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Feels loneliness and cannot turn away from it") + ylab("Frequency")
+
+vari <- t1066_Ven_w1_loneliness$Q882
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_Ven_w1_loneliness$Q882, missing_values = NA)
+ggplot(t1066_Ven_w1_loneliness, aes(x=factor(Q882))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bothered or depressed by current loneliness") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any equals 1 (or 2) then 1`
+* `else if all are equal 0 then 0`
+* `8 into 995`
+* `9 or NA into 999`
+
+**R script:**
+
+```{r harmo1  ven, echo=TRUE}
+t1066_ds_Ven_w1 <- tibble(id=t1066_Ven_w1_loneliness$id)
+
+t1066_Ven_w1_loneliness$Q871 <- car::recode(as.vector(t1066_Ven_w1_loneliness$Q871), "NA='-999'")
+t1066_Ven_w1_loneliness$Q881 <- car::recode(as.vector(t1066_Ven_w1_loneliness$Q881), "NA='-999'")
+t1066_Ven_w1_loneliness$Q882 <- car::recode(as.vector(t1066_Ven_w1_loneliness$Q882), "NA='-999'")
+
+t1066_ds_Ven_w1$loneliness <- c(NA)
+for(i in 1:dim(t1066_Ven_w1_loneliness)[1]){
+  if( t1066_Ven_w1_loneliness$Q871[i] %in% c(1,2) | t1066_Ven_w1_loneliness$Q881[i] == 1 | t1066_Ven_w1_loneliness$Q882[i] == 1 ) {
+    t1066_ds_Ven_w1$loneliness[i] = 1 }
+  else if( t1066_Ven_w1_loneliness$Q871[i] == 0 & t1066_Ven_w1_loneliness$Q881[i] == 0 & t1066_Ven_w1_loneliness$Q882[i] == 0 ) {
+    t1066_ds_Ven_w1$loneliness[i] = 0 }
+  else if(  t1066_Ven_w1_loneliness$Q871[i] == 8 | t1066_Ven_w1_loneliness$Q881[i] == 8 | t1066_Ven_w1_loneliness$Q882[i] == 8 ) { 
+    t1066_ds_Ven_w1$loneliness[i] = 995 }
+  else if( t1066_Ven_w1_loneliness$Q871[i] == 9 | t1066_Ven_w1_loneliness$Q881[i] == 9 | t1066_Ven_w1_loneliness$Q882[i] == 9 ) { 
+    t1066_ds_Ven_w1$loneliness[i] = 999 }
+}
+
+t1066_ds_Ven_w1$loneliness <- car::recode(as.vector(t1066_ds_Ven_w1$loneliness), "NA='999'")
+t1066_ds_Ven_w1$loneliness <- labelled(t1066_ds_Ven_w1$loneliness, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1  ven}
+vari <- t1066_ds_Ven_w1$loneliness
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_Ven_w1$loneliness, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_Ven_w1, aes(x=factor(loneliness))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("felt loneliness?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1  ven}
+
+```
+
+
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_Q871`
+* Label: `Admits to feeling loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes but mild to moderate intensity, infrequent or fleeting`
+    + `2 = Yes and severe, frequent or persistent`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `f_Q881`
+* Label: `88.1 Feels loneliness and cannot turn away from it`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+    
+* Name: `f_Q882`
+* Label: `88.2 Bothered or depressed by current loneliness`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings: 
+    + `8 = no answer`
+    + `9 = not asked`
+  
+
+* Description: 
+```{r assign2  ven}
+opal.assign.table.tibble(o, 't1066_Ven_w2_loneliness','10-66.1066-Venezuela-Followup',variables=list('f_Q871','f_Q881','f_Q882'), missings = TRUE)
+```
+
+```{r local2  ven}
+t1066_Ven_w2_loneliness <- opal.execute(o,'t1066_Ven_w2_loneliness')
+
+vari <- t1066_Ven_w2_loneliness$f_Q871
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_Ven_w2_loneliness$f_Q871, missing_values = NA)
+ggplot(t1066_Ven_w2_loneliness, aes(x=factor(f_Q871))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Admits to feeling loneliness") + ylab("Frequency")
+
+vari <- t1066_Ven_w2_loneliness$f_Q881
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_Ven_w2_loneliness$f_Q881, missing_values = NA)
+ggplot(t1066_Ven_w2_loneliness, aes(x=factor(f_Q881))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Feels loneliness and cannot turn away from it") + ylab("Frequency")
+
+vari <- t1066_Ven_w2_loneliness$f_Q882
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_Ven_w2_loneliness$f_Q882, missing_values = NA)
+ggplot(t1066_Ven_w2_loneliness, aes(x=factor(f_Q882))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Bothered or depressed by current loneliness") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any equals 1 (or 2) then 1`
+* `else if all are equal 0 then 0`
+* `8 into 995`
+* `9 or NA into 999`
+
+**R script:**
+
+```{r harmo2  ven, echo=TRUE}
+t1066_ds_Ven_w2 <- tibble(id=t1066_Ven_w2_loneliness$id)
+
+t1066_Ven_w2_loneliness$f_Q871 <- car::recode(as.vector(t1066_Ven_w2_loneliness$f_Q871), "NA='-999'")
+t1066_Ven_w2_loneliness$f_Q881 <- car::recode(as.vector(t1066_Ven_w2_loneliness$f_Q881), "NA='-999'")
+t1066_Ven_w2_loneliness$f_Q882 <- car::recode(as.vector(t1066_Ven_w2_loneliness$f_Q882), "NA='-999'")
+
+t1066_ds_Ven_w2$loneliness <- c(NA)
+for(i in 1:dim(t1066_Ven_w2_loneliness)[1]){
+  if( t1066_Ven_w2_loneliness$f_Q871[i] %in% c(1,2) | t1066_Ven_w2_loneliness$f_Q881[i] == 1 | t1066_Ven_w2_loneliness$f_Q882[i] == 1 ) {
+    t1066_ds_Ven_w2$loneliness[i] = 1 }
+  else if( t1066_Ven_w2_loneliness$f_Q871[i] == 0 & t1066_Ven_w2_loneliness$f_Q881[i] == 0 & t1066_Ven_w2_loneliness$f_Q882[i] == 0 ) {
+    t1066_ds_Ven_w2$loneliness[i] = 0 }
+  else if(  t1066_Ven_w2_loneliness$f_Q871[i] == 8 | t1066_Ven_w2_loneliness$f_Q881[i] == 8 | t1066_Ven_w2_loneliness$f_Q882[i] == 8 ) { 
+    t1066_ds_Ven_w2$loneliness[i] = 995 }
+  else if( t1066_Ven_w2_loneliness$f_Q871[i] == 9 | t1066_Ven_w2_loneliness$f_Q881[i] == 9 | t1066_Ven_w2_loneliness$f_Q882[i] == 9 ) { 
+    t1066_ds_Ven_w2$loneliness[i] = 999 }
+}
+
+t1066_ds_Ven_w2$loneliness <- car::recode(as.vector(t1066_ds_Ven_w2$loneliness), "NA='999'")
+t1066_ds_Ven_w2$loneliness <- labelled(t1066_ds_Ven_w2$loneliness, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2  ven}
+vari <- t1066_ds_Ven_w2$loneliness
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_Ven_w2$loneliness, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_Ven_w2, aes(x=factor(loneliness))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("felt loneliness?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2  ven}
+
+```
+
+ 
+ 
+```{r save,  echo=FALSE}
+loneliness <- t1066_ds_cuba_w1
+save(loneliness, file = "../RData/cuba_w1/loneliness.RData")
+rm(loneliness)
+
+loneliness <- t1066_ds_cuba_w2
+save(loneliness, file = "../RData/cuba_w2/loneliness.RData")
+rm(loneliness)
+
+loneliness <- t1066_ds_india_w1
+save(loneliness, file = "../RData/india_w1/loneliness.RData")
+rm(loneliness)
+
+
+loneliness <- t1066_ds_UCh_w1
+save(loneliness, file = "../RData/UCh_w1/loneliness.RData")
+rm(loneliness)
+
+loneliness <- t1066_ds_UCh_w2
+save(loneliness, file = "../RData/UCh_w2/loneliness.RData")
+rm(loneliness)
+
+loneliness <- t1066_ds_RCh_w1
+save(loneliness, file = "../RData/RCh_w1/loneliness.RData")
+rm(loneliness)
+
+loneliness <- t1066_ds_RCh_w2
+save(loneliness, file = "../RData/RCh_w2/loneliness.RData")
+rm(loneliness)
+
+loneliness <- t1066_ds_DR_w1
+save(loneliness, file = "../RData/DR_w1/loneliness.RData")
+rm(loneliness)
+
+loneliness <- t1066_ds_DR_w2
+save(loneliness, file = "../RData/DR_w2/loneliness.RData")
+rm(loneliness)
+
+loneliness <- t1066_ds_Ven_w1
+save(loneliness, file = "../RData/Ven_w1/loneliness.RData")
+rm(loneliness)
+
+loneliness <- t1066_ds_Ven_w2
+save(loneliness, file = "../RData/Ven_w2/loneliness.RData")
+rm(loneliness)
+
+loneliness <- t1066_ds_UP_w1
+save(loneliness, file = "../RData/UP_w1/loneliness.RData")
+rm(loneliness)
+
+loneliness <- t1066_ds_UP_w2
+save(loneliness, file = "../RData/UP_w2/loneliness.RData")
+rm(loneliness)
+
+loneliness <- t1066_ds_RP_w1
+save(loneliness, file = "../RData/RP_w1/loneliness.RData")
+rm(loneliness)
+
+loneliness <- t1066_ds_RP_w2
+save(loneliness, file = "../RData/RP_w2/loneliness.RData")
+rm(loneliness)
+
+loneliness <- t1066_ds_UM_w1
+save(loneliness, file = "../RData/UM_w1/loneliness.RData")
+rm(loneliness)
+
+loneliness <- t1066_ds_UM_w2
+save(loneliness, file = "../RData/UM_w2/loneliness.RData")
+rm(loneliness)
+
+loneliness <- t1066_ds_RM_w1
+save(loneliness, file = "../RData/RM_w1/loneliness.RData")
+rm(loneliness)
+
+loneliness <- t1066_ds_RM_w2
+save(loneliness, file = "../RData/RM_w2/loneliness.RData")
+rm(loneliness)
+
+loneliness <- t1066_ds_PR_w1
+save(loneliness, file = "../RData/PR_w1/loneliness.RData")
+rm(loneliness)
+
+loneliness <- t1066_ds_PR_w2
+save(loneliness, file = "../RData/PR_w2/loneliness.RData")
+rm(loneliness)
+
+```
+
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+

@@ -1,0 +1,1901 @@
+---
+title: "Sex"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/Rmds/setup_albert.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `sex`
+* Variable label: `biological sex`
+* Variable description: `participant's biological sex`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | female
+1        | male
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Cuba
+
+### Wave 1
+
+#### Study-specific variable description
+
+* Name: `gender`
+* Label: `gender (PSEXRE miscodes recoded)`
+* Categories: 
+    + `1.0 = Female`
+    + `2.0 = Male`
+* Description: 
+
+```{r assign_cuba1, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_cuba_w1_sex','10-66.1066-Cuba-Baseline',
+                         variables=list('gender'), missings = TRUE)
+```
+
+```{r local_cuba1, echo=FALSE}
+t1066_cuba_w1_sex <- opal.execute(o,'t1066_cuba_w1_sex')
+vari <- t1066_cuba_w1_sex$gender
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = t1066_cuba_w1_sex$gender, missing_values = NA)
+ggplot(t1066_cuba_w1_sex, aes(x=factor(gender))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1.0 "Female" into 0`
+* `2.0 "Male" into 1`
+
+**R script:**
+
+
+```{r harmo_cuba1, echo=TRUE}
+t1066_ds_cuba_w1 <- tibble(id=t1066_cuba_w1_sex$id)
+t1066_ds_cuba_w1$sex <-  car::recode(t1066_cuba_w1_sex$gender, "1=0; 2=1; NA=999")
+t1066_ds_cuba_w1$sex <- labelled(t1066_ds_cuba_w1$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_cuba1, echo=FALSE}
+vari <- t1066_ds_cuba_w1$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "sex") # EL CAPTION ES EL NOMBRE DE LA HASMONISED VARIABLE
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_cuba_w1$sex, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_cuba_w1, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_cuba1, echo=FALSE}
+AfterH <- table(t1066_ds_cuba_w1$sex)
+BeforeH <- table(t1066_cuba_w1_sex$gender)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1")
+kable(C)
+```
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+* Name: `gender`
+* Label: `gender (PSEXRE miscodes recoded)`
+* Categories: 
+    + `1.0 = Female`
+    + `2.0 = Male`
+* Description: 
+
+
+
+```{r assign_cuba2, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_cuba_w2_sex','10-66.1066-Cuba-Baseline',
+                         variables=list('gender'), missings = TRUE)
+opal.assign.table.tibble(o, 't1066_cuba_w2_id','10-66.1066-Cuba-Followup',
+                         variables=list('centreid'), missings = TRUE)
+```
+
+```{r local_cuba2, echo=FALSE}
+t1066_cuba_w1_sex <- opal.execute(o,'t1066_cuba_w1_sex')
+t1066_cuba_w2_id <- opal.execute(o,'t1066_cuba_w2_id')
+
+Same_indiv <- function(W1, W2){
+  W1_2 <- matrix(rep(NA, dim(W1)[1]*dim(W1)[2] ), nrow = dim(W1)[1])
+  W1m <- as.matrix(W1)
+  
+  for(i in 1:length(W1$id)){
+    if(sum(W1$id[i]==W2$id)==1){
+      W1_2[i,] <- W1m[i,]
+    } else {
+      W1_2[i,] <- W1_2[i,]
+    }
+  }
+  
+  W1_22 <- data.frame(id=W1_2[,1], gender=as.numeric(W1_2[,2]))
+  W1_22[complete.cases(W1_22),]
+}
+
+t1066_cuba_w2_sex <- Same_indiv(W1 = t1066_cuba_w1_sex, W2 = t1066_cuba_w2_id)
+vari <- t1066_cuba_w2_sex$gender
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = t1066_cuba_w2_sex$gender, missing_values = NA)
+ggplot(t1066_cuba_w1_sex, aes(x=factor(gender))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1.0 "Female" into 0`
+* `2.0 "Male" into 1`
+
+**R script:**
+
+```{r harmo_cuba2, echo=TRUE}
+t1066_ds_cuba_w2 <- tibble(id=t1066_cuba_w2_sex$id)
+t1066_ds_cuba_w2$sex <-  car::recode(t1066_cuba_w2_sex$gender, "1=0; 2=1; NA=999")
+t1066_ds_cuba_w2$sex <- labelled(t1066_ds_cuba_w2$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_cuba2, echo=FALSE}
+vari <- t1066_ds_cuba_w2$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "sex") # EL CAPTION ES EL NOMBRE DE LA HASMONISED VARIABLE
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_cuba_w2$sex, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_cuba_w2, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_cuba2, echo=FALSE}
+AfterH <- table(t1066_ds_cuba_w2$sex)
+BeforeH <- table(t1066_cuba_w2_sex$gender)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1")
+kable(C)
+```
+
+
+
+
+## India 
+
+### Wave 1 
+
+#### Study-specific variable description
+
+
+* Name: `gender`
+* Label: `gender (PSEXRE miscodes recoded)`
+* Categories: 
+    + `1.0 = Female`
+    + `2.0 = Male`
+* Description: 
+```{r assign_india1, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_india_w1_sex','10-66.1066-India-Baseline',
+                         variables=list('gender'), missings = TRUE)
+```
+
+```{r local_india1, echo=FALSE} 
+t1066_india_w1_sex <- opal.execute(o,'t1066_india_w1_sex')
+vari <- t1066_india_w1_sex$gender
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = t1066_india_w1_sex$gender, missing_values = NA)
+ggplot(t1066_india_w1_sex, aes(x=factor(gender))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1.0 "Female" into 0`
+* `2.0 "Male" into 1`
+
+**R script:**
+
+```{r harmo_india1, echo=TRUE} 
+t1066_ds_india_w1 <- tibble(id=t1066_india_w1_sex$id)
+t1066_ds_india_w1$sex <-  car::recode(t1066_india_w1_sex$gender, "1=0; 2=1; NA=999")
+t1066_ds_india_w1$sex <- labelled(t1066_ds_india_w1$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_india1, echo=FALSE} 
+vari <- t1066_ds_india_w1$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "sex") # EL CAPTION ES EL NOMBRE DE LA HASMONISED VARIABLE
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_india_w1$sex, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_india_w1, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_india1, echo=FALSE} 
+AfterH <- table(t1066_ds_india_w1$sex)
+BeforeH <- c(table(t1066_india_w1_sex$gender), sum(is.na(t1066_india_w1_sex$gender)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1", "NA->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+### Wave 2 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `gender`
+* Label: `gender (PSEXRE miscodes recoded)`
+* Categories: 
+    + `1.0 = Female`
+    + `2.0 = Male`
+* Description:     
+```{r assign_india2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_india_w1_sex','10-66.1066-India-Baseline',
+                         variables=list('gender'), missings = TRUE)
+opal.assign.table.tibble(o, 't1066_india_w2_id','10-66.1066-India-Followup',
+                         variables=list('centreid'), missings = TRUE)
+
+```
+
+```{r local_india2, echo=FALSE} 
+t1066_india_w1_sex <- opal.execute(o,'t1066_india_w1_sex')
+t1066_india_w2_id <- opal.execute(o,'t1066_india_w2_id')
+
+Same_indiv <- function(W1, W2){
+  
+  W1_2 <- matrix(rep(NA, dim(W1)[1]*dim(W1)[2] ), nrow = dim(W1)[1])
+  W1m <- as.matrix(W1)
+  
+  for(i in 1:length(W1$id)){
+    if(sum(W1$id[i]==W2$id)>=1){
+      W1_2[i,] <- W1m[i,]
+    } else {
+      W1_2[i,] <- W1_2[i,]
+    }
+  }
+  
+  W1_22 <- data.frame(id=W1_2[,1], gender=as.numeric(W1_2[,2]))
+  W1_22[-which(is.na(W1_22$id)),]
+}
+
+t1066_india_w2_sex <- Same_indiv(W1 = t1066_india_w1_sex, W2 = t1066_india_w2_id)
+
+vari <- t1066_india_w2_sex$gender
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = t1066_india_w2_sex$gender, missing_values = NA)
+ggplot(t1066_india_w2_sex, aes(x=factor(gender))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1.0 "Female" into 0`
+* `2.0 "Male" into 1`
+
+**R script:**
+
+```{r harmo_india2, echo=TRUE} 
+t1066_ds_india_w2 <- tibble(id=t1066_india_w2_sex$id)
+t1066_ds_india_w2$sex <-  car::recode(t1066_india_w2_sex$gender, "1=0; 2=1; NA=999")
+t1066_ds_india_w2$sex <- labelled(t1066_ds_india_w2$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_india2, echo=FALSE} 
+vari <- t1066_ds_india_w2$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "sex") # EL CAPTION ES EL NOMBRE DE LA HASMONISED VARIABLE
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_india_w2$sex, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_india_w2, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_india2, echo=FALSE} 
+AfterH <- table(t1066_ds_india_w2$sex)
+id_w2 <- t1066_ds_india_w2$id
+seg <- t1066_india_w1_sex[t1066_india_w1_sex$id %in% id_w2, ]# individuos con seguimiento
+BeforeH <- c(table(seg$gender), sum(is.na(seg$gender)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1", "NA->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+## Urban China 
+
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `gender`
+* Label: `gender (PSEXRE miscodes recoded)`
+* Categories: 
+    + `1.0 = Female`
+    + `2.0 = Male`
+* Description:
+```{r assign_UCh1, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_UCh_w1_sex','10-66.1066-UrbanChina-Baseline',
+                         variables=list('gender'), missings = TRUE)
+```
+
+```{r local_UCh1, echo=FALSE} 
+t1066_UCh_w1_sex <- opal.execute(o,'t1066_UCh_w1_sex')
+vari <- t1066_UCh_w1_sex$gender
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = t1066_UCh_w1_sex$gender, missing_values = NA)
+ggplot(t1066_UCh_w1_sex, aes(x=factor(gender))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1.0 "Female" into 0`
+* `2.0 "Male" into 1`
+
+**R script:**
+
+```{r harmo_UCh1, echo=TRUE} 
+t1066_ds_UCh_w1 <- tibble(id=t1066_UCh_w1_sex$id)
+t1066_ds_UCh_w1$sex <-  car::recode(t1066_UCh_w1_sex$gender, "1=0; 2=1; NA=999")
+t1066_ds_UCh_w1$sex <- labelled(t1066_ds_UCh_w1$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_UCh1, echo=FALSE} 
+vari <- t1066_ds_UCh_w1$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "sex") # EL CAPTION ES EL NOMBRE DE LA HASMONISED VARIABLE
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_UCh_w1$sex, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_UCh_w1, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_UCh1, echo=FALSE} 
+AfterH <- table(t1066_ds_UCh_w1$sex)
+BeforeH <- table(t1066_UCh_w1_sex$gender)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+## Urban China 
+### Wave 2 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `gender`
+* Label: `gender (PSEXRE miscodes recoded)`
+* Categories: 
+    + `1.0 = Female`
+    + `2.0 = Male`
+* Description:
+```{r assign_UCh2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_UCh_w1_sex','10-66.1066-UrbanChina-Baseline',
+                         variables=list('gender'), missings = TRUE)
+opal.assign.table.tibble(o, 't1066_UCh_w2_id','10-66.1066-UrbanChina-Followup',
+                         variables=list('centreid'), missings = TRUE)
+
+```
+
+```{r local_UCh2, echo=FALSE} 
+t1066_UCh_w1_sex <- opal.execute(o,'t1066_UCh_w1_sex')
+t1066_UCh_w2_id <- opal.execute(o,'t1066_UCh_w2_id')
+
+Same_indiv <- function(W1, W2){
+  
+  W1_2 <- matrix(rep(NA, dim(W1)[1]*dim(W1)[2] ), nrow = dim(W1)[1])
+  W1m <- as.matrix(W1)
+  
+  for(i in 1:length(W1$id)){
+    if(sum(W1$id[i]==W2$id)>=1){
+      W1_2[i,] <- W1m[i,]
+    } else {
+      W1_2[i,] <- W1_2[i,]
+    }
+  }
+  
+  W1_22 <- data.frame(id=W1_2[,1], gender=as.numeric(W1_2[,2]))
+  W1_22[-which(is.na(W1_22$id)),]
+}
+
+
+t1066_Uch_w2_sex <- Same_indiv(W1 = t1066_UCh_w1_sex, W2 = t1066_UCh_w2_id)
+
+vari <- t1066_Uch_w2_sex$gender
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = t1066_Uch_w2_sex$gender, missing_values = NA)
+ggplot(t1066_Uch_w2_sex, aes(x=factor(gender))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1.0 "Female" into 0`
+* `2.0 "Male" into 1`
+
+**R script:**
+
+```{r harmo_UCh2, echo=TRUE} 
+t1066_ds_UCh_w2 <- tibble(id=t1066_Uch_w2_sex$id)
+t1066_ds_UCh_w2$sex <-  car::recode(t1066_Uch_w2_sex$gender, "1=0; 2=1; NA=999")
+t1066_ds_UCh_w2$sex <- labelled(t1066_ds_UCh_w2$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_UCh2, echo=FALSE} 
+vari <- t1066_ds_UCh_w2$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "sex") # EL CAPTION ES EL NOMBRE DE LA HASMONISED VARIABLE
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_UCh_w2$sex, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_UCh_w2, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_UCh2, echo=FALSE} 
+AfterH <- table(t1066_ds_UCh_w2$sex)
+BeforeH <- table(t1066_Uch_w2_sex$gender)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+## Rural China 
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `gender`
+* Label: `gender (PSEXRE miscodes recoded)`
+* Categories: 
+    + `1.0 = Female`
+    + `2.0 = Male`
+* Description:
+```{r assign_RCh1, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_RCh_w1_sex','10-66.1066-RuralChina-Baseline',
+                         variables=list('gender'), missings = TRUE)
+```
+
+```{r local_RCh1, echo=FALSE} 
+t1066_RCh_w1_sex <- opal.execute(o,'t1066_RCh_w1_sex')
+vari <- t1066_RCh_w1_sex$gender
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = t1066_RCh_w1_sex$gender, missing_values = NA)
+ggplot(t1066_RCh_w1_sex, aes(x=factor(gender))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1.0 "Female" into 0`
+* `2.0 "Male" into 1`
+
+**R script:**
+
+```{r harmo_RCh1, echo=TRUE} 
+t1066_ds_RCh_w1 <- tibble(id=t1066_RCh_w1_sex$id)
+t1066_ds_RCh_w1$sex <-  car::recode(t1066_RCh_w1_sex$gender, "1=0; 2=1; NA=999")
+t1066_ds_RCh_w1$sex <- labelled(t1066_ds_RCh_w1$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_RCh1, echo=FALSE} 
+vari <- t1066_ds_RCh_w1$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "sex") # EL CAPTION ES EL NOMBRE DE LA HASMONISED VARIABLE
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_RCh_w1$sex, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_RCh_w1, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_RCh1, echo=FALSE} 
+AfterH <- table(t1066_ds_RCh_w1$sex)
+BeforeH <- table(t1066_RCh_w1_sex$gender)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+### Wave 2 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `gender`
+* Label: `gender (PSEXRE miscodes recoded)`
+* Categories: 
+    + `1.0 = Female`
+    + `2.0 = Male`
+* Description:
+```{r assign_RCh2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_RCh_w1_sex','10-66.1066-RuralChina-Baseline',
+                         variables=list('gender'), missings = TRUE)
+opal.assign.table.tibble(o, 't1066_RCh_w2_id','10-66.1066-RuralChina-Followup',
+                         variables=list('centreid'), missings = TRUE)
+
+```
+
+```{r local_RCh2, echo=FALSE} 
+t1066_RCh_w1_sex <- opal.execute(o,'t1066_RCh_w1_sex')
+t1066_RCh_w2_id <- opal.execute(o,'t1066_RCh_w2_id')
+
+Same_indiv <- function(W1, W2){
+  
+  W1_2 <- matrix(rep(NA, dim(W1)[1]*dim(W1)[2] ), nrow = dim(W1)[1])
+  W1m <- as.matrix(W1)
+  
+  for(i in 1:length(W1$id)){
+    if(sum(W1$id[i]==W2$id)>=1){
+      W1_2[i,] <- W1m[i,]
+    } else {
+      W1_2[i,] <- W1_2[i,]
+    }
+  }
+  
+  W1_22 <- data.frame(id=W1_2[,1], gender=as.numeric(W1_2[,2]))
+  W1_22[-which(is.na(W1_22$id)),]
+}
+
+
+t1066_RCh_w2_sex <- Same_indiv(W1 = t1066_RCh_w1_sex, W2 = t1066_RCh_w2_id)
+
+vari <- t1066_RCh_w2_sex$gender
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = t1066_RCh_w2_sex$gender, missing_values = NA)
+ggplot(t1066_RCh_w2_sex, aes(x=factor(gender))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1.0 "Female" into 0`
+* `2.0 "Male" into 1`
+
+**R script:**
+
+```{r harmo_RCh2, echo=TRUE} 
+t1066_ds_RCh_w2 <- tibble(id=t1066_RCh_w2_sex$id)
+t1066_ds_RCh_w2$sex <-  car::recode(t1066_RCh_w2_sex$gender, "1=0; 2=1; NA=999")
+t1066_ds_RCh_w2$sex <- labelled(t1066_ds_RCh_w2$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_RCh2, echo=FALSE} 
+vari <- t1066_ds_RCh_w2$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "sex") # EL CAPTION ES EL NOMBRE DE LA HASMONISED VARIABLE
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_RCh_w2$sex, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_RCh_w2, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_RCh2, echo=FALSE} 
+AfterH <- table(t1066_ds_RCh_w2$sex)
+BeforeH <- table(t1066_RCh_w2_sex$gender)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+## Dominican Republic 
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `gender`
+* Label: `gender (PSEXRE miscodes recoded)`
+* Categories: 
+    + `1.0 = Female`
+    + `2.0 = Male`
+
+* Description:
+```{r assign_DR1, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_DR_w1_sex','10-66.1066-DominicanRepublic-Baseline',
+                         variables=list('gender'), missings = TRUE)
+```
+
+```{r local_DR1, echo=FALSE} 
+t1066_DR_w1_sex <- opal.execute(o,'t1066_DR_w1_sex')
+vari <- t1066_DR_w1_sex$gender
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = t1066_DR_w1_sex$gender, missing_values = NA)
+ggplot(t1066_DR_w1_sex, aes(x=factor(gender))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1.0 "Female" into 0`
+* `2.0 "Male" into 1`
+
+**R script:**
+
+```{r harmo_DR1, echo=TRUE} 
+t1066_ds_DR_w1 <- tibble(id=t1066_DR_w1_sex$id)
+t1066_ds_DR_w1$sex <-  car::recode(t1066_DR_w1_sex$gender, "1=0; 2=1; NA=999")
+t1066_ds_DR_w1$sex <- labelled(t1066_ds_DR_w1$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_DR1, echo=FALSE} 
+vari <- t1066_ds_DR_w1$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "sex") # EL CAPTION ES EL NOMBRE DE LA HASMONISED VARIABLE
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_DR_w1$sex, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_DR_w1, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_DR1, echo=FALSE} 
+AfterH <- table(t1066_ds_DR_w1$sex)
+BeforeH <- c(table(t1066_DR_w1_sex$gender), sum(is.na(t1066_DR_w1_sex$gender)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1", "NA->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+### Wave 2 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `gender`
+* Label: `gender (PSEXRE miscodes recoded)`
+* Categories: 
+    + `1.0 = Female`
+    + `2.0 = Male`
+
+* Description:
+```{r assign_DR2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_DR_w1_sex','10-66.1066-DominicanRepublic-Baseline',
+                         variables=list('gender'), missings = TRUE)
+opal.assign.table.tibble(o, 't1066_DR_w2_id','10-66.1066-DominicanRepublic-Followup',
+                         variables=list('centreid'), missings = TRUE)
+
+```
+
+```{r local_DR2, echo=FALSE} 
+t1066_DR_w1_sex <- opal.execute(o,'t1066_DR_w1_sex')
+t1066_DR_w2_id <- opal.execute(o,'t1066_DR_w2_id')
+
+Same_indiv <- function(W1, W2){
+  
+  W1_2 <- matrix(rep(NA, dim(W1)[1]*dim(W1)[2] ), nrow = dim(W1)[1])
+  W1m <- as.matrix(W1)
+  
+  for(i in 1:length(W1$id)){
+    if(sum(W1$id[i]==W2$id)>=1){
+      W1_2[i,] <- W1m[i,]
+    } else {
+      W1_2[i,] <- W1_2[i,]
+    }
+  }
+  
+  W1_22 <- data.frame(id=W1_2[,1], gender=as.numeric(W1_2[,2]))
+  W1_22[-which(is.na(W1_22$id)),]
+}
+
+
+t1066_DR_w2_sex <- Same_indiv(W1 = t1066_DR_w1_sex, W2 = t1066_DR_w2_id)
+
+vari <- t1066_DR_w2_sex$gender
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = t1066_DR_w2_sex$gender, missing_values = NA)
+ggplot(t1066_DR_w2_sex, aes(x=factor(gender))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1.0 "Female" into 0`
+* `2.0 "Male" into 1`
+
+**R script:**
+
+```{r harmo_DR2, echo=TRUE} 
+t1066_ds_DR_w2 <- tibble(id=t1066_DR_w2_sex$id)
+t1066_ds_DR_w2$sex <-  car::recode(t1066_DR_w2_sex$gender, "1=0; 2=1; NA=999")
+t1066_ds_DR_w2$sex <- labelled(t1066_ds_DR_w2$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_DR2, echo=FALSE} 
+vari <- t1066_ds_DR_w2$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "sex") # EL CAPTION ES EL NOMBRE DE LA HASMONISED VARIABLE
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_DR_w2$sex, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_DR_w2, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_DR2, echo=FALSE} 
+AfterH <- table(t1066_ds_DR_w2$sex)
+id_w2 <- t1066_ds_DR_w2$id
+seg <- t1066_DR_w1_sex[t1066_DR_w1_sex$id %in% id_w2, ]# individuos con seguimiento
+BeforeH <- c(table(seg$gender), sum(is.na(seg$gender)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1", "NA->999")
+kable(C)
+
+```
+
+ 
+ 
+
+ 
+
+## Venezuela 
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `gender`
+* Label: `gender (PSEXRE miscodes recoded)`
+* Categories: 
+    + `1.0 = Female`
+    + `2.0 = Male`
+
+* Description:
+```{r assign_V1, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_Ven_w1_sex','10-66.1066-Venezuela-Baseline',
+                         variables=list('gender'), missings = TRUE)
+```
+
+```{r local_V1, echo=FALSE} 
+t1066_Ven_w1_sex <- opal.execute(o,'t1066_Ven_w1_sex')
+vari <- t1066_Ven_w1_sex$gender
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = t1066_Ven_w1_sex$gender, missing_values = NA)
+ggplot(t1066_Ven_w1_sex, aes(x=factor(gender))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1.0 "Female" into 0`
+* `2.0 "Male" into 1`
+
+**R script:**
+
+```{r harmo_V1, echo=TRUE} 
+t1066_ds_Ven_w1 <- tibble(id=t1066_Ven_w1_sex$id)
+t1066_ds_Ven_w1$sex <-  car::recode(t1066_Ven_w1_sex$gender, "1=0; 2=1; NA=999")
+t1066_ds_Ven_w1$sex <- labelled(t1066_ds_Ven_w1$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_V1, echo=FALSE} 
+vari <- t1066_ds_Ven_w1$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "sex") # EL CAPTION ES EL NOMBRE DE LA HASMONISED VARIABLE
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_Ven_w1$sex, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_Ven_w1, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_V1, echo=FALSE} 
+AfterH <- table(t1066_ds_Ven_w1$sex)
+BeforeH <- table(t1066_Ven_w1_sex$gender)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+### Wave 2 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `gender`
+* Label: `gender (PSEXRE miscodes recoded)`
+* Categories: 
+    + `1.0 = Female`
+    + `2.0 = Male`
+
+* Description:
+```{r assign_V2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_Ven_w1_sex','10-66.1066-Venezuela-Baseline',
+                         variables=list('gender'), missings = TRUE)
+opal.assign.table.tibble(o, 't1066_Ven_w2_id','10-66.1066-Venezuela-Followup',
+                         variables=list('centreid'), missings = TRUE)
+
+```
+
+```{r local_V2, echo=FALSE} 
+t1066_Ven_w1_sex <- opal.execute(o,'t1066_Ven_w1_sex')
+t1066_Ven_w2_id <- opal.execute(o,'t1066_Ven_w2_id')
+
+Same_indiv <- function(W1, W2){
+  
+  W1_2 <- matrix(rep(NA, dim(W1)[1]*dim(W1)[2] ), nrow = dim(W1)[1])
+  W1m <- as.matrix(W1)
+  
+  for(i in 1:length(W1$id)){
+    if(sum(W1$id[i]==W2$id)>=1){
+      W1_2[i,] <- W1m[i,]
+    } else {
+      W1_2[i,] <- W1_2[i,]
+    }
+  }
+  
+  W1_22 <- data.frame(id=W1_2[,1], gender=as.numeric(W1_2[,2]))
+  W1_22[-which(is.na(W1_22$id)),]
+}
+
+
+t1066_Ven_w2_sex <- Same_indiv(W1 = t1066_Ven_w1_sex, W2 = t1066_Ven_w2_id)
+
+vari <- t1066_Ven_w2_sex$gender
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = t1066_Ven_w2_sex$gender, missing_values = NA)
+ggplot(t1066_Ven_w2_sex, aes(x=factor(gender))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1.0 "Female" into 0`
+* `2.0 "Male" into 1`
+
+**R script:**
+
+```{r harmo_V2, echo=TRUE} 
+t1066_ds_Ven_w2 <- tibble(id=t1066_Ven_w2_sex$id)
+t1066_ds_Ven_w2$sex <-  car::recode(t1066_Ven_w2_sex$gender, "1=0; 2=1; NA=999")
+t1066_ds_Ven_w2$sex <- labelled(t1066_ds_Ven_w2$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_V2, echo=FALSE} 
+vari <- t1066_ds_Ven_w2$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "sex") # EL CAPTION ES EL NOMBRE DE LA HASMONISED VARIABLE
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_Ven_w2$sex, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_Ven_w2, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_V2, echo=FALSE} 
+AfterH <- table(t1066_ds_Ven_w2$sex)
+BeforeH <- table(t1066_Ven_w2_sex$gender)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+## Urban Peru 
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `gender`
+* Label: `gender (PSEXRE miscodes recoded)`
+* Categories: 
+    + `1.0 = Female`
+    + `2.0 = Male`
+
+* Description:
+```{r assign_UP, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_UP_w1_sex','10-66.1066-UrbanPeru-Baseline',
+                         variables=list('gender'), missings = TRUE)
+```
+
+```{r local_UP1, echo=FALSE} 
+t1066_UP_w1_sex <- opal.execute(o,'t1066_UP_w1_sex')
+vari <- t1066_UP_w1_sex$gender
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = t1066_UP_w1_sex$gender, missing_values = NA)
+ggplot(t1066_UP_w1_sex, aes(x=factor(gender))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1.0 "Female" into 0`
+* `2.0 "Male" into 1`
+
+**R script:**
+
+```{r harmo_UP1, echo=TRUE} 
+t1066_ds_UP_w1 <- tibble(id=t1066_UP_w1_sex$id)
+t1066_ds_UP_w1$sex <-  car::recode(t1066_UP_w1_sex$gender, "1=0; 2=1; NA=999")
+t1066_ds_UP_w1$sex <- labelled(t1066_ds_UP_w1$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_UP1, echo=FALSE} 
+vari <- t1066_ds_UP_w1$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "sex") # EL CAPTION ES EL NOMBRE DE LA HASMONISED VARIABLE
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_UP_w1$sex, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_UP_w1, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_UP1, echo=FALSE} 
+AfterH <- table(t1066_ds_UP_w1$sex)
+BeforeH <- table(t1066_UP_w1_sex$gender)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `gender`
+* Label: `gender (PSEXRE miscodes recoded)`
+* Categories: 
+    + `1.0 = Female`
+    + `2.0 = Male`
+
+* Description:
+```{r assign_UP2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_UP_w1_sex','10-66.1066-UrbanPeru-Baseline',
+                         variables=list('gender'), missings = TRUE)
+opal.assign.table.tibble(o, 't1066_UP_w2_id','10-66.1066-UrbanPeru-Followup',
+                         variables=list('centreid'), missings = TRUE)
+
+```
+
+```{r local_UP2, echo=FALSE} 
+t1066_UP_w1_sex <- opal.execute(o,'t1066_UP_w1_sex')
+t1066_UP_w2_id <- opal.execute(o,'t1066_UP_w2_id')
+
+Same_indiv <- function(W1, W2){
+  
+  W1_2 <- matrix(rep(NA, dim(W1)[1]*dim(W1)[2] ), nrow = dim(W1)[1])
+  W1m <- as.matrix(W1)
+  
+  for(i in 1:length(W1$id)){
+    if(sum(W1$id[i]==W2$id)>=1){
+      W1_2[i,] <- W1m[i,]
+    } else {
+      W1_2[i,] <- W1_2[i,]
+    }
+  }
+  
+  W1_22 <- data.frame(id=W1_2[,1], gender=as.numeric(W1_2[,2]))
+  W1_22[-which(is.na(W1_22$id)),]
+}
+
+
+t1066_UP_w2_sex <- Same_indiv(W1 = t1066_UP_w1_sex, W2 = t1066_UP_w2_id)
+
+vari <- t1066_UP_w2_sex$gender
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = t1066_UP_w2_sex$gender, missing_values = NA)
+ggplot(t1066_UP_w2_sex, aes(x=factor(gender))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1.0 "Female" into 0`
+* `2.0 "Male" into 1`
+
+**R script:**
+
+```{r harmo_UP2, echo=TRUE} 
+t1066_ds_UP_w2 <- tibble(id=t1066_UP_w2_sex$id)
+t1066_ds_UP_w2$sex <-  car::recode(t1066_UP_w2_sex$gender, "1=0; 2=1; NA=999")
+t1066_ds_UP_w2$sex <- labelled(t1066_ds_UP_w2$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_UP2, echo=FALSE} 
+vari <- t1066_ds_UP_w2$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "sex") # EL CAPTION ES EL NOMBRE DE LA HASMONISED VARIABLE
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_UP_w2$sex, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_UP_w2, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_UP2, echo=FALSE} 
+AfterH <- table(t1066_ds_UP_w2$sex)
+BeforeH <- table(t1066_UP_w2_sex$gender)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+
+## Rural Peru 
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `gender`
+* Label: `gender (PSEXRE miscodes recoded)`
+* Categories: 
+    + `1.0 = Female`
+    + `2.0 = Male`
+
+* Description:
+```{r assign_RP, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_RP_w1_sex','10-66.1066-RuralPeru-Baseline',
+                         variables=list('gender'), missings = TRUE)
+```
+
+```{r local_RP1, echo=FALSE} 
+t1066_RP_w1_sex <- opal.execute(o,'t1066_RP_w1_sex')
+vari <- t1066_RP_w1_sex$gender
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = t1066_RP_w1_sex$gender, missing_values = NA)
+ggplot(t1066_RP_w1_sex, aes(x=factor(gender))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1.0 "Female" into 0`
+* `2.0 "Male" into 1`
+
+**R script:**
+
+```{r harmo_RP1, echo=TRUE} 
+t1066_ds_RP_w1 <- tibble(id=t1066_RP_w1_sex$id)
+t1066_ds_RP_w1$sex <-  car::recode(t1066_RP_w1_sex$gender, "1=0; 2=1; NA=999")
+t1066_ds_RP_w1$sex <- labelled(t1066_ds_RP_w1$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_RP1, echo=FALSE} 
+vari <- t1066_ds_RP_w1$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "sex") # EL CAPTION ES EL NOMBRE DE LA HASMONISED VARIABLE
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_RP_w1$sex, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_RP_w1, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_RP1, echo=FALSE} 
+AfterH <- table(t1066_ds_RP_w1$sex)
+BeforeH <- table(t1066_RP_w1_sex$gender)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `gender`
+* Label: `gender (PSEXRE miscodes recoded)`
+* Categories: 
+    + `1.0 = Female`
+    + `2.0 = Male`
+
+* Description:
+```{r assign_RP2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_RP_w1_sex','10-66.1066-RuralPeru-Baseline',
+                         variables=list('gender'), missings = TRUE)
+opal.assign.table.tibble(o, 't1066_RP_w2_id','10-66.1066-RuralPeru-Followup',
+                         variables=list('centreid'), missings = TRUE)
+```
+
+```{r local_RP2, echo=FALSE} 
+t1066_RP_w1_sex <- opal.execute(o,'t1066_RP_w1_sex')
+t1066_RP_w2_id <- opal.execute(o,'t1066_RP_w2_id')
+
+Same_indiv <- function(W1, W2){
+  
+  W1_2 <- matrix(rep(NA, dim(W1)[1]*dim(W1)[2] ), nrow = dim(W1)[1])
+  W1m <- as.matrix(W1)
+  
+  for(i in 1:length(W1$id)){
+    if(sum(W1$id[i]==W2$id)>=1){
+      W1_2[i,] <- W1m[i,]}  else {
+      W1_2[i,] <- W1_2[i,]
+    }
+  }
+  
+  W1_22 <- data.frame(id=W1_2[,1], gender=as.numeric(W1_2[,2]))
+  W1_22[-which(is.na(W1_22$id)),]
+}
+
+
+t1066_RP_w2_sex <- Same_indiv(W1 = t1066_RP_w1_sex, W2 = t1066_RP_w2_id)
+
+vari <- t1066_RP_w2_sex$gender
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = t1066_RP_w2_sex$gender, missing_values = NA)
+ggplot(t1066_RP_w2_sex, aes(x=factor(gender))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1.0 "Female" into 0`
+* `2.0 "Male" into 1`
+
+**R script:**
+
+```{r harmo_RP2, echo=TRUE} 
+t1066_ds_RP_w2 <- tibble(id=t1066_RP_w2_sex$id)
+t1066_ds_RP_w2$sex <-  car::recode(t1066_RP_w2_sex$gender, "1=0; 2=1; NA=999")
+t1066_ds_RP_w2$sex <- labelled(t1066_ds_RP_w2$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_RP2, echo=FALSE} 
+vari <- t1066_ds_RP_w2$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "sex") # EL CAPTION ES EL NOMBRE DE LA HASMONISED VARIABLE
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_RP_w2$sex, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_RP_w2, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_RP2, echo=FALSE} 
+AfterH <- table(t1066_ds_RP_w2$sex)
+id_w2 <- t1066_ds_RP_w2$id
+seg <- t1066_RP_w1_sex[t1066_RP_w1_sex$id %in% id_w2, ]# individuos con seguimiento
+BeforeH <- c(table(seg$gender))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1")
+kable(C)
+
+
+
+
+```
+
+ 
+ 
+
+ 
+
+## Urban Mexico 
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `gender`
+* Label: `gender (PSEXRE miscodes recoded)`
+* Categories: 
+    + `1.0 = Female`
+    + `2.0 = Male`
+
+* Description:
+```{r assign_UM1, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_UM_w1_sex','10-66.1066-UrbanMexico-Baseline',
+                         variables=list('gender'), missings = TRUE)
+```
+
+```{r local_UM1, echo=FALSE} 
+t1066_UM_w1_sex <- opal.execute(o,'t1066_UM_w1_sex')
+vari <- t1066_UM_w1_sex$gender
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = t1066_UM_w1_sex$gender, missing_values = NA)
+ggplot(t1066_UM_w1_sex, aes(x=factor(gender))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1.0 "Female" into 0`
+* `2.0 "Male" into 1`
+
+**R script:**
+
+```{r harmo_UM1, echo=TRUE} 
+t1066_ds_UM_w1 <- tibble(id=t1066_UM_w1_sex$id)
+t1066_ds_UM_w1$sex <-  car::recode(t1066_UM_w1_sex$gender, "1=0; 2=1; NA=999")
+t1066_ds_UM_w1$sex <- labelled(t1066_ds_UM_w1$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_UM1, echo=FALSE} 
+vari <- t1066_ds_UM_w1$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "sex") # EL CAPTION ES EL NOMBRE DE LA HASMONISED VARIABLE
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_UM_w1$sex, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_UM_w1, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_UM1, echo=FALSE} 
+AfterH <- table(t1066_ds_UM_w1$sex)
+BeforeH <- table(t1066_UM_w1_sex$gender)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+### Wave 2
+
+#### Study-specific variable description
+
+ 
+
+* Name: `gender`
+* Label: `gender (PSEXRE miscodes recoded)`
+* Categories: 
+    + `1.0 = Female`
+    + `2.0 = Male`
+* Description:
+
+```{r assign_UM2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_UM_w1_sex','10-66.1066-UrbanMexico-Baseline',
+                         variables=list('gender'), missings = TRUE)
+opal.assign.table.tibble(o, 't1066_UM_w2_id','10-66.1066-UrbanMexico-Followup',
+                         variables=list('centreid'), missings = TRUE)
+```
+
+```{r local_UM2, echo=FALSE} 
+t1066_UM_w1_sex <- opal.execute(o,'t1066_UM_w1_sex')
+t1066_UM_w2_id <- opal.execute(o,'t1066_UM_w2_id')
+
+Same_indiv <- function(W1, W2){
+  
+  W1_2 <- matrix(rep(NA, dim(W1)[1]*dim(W1)[2] ), nrow = dim(W1)[1])
+  W1m <- as.matrix(W1)
+  
+  for(i in 1:length(W1$id)){
+    if(sum(W1$id[i]==W2$id)>=1){
+      W1_2[i,] <- W1m[i,]
+    } else {
+      W1_2[i,] <- W1_2[i,]
+    }
+  }
+  
+  W1_22 <- data.frame(id=W1_2[,1], gender=as.numeric(W1_2[,2]))
+  W1_22[-which(is.na(W1_22$id)),]
+}
+
+
+t1066_UM_w2_sex <- Same_indiv(W1 = t1066_UM_w1_sex, W2 = t1066_UM_w2_id)
+
+vari <- t1066_UM_w2_sex$gender
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = t1066_UM_w2_sex$gender, missing_values = NA)
+ggplot(t1066_UM_w2_sex, aes(x=factor(gender))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1.0 "Female" into 0`
+* `2.0 "Male" into 1`
+
+**R script:**
+
+```{r harmo_UM2, echo=TRUE} 
+t1066_ds_UM_w2 <- tibble(id=t1066_UM_w2_sex$id)
+t1066_ds_UM_w2$sex <-  car::recode(t1066_UM_w2_sex$gender, "1=0; 2=1; NA=999")
+t1066_ds_UM_w2$sex <- labelled(t1066_ds_UM_w2$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_UM2, echo=FALSE} 
+vari <- t1066_ds_UM_w2$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "sex") # EL CAPTION ES EL NOMBRE DE LA HASMONISED VARIABLE
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_UM_w2$sex, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_UM_w2, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_UM2, echo=FALSE} 
+AfterH <- table(t1066_ds_UM_w2$sex)
+id_w2 <- t1066_ds_UM_w2$id
+seg <- t1066_UM_w1_sex[t1066_UM_w1_sex$id %in% id_w2, ]# individuos con seguimiento
+BeforeH <- c(table(seg$gender))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+
+## Rural Mexico 
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `gender`
+* Label: `gender (PSEXRE miscodes recoded)`
+* Categories: 
+    + `1.0 = Female`
+    + `2.0 = Male`
+
+* Description:
+```{r assign_RM1, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_RM_w1_sex','10-66.1066-RuralMexico-Baseline',
+                         variables=list('gender'), missings = TRUE)
+```
+
+```{r local_RM1, echo=FALSE} 
+t1066_RM_w1_sex <- opal.execute(o,'t1066_RM_w1_sex')
+vari <- t1066_RM_w1_sex$gender
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = t1066_RM_w1_sex$gender, missing_values = NA)
+ggplot(t1066_RM_w1_sex, aes(x=factor(gender))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1.0 "Female" into 0`
+* `2.0 "Male" into 1`
+
+**R script:**
+
+```{r harmo_RM1, echo=TRUE} 
+t1066_ds_RM_w1 <- tibble(id=t1066_RM_w1_sex$id)
+t1066_ds_RM_w1$sex <-  car::recode(t1066_RM_w1_sex$gender, "1=0; 2=1; NA=999")
+t1066_ds_RM_w1$sex <- labelled(t1066_ds_RM_w1$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_RM1, echo=FALSE} 
+vari <- t1066_ds_RM_w1$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "sex") # EL CAPTION ES EL NOMBRE DE LA HASMONISED VARIABLE
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_RM_w1$sex, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_RM_w1, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_RM1, echo=FALSE} 
+AfterH <- table(t1066_ds_RM_w1$sex)
+BeforeH <- table(t1066_RM_w1_sex$gender)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+### Wave 2 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `gender`
+* Label: `gender (PSEXRE miscodes recoded)`
+* Categories: 
+    + `1.0 = Female`
+    + `2.0 = Male`
+
+* Description:
+```{r assign_RM2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_RM_w1_sex','10-66.1066-RuralMexico-Baseline',
+                         variables=list('gender'), missings = TRUE)
+opal.assign.table.tibble(o, 't1066_RM_w2_id','10-66.1066-RuralMexico-Followup',
+                         variables=list('centreid'), missings = TRUE)
+
+```
+
+```{r local_RM2, echo=FALSE} 
+t1066_RM_w1_sex <- opal.execute(o,'t1066_RM_w1_sex')
+t1066_RM_w2_id <- opal.execute(o,'t1066_RM_w2_id')
+
+Same_indiv <- function(W1, W2){
+  
+  W1_2 <- matrix(rep(NA, dim(W1)[1]*dim(W1)[2] ), nrow = dim(W1)[1])
+  W1m <- as.matrix(W1)
+  
+  for(i in 1:length(W1$id)){
+    if(sum(W1$id[i]==W2$id)>=1){
+      W1_2[i,] <- W1m[i,]
+    } else {
+      W1_2[i,] <- W1_2[i,]
+    }
+  }
+  
+  W1_22 <- data.frame(id=W1_2[,1], gender=as.numeric(W1_2[,2]))
+  W1_22[-which(is.na(W1_22$id)),]
+}
+
+
+t1066_RM_w2_sex <- Same_indiv(W1 = t1066_RM_w1_sex, W2 = t1066_RM_w2_id)
+
+vari <- t1066_RM_w2_sex$gender
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = t1066_RM_w2_sex$gender, missing_values = NA)
+ggplot(t1066_RM_w2_sex, aes(x=factor(gender))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1.0 "Female" into 0`
+* `2.0 "Male" into 1`
+
+**R script:**
+
+```{r harmo_RM2, echo=TRUE} 
+t1066_ds_RM_w2 <- tibble(id=t1066_RM_w2_sex$id)
+t1066_ds_RM_w2$sex <-  car::recode(t1066_RM_w2_sex$gender, "1=0; 2=1; NA=999")
+t1066_ds_RM_w2$sex <- labelled(t1066_ds_RM_w2$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_RM2, echo=FALSE} 
+vari <- t1066_ds_RM_w2$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "sex") # EL CAPTION ES EL NOMBRE DE LA HASMONISED VARIABLE
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_RM_w2$sex, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_RM_w2, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_RM2, echo=FALSE} 
+AfterH <- table(t1066_ds_RM_w2$sex)
+BeforeH <- table(t1066_RM_w2_sex$gender)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+## Puerto Rico 
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `gender`
+* Label: `gender (PSEXRE miscodes recoded)`
+* Categories: 
+    + `1.0 = Female`
+    + `2.0 = Male`
+
+* Description:
+```{r assign_PR1, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_PR_w1_sex','10-66.1066-PuertoRico-Baseline',
+                         variables=list('gender'), missings = TRUE)
+```
+
+```{r local_PR1, echo=FALSE} 
+t1066_PR_w1_sex <- opal.execute(o,'t1066_PR_w1_sex')
+vari <- t1066_PR_w1_sex$gender
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = t1066_PR_w1_sex$gender, missing_values = NA)
+ggplot(t1066_PR_w1_sex, aes(x=factor(gender))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1.0 "Female" into 0`
+* `2.0 "Male" into 1`
+
+**R script:**
+
+```{r harmo_PR1, echo=TRUE} 
+t1066_ds_PR_w1 <- tibble(id=t1066_PR_w1_sex$id)
+t1066_ds_PR_w1$sex <-  car::recode(t1066_PR_w1_sex$gender, "1=0; 2=1; NA=999")
+t1066_ds_PR_w1$sex <- labelled(t1066_ds_PR_w1$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_PR1, echo=FALSE} 
+vari <- t1066_ds_PR_w1$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "sex") # EL CAPTION ES EL NOMBRE DE LA HASMONISED VARIABLE
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_PR_w1$sex, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_PR_w1, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_PR1, echo=FALSE} 
+AfterH <- table(t1066_ds_PR_w1$sex)
+BeforeH <- c(table(t1066_PR_w1_sex$gender), sum(is.na(t1066_PR_w1_sex$gender)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1", "NA->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+## Puerto Rico 
+### Wave 2 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `gender`
+* Label: `gender (PSEXRE miscodes recoded)`
+* Categories: 
+    + `1.0 = Female`
+    + `2.0 = Male`
+
+* Description:
+```{r assign_PR2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_PR_w1_sex','10-66.1066-PuertoRico-Baseline',
+                         variables=list('gender'), missings = TRUE)
+opal.assign.table.tibble(o, 't1066_PR_w2_id','10-66.1066-PuertoRico-Followup',
+                         variables=list('centreid'), missings = TRUE)
+
+```
+
+```{r local_PR2, echo=FALSE} 
+t1066_PR_w1_sex <- opal.execute(o,'t1066_PR_w1_sex')
+t1066_PR_w2_id <- opal.execute(o,'t1066_PR_w2_id')
+
+Same_indiv <- function(W1, W2){
+  
+  W1_2 <- matrix(rep(NA, dim(W1)[1]*dim(W1)[2] ), nrow = dim(W1)[1])
+  W1m <- as.matrix(W1)
+  
+  for(i in 1:length(W1$id)){
+    if(sum(W1$id[i]==W2$id)>=1){
+      W1_2[i,] <- W1m[i,]
+    } else {
+      W1_2[i,] <- W1_2[i,]
+    }
+  }
+  
+  W1_22 <- data.frame(id=W1_2[,1], gender=as.numeric(W1_2[,2]))
+  W1_22[-which(is.na(W1_22$id)),]
+}
+
+
+t1066_PR_w2_sex <- Same_indiv(W1 = t1066_PR_w1_sex, W2 = t1066_PR_w2_id)
+
+vari <- t1066_PR_w2_sex$gender
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = t1066_PR_w2_sex$gender, missing_values = NA)
+ggplot(t1066_PR_w2_sex, aes(x=factor(gender))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1.0 "Female" into 0`
+* `2.0 "Male" into 1`
+
+**R script:**
+
+```{r harmo_PR2, echo=TRUE} 
+t1066_ds_PR_w2 <- tibble(id=t1066_PR_w2_sex$id)
+t1066_ds_PR_w2$sex <-  car::recode(t1066_PR_w2_sex$gender, "1=0; 2=1; NA=999")
+t1066_ds_PR_w2$sex <- labelled(t1066_ds_PR_w2$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_PR2, echo=FALSE} 
+vari <- t1066_ds_PR_w2$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "sex") # EL CAPTION ES EL NOMBRE DE LA HASMONISED VARIABLE
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = t1066_ds_PR_w2$sex, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_PR_w2, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_PR2, echo=FALSE} 
+AfterH <- table(t1066_ds_PR_w2$sex)
+id_w2 <- t1066_ds_PR_w2$id
+seg <- t1066_PR_w1_sex[t1066_PR_w1_sex$id %in% id_w2, ]# individuos con seguimiento
+BeforeH <- c(table(seg$gender), sum(is.na(seg$gender)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1", "NA->999")
+kable(C)
+```
+
+ 
+ 
+# Quality estimation
+No comments.
+
+
+```{r save, echo=FALSE}
+sex <- t1066_ds_cuba_w1
+save(sex, file = "../RData/cuba_w1/sex.RData")
+rm(sex)
+
+sex <- t1066_ds_cuba_w2
+save(sex, file = "../RData/cuba_w2/sex.RData")
+rm(sex)
+
+sex <- t1066_ds_india_w1
+save(sex, file = "../RData/india_w1/sex.RData")
+rm(sex)
+
+sex <- t1066_ds_india_w2
+save(sex, file = "../RData/india_w2/sex.RData")
+rm(sex)
+
+sex <- t1066_ds_UCh_w1
+save(sex, file = "../RData/UCh_w1/sex.RData")
+rm(sex)
+
+sex <- t1066_ds_UCh_w2
+save(sex, file = "../RData/UCh_w2/sex.RData")
+rm(sex)
+
+sex <- t1066_ds_RCh_w1
+save(sex, file = "../RData/RCh_w1/sex.RData")
+rm(sex)
+
+sex <- t1066_ds_RCh_w2
+save(sex, file = "../RData/RCh_w2/sex.RData")
+rm(sex)
+
+sex <- t1066_ds_DR_w1
+save(sex, file = "../RData/DR_w1/sex.RData")
+rm(sex)
+
+sex <- t1066_ds_DR_w2
+save(sex, file = "../RData/DR_w2/sex.RData")
+rm(sex)
+
+sex <- t1066_ds_Ven_w1
+save(sex, file = "../RData/Ven_w1/sex.RData")
+rm(sex)
+
+sex <- t1066_ds_Ven_w2
+save(sex, file = "../RData/Ven_w2/sex.RData")
+rm(sex)
+
+sex <- t1066_ds_UP_w1
+save(sex, file = "../RData/UP_w1/sex.RData")
+rm(sex)
+
+sex <- t1066_ds_UP_w2
+save(sex, file = "../RData/UP_w2/sex.RData")
+rm(sex)
+
+sex <- t1066_ds_RP_w1
+save(sex, file = "../RData/RP_w1/sex.RData")
+rm(sex)
+
+sex <- t1066_ds_RP_w2
+save(sex, file = "../RData/RP_w2/sex.RData")
+rm(sex)
+
+sex <- t1066_ds_UM_w1
+save(sex, file = "../RData/UM_w1/sex.RData")
+rm(sex)
+
+sex <- t1066_ds_UM_w2
+save(sex, file = "../RData/UM_w2/sex.RData")
+rm(sex)
+
+sex <- t1066_ds_RM_w1
+save(sex, file = "../RData/RM_w1/sex.RData")
+rm(sex)
+
+sex <- t1066_ds_RM_w2
+save(sex, file = "../RData/RM_w2/sex.RData")
+rm(sex)
+
+sex <- t1066_ds_PR_w1
+save(sex, file = "../RData/PR_w1/sex.RData")
+rm(sex)
+
+sex <- t1066_ds_PR_w2
+save(sex, file = "../RData/PR_w2/sex.RData")
+rm(sex)
+
+```
+
+
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```

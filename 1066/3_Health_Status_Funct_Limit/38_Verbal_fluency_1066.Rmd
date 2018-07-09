@@ -1,0 +1,1958 @@
+---
+title: "Verbal fluency"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/Rmds/setup_laia.r")
+```
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `cog_verb_c`
+* Variable label: `Cognition - verbal fluency - Continuous`
+* Variable description: `Cognition - verbal fluency - Continuous. Test that assesses verbal (semantic) fluency: name as many animals as they could think of in 1 minute`
+* Domain: `Health status and functional limitations`
+* Value type: `Countinous`
+* Comments: `Means of all sistolic blood pressure measures.`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+* Short name: `cog_verb`
+* Variable label: `Cognition - verbal fluency`
+* Variable description: `Cognition - verbal fluency. Test that assesses verbal (semantic) fluency: name as many animals as they could think of in 1 minute. Discrete variable: value 0 = <=25%; value 1 = >25%.`
+* Domain: `Health status and functional limitations`
+* Value type: `Categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | <=25%
+1        | >25%
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Verbal fluency"
+ds_label_cog_verb_c <- "Cognition - verbal fluency - Continuous. Test that assesses verbal (semantic) fluency: name as many animals as they could think of in 1 minute"
+ds_label_cog_verb <- "Cognition - verbal fluency. Test that assesses verbal (semantic) fluency: name as many animals as they could think of in 1 minute. Discrete variable: value 0 = <=25%; value 1 = >25%"
+```
+
+# Data process
+
+## Cuba
+
+### Wave 1 
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `ANIMALS`
+* Label: `verbal fluency - CERAD animal naming`
+* Categories:
+   + `Continuous Variable 0 to Maximum`
+* Missings
+
+
+```{r assign Cuba w1, echo=FALSE}
+opal.assign.table.tibble(o, 's1066_Cuba_w1_cog_verb','10-66.1066-Cuba-Baseline', variables=list('ANIMALS'), missings = TRUE)
+s1066_Cuba_w1_cog_verb <- opal.execute(o,'s1066_Cuba_w1_cog_verb')
+```
+
+```{r local Cuba w1, echo=FALSE}
+vari <- s1066_Cuba_w1_cog_verb$ANIMALS
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(s1066_Cuba_w1_cog_verb, aes(x=factor(ANIMALS))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo Cuba w1}
+#cog_verb_c
+t1066_ds_cuba_w1 <- tibble(id=s1066_Cuba_w1_cog_verb$id)
+t1066_ds_cuba_w1$cog_verb_c <- car::recode(s1066_Cuba_w1_cog_verb$ANIMALS, "NA=999")
+t1066_ds_cuba_w1$cog_verb_c <- labelled(t1066_ds_cuba_w1$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(t1066_ds_cuba_w1$cog_verb_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+t1066_ds_cuba_w1$cog_verb <- car::recode(t1066_ds_cuba_w1[[2]], "0:Q=0; (Q+1):900=1")
+t1066_ds_cuba_w1$cog_verb <- labelled(t1066_ds_cuba_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript Cuba w1, echo=FALSE}
+vari <- t1066_ds_cuba_w1$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(t1066_ds_cuba_w1, aes(x=factor(cog_verb_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+
+vari <- t1066_ds_cuba_w1$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_cuba_w1, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation Cuba w1, echo=FALSE}
+Continous <- c(sum(na.omit(t1066_ds_cuba_w1[[2]])<=Q), sum(na.omit(t1066_ds_cuba_w1[[2]])>Q & na.omit(t1066_ds_cuba_w1[[2]])<900))
+Dicotomic <- table(t1066_ds_cuba_w1[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:11->0","7:12->1") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL Cuba w1, echo=FALSE}
+#label(t1066_ds_cuba_w1$cog_verb) <- "Cognition - verbal fluency"
+#opal.assign.data(o, 't1066_ds_cuba_w1', t1066_ds_cuba_w1)
+#opal.symbol_import(o,'t1066_ds_cuba_w1', project='_Athlos_Harm_Dataset')
+
+label(t1066_ds_cuba_w1$cog_verb_c) <- ds_label_cog_verb_c
+label(t1066_ds_cuba_w1$cog_verb) <- ds_label_cog_verb
+cog_verb <- t1066_ds_cuba_w1
+save(cog_verb, file = "../RData/cuba_w1/cog_verb.RData")
+```
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `f_ANIMALS`
+* Label: `verbal fluency - CERAD animal naming`
+* Categories:
+   + `Continuous Variable 0 to Maximum`
+* Missings
+   + `NA`
+
+```{r assign Cuba w2, echo=FALSE}
+opal.assign.table.tibble(o, 's1066_Cuba_w2_cog_verb','10-66.1066-Cuba-Followup', variables=list('f_ANIMALS'), missings = TRUE)
+s1066_Cuba_w2_cog_verb <- opal.execute(o,'s1066_Cuba_w2_cog_verb')
+```
+
+```{r local Cuba w2, echo=FALSE}
+vari <- s1066_Cuba_w2_cog_verb$f_ANIMALS
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(s1066_Cuba_w2_cog_verb, aes(x=factor(f_ANIMALS))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo Cuba w2}
+t1066_ds_cuba_w2 <- tibble(id=s1066_Cuba_w2_cog_verb$id)
+t1066_ds_cuba_w2$cog_verb_c <- recode(s1066_Cuba_w2_cog_verb$f_ANIMALS, "NA=999")
+t1066_ds_cuba_w2$cog_verb_c <- labelled(t1066_ds_cuba_w2$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(t1066_ds_cuba_w2$cog_verb_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+t1066_ds_cuba_w2$cog_verb <- car::recode(t1066_ds_cuba_w2[[2]], "0:Q=0; (Q+1):900=1")
+t1066_ds_cuba_w2$cog_verb <- labelled(t1066_ds_cuba_w2[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript Cuba w2, echo=FALSE}
+vari <- t1066_ds_cuba_w2$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(t1066_ds_cuba_w2, aes(x=factor(cog_verb_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+
+vari <- t1066_ds_cuba_w2$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_cuba_w2, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation Cuba w2, echo=FALSE}
+Continous <- c(sum(na.omit(t1066_ds_cuba_w2[[2]])<=Q), sum(na.omit(t1066_ds_cuba_w2[[2]])>Q & na.omit(t1066_ds_cuba_w2[[2]])<900), sum(na.omit(t1066_ds_cuba_w2[[2]])==999))
+Dicotomic <- table(t1066_ds_cuba_w2[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:10->0","11:160->1", "NA->999") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL Cuba w2, echo=FALSE}
+#label(t1066_ds_cuba_w2$cog_verb) <- "Cognition - verbal fluency"
+#opal.assign.data(o, 't1066_ds_cuba_w2', t1066_ds_cuba_w2)
+#opal.symbol_import(o,'t1066_ds_cuba_w2', project='_Athlos_Harm_Dataset')
+
+label(t1066_ds_cuba_w2$cog_verb_c) <- ds_label_cog_verb_c
+label(t1066_ds_cuba_w2$cog_verb) <- ds_label_cog_verb
+cog_verb <- t1066_ds_cuba_w2
+save(cog_verb, file = "../RData/cuba_w2/cog_verb.RData")
+```
+
+
+
+## India
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `ANIMALS`
+* Label: `verbal fluency - CERAD animal naming`
+* Categories:
+   + `Continuous Variable 0 to Maximum`
+* Missings
+
+```{r assign India w1, echo=FALSE}
+opal.assign.table.tibble(o, 's1066_India_w1_cog_verb','10-66.1066-India-Baseline', variables=list('ANIMALS'), missings = TRUE)
+s1066_India_w1_cog_verb <- opal.execute(o,'s1066_India_w1_cog_verb')
+```
+
+```{r local India w1, echo=FALSE}
+vari <- s1066_India_w1_cog_verb$ANIMALS
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(s1066_India_w1_cog_verb, aes(x=factor(ANIMALS))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo India w1}
+t1066_ds_india_w1 <- tibble(id=s1066_India_w1_cog_verb$id)
+t1066_ds_india_w1$cog_verb_c <- recode(s1066_India_w1_cog_verb$ANIMALS, "NA=999")
+t1066_ds_india_w1$cog_verb_c <- labelled(t1066_ds_india_w1$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(t1066_ds_india_w1$cog_verb_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+t1066_ds_india_w1$cog_verb <- car::recode(t1066_ds_india_w1[[2]], "0:Q=0; (Q+1):900=1")
+t1066_ds_india_w1$cog_verb <- labelled(t1066_ds_india_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript India w1, echo=FALSE}
+vari <- t1066_ds_india_w1$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(t1066_ds_india_w1, aes(x=factor(cog_verb_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+
+vari <- t1066_ds_india_w1$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_india_w1, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation India w1, echo=FALSE}
+Continous <- c(sum(na.omit(t1066_ds_india_w1[[2]])<=Q), sum(na.omit(t1066_ds_india_w1[[2]])>Q & na.omit(t1066_ds_india_w1[[2]])<900), sum(na.omit(t1066_ds_india_w1[[2]])==999))
+Dicotomic <- table(t1066_ds_india_w1[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:7->0","8:160->1", "NA->999") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL India w1, echo=FALSE}
+#label(t1066_ds_india_w1$cog_verb) <- "Cognition - verbal fluency"
+#opal.assign.data(o, 't1066_ds_india_w1', t1066_ds_india_w1)
+#opal.symbol_import(o,'t1066_ds_india_w1', project='_Athlos_Harm_Dataset')
+
+label(t1066_ds_india_w1$cog_verb_c) <- ds_label_cog_verb_c
+label(t1066_ds_india_w1$cog_verb) <- ds_label_cog_verb
+cog_verb <- t1066_ds_india_w1
+save(cog_verb, file = "../RData/india_w1/cog_verb.RData")
+```
+
+
+
+### Wave 2 
+
+Not found.
+
+
+
+## Urban China
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `ANIMALS`
+* Label: `verbal fluency - CERAD animal naming`
+* Categories:
+   + `Continuous Variable 0 to Maximum`
+* Missings
+
+
+```{r assign UrbanChina w1, echo=FALSE}
+opal.assign.table.tibble(o, 's1066_UrbanChina_w1_cog_verb','10-66.1066-UrbanChina-Baseline', variables=list('ANIMALS'), missings = TRUE)
+s1066_UrbanChina_w1_cog_verb <- opal.execute(o,'s1066_UrbanChina_w1_cog_verb')
+```
+
+```{r local UrbanChina w1, echo=FALSE}
+vari <- s1066_UrbanChina_w1_cog_verb$ANIMALS
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(s1066_UrbanChina_w1_cog_verb, aes(x=factor(ANIMALS))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo UrbanChina w1}
+#cog_verb_c
+t1066_ds_UCh_w1 <- tibble(id=s1066_UrbanChina_w1_cog_verb$id)
+t1066_ds_UCh_w1$cog_verb_c <- recode(s1066_UrbanChina_w1_cog_verb$ANIMALS, "NA=999")
+t1066_ds_UCh_w1$cog_verb_c <- labelled(t1066_ds_UCh_w1$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(t1066_ds_UCh_w1$cog_verb_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+t1066_ds_UCh_w1$cog_verb <- car::recode(t1066_ds_UCh_w1[[2]], "0:11=0; 12:900=1")
+t1066_ds_UCh_w1$cog_verb <- labelled(t1066_ds_UCh_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript UrbanChina w1, echo=FALSE}
+vari <- t1066_ds_UCh_w1$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(t1066_ds_UCh_w1, aes(x=factor(cog_verb_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+
+vari <- t1066_ds_UCh_w1$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_UCh_w1, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation UrbanChina w1, echo=FALSE}
+Continous <- c(sum(na.omit(t1066_ds_UCh_w1[[2]])<=Q), sum(na.omit(t1066_ds_UCh_w1[[2]])>Q & na.omit(t1066_ds_UCh_w1[[2]])<900))
+Dicotomic <- table(t1066_ds_UCh_w1[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:11->0","12:160->1") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL UrbanChina w1, echo=FALSE}
+#label(t1066_ds_UCh_w1$cog_verb) <- "Cognition - verbal fluency"
+#opal.assign.data(o, 't1066_ds_UCh_w1', t1066_ds_UCh_w1)
+#opal.symbol_import(o,'t1066_ds_UCh_w1', project='_Athlos_Harm_Dataset')
+
+label(t1066_ds_UCh_w1$cog_verb_c) <- ds_label_cog_verb_c
+label(t1066_ds_UCh_w1$cog_verb) <- ds_label_cog_verb
+cog_verb <- t1066_ds_UCh_w1
+save(cog_verb, file = "../RData/UCh_w1/cog_verb.RData")
+```
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `f_ANIMALS`
+* Label: `verbal fluency - CERAD animal naming`
+* Categories:
+   + `Continuous Variable 0 to Maximum`
+* Missings
+
+
+```{r assign UrbanChina w2, echo=FALSE}
+opal.assign.table.tibble(o, 's1066_UrbanChina_w2_cog_verb','10-66.1066-UrbanChina-Followup', variables=list('f_ANIMALS'), missings = TRUE)
+s1066_UrbanChina_w2_cog_verb <- opal.execute(o,'s1066_UrbanChina_w2_cog_verb')
+```
+
+```{r local UrbanChina w2, echo=FALSE}
+vari <- s1066_UrbanChina_w2_cog_verb$f_ANIMALS
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(s1066_UrbanChina_w2_cog_verb, aes(x=factor(f_ANIMALS))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo UrbanChina w2}
+#cog_verb_c
+t1066_ds_UCh_w2 <- tibble(id=s1066_UrbanChina_w2_cog_verb$id)
+t1066_ds_UCh_w2$cog_verb_c <- recode(s1066_UrbanChina_w2_cog_verb$f_ANIMALS, "NA=999")
+t1066_ds_UCh_w2$cog_verb_c <- labelled(t1066_ds_UCh_w2$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(t1066_ds_UCh_w2$cog_verb_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+t1066_ds_UCh_w2$cog_verb <- car::recode(t1066_ds_UCh_w2[[2]], "0:Q=0; (Q+1):900=1")
+t1066_ds_UCh_w2$cog_verb <- labelled(t1066_ds_UCh_w2[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript UrbanChina w2, echo=FALSE}
+vari <- t1066_ds_UCh_w2$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(t1066_ds_UCh_w2, aes(x=factor(cog_verb_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+
+vari <- t1066_ds_UCh_w2$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_UCh_w2, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation UrbanChina w2, echo=FALSE}
+Continous <- c(sum(na.omit(t1066_ds_UCh_w2[[2]])<=Q), sum(na.omit(t1066_ds_UCh_w2[[2]])>Q & na.omit(t1066_ds_UCh_w2[[2]])<900))
+Dicotomic <- table(t1066_ds_UCh_w2[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:9->0","10:160->1") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL UrbanChina w2, echo=FALSE}
+#label(t1066_ds_UCh_w2$cog_verb) <- "Cognition - verbal fluency"
+#opal.assign.data(o, 't1066_ds_UCh_w2', t1066_ds_UCh_w2)
+#opal.symbol_import(o,'t1066_ds_UCh_w2', project='_Athlos_Harm_Dataset')
+
+label(t1066_ds_UCh_w2$cog_verb_c) <- ds_label_cog_verb_c
+label(t1066_ds_UCh_w2$cog_verb) <- ds_label_cog_verb
+cog_verb <- t1066_ds_UCh_w2
+save(cog_verb, file = "../RData/UCh_w2/cog_verb.RData")
+```
+
+
+
+
+## Rural China
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `ANIMALS`
+* Label: `verbal fluency - CERAD animal naming`
+* Categories:
+   + `Continuous Variable 0 to Maximum`
+* Missings
+
+```{r assign RuralChina w1, echo=FALSE}
+opal.assign.table.tibble(o, 's1066_RuralChina_w1_cog_verb','10-66.1066-RuralChina-Baseline', variables=list('ANIMALS'), missings = TRUE)
+s1066_RuralChina_w1_cog_verb <- opal.execute(o,'s1066_RuralChina_w1_cog_verb')
+```
+
+```{r local RuralChina w1, echo=FALSE}
+vari <- s1066_RuralChina_w1_cog_verb$ANIMALS
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(s1066_RuralChina_w1_cog_verb, aes(x=factor(ANIMALS))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo RuralChina w1}
+#cog_verb_c
+t1066_ds_RCh_w1 <- tibble(id=s1066_RuralChina_w1_cog_verb$id)
+t1066_ds_RCh_w1$cog_verb_c <- recode(s1066_RuralChina_w1_cog_verb$ANIMALS, "NA=999")
+t1066_ds_RCh_w1$cog_verb_c <- labelled(t1066_ds_RCh_w1$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(t1066_ds_RCh_w1$cog_verb_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+t1066_ds_RCh_w1$cog_verb <- car::recode(t1066_ds_RCh_w1[[2]], "0:Q=0; (Q+1):900=1")
+t1066_ds_RCh_w1$cog_verb <- labelled(t1066_ds_RCh_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript RuralChina w1, echo=FALSE}
+vari <- t1066_ds_RCh_w1$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(t1066_ds_RCh_w1, aes(x=factor(cog_verb_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+
+vari <- t1066_ds_RCh_w1$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_RCh_w1, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation RuralChina w1, echo=FALSE}
+Continous <- c(sum(na.omit(t1066_ds_RCh_w1[[2]])<=Q), sum(na.omit(t1066_ds_RCh_w1[[2]])>Q & na.omit(t1066_ds_RCh_w1[[2]])<900))
+Dicotomic <- table(t1066_ds_RCh_w1[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:10->0","11:160->1") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL RuralChina w1, echo=FALSE}
+#label(t1066_ds_RCh_w1$cog_verb) <- "Cognition - verbal fluency"
+#opal.assign.data(o, 't1066_ds_RCh_w1', t1066_ds_RCh_w1)
+#opal.symbol_import(o,'t1066_ds_RCh_w1', project='_Athlos_Harm_Dataset')
+
+label(t1066_ds_RCh_w1$cog_verb_c) <- ds_label_cog_verb_c
+label(t1066_ds_RCh_w1$cog_verb) <- ds_label_cog_verb
+cog_verb <- t1066_ds_RCh_w1
+save(cog_verb, file = "../RData/RCh_w1/cog_verb.RData")
+```
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `f_ANIMALS`
+* Label: `verbal fluency - CERAD animal naming`
+* Categories:
+   + `Continuous Variable 0 to Maximum`
+* Missings
+
+
+```{r assign RuralChina w2, echo=FALSE}
+opal.assign.table.tibble(o, 's1066_RuralChina_w2_cog_verb','10-66.1066-RuralChina-Followup', variables=list('f_ANIMALS'), missings = TRUE)
+s1066_RuralChina_w2_cog_verb <- opal.execute(o,'s1066_RuralChina_w2_cog_verb')
+```
+
+```{r local RuralChina w2, echo=FALSE}
+vari <- s1066_RuralChina_w2_cog_verb$f_ANIMALS
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(s1066_RuralChina_w2_cog_verb, aes(x=factor(f_ANIMALS))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo RuralChina w2}
+#cog_verb_c
+t1066_ds_RCh_w2 <- tibble(id=s1066_RuralChina_w2_cog_verb$id)
+t1066_ds_RCh_w2$cog_verb_c <- recode(s1066_RuralChina_w2_cog_verb$f_ANIMALS, "NA=999")
+t1066_ds_RCh_w2$cog_verb_c <- labelled(t1066_ds_RCh_w2$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(t1066_ds_RCh_w2$cog_verb_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+t1066_ds_RCh_w2$cog_verb <- car::recode(t1066_ds_RCh_w2[[2]], "0:Q=0; (Q+1):900=1")
+t1066_ds_RCh_w2$cog_verb <- labelled(t1066_ds_RCh_w2[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript RuralChina w2, echo=FALSE}
+vari <- t1066_ds_RCh_w2$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(t1066_ds_RCh_w2, aes(x=factor(cog_verb_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+
+vari <- t1066_ds_RCh_w2$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_RCh_w2, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation RuralChina w2, echo=FALSE}
+Continous <- c(sum(na.omit(t1066_ds_RCh_w2[[2]])<=Q), sum(na.omit(t1066_ds_RCh_w2[[2]])>Q & na.omit(t1066_ds_RCh_w2[[2]])<900))
+Dicotomic <- table(t1066_ds_RCh_w2[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:10->0","11:160->1") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL RuralChina w2, echo=FALSE}
+#label(t1066_ds_RCh_w2$cog_verb) <- "Cognition - verbal fluency"
+#opal.assign.data(o, 't1066_ds_RCh_w2', t1066_ds_RCh_w2)
+#opal.symbol_import(o,'t1066_ds_RCh_w2', project='_Athlos_Harm_Dataset')
+
+label(t1066_ds_RCh_w2$cog_verb_c) <- ds_label_cog_verb_c
+label(t1066_ds_RCh_w2$cog_verb) <- ds_label_cog_verb
+cog_verb <- t1066_ds_RCh_w2
+save(cog_verb, file = "../RData/RCh_w2/cog_verb.RData")
+```
+
+
+
+## Dominican Republic
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `ANIMALS`
+* Label: `verbal fluency - CERAD animal naming`
+* Categories:
+   + `Continuous Variable 0 to Maximum`
+* Missings
+
+```{r assign DominicanRepublic w1, echo=FALSE}
+opal.assign.table.tibble(o, 's1066_DominicanRepublic_w1_cog_verb','10-66.1066-DominicanRepublic-Baseline', variables=list('ANIMALS'), missings = TRUE)
+s1066_DominicanRepublic_w1_cog_verb <- opal.execute(o,'s1066_DominicanRepublic_w1_cog_verb')
+```
+
+```{r local DominicanRepublic w1, echo=FALSE}
+vari <- s1066_DominicanRepublic_w1_cog_verb$ANIMALS
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(s1066_DominicanRepublic_w1_cog_verb, aes(x=factor(ANIMALS))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo DominicanRepublic w1}
+#cog_verb_c
+t1066_ds_DR_w1 <- tibble(id=s1066_DominicanRepublic_w1_cog_verb$id)
+t1066_ds_DR_w1$cog_verb_c <- recode(s1066_DominicanRepublic_w1_cog_verb$ANIMALS, "NA=999")
+t1066_ds_DR_w1$cog_verb_c <- labelled(t1066_ds_DR_w1$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(t1066_ds_DR_w1$cog_verb_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+t1066_ds_DR_w1$cog_verb <- car::recode(t1066_ds_DR_w1[[2]], "0:Q=0; (Q+1):900=1")
+t1066_ds_DR_w1$cog_verb <- labelled(t1066_ds_DR_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript DominicanRepublic w1, echo=FALSE}
+vari <- t1066_ds_DR_w1$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(t1066_ds_DR_w1, aes(x=factor(cog_verb_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+
+vari <- t1066_ds_DR_w1$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_DR_w1, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation DominicanRepublic w1, echo=FALSE}
+Continous <- c(sum(na.omit(t1066_ds_DR_w1[[2]])<=Q), sum(na.omit(t1066_ds_DR_w1[[2]])>Q & na.omit(t1066_ds_DR_w1[[2]])<900))
+Dicotomic <- table(t1066_ds_DR_w1[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:10->0","11:160->1") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL DominicanRepublic w1, echo=FALSE}
+#label(t1066_ds_DR_w1$cog_verb) <- "Cognition - verbal fluency"
+#opal.assign.data(o, 't1066_ds_DR_w1', t1066_ds_DR_w1)
+#opal.symbol_import(o,'t1066_ds_DR_w1', project='_Athlos_Harm_Dataset')
+
+label(t1066_ds_DR_w1$cog_verb_c) <- ds_label_cog_verb_c
+label(t1066_ds_DR_w1$cog_verb) <- ds_label_cog_verb
+cog_verb <- t1066_ds_DR_w1
+save(cog_verb, file = "../RData/DR_w1/cog_verb.RData")
+```
+
+
+## Dominican Republic
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `f_ANIMALS`
+* Label: `verbal fluency - CERAD animal naming`
+* Categories:
+   + `Continuous Variable 0 to Maximum`
+* Missings
+   + `NA`
+
+```{r assign DominicanRepublic w2, echo=FALSE}
+opal.assign.table.tibble(o, 's1066_DominicanRepublic_w2_cog_verb','10-66.1066-DominicanRepublic-Followup', variables=list('f_ANIMALS'), missings = TRUE)
+s1066_DominicanRepublic_w2_cog_verb <- opal.execute(o,'s1066_DominicanRepublic_w2_cog_verb')
+```
+
+```{r local DominicanRepublic w2, echo=FALSE}
+vari <- s1066_DominicanRepublic_w2_cog_verb$f_ANIMALS
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(s1066_DominicanRepublic_w2_cog_verb, aes(x=factor(f_ANIMALS))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo DominicanRepublic w2}
+#cog_verb_c
+t1066_ds_DR_w2 <- tibble(id=s1066_DominicanRepublic_w2_cog_verb$id)
+t1066_ds_DR_w2$cog_verb_c <- recode(s1066_DominicanRepublic_w2_cog_verb$f_ANIMALS, "NA=999")
+t1066_ds_DR_w2$cog_verb_c <- labelled(t1066_ds_DR_w2$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(t1066_ds_DR_w2$cog_verb_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+t1066_ds_DR_w2$cog_verb <- car::recode(t1066_ds_DR_w2[[2]], "0:Q=0; (Q+1):900=1")
+t1066_ds_DR_w2$cog_verb <- labelled(t1066_ds_DR_w2[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript DominicanRepublic w2, echo=FALSE}
+vari <- t1066_ds_DR_w2$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(t1066_ds_DR_w2, aes(x=factor(cog_verb_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+
+vari <- t1066_ds_DR_w2$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_DR_w2, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation DominicanRepublic w2, echo=FALSE}
+Continous <- c(sum(na.omit(t1066_ds_DR_w2[[2]])<=Q), sum(na.omit(t1066_ds_DR_w2[[2]])>Q & na.omit(t1066_ds_DR_w2[[2]])<900), sum(na.omit(t1066_ds_DR_w2[[2]])==999))
+Dicotomic <- table(t1066_ds_DR_w2[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:10->0","11:160->1", "NA->999") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL DominicanRepublic w2, echo=FALSE}
+#label(t1066_ds_DR_w2$cog_verb) <- "Cognition - verbal fluency"
+#opal.assign.data(o, 't1066_ds_DR_w2', t1066_ds_DR_w2)
+#opal.symbol_import(o,'t1066_ds_DR_w2', project='_Athlos_Harm_Dataset')
+
+label(t1066_ds_DR_w2$cog_verb_c) <- ds_label_cog_verb_c
+label(t1066_ds_DR_w2$cog_verb) <- ds_label_cog_verb
+cog_verb <- t1066_ds_DR_w2
+save(cog_verb, file = "../RData/DR_w2/cog_verb.RData")
+```
+
+
+
+## Venezuela
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `ANIMALS`
+* Label: `verbal fluency - CERAD animal naming`
+* Categories:
+   + `Continuous Variable 0 to Maximum`
+* Missings
+
+```{r assign Venezuela w1, echo=FALSE}
+opal.assign.table.tibble(o, 's1066_Venezuela_w1_cog_verb','10-66.1066-Venezuela-Baseline', variables=list('ANIMALS'), missings = TRUE)
+s1066_Venezuela_w1_cog_verb <- opal.execute(o,'s1066_Venezuela_w1_cog_verb')
+```
+
+```{r local Venezuela w1, echo=FALSE}
+vari <- s1066_Venezuela_w1_cog_verb$ANIMALS
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(s1066_Venezuela_w1_cog_verb, aes(x=factor(ANIMALS))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo Venezuela w1}
+#cog_verb_c
+t1066_ds_Ven_w1 <- tibble(id=s1066_Venezuela_w1_cog_verb$id)
+t1066_ds_Ven_w1$cog_verb_c <- recode(s1066_Venezuela_w1_cog_verb$ANIMALS, "NA=999")
+t1066_ds_Ven_w1$cog_verb_c <- labelled(t1066_ds_Ven_w1$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(t1066_ds_Ven_w1$cog_verb_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+t1066_ds_Ven_w1$cog_verb <- car::recode(t1066_ds_Ven_w1[[2]], "0:Q=0; (Q+1):900=1")
+t1066_ds_Ven_w1$cog_verb <- labelled(t1066_ds_Ven_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript Venezuela w1, echo=FALSE}
+vari <- t1066_ds_Ven_w1$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(t1066_ds_Ven_w1, aes(x=factor(cog_verb_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+
+vari <- t1066_ds_Ven_w1$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_Ven_w1, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation Venezuela w1, echo=FALSE}
+Continous <- c(sum(na.omit(t1066_ds_Ven_w1[[2]])<=Q), sum(na.omit(t1066_ds_Ven_w1[[2]])>Q & na.omit(t1066_ds_Ven_w1[[2]])<900))
+Dicotomic <- table(t1066_ds_Ven_w1[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:13->0","14:160->1") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL Venezuela w1, echo=FALSE}
+#label(t1066_ds_Ven_w1$cog_verb) <- "Cognition - verbal fluency"
+#opal.assign.data(o, 't1066_ds_Ven_w1', t1066_ds_Ven_w1)
+#opal.symbol_import(o,'t1066_ds_Ven_w1', project='_Athlos_Harm_Dataset')
+
+label(t1066_ds_Ven_w1$cog_verb_c) <- ds_label_cog_verb_c
+label(t1066_ds_Ven_w1$cog_verb) <- ds_label_cog_verb
+cog_verb <- t1066_ds_Ven_w1
+save(cog_verb, file = "../RData/Ven_w1/cog_verb.RData")
+```
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `f_ANIMALS`
+* Label: `verbal fluency - CERAD animal naming`
+* Categories:
+   + `Continuous Variable 0 to Maximum`
+* Missings
+
+```{r assign Venezuela w2, echo=FALSE}
+opal.assign.table.tibble(o, 's1066_Venezuela_w2_cog_verb','10-66.1066-Venezuela-Followup', variables=list('f_ANIMALS'), missings = TRUE)
+s1066_Venezuela_w2_cog_verb <- opal.execute(o,'s1066_Venezuela_w2_cog_verb')
+```
+
+```{r local Venezuela w2, echo=FALSE}
+vari <- s1066_Venezuela_w2_cog_verb$f_ANIMALS
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(s1066_Venezuela_w2_cog_verb, aes(x=factor(f_ANIMALS))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo Venezuela w2}
+#cog_verb_c
+t1066_ds_Ven_w2 <- tibble(id=s1066_Venezuela_w2_cog_verb$id)
+t1066_ds_Ven_w2$cog_verb_c <- recode(s1066_Venezuela_w2_cog_verb$f_ANIMALS, "NA=999")
+t1066_ds_Ven_w2$cog_verb_c <- labelled(t1066_ds_Ven_w2$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(t1066_ds_Ven_w2$cog_verb_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+t1066_ds_Ven_w2$cog_verb <- car::recode(t1066_ds_Ven_w2[[2]], "0:Q=0; (Q+1):900=1")
+t1066_ds_Ven_w2$cog_verb <- labelled(t1066_ds_Ven_w2[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript Venezuela w2, echo=FALSE}
+vari <- t1066_ds_Ven_w2$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(t1066_ds_Ven_w2, aes(x=factor(cog_verb_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+
+vari <- t1066_ds_Ven_w2$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_Ven_w2, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation Venezuela w2, echo=FALSE}
+Continous <- c(sum(na.omit(t1066_ds_Ven_w2[[2]])<=Q), sum(na.omit(t1066_ds_Ven_w2[[2]])>Q & na.omit(t1066_ds_Ven_w2[[2]])<900))
+Dicotomic <- table(t1066_ds_Ven_w2[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:11->0","12:160->1") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL Venezuela w2, echo=FALSE}
+#label(t1066_ds_Ven_w2$cog_verb) <- "Cognition - verbal fluency"
+#opal.assign.data(o, 't1066_ds_Ven_w2', t1066_ds_Ven_w2)
+#opal.symbol_import(o,'t1066_ds_Ven_w2', project='_Athlos_Harm_Dataset')
+
+label(t1066_ds_Ven_w2$cog_verb_c) <- ds_label_cog_verb_c
+label(t1066_ds_Ven_w2$cog_verb) <- ds_label_cog_verb
+cog_verb <- t1066_ds_Ven_w2
+save(cog_verb, file = "../RData/Ven_w2/cog_verb.RData")
+```
+
+
+
+## Urban Peru
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `ANIMALS`
+* Label: `verbal fluency - CERAD animal naming`
+* Categories:
+   + `Continuous Variable 0 to Maximum`
+* Missings
+
+```{r assign UrbanPeru w1, echo=FALSE}
+opal.assign.table.tibble(o, 's1066_UrbanPeru_w1_cog_verb','10-66.1066-UrbanPeru-Baseline', variables=list('ANIMALS'), missings = TRUE)
+s1066_UrbanPeru_w1_cog_verb <- opal.execute(o,'s1066_UrbanPeru_w1_cog_verb')
+```
+
+```{r local UrbanPeru w1, echo=FALSE}
+vari <- s1066_UrbanPeru_w1_cog_verb$ANIMALS
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(s1066_UrbanPeru_w1_cog_verb, aes(x=factor(ANIMALS))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo UrbanPeru w1}
+#cog_verb_c
+t1066_ds_UP_w1 <- tibble(id=s1066_UrbanPeru_w1_cog_verb$id)
+t1066_ds_UP_w1$cog_verb_c <- recode(s1066_UrbanPeru_w1_cog_verb$ANIMALS, "NA=999")
+t1066_ds_UP_w1$cog_verb_c <- labelled(t1066_ds_UP_w1$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(t1066_ds_UP_w1$cog_verb_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+t1066_ds_UP_w1$cog_verb <- car::recode(t1066_ds_UP_w1[[2]], "0:Q=0; (Q+1):900=1")
+t1066_ds_UP_w1$cog_verb <- labelled(t1066_ds_UP_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript UrbanPeru w1, echo=FALSE}
+vari <- t1066_ds_UP_w1$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(t1066_ds_UP_w1, aes(x=factor(cog_verb_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+
+vari <- t1066_ds_UP_w1$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_UP_w1, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation UrbanPeru w1, echo=FALSE}
+Continous <- c(sum(na.omit(t1066_ds_UP_w1[[2]])<=Q), sum(na.omit(t1066_ds_UP_w1[[2]])>Q & na.omit(t1066_ds_UP_w1[[2]])<900))
+Dicotomic <- table(t1066_ds_UP_w1[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:13->0","14:160->1") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL UrbanPeru w1, echo=FALSE}
+#label(t1066_ds_UP_w1$cog_verb) <- "Cognition - verbal fluency"
+#opal.assign.data(o, 't1066_ds_UP_w1', t1066_ds_UP_w1)
+#opal.symbol_import(o,'t1066_ds_UP_w1', project='_Athlos_Harm_Dataset')
+
+label(t1066_ds_UP_w1$cog_verb_c) <- ds_label_cog_verb_c
+label(t1066_ds_UP_w1$cog_verb) <- ds_label_cog_verb
+cog_verb <- t1066_ds_UP_w1
+save(cog_verb, file = "../RData/UP_w1/cog_verb.RData")
+```
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `f_ANIMALS`
+* Label: `verbal fluency - CERAD animal naming`
+* Categories:
+   + `Continuous Variable 0 to Maximum`
+* Missings
+
+```{r assign UrbanPeru w2, echo=FALSE}
+opal.assign.table.tibble(o, 's1066_UrbanPeru_w2_cog_verb','10-66.1066-UrbanPeru-Followup', variables=list('f_ANIMALS'), missings = TRUE)
+s1066_UrbanPeru_w2_cog_verb <- opal.execute(o,'s1066_UrbanPeru_w2_cog_verb')
+```
+
+```{r local UrbanPeru w2, echo=FALSE}
+vari <- s1066_UrbanPeru_w2_cog_verb$f_ANIMALS
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(s1066_UrbanPeru_w2_cog_verb, aes(x=factor(f_ANIMALS))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo UrbanPeru w2}
+#cog_verb_c
+t1066_ds_UP_w2 <- tibble(id=s1066_UrbanPeru_w2_cog_verb$id)
+t1066_ds_UP_w2$cog_verb_c <- recode(s1066_UrbanPeru_w2_cog_verb$f_ANIMALS, "NA=999")
+t1066_ds_UP_w2$cog_verb_c <- labelled(t1066_ds_UP_w2$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(t1066_ds_UP_w2$cog_verb_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+t1066_ds_UP_w2$cog_verb <- car::recode(t1066_ds_UP_w2[[2]], "0:Q=0; (Q+1):900=1")
+t1066_ds_UP_w2$cog_verb <- labelled(t1066_ds_UP_w2[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript UrbanPeru w2, echo=FALSE}
+vari <- t1066_ds_UP_w2$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(t1066_ds_UP_w2, aes(x=factor(cog_verb_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+
+vari <- t1066_ds_UP_w2$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_UP_w2, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation UrbanPeru w2, echo=FALSE}
+Continous <- c(sum(na.omit(t1066_ds_UP_w2[[2]])<=Q), sum(na.omit(t1066_ds_UP_w2[[2]])>Q & na.omit(t1066_ds_UP_w2[[2]])<900))
+Dicotomic <- table(t1066_ds_UP_w2[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:13->0","14:160->1") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL UrbanPeru w2, echo=FALSE}
+#label(t1066_ds_UP_w2$cog_verb) <- "Cognition - verbal fluency"
+#opal.assign.data(o, 't1066_ds_UP_w2', t1066_ds_UP_w2)
+#opal.symbol_import(o,'t1066_ds_UP_w2', project='_Athlos_Harm_Dataset')
+
+label(t1066_ds_UP_w2$cog_verb_c) <- ds_label_cog_verb_c
+label(t1066_ds_UP_w2$cog_verb) <- ds_label_cog_verb
+cog_verb <- t1066_ds_UP_w2
+save(cog_verb, file = "../RData/UP_w2/cog_verb.RData")
+```
+
+
+
+## Rural Peru
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `ANIMALS`
+* Label: `verbal fluency - CERAD animal naming`
+* Categories:
+   + `Continuous Variable 0 to Maximum`
+* Missings
+
+
+```{r assign RuralPeru w1, echo=FALSE}
+opal.assign.table.tibble(o, 's1066_RuralPeru_w1_cog_verb','10-66.1066-RuralPeru-Baseline', variables=list('ANIMALS'), missings = TRUE)
+s1066_RuralPeru_w1_cog_verb <- opal.execute(o,'s1066_RuralPeru_w1_cog_verb')
+```
+
+```{r local RuralPeru w1, echo=FALSE}
+vari <-s1066_RuralPeru_w1_cog_verb$ANIMALS
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(s1066_RuralPeru_w1_cog_verb, aes(x=factor(ANIMALS))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo RuralPeru w1}
+#cog_verb_c
+t1066_ds_RP_w1 <- tibble(id=s1066_RuralPeru_w1_cog_verb$id)
+t1066_ds_RP_w1$cog_verb_c <- recode(s1066_RuralPeru_w1_cog_verb$ANIMALS, "NA=999")
+t1066_ds_RP_w1$cog_verb_c <- labelled(t1066_ds_RP_w1$cog_verb_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+
+#cog_verb
+Q <- quantile(car::recode(t1066_ds_RP_w1$cog_verb_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+t1066_ds_RP_w1$cog_verb <- car::recode(t1066_ds_RP_w1[[2]], "0:Q=0; (Q+1):900=1")
+t1066_ds_RP_w1$cog_verb <- labelled(t1066_ds_RP_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript RuralPeru w1, echo=FALSE}
+vari <- t1066_ds_RP_w1$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(t1066_ds_RP_w1, aes(x=factor(cog_verb_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+
+vari <- t1066_ds_RP_w1$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_RP_w1, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation RuralPeru w1, echo=FALSE}
+Continous <- c(sum(na.omit(t1066_ds_RP_w1[[2]])<=Q), sum(na.omit(t1066_ds_RP_w1[[2]])>Q & na.omit(t1066_ds_RP_w1[[2]])<900))
+Dicotomic <- table(t1066_ds_RP_w1[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:12->0","13:160->1") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL RuralPeru w1, echo=FALSE}
+#label(t1066_ds_RP_w1$cog_verb) <- "Cognition - verbal fluency"
+#opal.assign.data(o, 't1066_ds_RP_w1', t1066_ds_RP_w1)
+#opal.symbol_import(o,'t1066_ds_RP_w1', project='_Athlos_Harm_Dataset')
+
+label(t1066_ds_RP_w1$cog_verb_c) <- ds_label_cog_verb_c
+label(t1066_ds_RP_w1$cog_verb) <- ds_label_cog_verb
+cog_verb <- t1066_ds_RP_w1
+save(cog_verb, file = "../RData/RP_w1/cog_verb.RData")
+```
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `f_ANIMALS`
+* Label: `verbal fluency - CERAD animal naming`
+* Categories:
+   + `Continuous Variable 0 to Maximum`
+* Missings
+
+
+```{r assign RuralPeru w2, echo=FALSE}
+opal.assign.table.tibble(o, 's1066_RuralPeru_w2_cog_verb','10-66.1066-RuralPeru-Followup', variables=list('f_ANIMALS'), missings = TRUE)
+s1066_RuralPeru_w2_cog_verb <- opal.execute(o,'s1066_RuralPeru_w2_cog_verb')
+```
+
+```{r local RuralPeru w2, echo=FALSE}
+vari <- s1066_RuralPeru_w2_cog_verb$f_ANIMALS
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(s1066_RuralPeru_w2_cog_verb, aes(x=factor(f_ANIMALS))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo RuralPeru w2}
+#cog_verb_c
+t1066_ds_RP_w2 <- tibble(id=s1066_RuralPeru_w2_cog_verb$id)
+t1066_ds_RP_w2$cog_verb_c <- recode(s1066_RuralPeru_w2_cog_verb$f_ANIMALS, "NA=999")
+t1066_ds_RP_w2$cog_verb_c <- labelled(t1066_ds_RP_w2$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(t1066_ds_RP_w2$cog_verb_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+t1066_ds_RP_w2$cog_verb <- car::recode(t1066_ds_RP_w2[[2]], "0:Q=0; (Q+1):900=1")
+t1066_ds_RP_w2$cog_verb <- labelled(t1066_ds_RP_w2[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript RuralPeru w2, echo=FALSE}
+vari <- t1066_ds_RP_w2$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(t1066_ds_RP_w2, aes(x=factor(cog_verb_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+
+vari <- t1066_ds_RP_w2$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_RP_w2, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation RuralPeru w2, echo=FALSE}
+Continous <- c(sum(na.omit(t1066_ds_RP_w2[[2]])<=Q), sum(na.omit(t1066_ds_RP_w2[[2]])>Q & na.omit(t1066_ds_RP_w2[[2]])<900))
+Dicotomic <- table(t1066_ds_RP_w2[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:15->0","16:160->1") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL RuralPeru w2, echo=FALSE}
+#label(t1066_ds_RP_w2$cog_verb) <- "Cognition - verbal fluency"
+#opal.assign.data(o, 't1066_ds_RP_w2', t1066_ds_RP_w2)
+#opal.symbol_import(o,'t1066_ds_RP_w2', project='_Athlos_Harm_Dataset')
+
+label(t1066_ds_RP_w2$cog_verb_c) <- ds_label_cog_verb_c
+label(t1066_ds_RP_w2$cog_verb) <- ds_label_cog_verb
+cog_verb <- t1066_ds_RP_w2
+save(cog_verb, file = "../RData/RP_w2/cog_verb.RData")
+```
+
+
+
+## Urban Mexico
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `ANIMALS`
+* Label: `verbal fluency - CERAD animal naming`
+* Categories:
+   + `Continuous Variable 0 to Maximum`
+* Missings
+
+```{r assign UrbanMexico w1, echo=FALSE}
+opal.assign.table.tibble(o, 's1066_UrbanMexico_w1_cog_verb','10-66.1066-UrbanMexico-Baseline', variables=list('ANIMALS'), missings = TRUE)
+s1066_UrbanMexico_w1_cog_verb <- opal.execute(o,'s1066_UrbanMexico_w1_cog_verb')
+```
+
+```{r local UrbanMexico w1, echo=FALSE}
+vari <- s1066_UrbanMexico_w1_cog_verb$ANIMALS
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(s1066_UrbanMexico_w1_cog_verb, aes(x=factor(ANIMALS))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo UrbanMexico w1}
+#cog_verb_c
+t1066_ds_UM_w1 <- tibble(id=s1066_UrbanMexico_w1_cog_verb$id)
+t1066_ds_UM_w1$cog_verb_c <- recode(s1066_UrbanMexico_w1_cog_verb$ANIMALS, "NA=999")
+t1066_ds_UM_w1$cog_verb_c <- labelled(t1066_ds_UM_w1$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(t1066_ds_UM_w1$cog_verb_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+t1066_ds_UM_w1$cog_verb <- car::recode(t1066_ds_UM_w1[[2]], "0:Q=0; (Q+1):900=1")
+t1066_ds_UM_w1$cog_verb <- labelled(t1066_ds_UM_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript UrbanMexico w1, echo=FALSE}
+vari <- t1066_ds_UM_w1$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(t1066_ds_UM_w1, aes(x=factor(cog_verb_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+
+vari <- t1066_ds_UM_w1$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_UM_w1, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation UrbanMexico w1, echo=FALSE}
+Continous <- c(sum(na.omit(t1066_ds_UM_w1[[2]])<=Q), sum(na.omit(t1066_ds_UM_w1[[2]])>Q & na.omit(t1066_ds_UM_w1[[2]])<900))
+Dicotomic <- table(t1066_ds_UM_w1[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:11->0","12:160->1") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL UrbanMexico w1, echo=FALSE}
+#label(t1066_ds_UM_w1$cog_verb) <- "Cognition - verbal fluency"
+#opal.assign.data(o, 't1066_ds_UM_w1', t1066_ds_UM_w1)
+#opal.symbol_import(o,'t1066_ds_UM_w1', project='_Athlos_Harm_Dataset')
+
+label(t1066_ds_UM_w1$cog_verb_c) <- ds_label_cog_verb_c
+label(t1066_ds_UM_w1$cog_verb) <- ds_label_cog_verb
+cog_verb <- t1066_ds_UM_w1
+save(cog_verb, file = "../RData/UM_w1/cog_verb.RData")
+```
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `f_ANIMALS`
+* Label: `verbal fluency - CERAD animal naming`
+* Categories:
+   + `Continuous Variable 0 to Maximum`
+* Missings
+   + `NA`
+
+```{r assign UrbanMexico w2, echo=FALSE}
+opal.assign.table.tibble(o, 's1066_UrbanMexico_w2_cog_verb','10-66.1066-UrbanMexico-Followup', variables=list('f_ANIMALS'), missings = TRUE)
+s1066_UrbanMexico_w2_cog_verb <- opal.execute(o,'s1066_UrbanMexico_w2_cog_verb')
+```
+
+```{r local UrbanMexico w2, echo=FALSE}
+vari <- s1066_UrbanMexico_w2_cog_verb$f_ANIMALS
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(s1066_UrbanMexico_w2_cog_verb, aes(x=factor(f_ANIMALS))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo UrbanMexico w2}
+#cog_verb_c
+t1066_ds_UM_w2 <- tibble(id=s1066_UrbanMexico_w2_cog_verb$id)
+t1066_ds_UM_w2$cog_verb_c <- recode(s1066_UrbanMexico_w2_cog_verb$f_ANIMALS, "NA=999")
+t1066_ds_UM_w2$cog_verb_c <- labelled(t1066_ds_UM_w2$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(t1066_ds_UM_w2$cog_verb_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+t1066_ds_UM_w2$cog_verb <- car::recode(t1066_ds_UM_w2[[2]], "0:Q=0; (Q+1):900=1")
+t1066_ds_UM_w2$cog_verb <- labelled(t1066_ds_UM_w2[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript UrbanMexico w2, echo=FALSE}
+vari <- t1066_ds_UM_w2$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(t1066_ds_UM_w2, aes(x=factor(cog_verb_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+
+vari <- t1066_ds_UM_w2$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_UM_w2, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation UrbanMexico w2, echo=FALSE}
+Continous <- c(sum(na.omit(t1066_ds_UM_w2[[2]])<=Q), sum(na.omit(t1066_ds_UM_w2[[2]])>Q & na.omit(t1066_ds_UM_w2[[2]])<900), sum(na.omit(t1066_ds_UM_w2[[2]])==999))
+Dicotomic <- table(t1066_ds_UM_w2[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:11->0","12:160->1", "NA->999") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL UrbanMexico w2, echo=FALSE}
+#label(t1066_ds_UM_w2$cog_verb) <- "Cognition - verbal fluency"
+#opal.assign.data(o, 't1066_ds_UM_w2', t1066_ds_UM_w2)
+#opal.symbol_import(o,'t1066_ds_UM_w2', project='_Athlos_Harm_Dataset')
+
+label(t1066_ds_UM_w2$cog_verb_c) <- ds_label_cog_verb_c
+label(t1066_ds_UM_w2$cog_verb) <- ds_label_cog_verb
+cog_verb <- t1066_ds_UM_w2
+save(cog_verb, file = "../RData/UM_w2/cog_verb.RData")
+```
+
+
+
+
+## Rural Mexico
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `ANIMALS`
+* Label: `verbal fluency - CERAD animal naming`
+* Categories:
+   + `Continuous Variable 0 to Maximum`
+* Missings
+
+```{r assign RuralMexico w1, echo=FALSE}
+opal.assign.table.tibble(o, 's1066_RuralMexico_w1_cog_verb','10-66.1066-RuralMexico-Baseline', variables=list('ANIMALS'), missings = TRUE)
+s1066_RuralMexico_w1_cog_verb <- opal.execute(o,'s1066_RuralMexico_w1_cog_verb')
+```
+
+```{r local RuralMexico w1, echo=FALSE}
+s1066_RuralMexico_w1_cog_verb$ANIMALS
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(s1066_RuralMexico_w1_cog_verb, aes(x=factor(ANIMALS))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo RuralMexico w1}
+#cog_verb_c
+t1066_ds_RM_w1 <- tibble(id=s1066_RuralMexico_w1_cog_verb$id)
+t1066_ds_RM_w1$cog_verb_c <- recode(s1066_RuralMexico_w1_cog_verb$ANIMALS, "NA=999")
+t1066_ds_RM_w1$cog_verb_c <- labelled(t1066_ds_RM_w1$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(t1066_ds_RM_w1$cog_verb_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+t1066_ds_RM_w1$cog_verb <- car::recode(t1066_ds_RM_w1[[2]], "0:Q=0; (Q+1):900=1")
+t1066_ds_RM_w1$cog_verb <- labelled(t1066_ds_RM_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript RuralMexico w1, echo=FALSE}
+vari <- t1066_ds_RM_w1$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(t1066_ds_RM_w1, aes(x=factor(cog_verb_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+
+vari <- t1066_ds_RM_w1$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_RM_w1, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation RuralMexico w1, echo=FALSE}
+Continous <- c(sum(na.omit(t1066_ds_RM_w1[[2]])<=Q), sum(na.omit(t1066_ds_RM_w1[[2]])>Q & na.omit(t1066_ds_RM_w1[[2]])<900))
+Dicotomic <- table(t1066_ds_RM_w1[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:10->0","11:160->1") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL RuralMexico w1, echo=FALSE}
+#label(t1066_ds_RM_w1$cog_verb) <- "Cognition - verbal fluency"
+#opal.assign.data(o, 't1066_ds_RM_w1', t1066_ds_RM_w1)
+#opal.symbol_import(o,'t1066_ds_RM_w1', project='_Athlos_Harm_Dataset')
+
+label(t1066_ds_RM_w1$cog_verb_c) <- ds_label_cog_verb_c
+label(t1066_ds_RM_w1$cog_verb) <- ds_label_cog_verb
+cog_verb <- t1066_ds_RM_w1
+save(cog_verb, file = "../RData/RM_w1/cog_verb.RData")
+```
+
+
+
+## Rural Mexico
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `f_ANIMALS`
+* Label: `verbal fluency - CERAD animal naming`
+* Categories:
+   + `Continuous Variable 0 to Maximum`
+* Missings
+   + `NA`
+
+```{r assign RuralMexico w2, echo=FALSE}
+opal.assign.table.tibble(o, 's1066_RuralMexico_w2_cog_verb','10-66.1066-RuralMexico-Followup', variables=list('f_ANIMALS'), missings = TRUE)
+s1066_RuralMexico_w2_cog_verb <- opal.execute(o,'s1066_RuralMexico_w2_cog_verb')
+```
+
+```{r local RuralMexico w2, echo=FALSE}
+vari <- s1066_RuralMexico_w2_cog_verb$f_ANIMALS
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(s1066_RuralMexico_w2_cog_verb, aes(x=factor(f_ANIMALS))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+
+```{r harmo RuralMexico w2}
+#cog_verb_c
+t1066_ds_RM_w2 <- tibble(id=s1066_RuralMexico_w2_cog_verb$id)
+t1066_ds_RM_w2$cog_verb_c <- car::recode(s1066_RuralMexico_w2_cog_verb$f_ANIMALS, "NA=999")
+t1066_ds_RM_w2$cog_verb_c <- labelled(t1066_ds_RM_w2$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(t1066_ds_RM_w2$cog_verb_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+t1066_ds_RM_w2$cog_verb <- car::recode(t1066_ds_RM_w2[[2]], "0:Q=0; (Q+1):900=1")
+t1066_ds_RM_w2$cog_verb <- labelled(t1066_ds_RM_w2[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript RuralMexico w2, echo=FALSE}
+vari <- t1066_ds_RM_w2$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(t1066_ds_RM_w2, aes(x=factor(cog_verb_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+
+vari <- t1066_ds_RM_w2$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_RM_w2, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation RuralMexico w2, echo=FALSE}
+Continous <- c(sum(na.omit(t1066_ds_RM_w2[[2]])<=Q), sum(na.omit(t1066_ds_RM_w2[[2]])>Q & na.omit(t1066_ds_RM_w2[[2]])<900), sum(na.omit(t1066_ds_RM_w2[[2]])==999))
+Dicotomic <- table(t1066_ds_RM_w2[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:9->0","10:160->1", "NA->999") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL RuralMexico w2, echo=FALSE}
+#label(t1066_ds_RM_w2$cog_verb) <- "Cognition - verbal fluency"
+#opal.assign.data(o, 't1066_ds_RM_w2', t1066_ds_RM_w2)
+#opal.symbol_import(o,'t1066_ds_RM_w2', project='_Athlos_Harm_Dataset')
+
+label(t1066_ds_RM_w2$cog_verb_c) <- ds_label_cog_verb_c
+label(t1066_ds_RM_w2$cog_verb) <- ds_label_cog_verb
+cog_verb <- t1066_ds_RM_w2
+save(cog_verb, file = "../RData/RM_w2/cog_verb.RData")
+```
+
+
+
+
+## Puerto Rico
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `ANIMALS`
+* Label: `verbal fluency - CERAD animal naming`
+* Categories:
+   + `Continuous Variable 0 to Maximum`
+* Missings
+
+```{r assign PuertoRico w1, echo=FALSE}
+opal.assign.table.tibble(o, 's1066_PuertoRico_w1_cog_verb','10-66.1066-PuertoRico-Baseline', variables=list('ANIMALS'), missings = TRUE)
+s1066_PuertoRico_w1_cog_verb <- opal.execute(o,'s1066_PuertoRico_w1_cog_verb')
+```
+
+```{r local PuertoRico w1, echo=FALSE}
+vari <- s1066_PuertoRico_w1_cog_verb$ANIMALS
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(s1066_PuertoRico_w1_cog_verb, aes(x=factor(ANIMALS))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo PuertoRico w1}
+#cog_verb_c
+t1066_ds_PR_w1 <- tibble(id=s1066_PuertoRico_w1_cog_verb$id)
+t1066_ds_PR_w1$cog_verb_c <- recode(s1066_PuertoRico_w1_cog_verb$ANIMALS, "NA=999")
+t1066_ds_PR_w1$cog_verb_c <- labelled(t1066_ds_PR_w1$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(t1066_ds_PR_w1$cog_verb_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+t1066_ds_PR_w1$cog_verb <- car::recode(t1066_ds_PR_w1[[2]], "0:Q=0; (Q+1):900=1")
+t1066_ds_PR_w1$cog_verb <- labelled(t1066_ds_PR_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript PuertoRico w1, echo=FALSE}
+vari <- t1066_ds_PR_w1$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(t1066_ds_PR_w1, aes(x=factor(cog_verb_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+
+vari <- t1066_ds_PR_w1$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_PR_w1, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation PuertoRico w1, echo=FALSE}
+Continous <- c(sum(na.omit(t1066_ds_PR_w1[[2]])<=Q), sum(na.omit(t1066_ds_PR_w1[[2]])>Q & na.omit(t1066_ds_PR_w1[[2]])<900))
+Dicotomic <- table(t1066_ds_PR_w1[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:10->0","11:160->1") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL PuertoRico w1, echo=FALSE}
+#label(t1066_ds_PR_w1$cog_verb) <- "Cognition - verbal fluency"
+#opal.assign.data(o, 't1066_ds_PR_w1', t1066_ds_PR_w1)
+#opal.symbol_import(o,'t1066_ds_PR_w1', project='_Athlos_Harm_Dataset')
+
+label(t1066_ds_PR_w1$cog_verb_c) <- ds_label_cog_verb_c
+label(t1066_ds_PR_w1$cog_verb) <- ds_label_cog_verb
+cog_verb <- t1066_ds_PR_w1
+save(cog_verb, file = "../RData/PR_w1/cog_verb.RData")
+```
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `f_ANIMALS`
+* Label: `verbal fluency - CERAD animal naming`
+* Categories:
+   + `Continuous Variable 0 to Maximum`
+* Missings
+   + `NA`
+
+```{r assign PuertoRico w2, echo=FALSE}
+opal.assign.table.tibble(o, 's1066_PuertoRico_w2_cog_verb','10-66.1066-PuertoRico-Followup', variables=list('f_ANIMALS'), missings = TRUE)
+s1066_PuertoRico_w2_cog_verb <- opal.execute(o,'s1066_PuertoRico_w2_cog_verb')
+```
+
+```{r local PuertoRico w2, echo=FALSE}
+vari <- s1066_PuertoRico_w2_cog_verb$f_ANIMALS
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(s1066_PuertoRico_w2_cog_verb, aes(x=factor(f_ANIMALS))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo PuertoRico w2}
+#cog_verb_c
+t1066_ds_PR_w2 <- tibble(id=s1066_PuertoRico_w2_cog_verb$id)
+t1066_ds_PR_w2$cog_verb_c <- recode(s1066_PuertoRico_w2_cog_verb$f_ANIMALS, "NA=999")
+t1066_ds_PR_w2$cog_verb_c <- labelled(t1066_ds_PR_w2$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(t1066_ds_PR_w2$cog_verb_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+t1066_ds_PR_w2$cog_verb <- car::recode(t1066_ds_PR_w2[[2]], "0:Q=0; (Q+1):900=1")
+t1066_ds_PR_w2$cog_verb <- labelled(t1066_ds_PR_w2[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript PuertoRico w2, echo=FALSE}
+vari <- t1066_ds_PR_w2$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(t1066_ds_PR_w2, aes(x=factor(cog_verb_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+
+vari <- t1066_ds_PR_w2$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_PR_w2, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation PuertoRico w2, echo=FALSE}
+Continous <- c(sum(na.omit(t1066_ds_PR_w2[[2]])<=Q), sum(na.omit(t1066_ds_PR_w2[[2]])>Q & na.omit(t1066_ds_PR_w2[[2]])<900), sum(na.omit(t1066_ds_PR_w2[[2]])==999))
+Dicotomic <- table(t1066_ds_PR_w2[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:9->0","10:160->1", "NA->999") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL PuertoRico w2, echo=FALSE}
+#label(t1066_ds_PR_w2$cog_verb) <- "Cognition - verbal fluency"
+#opal.assign.data(o, 't1066_ds_PR_w2', t1066_ds_PR_w2)
+#opal.symbol_import(o,'t1066_ds_PR_w2', project='_Athlos_Harm_Dataset')
+
+label(t1066_ds_PR_w2$cog_verb_c) <- ds_label_cog_verb_c
+label(t1066_ds_PR_w2$cog_verb) <- ds_label_cog_verb
+cog_verb <- t1066_ds_PR_w2
+save(cog_verb, file = "../RData/PR_w2/cog_verb.RData")
+```
+
+
+
+
+# Quality estimation
+
+No comments
+
+[Comments on the quality of the new harmonised variable. This section can be done in a later stage, once all variables are harmonised.
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

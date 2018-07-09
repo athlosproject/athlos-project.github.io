@@ -1,0 +1,1236 @@
+---
+title: "Month of death"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+  
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `mdeath`
+* Variable label: `Month of death`
+* Variable description: `month of death`
+* Domain: `Death`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+1        | january
+2        | february
+3        | march 
+4        | april
+5        | may
+6        | june
+7        | july
+8        | august
+9        | september
+10       | october
+11       | november
+12       | december
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+```{r lab, echo=FALSE}
+ds_label <- "Month of death"
+```
+
+
+## Cuba
+
+### Wave 1
+
+There is no variable.
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `death_date`|
+|-|-|
+| **Label** | `date of death`|
+| **Table name** | `pyears_(mortality_cohort)_2_0` |
+| **Description** |  |
+
+
+```{r assign_cuba2, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_id_w1','10-66.1066-Cuba-Baseline',
+                         variables=list('centreid'), missings = TRUE)
+t1066_id_w1 <- opal.execute(o,'t1066_id_w1')
+
+opal.assign.table.tibble(o, 't1066_id_w2','10-66.1066-Cuba-Followup',
+                         variables=list('centreid'), missings = TRUE)
+t1066_id_w2 <- opal.execute(o,'t1066_id_w2')
+
+opal.assign.table.tibble(o, 't1066_mdeath2','10-66.pyears_(mortality_cohort)_2_0',
+                         variables=list('death_date'), missings = TRUE)
+t1066_mdeath2 <- opal.execute(o,'t1066_mdeath2')
+t1066_mdeath2$mdeath <- format(t1066_mdeath2$death_date, '%m')
+t1066_mdeath2 <- t1066_mdeath2[c("id", "mdeath")]
+
+same_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], mdeath=as.numeric(new_2[,2]))
+  new_22
+}
+
+t1066_mdeath <- same_indiv(old = t1066_mdeath2, new = t1066_id_w1)
+```
+
+```{r local_cuba2, echo=FALSE}
+vari <- t1066_mdeath[[2]]
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_mdeath, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_cuba2, echo=TRUE}
+t1066_ds_cuba_w2 <- tibble(id=t1066_mdeath$id)
+t1066_ds_cuba_w2$mdeath <- car::recode(t1066_mdeath$mdeath, "NA=999")
+t1066_ds_cuba_w2$mdeath <- labelled(t1066_ds_cuba_w2$mdeath, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=996,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_cuba2, echo=FALSE}
+vari <- t1066_ds_cuba_w2$mdeath
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_cuba_w2, aes(x=factor(mdeath))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_cuba2, echo=FALSE}
+BeforeH <- table(t1066_mdeath$mdeath, useNA = "ifany")
+AfterH <- table(t1066_ds_cuba_w2$mdeath)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:(length(AfterH)-1)], "NA->999")
+kable(C)
+```
+
+
+```{r importOPAL_cuba_w2, echo=FALSE}
+label(t1066_ds_cuba_w2$mdeath) <- ds_label
+mdeath <- t1066_ds_cuba_w2
+save(mdeath, file = "../RData/cuba_w2/mdeath.RData")
+rm(mdeath, t1066_id_w1, t1066_id_w2, t1066_mdeath2, t1066_mdeath)
+```
+
+
+
+
+
+
+
+## India
+
+### Wave 1 
+
+There is no variable.
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+| **Name** | `death_date`|
+|-|-|
+| **Label** | `date of death`|
+| **Table name** | `1066-India-Followup` |
+| **Description** |  |
+
+```{r assign_india2, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_id_w1','10-66.1066-India-Baseline',
+                         variables=list('centreid'), missings = TRUE)
+t1066_id_w1 <- opal.execute(o,'t1066_id_w1')
+
+opal.assign.table.tibble(o, 't1066_india_w2_death','10-66.1066-India-Followup',
+                         variables=list('death_date'), missings = TRUE)
+t1066_india_w2_death <- opal.execute(o,'t1066_india_w2_death')
+t1066_india_w2_death$mdeath <- format(t1066_india_w2_death$death_date, '%m')
+
+t1066_india_w2_death <- t1066_india_w2_death[c("id", "mdeath")]
+
+same_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], mdeath=as.numeric(new_2[,2]))
+  new_22
+}
+
+t1066_india_w2_death <- same_indiv(old = t1066_india_w2_death, new = t1066_id_w1)
+```
+
+```{r local_india2, echo=FALSE}
+vari <- t1066_india_w2_death$mdeath
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_india_w2_death, aes(x=factor(mdeath))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo_india2}
+t1066_ds_india_w2 <- tibble(id=t1066_india_w2_death$id)
+t1066_ds_india_w2$mdeath <- car::recode(t1066_india_w2_death$mdeath, "NA=999")
+t1066_ds_india_w2$mdeath <- labelled(t1066_ds_india_w2$mdeath, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=996,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_india2, echo=FALSE}
+vari <- t1066_ds_india_w2$mdeath
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_india_w2, aes(x=factor(mdeath))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_india2, echo=FALSE}
+BeforeH <- table(t1066_india_w2_death$mdeath, useNA = "ifany")
+AfterH <- table(t1066_ds_india_w2$mdeath)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:(length(AfterH)-1)], "NA->999")
+kable(C)
+```
+
+```{r importOPAL_india_w2, echo=FALSE}
+label(t1066_ds_india_w2$mdeath) <- ds_label
+mdeath <- t1066_ds_india_w2
+save(mdeath, file = "../RData/india_w2/mdeath.RData")
+```
+
+## Urban China
+
+### Wave 1
+
+There is no variable.
+
+
+
+
+
+## Wave 2 
+
+#### Study-specific variable description
+
+ 
+| **Name** | `death_date`|
+|-|-|
+| **Label** | `date of death`|
+| **Table name** | `pyears_(mortality_cohort)_2_0` |
+| **Description** |  |
+
+```{r assign_UCh2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_id_w1','10-66.1066-UrbanChina-Baseline',
+                         variables=list('centreid'), missings = TRUE)
+t1066_id_w1 <- opal.execute(o,'t1066_id_w1')
+
+opal.assign.table.tibble(o, 't1066_id_w2','10-66.1066-UrbanChina-Followup',
+                         variables=list('centreid'), missings = TRUE)
+t1066_id_w2 <- opal.execute(o,'t1066_id_w2')
+
+opal.assign.table.tibble(o, 't1066_mdeath2','10-66.pyears_(mortality_cohort)_2_0',
+                         variables=list('death_date'), missings = TRUE)
+t1066_mdeath2 <- opal.execute(o,'t1066_mdeath2')
+t1066_mdeath2$mdeath <- format(t1066_mdeath2$death_date, '%m')
+t1066_mdeath2 <- t1066_mdeath2[c("id", "mdeath")]
+
+same_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], mdeath=as.numeric(new_2[,2]))
+  new_22
+}
+
+t1066_mdeath <- same_indiv(old = t1066_mdeath2, new = t1066_id_w1)
+```
+
+```{r local_UCh2, echo=FALSE} 
+vari <- t1066_mdeath[[2]]
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_mdeath, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_UCh2, echo=TRUE} 
+t1066_ds_UCh_w2 <- tibble(id=t1066_mdeath$id)
+t1066_ds_UCh_w2$mdeath <- car::recode(t1066_mdeath$mdeath, "NA=999")
+t1066_ds_UCh_w2$mdeath <- labelled(t1066_ds_UCh_w2$mdeath, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=996,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_UCh2, echo=FALSE} 
+vari <- t1066_ds_UCh_w2$mdeath
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_UCh_w2, aes(x=factor(mdeath))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_UCh2, echo=FALSE} 
+BeforeH <- table(t1066_mdeath$mdeath, useNA = "ifany")
+AfterH <- table(t1066_ds_UCh_w2$mdeath)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:(length(AfterH)-1)], "NA->999")
+kable(C)
+```
+
+ 
+```{r importOPAL_UCh2, echo=FALSE}
+label(t1066_ds_UCh_w2$mdeath) <- ds_label
+mdeath <- t1066_ds_UCh_w2
+save(mdeath, file = "../RData/UCh_w2/mdeath.RData")
+rm(mdeath, t1066_id_w1, t1066_id_w2, t1066_mdeath2, t1066_mdeath)
+```
+
+
+
+
+## Rural China
+
+### Wave 1
+
+There is no variable.
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `death_date`|
+|-|-|
+| **Label** | `date of death`|
+| **Table name** | `pyears_(mortality_cohort)_2_0` |
+| **Description** |  |
+
+```{r assign_RCh2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_id_w1','10-66.1066-RuralChina-Baseline',
+                         variables=list('centreid'), missings = TRUE)
+t1066_id_w1 <- opal.execute(o,'t1066_id_w1')
+
+opal.assign.table.tibble(o, 't1066_id_w2','10-66.1066-RuralChina-Followup',
+                         variables=list('centreid'), missings = TRUE)
+t1066_id_w2 <- opal.execute(o,'t1066_id_w2')
+
+opal.assign.table.tibble(o, 't1066_mdeath2','10-66.pyears_(mortality_cohort)_2_0',
+                         variables=list('death_date'), missings = TRUE)
+t1066_mdeath2 <- opal.execute(o,'t1066_mdeath2')
+t1066_mdeath2$mdeath <- format(t1066_mdeath2$death_date, '%m')
+t1066_mdeath2 <- t1066_mdeath2[c("id", "mdeath")]
+
+same_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], mdeath=as.numeric(new_2[,2]))
+  new_22
+}
+
+t1066_mdeath <- same_indiv(old = t1066_mdeath2, new = t1066_id_w1)
+
+```
+
+```{r local_RCh2, echo=FALSE} 
+vari <- t1066_mdeath[[2]]
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_mdeath, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_RCh2, echo=TRUE} 
+t1066_ds_RCh_w2 <- tibble(id=t1066_mdeath$id)
+t1066_ds_RCh_w2$mdeath <- car::recode(t1066_mdeath$mdeath, "NA=999")
+t1066_ds_RCh_w2$mdeath <- labelled(t1066_ds_RCh_w2$mdeath, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=996,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_RCh2, echo=FALSE} 
+vari <- t1066_ds_RCh_w2$mdeath
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_RCh_w2, aes(x=factor(mdeath))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_RCh2, echo=FALSE} 
+BeforeH <- table(t1066_mdeath$mdeath, useNA = "ifany")
+AfterH <- table(t1066_ds_RCh_w2$mdeath)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:(length(AfterH)-1)], "NA->999")
+kable(C)
+```
+
+```{r importOPAL_RCh2, echo=FALSE}
+label(t1066_ds_RCh_w2$mdeath) <- ds_label
+mdeath <- t1066_ds_RCh_w2
+save(mdeath, file = "../RData/RCh_w2/mdeath.RData")
+rm(mdeath, t1066_id_w1, t1066_id_w2, t1066_mdeath2, t1066_mdeath)
+```
+ 
+
+
+
+## Dominican Republic
+
+### Wave 1
+
+There is no variable.
+
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `death_date`|
+|-|-|
+| **Label** | `date of death`|
+| **Table name** | `pyears_(mortality_cohort)_2_0` |
+| **Description** |  |
+
+```{r assign_DR2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_id_w1','10-66.1066-DominicanRepublic-Baseline',
+                         variables=list('centreid'), missings = TRUE)
+t1066_id_w1 <- opal.execute(o,'t1066_id_w1')
+
+opal.assign.table.tibble(o, 't1066_id_w2','10-66.1066-DominicanRepublic-Followup',
+                         variables=list('centreid'), missings = TRUE)
+t1066_id_w2 <- opal.execute(o,'t1066_id_w2')
+
+opal.assign.table.tibble(o, 't1066_mdeath2','10-66.pyears_(mortality_cohort)_2_0',
+                         variables=list('death_date'), missings = TRUE)
+t1066_mdeath2 <- opal.execute(o,'t1066_mdeath2')
+t1066_mdeath2$mdeath <- format(t1066_mdeath2$death_date, '%m')
+t1066_mdeath2 <- t1066_mdeath2[c("id", "mdeath")]
+
+same_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], mdeath=as.numeric(new_2[,2]))
+  new_22
+}
+
+t1066_mdeath <- same_indiv(old = t1066_mdeath2, new = t1066_id_w1)
+
+```
+
+```{r local_DR2, echo=FALSE} 
+vari <- t1066_mdeath[[2]]
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_mdeath, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_DR2, echo=TRUE} 
+t1066_ds_DR_w2 <- tibble(id=t1066_mdeath$id)
+t1066_ds_DR_w2$mdeath <- car::recode(t1066_mdeath$mdeath, "NA=999")
+t1066_ds_DR_w2$mdeath <- labelled(t1066_ds_DR_w2$mdeath, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=996,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_DR2, echo=FALSE} 
+vari <- t1066_ds_DR_w2$mdeath
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_DR_w2, aes(x=factor(mdeath))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_DR2, echo=FALSE} 
+BeforeH <- table(t1066_mdeath$mdeath, useNA = "ifany")
+AfterH <- table(t1066_ds_DR_w2$mdeath)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:(length(AfterH)-1)], "NA->999")
+kable(C)
+```
+
+ 
+```{r importOPAL_DR2, echo=FALSE}
+label(t1066_ds_DR_w2$mdeath) <- ds_label
+mdeath <- t1066_ds_DR_w2
+save(mdeath, file = "../RData/DR_w2/mdeath.RData")
+rm(mdeath, t1066_id_w1, t1066_id_w2, t1066_mdeath2, t1066_mdeath)
+```
+
+
+
+## Venezuela
+
+### Wave 1
+
+There is no variable.
+
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `death_date`|
+|-|-|
+| **Label** | `date of death`|
+| **Table name** | `pyears_(mortality_cohort)_2_0` |
+| **Description** |  |
+
+```{r assign_V2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_id_w1','10-66.1066-Venezuela-Baseline',
+                         variables=list('centreid'), missings = TRUE)
+t1066_id_w1 <- opal.execute(o,'t1066_id_w1')
+
+opal.assign.table.tibble(o, 't1066_id_w2','10-66.1066-Venezuela-Followup',
+                         variables=list('centreid'), missings = TRUE)
+t1066_id_w2 <- opal.execute(o,'t1066_id_w2')
+
+opal.assign.table.tibble(o, 't1066_mdeath2','10-66.pyears_(mortality_cohort)_2_0',
+                         variables=list('death_date'), missings = TRUE)
+t1066_mdeath2 <- opal.execute(o,'t1066_mdeath2')
+t1066_mdeath2$mdeath <- format(t1066_mdeath2$death_date, '%m')
+t1066_mdeath2 <- t1066_mdeath2[c("id", "mdeath")]
+
+same_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], mdeath=as.numeric(new_2[,2]))
+  new_22
+}
+
+t1066_mdeath <- same_indiv(old = t1066_mdeath2, new = t1066_id_w1)
+```
+
+```{r local_V2, echo=FALSE} 
+vari <- t1066_mdeath[[2]]
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_mdeath, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_V2, echo=TRUE} 
+t1066_ds_Ven_w2 <- tibble(id=t1066_mdeath$id)
+t1066_ds_Ven_w2$mdeath <- car::recode(t1066_mdeath$mdeath, "NA=999")
+t1066_ds_Ven_w2$mdeath <- labelled(t1066_ds_Ven_w2$mdeath, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=996,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_V2, echo=FALSE} 
+vari <- t1066_ds_Ven_w2$mdeath
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_Ven_w2, aes(x=factor(mdeath))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_V2, echo=FALSE} 
+BeforeH <- table(t1066_mdeath$mdeath, useNA = "ifany")
+AfterH <- table(t1066_ds_Ven_w2$mdeath)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:(length(AfterH)-1)], "NA->999")
+kable(C)
+```
+
+ 
+```{r importOPAL_V2, echo=FALSE}
+label(t1066_ds_Ven_w2$mdeath) <- ds_label
+mdeath <- t1066_ds_Ven_w2
+save(mdeath, file = "../RData/Ven_w2/mdeath.RData")
+rm(mdeath, t1066_id_w1, t1066_id_w2, t1066_mdeath2, t1066_mdeath)
+```
+ 
+
+
+
+
+## Urban Peru
+
+### Wave 1
+
+There is no variable.
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `death_date`|
+|-|-|
+| **Label** | `date of death`|
+| **Table name** | `pyears_(mortality_cohort)_2_0` |
+| **Description** |  |
+
+```{r assign_UP2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_id_w1','10-66.1066-UrbanPeru-Baseline',
+                         variables=list('centreid'), missings = TRUE)
+t1066_id_w1 <- opal.execute(o,'t1066_id_w1')
+
+opal.assign.table.tibble(o, 't1066_id_w2','10-66.1066-UrbanPeru-Followup',
+                         variables=list('centreid'), missings = TRUE)
+t1066_id_w2 <- opal.execute(o,'t1066_id_w2')
+
+opal.assign.table.tibble(o, 't1066_mdeath2','10-66.pyears_(mortality_cohort)_2_0',
+                         variables=list('death_date'), missings = TRUE)
+t1066_mdeath2 <- opal.execute(o,'t1066_mdeath2')
+t1066_mdeath2$mdeath <- format(t1066_mdeath2$death_date, '%m')
+t1066_mdeath2 <- t1066_mdeath2[c("id", "mdeath")]
+
+same_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], mdeath=as.numeric(new_2[,2]))
+  new_22
+}
+
+t1066_mdeath <- same_indiv(old = t1066_mdeath2, new = t1066_id_w1)
+
+```
+
+```{r local_UP2, echo=FALSE} 
+vari <- t1066_mdeath[[2]]
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_mdeath, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_UP2, echo=TRUE} 
+t1066_ds_UP_w2 <- tibble(id=t1066_mdeath$id)
+t1066_ds_UP_w2$mdeath <- car::recode(t1066_mdeath$mdeath, "NA=999")
+t1066_ds_UP_w2$mdeath <- labelled(t1066_ds_UP_w2$mdeath, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=996,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_UP2, echo=FALSE} 
+vari <- t1066_ds_UP_w2$mdeath
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_UP_w2, aes(x=factor(mdeath))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_UP2, echo=FALSE} 
+BeforeH <- table(t1066_mdeath$mdeath, useNA = "ifany")
+AfterH <- table(t1066_ds_UP_w2$mdeath)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:(length(AfterH)-1)], "NA->999")
+kable(C)
+```
+
+ 
+```{r importOPAL_UP_w2, echo=FALSE}
+label(t1066_ds_UP_w2$mdeath) <- ds_label
+mdeath <- t1066_ds_UP_w2
+save(mdeath, file = "../RData/UP_w2/mdeath.RData")
+rm(mdeath, t1066_id_w1, t1066_id_w2, t1066_mdeath2, t1066_mdeath)
+```
+
+
+
+
+
+## Rural Peru
+
+### Wave 1
+
+There is no variable.
+
+
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `death_date`|
+|-|-|
+| **Label** | `date of death`|
+| **Table name** | `pyears_(mortality_cohort)_2_0` |
+| **Description** |  |
+
+```{r assign_RP2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_id_w1','10-66.1066-RuralPeru-Baseline',
+                         variables=list('centreid'), missings = TRUE)
+t1066_id_w1 <- opal.execute(o,'t1066_id_w1')
+
+opal.assign.table.tibble(o, 't1066_id_w2','10-66.1066-RuralPeru-Followup',
+                         variables=list('centreid'), missings = TRUE)
+t1066_id_w2 <- opal.execute(o,'t1066_id_w2')
+
+opal.assign.table.tibble(o, 't1066_mdeath2','10-66.pyears_(mortality_cohort)_2_0',
+                         variables=list('death_date'), missings = TRUE)
+t1066_mdeath2 <- opal.execute(o,'t1066_mdeath2')
+t1066_mdeath2$mdeath <- format(t1066_mdeath2$death_date, '%m')
+t1066_mdeath2 <- t1066_mdeath2[c("id", "mdeath")]
+
+same_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], mdeath=as.numeric(new_2[,2]))
+  new_22
+}
+
+t1066_mdeath <- same_indiv(old = t1066_mdeath2, new = t1066_id_w1)
+```
+
+```{r local_RP2, echo=FALSE} 
+vari <- t1066_mdeath[[2]]
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_mdeath, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_RP2, echo=TRUE} 
+t1066_ds_RP_w2 <- tibble(id=t1066_mdeath$id)
+t1066_ds_RP_w2$mdeath <- car::recode(t1066_mdeath$mdeath, "NA=999")
+t1066_ds_RP_w2$mdeath <- labelled(t1066_ds_RP_w2$mdeath, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=996,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_RP2, echo=FALSE} 
+vari <- t1066_ds_RP_w2$mdeath
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_RP_w2, aes(x=factor(mdeath))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_RP2, echo=FALSE} 
+BeforeH <- table(t1066_mdeath$mdeath, useNA = "ifany")
+AfterH <- table(t1066_ds_RP_w2$mdeath)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:(length(AfterH)-1)], "NA->999")
+kable(C)
+```
+
+```{r importOPALRP_w2, echo=FALSE}
+label(t1066_ds_RP_w2$mdeath) <- ds_label
+mdeath <- t1066_ds_RP_w2
+save(mdeath, file = "../RData/RP_w2/mdeath.RData")
+rm(mdeath, t1066_id_w1, t1066_id_w2, t1066_mdeath2, t1066_mdeath)
+```
+
+
+
+
+
+
+
+## Urban Mexico
+
+### Wave 1
+
+There is no variable.
+
+
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `death_date`|
+|-|-|
+| **Label** | `date of death`|
+| **Table name** | `pyears_(mortality_cohort)_2_0` |
+| **Description** |  |
+
+```{r assign_UM2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_id_w1','10-66.1066-UrbanMexico-Baseline',
+                         variables=list('centreid'), missings = TRUE)
+t1066_id_w1 <- opal.execute(o,'t1066_id_w1')
+
+opal.assign.table.tibble(o, 't1066_id_w2','10-66.1066-UrbanMexico-Followup',
+                         variables=list('centreid'), missings = TRUE)
+t1066_id_w2 <- opal.execute(o,'t1066_id_w2')
+
+opal.assign.table.tibble(o, 't1066_mdeath2','10-66.pyears_(mortality_cohort)_2_0',
+                         variables=list('death_date'), missings = TRUE)
+t1066_mdeath2 <- opal.execute(o,'t1066_mdeath2')
+t1066_mdeath2$mdeath <- format(t1066_mdeath2$death_date, '%m')
+t1066_mdeath2 <- t1066_mdeath2[c("id", "mdeath")]
+
+same_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], mdeath=as.numeric(new_2[,2]))
+  new_22
+}
+
+t1066_mdeath <- same_indiv(old = t1066_mdeath2, new = t1066_id_w1)
+```
+
+```{r local_UM2, echo=FALSE} 
+vari <- t1066_mdeath[[2]]
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_mdeath, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_UM2, echo=TRUE} 
+t1066_ds_UM_w2 <- tibble(id=t1066_mdeath$id)
+t1066_ds_UM_w2$mdeath <- car::recode(t1066_mdeath$mdeath, "NA=999")
+t1066_ds_UM_w2$mdeath <- labelled(t1066_ds_UM_w2$mdeath, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=996,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_UM2, echo=FALSE} 
+vari <- t1066_ds_UM_w2$mdeath
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_UM_w2, aes(x=factor(mdeath))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_UM2, echo=FALSE} 
+BeforeH <- table(t1066_mdeath$mdeath, useNA = "ifany")
+AfterH <- table(t1066_ds_UM_w2$mdeath)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:(length(AfterH)-1)], "NA->999")
+kable(C)
+```
+
+```{r importOPAL_UM_w2, echo=FALSE}
+label(t1066_ds_UM_w2$mdeath) <- ds_label
+mdeath <- t1066_ds_UM_w2
+save(mdeath, file = "../RData/UM_w2/mdeath.RData")
+rm(mdeath, t1066_id_w1, t1066_id_w2, t1066_mdeath2, t1066_mdeath)
+```
+
+
+
+
+
+
+
+## Rural Mexico
+
+### Wave 1
+
+There is no variable.
+
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `death_date`|
+|-|-|
+| **Label** | `date of death`|
+| **Table name** | `pyears_(mortality_cohort)_2_0` |
+| **Description** |  |
+
+```{r assign_RM2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_id_w1','10-66.1066-RuralMexico-Baseline',
+                         variables=list('centreid'), missings = TRUE)
+t1066_id_w1 <- opal.execute(o,'t1066_id_w1')
+
+opal.assign.table.tibble(o, 't1066_id_w2','10-66.1066-RuralMexico-Followup',
+                         variables=list('centreid'), missings = TRUE)
+t1066_id_w2 <- opal.execute(o,'t1066_id_w2')
+
+opal.assign.table.tibble(o, 't1066_mdeath2','10-66.pyears_(mortality_cohort)_2_0',
+                         variables=list('death_date'), missings = TRUE)
+t1066_mdeath2 <- opal.execute(o,'t1066_mdeath2')
+t1066_mdeath2$mdeath <- format(t1066_mdeath2$death_date, '%m')
+t1066_mdeath2 <- t1066_mdeath2[c("id", "mdeath")]
+
+same_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], mdeath=as.numeric(new_2[,2]))
+  new_22
+}
+
+t1066_mdeath <- same_indiv(old = t1066_mdeath2, new = t1066_id_w1)
+```
+
+```{r local_RM2, echo=FALSE} 
+vari <- t1066_mdeath[[2]]
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_mdeath, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_RM2, echo=TRUE} 
+t1066_ds_RM_w2 <- tibble(id=t1066_mdeath$id)
+t1066_ds_RM_w2$mdeath <- car::recode(t1066_mdeath$mdeath, "NA=999")
+t1066_ds_RM_w2$mdeath <- labelled(t1066_ds_RM_w2$mdeath, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=996,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_RM2, echo=FALSE} 
+vari <- t1066_ds_RM_w2$mdeath
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_RM_w2, aes(x=factor(mdeath))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_RM2, echo=FALSE} 
+BeforeH <- table(t1066_mdeath$mdeath, useNA = "ifany")
+AfterH <- table(t1066_ds_RM_w2$mdeath)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:(length(AfterH)-1)], "NA->999")
+kable(C)
+```
+
+ 
+```{r importOPAL_RM_w2, echo=FALSE}
+label(t1066_ds_RM_w2$mdeath) <- ds_label
+mdeath <- t1066_ds_RM_w2
+save(mdeath, file = "../RData/RM_w2/mdeath.RData")
+rm(mdeath, t1066_id_w1, t1066_id_w2, t1066_mdeath2, t1066_mdeath)
+```
+ 
+
+
+
+
+
+
+
+## Puerto Rico
+
+### Wave 1
+
+There is no variable.
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `death_date`|
+|-|-|
+| **Label** | `date of death`|
+| **Table name** | `pyears_(mortality_cohort)_2_0` |
+| **Description** |  |
+
+```{r assign_PR2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_id_w1','10-66.1066-PuertoRico-Baseline',
+                         variables=list('centreid'), missings = TRUE)
+t1066_id_w1 <- opal.execute(o,'t1066_id_w1')
+
+opal.assign.table.tibble(o, 't1066_id_w2','10-66.1066-PuertoRico-Followup',
+                         variables=list('centreid'), missings = TRUE)
+t1066_id_w2 <- opal.execute(o,'t1066_id_w2')
+
+opal.assign.table.tibble(o, 't1066_mdeath2','10-66.pyears_(mortality_cohort)_2_0',
+                         variables=list('death_date'), missings = TRUE)
+t1066_mdeath2 <- opal.execute(o,'t1066_mdeath2')
+t1066_mdeath2$mdeath <- format(t1066_mdeath2$death_date, '%m')
+t1066_mdeath2 <- t1066_mdeath2[c("id", "mdeath")]
+
+same_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], mdeath=as.numeric(new_2[,2]))
+  new_22
+}
+
+t1066_mdeath <- same_indiv(old = t1066_mdeath2, new = t1066_id_w1)
+```
+
+```{r local_PR2, echo=FALSE} 
+vari <- t1066_mdeath[[2]]
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_mdeath, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_PR2, echo=TRUE} 
+t1066_ds_PR_w2 <- tibble(id=t1066_mdeath$id)
+t1066_ds_PR_w2$mdeath <- car::recode(t1066_mdeath$mdeath, "NA=999")
+t1066_ds_PR_w2$mdeath <- labelled(t1066_ds_PR_w2$mdeath, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=996,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_PR2, echo=FALSE} 
+vari <- t1066_ds_PR_w2$mdeath
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_PR_w2, aes(x=factor(mdeath))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_PR2, echo=FALSE} 
+BeforeH <- table(t1066_mdeath$mdeath, useNA = "ifany")
+AfterH <- table(t1066_ds_PR_w2$mdeath)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:(length(AfterH)-1)], "NA->999")
+kable(C)
+```
+
+```{r importOPAL_PR_w2, echo=FALSE}
+label(t1066_ds_PR_w2$mdeath) <- ds_label
+mdeath <- t1066_ds_PR_w2
+save(mdeath, file = "../RData/PR_w2/mdeath.RData")
+rm(mdeath, t1066_id_w1, t1066_id_w2, t1066_mdeath2, t1066_mdeath)
+```
+
+
+#### Quality estimation
+
+This variable is available only for the second wave of India.
+
+[Comments on the quality of the new harmonised variable.]
+
+
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

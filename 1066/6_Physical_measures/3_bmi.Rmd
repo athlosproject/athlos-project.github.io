@@ -1,0 +1,837 @@
+---
+title: "BMI"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+  
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_albert.r")
+```
+<!-- ########################################################## --> 
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+  
+* Name: `bmi`
+* Label: `Body Mass Index calculated as weight (kg)/height(m)^2`
+* Type of variable: `countinous`
+* Missings: 
+    + `991 = CAPI/interviewer error`
+    + `992 = Impute`
+    + `993 = Disable to measure`
+    + `994 = Not attempt/not done`
+    + `995 = Does not answer`
+    + `996 = Not applicable`
+    + `997 = Refuse`
+    + `998 = Do not know`
+    + `999 = Missing`
+* Comments: `the BMI variable should be created by dividing weight and heigh variables with the following equation= weight (kg)/height(m)^2.`
+
+# Data process
+
+### 10/66 - Cuba - Wave 1 
+
+There is no varibale. 
+
+
+
+### 10/66 - Cuba - Wave 2 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_WEIGHT`
+* Label: `Weight in kilograms`
+* Type of variable: `countinous`
+
+* Name: `f_HEIGHT`
+* Label: `height (cms)`
+* Type of variable: `countinous`
+
+
+```{r assign_cuba2}
+opal.assign.table.tibble(o, 't1066_cuba_w2_bmi','10-66.1066-Cuba-Followup',
+                         variables=list('f_WEIGHT', 'f_HEIGHT'), missings = TRUE)
+```
+
+```{r local_cuba2}
+t1066_cuba_w2_bmi <- opal.execute(o,'t1066_cuba_w2_bmi')
+
+Continuous_summary(var = t1066_cuba_w2_bmi$f_WEIGHT, missing_values = NA)
+ggplot(t1066_cuba_w2_bmi, aes(f_WEIGHT)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency")
+
+Continuous_summary(var = t1066_cuba_w2_bmi$f_HEIGHT, missing_values = NA)
+ggplot(t1066_cuba_w2_bmi, aes(f_HEIGHT)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(100,200)
+```
+
+There are individues with weight values 0 and 9 that are going to considered as mitakes and will be car::recoded as 999. Furthermore, there are individuals with weight values 669, 678, 781 and 999.9 that are going to be considered as mistakes and they will be car::recoded as 999. 
+
+#### Harmonisation algorithm
+The harmonized variable will be calculate from the study-specific variables using this formula
+
+bmi=weight/height^2
+
+The missing values have to be car::recoded as follows:
+
+* `NA as 999`
+
+R code of the ALGORITHM:
+
+```{r harmo_cuba2}
+t1066_cuba_w2_bmi$weight <- car::recode(t1066_cuba_w2_bmi$f_WEIGHT, "c(0,9)=NA; c(669, 678, 781,999, 999.9)=NA")
+
+
+t1066_ds_cuba_w2 <- tibble(id=t1066_cuba_w2_bmi$id)
+t1066_ds_cuba_w2$bmi <- car::recode(round(t1066_cuba_w2_bmi$weight /(((t1066_cuba_w2_bmi$f_HEIGHT)/100)^2), 3), "NA=999")
+t1066_ds_cuba_w2$bmi <- labelled(t1066_ds_cuba_w2$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_cuba2}
+Continuous_summary(var = t1066_ds_cuba_w2$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_cuba_w2, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,80)
+```
+
+#### Validation
+There is an unusual value that is lower than 12:
+```{r crosstabulation_cuba2}
+t1066_cuba_w2_bmi$bmi <- t1066_ds_cuba_w2$bmi
+t1066_cuba_w2_bmi[which(t1066_cuba_w2_bmi$bmi<13),]
+```
+
+
+### 10/66 - India - Wave 1 
+
+There is no variable.
+
+
+
+
+### 10/66 - India - Wave 2 
+
+There is no variable.
+
+
+
+### 10/66 - Urban China - Wave 1 
+
+There is no variable.
+
+
+
+### 10/66 - Urban China - Wave 2 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_WEIGHT`
+* Label: `Weight in kilograms`
+* Type of variable: `countinous`
+
+* Name: `f_HEIGHT`
+* Label: `height (cms)`
+* Type of variable: `countinous`
+
+```{r assign_UCh2}
+opal.assign.table.tibble(o, 't1066_UCh_w2_bmi','10-66.1066-UrbanChina-Followup',
+                         variables=list('f_WEIGHT', 'f_HEIGHT'), missings = TRUE)
+```
+
+```{r local_UCh2}
+t1066_UCh_w2_bmi <- opal.execute(o,'t1066_UCh_w2_bmi')
+
+Continuous_summary(var = t1066_UCh_w2_bmi$f_WEIGHT, missing_values = c(999))
+ggplot(t1066_UCh_w2_bmi, aes(f_WEIGHT)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency")
+
+Continuous_summary(var = t1066_UCh_w2_bmi$f_HEIGHT, missing_values = NA)
+ggplot(t1066_UCh_w2_bmi, aes(f_HEIGHT)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(100,200)
+```
+
+#### Harmonisation algorithm
+The harmonized variable will be calculate from the study-specific variables using this formula
+
+bmi=weight/height^2
+
+The missing values have to be car::recoded as follows:
+
+* `NA as 999`
+
+R code of the ALGORITHM:
+
+```{r harmo_UCh2}
+t1066_ds_UCh_w2 <- tibble(id=t1066_UCh_w2_bmi$id)
+t1066_ds_UCh_w2$bmi <- car::recode(round(t1066_UCh_w2_bmi$f_WEIGHT /(((t1066_UCh_w2_bmi$f_HEIGHT)/100)^2), 3), "NA=999")
+t1066_ds_UCh_w2$bmi <- labelled(t1066_ds_UCh_w2$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_UCh2}
+Continuous_summary(var = t1066_ds_UCh_w2$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_UCh_w2, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,80)
+```
+
+#### Validation
+```{r crosstabulation_UCh2}
+```
+
+
+
+
+### 10/66 - Rural China - Wave 1 
+
+There is no variable.
+
+
+
+### 10/66 - Rural China - Wave 2 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_WEIGHT`
+* Label: `Weight in kilograms`
+* Type of variable: `countinous`
+
+* Name: `f_HEIGHT`
+* Label: `height (cms)`
+* Type of variable: `countinous`
+
+
+```{r assign_RCh2}
+opal.assign.table.tibble(o, 't1066_RCh_w2_bmi','10-66.1066-RuralChina-Followup',
+                         variables=list('f_WEIGHT', 'f_HEIGHT'), missings = TRUE)
+
+```
+
+```{r local_RCh2}
+t1066_RCh_w2_bmi <- opal.execute(o,'t1066_RCh_w2_bmi')
+
+Continuous_summary(var = t1066_RCh_w2_bmi$f_WEIGHT, missing_values = NA)
+ggplot(t1066_RCh_w2_bmi, aes(f_WEIGHT)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency")
+
+Continuous_summary(var = t1066_RCh_w2_bmi$f_HEIGHT, missing_values = NA)
+ggplot(t1066_RCh_w2_bmi, aes(f_HEIGHT)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(100,200)
+```
+
+#### Harmonisation algorithm
+The harmonized variable will be calculate from the study-specific variables using this formula
+
+bmi=weight/height^2
+
+The missing values have to be car::recoded as follows:
+
+* `NA as 999`
+
+R code of the ALGORITHM:
+
+```{r harmo_RCh2}
+t1066_ds_RCh_w2 <- tibble(id=t1066_RCh_w2_bmi$id)
+t1066_ds_RCh_w2$bmi <- car::recode(round(t1066_RCh_w2_bmi$ f_WEIGHT /(((t1066_RCh_w2_bmi$f_HEIGHT)/100)^2), 3), "NA=999")
+t1066_ds_RCh_w2$bmi <- labelled(t1066_ds_RCh_w2$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_RCh2}
+Continuous_summary(var = t1066_ds_RCh_w2$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_RCh_w2, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,80)
+```
+
+#### Validation
+```{r crosstabulation_RCh2}
+```
+
+
+
+
+
+
+### 10/66 - Dominican Republic - Wave 1 
+
+There is no variable.
+
+
+
+
+
+
+### 10/66 - Dominican Republic - Wave 2 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_WEIGHT`
+* Label: `Weight in kilograms`
+* Type of variable: `countinous`
+
+* Name: `f_HEIGHT`
+* Label: `height (cms)`
+* Type of variable: `countinous`
+
+```{r assign_DR2}
+opal.assign.table.tibble(o, 't1066_DR_w2_bmi','10-66.1066-DominicanRepublic-Followup',
+                         variables=list('f_WEIGHT', 'f_HEIGHT'), missings = TRUE)
+```
+
+```{r local_DR2}
+t1066_DR_w2_bmi <- opal.execute(o,'t1066_DR_w2_bmi')
+
+Continuous_summary(var = t1066_DR_w2_bmi$f_WEIGHT, missing_values = NA)
+ggplot(t1066_DR_w2_bmi, aes(f_WEIGHT)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency")
+
+Continuous_summary(var = t1066_DR_w2_bmi$f_HEIGHT, missing_values = NA)
+ggplot(t1066_DR_w2_bmi, aes(f_HEIGHT)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(100,200)
+```
+
+There are 40 individuals with weigth value 999 that are going to be consider as mistakes and they will be car::recoded as missing.
+
+#### Harmonisation algorithm
+The harmonized variable will be calculate from the study-specific variables using this formula
+
+bmi=weight/height^2
+
+The missing values have to be car::recoded as follows:
+
+* `NA as 999`
+
+R code of the ALGORITHM:
+
+```{r harmo_DR2}
+t1066_DR_w2_bmi$weight <- car::recode(t1066_DR_w2_bmi$f_WEIGHT, "999=NA")
+
+t1066_ds_DR_w2 <- tibble(id=t1066_DR_w2_bmi$id)
+t1066_ds_DR_w2$bmi <- car::recode(round(t1066_DR_w2_bmi$weight /(((t1066_DR_w2_bmi$f_HEIGHT)/100)^2), 3), "NA=999")
+t1066_ds_DR_w2$bmi <- labelled(t1066_ds_DR_w2$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_DR2}
+Continuous_summary(var = t1066_ds_DR_w2$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_DR_w2, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,80)
+```
+
+#### Validation
+There are unusual values that are lower than 12:
+```{r crosstabulation_DR2}
+t1066_DR_w2_bmi$bmi <- t1066_ds_DR_w2$bmi
+t1066_DR_w2_bmi[which(t1066_DR_w2_bmi$bmi<=12),]
+```
+
+
+
+
+
+### 10/66 - Venezuela - Wave 1 
+
+There are no variable.
+
+
+
+### 10/66 - Venezuela - Wave 2 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_WEIGHT`
+* Label: `Weight in kilograms`
+* Type of variable: `countinous`
+
+* Name: `f_HEIGHT`
+* Label: `height (cms)`
+* Type of variable: `countinous`
+
+
+```{r assign_V2}
+opal.assign.table.tibble(o, 't1066_Ven_w2_bmi','10-66.1066-Venezuela-Followup',
+                         variables=list('f_WEIGHT', 'f_HEIGHT'), missings = TRUE)
+
+```
+
+```{r local_V2}
+t1066_Ven_w2_bmi <- opal.execute(o,'t1066_Ven_w2_bmi')
+
+Continuous_summary(var = t1066_Ven_w2_bmi$f_WEIGHT, missing_values = NA)
+ggplot(t1066_Ven_w2_bmi, aes(f_WEIGHT)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency")
+
+Continuous_summary(var = t1066_Ven_w2_bmi$f_HEIGHT, missing_values = NA)
+ggplot(t1066_Ven_w2_bmi, aes(f_HEIGHT)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(100,200)
+```
+
+
+
+#### Harmonisation algorithm
+The harmonized variable will be calculate from the study-specific variables using this formula
+
+bmi=weight/height^2
+
+The missing values have to be car::recoded as follows:
+
+* `NA as 999`
+
+R code of the ALGORITHM:
+
+```{r harmo_V2}
+t1066_Ven_w2_bmi$weight <- car::recode(t1066_Ven_w2_bmi$f_WEIGHT, "999=NA")
+
+t1066_ds_Ven_w2 <- tibble(id=t1066_Ven_w2_bmi$id)
+t1066_ds_Ven_w2$bmi <- car::recode(round(t1066_Ven_w2_bmi$weight /(((t1066_Ven_w2_bmi$f_HEIGHT)/100)^2), 3), "NA=999")
+t1066_ds_Ven_w2$bmi <- labelled(t1066_ds_Ven_w2$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_V2}
+Continuous_summary(var = t1066_ds_Ven_w2$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_Ven_w2, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,80)
+```
+
+#### Validation
+```{r crosstabulation_V2}
+```
+
+
+
+
+
+
+
+### 10/66 - Urban Peru - Wave 1 
+
+There is no variable.
+
+
+
+
+### 10/66 - Urban Peru - Wave 2 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_WEIGHT`
+* Label: `Weight in kilograms`
+* Type of variable: `countinous`
+
+* Name: `f_HEIGHT`
+* Label: `height (cms)`
+* Type of variable: `countinous`
+
+```{r assign_UP2}
+opal.assign.table.tibble(o, 't1066_UP_w2_bmi','10-66.1066-UrbanPeru-Followup',
+                         variables=list('f_WEIGHT', 'f_HEIGHT'), missings = TRUE)
+
+```
+
+```{r local_UP2}
+t1066_UP_w2_bmi <- opal.execute(o,'t1066_UP_w2_bmi')
+
+Continuous_summary(var = t1066_UP_w2_bmi$f_WEIGHT, missing_values = NA)
+ggplot(t1066_UP_w2_bmi, aes(f_WEIGHT)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency")
+
+Continuous_summary(var = t1066_UP_w2_bmi$f_HEIGHT, missing_values = NA)
+ggplot(t1066_UP_w2_bmi, aes(f_HEIGHT)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(100,200)
+```
+
+
+
+#### Harmonisation algorithm
+The harmonized variable will be calculate from the study-specific variables using this formula
+
+bmi=weight/height^2
+
+The missing values have to be car::recoded as follows:
+
+* `NA as 999`
+
+
+R code of the ALGORITHM:
+
+```{r harmo_UP2}
+t1066_UP_w2_bmi$weight <- car::recode(t1066_UP_w2_bmi$f_WEIGHT, "999=NA")
+
+t1066_ds_UP_w2 <- tibble(id=t1066_UP_w2_bmi$id)
+t1066_ds_UP_w2$bmi <- car::recode(round(t1066_UP_w2_bmi$weight /(((t1066_UP_w2_bmi$f_HEIGHT)/100)^2), 3), "NA=999")
+t1066_ds_UP_w2$bmi <- labelled(t1066_ds_UP_w2$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_UP2}
+Continuous_summary(var = t1066_ds_UP_w2$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_UP_w2, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,80)
+```
+
+#### Validation
+```{r crosstabulation_UP2}
+```
+
+
+
+
+
+
+
+### 10/66 - Rural Peru - Wave 1 
+
+There is no variable.
+
+
+
+
+
+
+### 10/66 - Rural Peru - Wave 2 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_WEIGHT`
+* Label: `Weight in kilograms`
+* Type of variable: `countinous`
+
+* Name: `f_HEIGHT`
+* Label: `height (cms)`
+* Type of variable: `countinous`
+
+
+```{r assign_RP2}
+opal.assign.table.tibble(o, 't1066_RP_w2_bmi','10-66.1066-RuralPeru-Followup',
+                         variables=list('f_WEIGHT', 'f_HEIGHT'), missings = TRUE)
+```
+
+```{r local_RP2}
+t1066_RP_w2_bmi <- opal.execute(o,'t1066_RP_w2_bmi')
+
+Continuous_summary(var = t1066_RP_w2_bmi$f_WEIGHT, missing_values = NA)
+ggplot(t1066_RP_w2_bmi, aes(f_WEIGHT)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency")
+
+Continuous_summary(var = t1066_RP_w2_bmi$f_HEIGHT, missing_values = NA)
+ggplot(t1066_RP_w2_bmi, aes(f_HEIGHT)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(100,200)
+```
+
+#### Harmonisation algorithm
+The harmonized variable will be calculate from the study-specific variables using this formula
+
+bmi=weight/height^2
+
+The missing values have to be car::recoded as follows:
+
+* `NA as 999`
+
+R code of the ALGORITHM:
+
+```{r harmo_RP2}
+t1066_RP_w2_bmi$weight <- car::recode(t1066_RP_w2_bmi$f_WEIGHT, "999=NA")
+
+t1066_ds_RP_w2 <- tibble(id=t1066_RP_w2_bmi$id)
+t1066_ds_RP_w2$bmi <- car::recode(round(t1066_RP_w2_bmi$weight /(((t1066_RP_w2_bmi$f_HEIGHT)/100)^2), 3), "NA=999")
+t1066_ds_RP_w2$bmi <- labelled(t1066_ds_RP_w2$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_RP2}
+Continuous_summary(var = t1066_ds_RP_w2$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_RP_w2, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,80)
+```
+
+#### Validation
+```{r crosstabulation_RP2}
+```
+
+
+
+
+
+
+
+
+### 10/66 - Urban Mexico - Wave 1 
+
+There is no variable.
+
+
+
+
+
+
+### 10/66 - Urban Mexico - Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_WEIGHT`
+* Label: `Weight in kilograms`
+* Type of variable: `countinous`
+
+* Name: `f_HEIGHT`
+* Label: `height (cms)`
+* Type of variable: `countinous`
+
+```{r assign_UM2}
+opal.assign.table.tibble(o, 't1066_UM_w2_bmi','10-66.1066-UrbanMexico-Followup',
+                         variables=list('f_WEIGHT', 'f_HEIGHT'), missings = TRUE)
+```
+
+```{r local_UM2}
+t1066_UM_w2_bmi <- opal.execute(o,'t1066_UM_w2_bmi')
+
+Continuous_summary(var = t1066_UM_w2_bmi$f_WEIGHT, missing_values = NA)
+ggplot(t1066_UM_w2_bmi, aes(f_WEIGHT)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency")
+
+Continuous_summary(var = t1066_UM_w2_bmi$f_HEIGHT, missing_values = NA)
+ggplot(t1066_UM_w2_bmi, aes(f_HEIGHT)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(100,200)
+```
+
+#### Harmonisation algorithm
+The harmonized variable will be calculate from the study-specific variables using this formula
+
+bmi=weight/height^2
+
+The missing values have to be car::recoded as follows:
+
+* `NA as 999`
+
+R code of the ALGORITHM:
+
+```{r harmo_UM2}
+t1066_UM_w2_bmi$weight <- car::recode(t1066_UM_w2_bmi$f_WEIGHT, "999=NA")
+
+t1066_ds_UM_w2 <- tibble(id=t1066_UM_w2_bmi$id)
+t1066_ds_UM_w2$bmi <- car::recode(round(t1066_UM_w2_bmi$weight /(((t1066_UM_w2_bmi$f_HEIGHT)/100)^2), 3), "NA=999")
+t1066_ds_UM_w2$bmi <- labelled(t1066_ds_UM_w2$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_UM2}
+Continuous_summary(var = t1066_ds_UM_w2$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_UM_w2, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,80)
+```
+
+#### Validation
+```{r crosstabulation_UM2}
+```
+
+
+
+
+
+
+### 10/66 - Rural Mexico - Wave 1 
+
+There is no variable
+
+
+
+
+### 10/66 - Rural Mexico - Wave 2 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_WEIGHT`
+* Label: `Weight in kilograms`
+* Type of variable: `countinous`
+
+* Name: `f_HEIGHT`
+* Label: `height (cms)`
+* Type of variable: `countinous`
+
+
+```{r assign_RM2}
+opal.assign.table.tibble(o, 't1066_RM_w2_bmi','10-66.1066-RuralMexico-Followup',
+                         variables=list('f_WEIGHT', 'f_HEIGHT'), missings = TRUE)
+
+```
+
+```{r local_RM2}
+t1066_RM_w2_bmi <- opal.execute(o,'t1066_RM_w2_bmi')
+
+Continuous_summary(var = t1066_RM_w2_bmi$f_WEIGHT, missing_values = NA)
+ggplot(t1066_RM_w2_bmi, aes(f_WEIGHT)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency")
+
+Continuous_summary(var = t1066_RM_w2_bmi$f_HEIGHT, missing_values = NA)
+ggplot(t1066_RM_w2_bmi, aes(f_HEIGHT)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(100,200)
+```
+
+#### Harmonisation algorithm
+The harmonized variable will be calculate from the study-specific variables using this formula
+
+bmi=weight/height^2
+
+The missing values have to be car::recoded as follows:
+
+* `NA as 999`
+
+R code of the ALGORITHM:
+
+```{r harmo_RM2}
+t1066_RM_w2_bmi$weight <- car::recode(t1066_RM_w2_bmi$f_WEIGHT, "999=NA")
+
+t1066_ds_RM_w2 <- tibble(id=t1066_RM_w2_bmi$id)
+t1066_ds_RM_w2$bmi <- car::recode(round(t1066_RM_w2_bmi$weight /(((t1066_RM_w2_bmi$f_HEIGHT)/100)^2), 3), "NA=999")
+t1066_ds_RM_w2$bmi <- labelled(t1066_ds_RM_w2$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_RM2}
+Continuous_summary(var = t1066_ds_RM_w2$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_RM_w2, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,80)
+```
+
+#### Validation
+```{r crosstabulation_RM2}
+```
+
+
+
+
+
+
+
+
+
+### 10/66 - Puerto Rico - Wave 1 
+
+There are no variable.
+
+
+
+
+
+### 10/66 - Puerto Rico - Wave 2 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `f_WEIGHT`
+* Label: `Weight in kilograms`
+* Type of variable: `countinous`
+
+* Name: `f_HEIGHT`
+* Label: `height (cms)`
+* Type of variable: `countinous`
+
+
+```{r assign_PR2}
+opal.assign.table.tibble(o, 't1066_PR_w2_bmi','10-66.1066-PuertoRico-Followup',
+                         variables=list('f_WEIGHT', 'f_HEIGHT'), missings = TRUE)
+
+```
+
+```{r local_PR2}
+t1066_PR_w2_bmi <- opal.execute(o,'t1066_PR_w2_bmi')
+
+Continuous_summary(var = t1066_PR_w2_bmi$f_WEIGHT, missing_values = NA)
+ggplot(t1066_PR_w2_bmi, aes(f_WEIGHT)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency")
+
+Continuous_summary(var = t1066_PR_w2_bmi$f_HEIGHT, missing_values = NA)
+ggplot(t1066_PR_w2_bmi, aes(f_HEIGHT)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(100,200)
+```
+
+#### Harmonisation algorithm
+The harmonized variable will be calculate from the study-specific variables using this formula
+
+bmi=weight/height^2
+
+The missing values have to be car::recoded as follows:
+
+* `NA as 999`
+
+R code of the ALGORITHM:
+
+```{r harmo_PR2}
+t1066_PR_w2_bmi$weight <- car::recode(t1066_PR_w2_bmi$f_WEIGHT, "999=NA")
+
+t1066_ds_PR_w2 <- tibble(id=t1066_PR_w2_bmi$id)
+t1066_ds_PR_w2$bmi <- car::recode(round(t1066_PR_w2_bmi$weight /(((t1066_PR_w2_bmi$f_HEIGHT)/100)^2), 3), "NA=999")
+t1066_ds_PR_w2$bmi <- labelled(t1066_ds_PR_w2$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_PR2}
+Continuous_summary(var = t1066_ds_PR_w2$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(t1066_ds_PR_w2, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,80)
+```
+
+#### Validation
+There are unusual values that are upper than 70:
+```{r crosstabulation_PR2}
+t1066_PR_w2_bmi$bmi <- t1066_ds_PR_w2$bmi
+t1066_PR_w2_bmi[which(t1066_PR_w2_bmi$bmi>70 & t1066_PR_w2_bmi$bmi<900),]
+```
+
+
+
+# Quality estimation
+No comments.
+
+
+
+```{r save, echo=FALSE}
+bmi <- t1066_ds_cuba_w2
+save(bmi, file = "../RData/cuba_w2/bmi.RData")
+rm(bmi)
+
+bmi <- t1066_ds_UCh_w2
+save(bmi, file = "../RData/UCh_w2/bmi.RData")
+rm(bmi)
+
+bmi <- t1066_ds_RCh_w2
+save(bmi, file = "../RData/RCh_w2/bmi.RData")
+rm(bmi)
+
+bmi <- t1066_ds_DR_w2
+save(bmi, file = "../RData/DR_w2/bmi.RData")
+rm(bmi)
+
+bmi <- t1066_ds_Ven_w2
+save(bmi, file = "../RData/Ven_w2/bmi.RData")
+rm(bmi)
+
+bmi <- t1066_ds_UP_w2
+save(bmi, file = "../RData/UP_w2/bmi.RData")
+rm(bmi)
+
+bmi <- t1066_ds_RP_w2
+save(bmi, file = "../RData/RP_w2/bmi.RData")
+rm(bmi)
+
+bmi <- t1066_ds_UM_w2
+save(bmi, file = "../RData/UM_w2/bmi.RData")
+rm(bmi)
+
+bmi <- t1066_ds_RM_w2
+save(bmi, file = "../RData/RM_w2/bmi.RData")
+rm(bmi)
+
+bmi <- t1066_ds_PR_w2
+save(bmi, file = "../RData/PR_w2/bmi.RData")
+rm(bmi)
+
+```
+
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```

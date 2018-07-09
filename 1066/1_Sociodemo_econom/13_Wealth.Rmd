@@ -1,0 +1,1478 @@
+---
+title: "Wealth"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `wealth`
+* Variable label: `Total score based in all sources of income transformed into a comparable and normalized categoric variable.`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `categorical ordinal`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+1        | 1st quintile
+2        | 2nd quintile
+3        | 3rd quintile
+4        | 4th quintile
+5        | 5th quintile
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+* Comments: `Need to pay attention to specificities like: before/after taxes or contributions. People: HH income is prioritized. When not available individual/caregiver/informant/family income is caolected. Source: Pension/family/work/government/disablity/total. all sources are taken into account. For some studies, the maximum value can be compared (and crossed by sex and age to control biases) . Time-lapse: weekly, monthly, in the last 12 months. 'Many values are missing since not all respondents have all sources of income or, within the household there is not always more members, in these cases do not confuse missing data with missing values and mean a 0 should be added to the total sum in each case.`
+
+```{r lab, echo=FALSE}
+ds_label <- "Wealth"
+ds_label_all <- "Total score based in all sources of income transformed into a comparable and normalized categoric variable"
+```
+
+
+# Data process
+
+## Cuba
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `p_tot`|
+|-|-|
+| **Label** | `total income` |
+| **Table name** | `1066-Cuba-Baseline` |
+| **Categories** | `continuous` |
+| **Description** |  |
+
+
+```{r assign_cuba1, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_wealth','10-66.1066-Cuba-Baseline',
+                         variables=list('p_tot'), missings = TRUE)
+t1066_wealth <- opal.execute(o,'t1066_wealth')
+```
+
+```{r local_cuba1, echo=FALSE}
+vari <- t1066_wealth$p_tot
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_wealth, aes(p_tot)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo_cuba1}
+qq <- quantile(t1066_wealth$p_tot, probs = seq(0, 1, .2), na.rm = TRUE)
+
+t1066_ds_cuba_w1 <- tibble(id=t1066_wealth$id)
+t1066_ds_cuba_w1$wealth <- car::recode(t1066_wealth$p_tot, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+t1066_ds_cuba_w1$wealth <- car::recode(t1066_ds_cuba_w1$wealth, "NA=999")
+t1066_ds_cuba_w1$wealth <- as.integer(t1066_ds_cuba_w1$wealth)
+t1066_ds_cuba_w1$wealth <- labelled(t1066_ds_cuba_w1$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_cuba1, echo=FALSE}
+vari <- t1066_ds_cuba_w1$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_cuba_w1, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_cuba1, echo=FALSE}
+```
+
+```{r save_cuba1, echo=FALSE}
+wealth <- t1066_ds_cuba_w1
+save(wealth, file = "../RData/cuba_w1/wealth.RData")
+rm(wealth)
+```
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `f_p_tot`|
+|-|-|
+| **Label** | `total income` |
+| **Table name** | `1066-Cuba-Followup` |
+| **Categories** | `continuous` |
+| **Description** |  |
+
+```{r assign_cuba2, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_wealth','10-66.1066-Cuba-Followup',
+                         variables=list('f_p_tot'), missings = TRUE)
+t1066_wealth <- opal.execute(o,'t1066_wealth')
+```
+
+```{r local_cuba2, echo=FALSE}
+vari <- t1066_wealth$f_p_tot
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_wealth, aes(f_p_tot)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_cuba2}
+qq <- quantile(t1066_wealth$f_p_tot, probs = seq(0, 1, .2), na.rm = TRUE)
+
+t1066_ds_cuba_w2 <- tibble(id=t1066_wealth$id)
+t1066_ds_cuba_w2$wealth <- car::recode(t1066_wealth$f_p_tot, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+t1066_ds_cuba_w2$wealth <- car::recode(t1066_ds_cuba_w2$wealth, "NA=999")
+t1066_ds_cuba_w2$wealth <- as.integer(t1066_ds_cuba_w2$wealth)
+t1066_ds_cuba_w2$wealth <- labelled(t1066_ds_cuba_w2$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_cuba2, echo=FALSE}
+vari <- t1066_ds_cuba_w2$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_cuba_w2, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_cuba2, echo=FALSE}
+```
+
+```{r save_cuba2, echo=FALSE}
+wealth <- t1066_ds_cuba_w2
+save(wealth, file = "../RData/cuba_w2/wealth.RData")
+rm(wealth)
+```
+
+
+
+
+
+
+## India
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `p_tot`|
+|-|-|
+| **Label** | `total income` |
+| **Table name** | `1066-India-Baseline` |
+| **Categories** | `continuous` |
+| **Description** |  |
+
+
+```{r assign_india1, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_wealth','10-66.1066-India-Baseline',
+                         variables=list('p_tot'), missings = TRUE)
+t1066_wealth <- opal.execute(o,'t1066_wealth')
+```
+
+```{r local_india1, echo=FALSE}
+vari <- t1066_wealth$p_tot
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_wealth, aes(p_tot)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo_india1}
+qq <- quantile(t1066_wealth$p_tot, probs = seq(0, 1, .2), na.rm = TRUE)
+
+t1066_ds_india_w1 <- tibble(id=t1066_wealth$id)
+t1066_ds_india_w1$wealth <- car::recode(t1066_wealth$p_tot, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+t1066_ds_india_w1$wealth <- car::recode(t1066_ds_india_w1$wealth, "NA=999")
+t1066_ds_india_w1$wealth <- as.integer(t1066_ds_india_w1$wealth)
+t1066_ds_india_w1$wealth <- labelled(t1066_ds_india_w1$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_india1, echo=FALSE}
+vari <- t1066_ds_india_w1$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_india_w1, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_india1, echo=FALSE}
+```
+
+
+```{r save_india1, echo=FALSE}
+wealth <- t1066_ds_india_w1
+save(wealth, file = "../RData/india_w1/wealth.RData")
+rm(wealth)
+```
+
+
+
+
+
+
+### Wave 2 
+
+There is no variable.
+
+
+
+
+## Urban China
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `p_tot`|
+|-|-|
+| **Label** | `total income` |
+| **Table name** | `1066-UrbanChina-Baseline` |
+| **Categories** | `continuous` |
+| **Description** |  |
+
+```{r assign_UCh1, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_wealth','10-66.1066-UrbanChina-Baseline',
+                         variables=list('p_tot'), missings = TRUE)
+t1066_wealth <- opal.execute(o,'t1066_wealth')
+```
+
+```{r local_UCh1, echo=FALSE}
+vari <- t1066_wealth$p_tot
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_wealth, aes(p_tot)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+
+**R script:**
+
+
+```{r harmo_UCh1}
+qq <- quantile(t1066_wealth$p_tot, probs = seq(0, 1, .2), na.rm = TRUE)
+
+t1066_ds_UCh_w1 <- tibble(id=t1066_wealth$id)
+t1066_ds_UCh_w1$wealth <- car::recode(t1066_wealth$p_tot, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+t1066_ds_UCh_w1$wealth <- car::recode(t1066_ds_UCh_w1$wealth, "NA=999")
+t1066_ds_UCh_w1$wealth <- as.integer(t1066_ds_UCh_w1$wealth)
+t1066_ds_UCh_w1$wealth <- labelled(t1066_ds_UCh_w1$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_UCh1, echo=FALSE}
+vari <- t1066_ds_UCh_w1$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_UCh_w1, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_UCh1, echo=FALSE}
+```
+
+
+```{r save_UCh1, echo=FALSE}
+wealth <- t1066_ds_UCh_w1
+save(wealth, file = "../RData/UCh_w1/wealth.RData")
+rm(wealth)
+```
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `f_p_tot`|
+|-|-|
+| **Label** | `total income` |
+| **Table name** | `1066-UrbanChina-Followup` |
+| **Categories** | `continuous` |
+| **Description** |  |
+
+```{r assign_UCh2, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_wealth','10-66.1066-UrbanChina-Followup',
+                         variables=list('f_p_tot'), missings = TRUE)
+t1066_wealth <- opal.execute(o,'t1066_wealth')
+```
+
+```{r local_UCh2, echo=FALSE}
+vari <- t1066_wealth$f_p_tot
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_wealth, aes(f_p_tot)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+
+```{r harmo_UCh2}
+qq <- quantile(t1066_wealth$f_p_tot, probs = seq(0, 1, .2), na.rm = TRUE)
+
+t1066_ds_UCh_w2 <- tibble(id=t1066_wealth$id)
+t1066_ds_UCh_w2$wealth <- car::recode(t1066_wealth$f_p_tot, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+t1066_ds_UCh_w2$wealth <- car::recode(t1066_ds_UCh_w2$wealth, "NA=999")
+t1066_ds_UCh_w2$wealth <- as.integer(t1066_ds_UCh_w2$wealth)
+t1066_ds_UCh_w2$wealth <- labelled(t1066_ds_UCh_w2$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_UCh2, echo=FALSE}
+vari <- t1066_ds_UCh_w2$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_UCh_w2, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_UCh2, echo=FALSE}
+```
+
+```{r save_UCh2, echo=FALSE}
+wealth <- t1066_ds_UCh_w2
+save(wealth, file = "../RData/UCh_w2/wealth.RData")
+rm(wealth)
+```
+
+
+
+## Rural China
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `p_tot`|
+|-|-|
+| **Label** | `total income` |
+| **Table name** | `1066-RuralChina-Baseline` |
+| **Categories** | `continuous` |
+| **Description** |  |
+
+
+```{r assign_RCh1, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_wealth','10-66.1066-RuralChina-Baseline',
+                         variables=list('p_tot'), missings = TRUE)
+t1066_wealth <- opal.execute(o,'t1066_wealth')
+```
+
+```{r local_RCh1, echo=FALSE}
+vari <- t1066_wealth$p_tot
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_wealth, aes(p_tot)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_RCh1}
+qq <- quantile(t1066_wealth$p_tot, probs = seq(0, 1, .2), na.rm = TRUE)
+
+t1066_ds_RCh_w1 <- tibble(id=t1066_wealth$id)
+t1066_ds_RCh_w1$wealth <- car::recode(t1066_wealth$p_tot, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+t1066_ds_RCh_w1$wealth <- car::recode(t1066_ds_RCh_w1$wealth, "NA=999")
+t1066_ds_RCh_w1$wealth <- as.integer(t1066_ds_RCh_w1$wealth)
+t1066_ds_RCh_w1$wealth <- labelled(t1066_ds_RCh_w1$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_RCh1, echo=FALSE}
+vari <- t1066_ds_RCh_w1$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_RCh_w1, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_RCh1, echo=FALSE}
+```
+
+```{r save_RCh1, echo=FALSE}
+wealth <- t1066_ds_RCh_w1
+save(wealth, file = "../RData/RCh_w1/wealth.RData")
+rm(wealth)
+```
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `f_p_tot`|
+|-|-|
+| **Label** | `total income` |
+| **Table name** | `1066-RuralChina-Followup` |
+| **Categories** | `continuous` |
+| **Description** |  |
+
+
+```{r assign_RCh2, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_wealth','10-66.1066-RuralChina-Followup',
+                         variables=list('f_p_tot'), missings = TRUE)
+t1066_wealth <- opal.execute(o,'t1066_wealth')
+```
+
+```{r local_RCh2, echo=FALSE}
+vari <- t1066_wealth$f_p_tot
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_wealth, aes(f_p_tot)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_RCh2}
+qq <- quantile(t1066_wealth$f_p_tot, probs = seq(0, 1, .2), na.rm = TRUE)
+
+t1066_ds_RCh_w2 <- tibble(id=t1066_wealth$id)
+t1066_ds_RCh_w2$wealth <- car::recode(t1066_wealth$f_p_tot, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+t1066_ds_RCh_w2$wealth <- car::recode(t1066_ds_RCh_w2$wealth, "NA=999")
+t1066_ds_RCh_w2$wealth <- as.integer(t1066_ds_RCh_w2$wealth)
+t1066_ds_RCh_w2$wealth <- labelled(t1066_ds_RCh_w2$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_RCh2, echo=FALSE}
+vari <- t1066_ds_RCh_w2$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_RCh_w2, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_RCh2, echo=FALSE}
+```
+
+```{r saveRCh_w2, echo=FALSE}
+wealth <- t1066_ds_RCh_w2
+save(wealth, file = "../RData/RCh_w2/wealth.RData")
+rm(wealth)
+```
+
+
+## Dominican Republic
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `p_tot`|
+|-|-|
+| **Label** | `total income` |
+| **Table name** | `1066-DominicanRepublic-Baseline` |
+| **Categories** | `continuous` |
+| **Description** |  |
+
+
+
+```{r assign_DR1, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_wealth','10-66.1066-DominicanRepublic-Baseline',
+                         variables=list('p_tot'), missings = TRUE)
+t1066_wealth <- opal.execute(o,'t1066_wealth')
+```
+
+```{r local_DR1, echo=FALSE}
+vari <- t1066_wealth$p_tot
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_wealth, aes(p_tot)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_DR1}
+qq <- quantile(t1066_wealth$p_tot, probs = seq(0, 1, .2), na.rm = TRUE)
+
+t1066_ds_DR_w1 <- tibble(id=t1066_wealth$id)
+t1066_ds_DR_w1$wealth <- car::recode(t1066_wealth$p_tot, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+t1066_ds_DR_w1$wealth <- car::recode(t1066_ds_DR_w1$wealth, "NA=999")
+t1066_ds_DR_w1$wealth <- as.integer(t1066_ds_DR_w1$wealth)
+t1066_ds_DR_w1$wealth <- labelled(t1066_ds_DR_w1$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_DR1, echo=FALSE}
+vari <- t1066_ds_DR_w1$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_DR_w1, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_DR1, echo=FALSE}
+```
+
+```{r save_DR_w1, echo=FALSE}
+wealth <- t1066_ds_DR_w1
+save(wealth, file = "../RData/DR_w1/wealth.RData")
+rm(wealth)
+```
+
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `f_p_tot`|
+|-|-|
+| **Label** | `total income` |
+| **Table name** | `1066-DominicanRepublic-Followup` |
+| **Categories** | `continuous` |
+| **Description** |  |
+
+```{r assign_DR2, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_wealth','10-66.1066-DominicanRepublic-Followup',
+                         variables=list('f_p_tot'), missings = TRUE)
+t1066_wealth <- opal.execute(o,'t1066_wealth')
+```
+
+```{r local_DR2, echo=FALSE}
+vari <- t1066_wealth$f_p_tot
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_wealth, aes(f_p_tot)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_DR2}
+qq <- quantile(t1066_wealth$f_p_tot, probs = seq(0, 1, .2), na.rm = TRUE)
+
+t1066_ds_DR_w2 <- tibble(id=t1066_wealth$id)
+t1066_ds_DR_w2$wealth <- car::recode(t1066_wealth$f_p_tot, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+t1066_ds_DR_w2$wealth <- car::recode(t1066_ds_DR_w2$wealth, "NA=999")
+t1066_ds_DR_w2$wealth <- as.integer(t1066_ds_DR_w2$wealth)
+t1066_ds_DR_w2$wealth <- labelled(t1066_ds_DR_w2$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_DR2, echo=FALSE}
+vari <- t1066_ds_DR_w2$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_DR_w2, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_DR2, echo=FALSE}
+```
+
+
+```{r save_DR_w2, echo=FALSE}
+wealth <- t1066_ds_DR_w2
+save(wealth, file = "../RData/DR_w2/wealth.RData")
+rm(wealth)
+```
+
+
+
+
+
+
+## Venezuela
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `p_tot`|
+|-|-|
+| **Label** | `total income` |
+| **Table name** | `1066-Venezuela-Baseline` |
+| **Categories** | `continuous` |
+| **Description** |  |
+
+
+```{r assign_V1, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_wealth','10-66.1066-Venezuela-Baseline',
+                         variables=list('p_tot'), missings = TRUE)
+t1066_wealth <- opal.execute(o,'t1066_wealth')
+```
+
+```{r local_V1, echo=FALSE}
+vari <- t1066_wealth$p_tot
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_wealth, aes(p_tot)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo_V1}
+qq <- quantile(t1066_wealth$p_tot, probs = seq(0, 1, .2), na.rm = TRUE)
+
+t1066_ds_Ven_w1 <- tibble(id=t1066_wealth$id)
+t1066_ds_Ven_w1$wealth <- car::recode(t1066_wealth$p_tot, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+t1066_ds_Ven_w1$wealth <- car::recode(t1066_ds_Ven_w1$wealth, "NA=999")
+t1066_ds_Ven_w1$wealth <- as.integer(t1066_ds_Ven_w1$wealth)
+t1066_ds_Ven_w1$wealth <- labelled(t1066_ds_Ven_w1$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_V1, echo=FALSE}
+vari <- t1066_ds_Ven_w1$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_Ven_w1, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_V1, echo=FALSE}
+```
+
+```{r save_Ven_w1, echo=FALSE}
+wealth <- t1066_ds_Ven_w1
+save(wealth, file = "../RData/Ven_w1/wealth.RData")
+rm(wealth)
+```
+
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `f_p_tot`|
+|-|-|
+| **Label** | `total income` |
+| **Table name** | `1066-Venezuela-Followup` |
+| **Categories** | `continuous` |
+| **Description** |  |
+
+```{r assign_V2, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_wealth','10-66.1066-Venezuela-Followup',
+                         variables=list('f_p_tot'), missings = TRUE)
+t1066_wealth <- opal.execute(o,'t1066_wealth')
+```
+
+```{r local_V2, echo=FALSE}
+vari <- t1066_wealth$f_p_tot
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_wealth, aes(f_p_tot)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_V2}
+qq <- quantile(t1066_wealth$f_p_tot, probs = seq(0, 1, .2), na.rm = TRUE)
+
+t1066_ds_Ven_w2 <- tibble(id=t1066_wealth$id)
+t1066_ds_Ven_w2$wealth <- car::recode(t1066_wealth$f_p_tot, "0:qq[2]=1; (qq[2]+0.1):qq[3]=2; (qq[3]+0.1):qq[4]=3; (qq[4]+0.1):qq[5]=4; (qq[5]+0.1):hi=5")
+t1066_ds_Ven_w2$wealth <- car::recode(t1066_ds_Ven_w2$wealth, "NA=999")
+t1066_ds_Ven_w2$wealth <- as.integer(t1066_ds_Ven_w2$wealth)
+t1066_ds_Ven_w2$wealth <- labelled(t1066_ds_Ven_w2$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_V2, echo=FALSE}
+vari <- t1066_ds_Ven_w2$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_Ven_w2, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_V2, echo=FALSE}
+```
+
+
+```{r save_Ven_w2, echo=FALSE}
+wealth <- t1066_ds_Ven_w2
+save(wealth, file = "../RData/Ven_w2/wealth.RData")
+rm(wealth)
+```
+
+
+
+
+
+
+## Urban Peru
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `p_tot`|
+|-|-|
+| **Label** | `total income` |
+| **Table name** | `1066-UrbanPeru-Baseline` |
+| **Categories** | `continuous` |
+| **Description** |  |
+
+```{r assign_UP, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_wealth','10-66.1066-UrbanPeru-Baseline',
+                         variables=list('p_tot'), missings = TRUE)
+t1066_wealth <- opal.execute(o,'t1066_wealth')
+```
+
+```{r local_UP1, echo=FALSE}
+vari <- t1066_wealth$p_tot
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_wealth, aes(p_tot)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo_UP1}
+qq <- quantile(t1066_wealth$p_tot, probs = seq(0, 1, .2), na.rm = TRUE)
+
+t1066_ds_UP_w1 <- tibble(id=t1066_wealth$id)
+t1066_ds_UP_w1$wealth <- car::recode(t1066_wealth$p_tot, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+t1066_ds_UP_w1$wealth <- car::recode(t1066_ds_UP_w1$wealth, "NA=999")
+t1066_ds_UP_w1$wealth <- as.integer(t1066_ds_UP_w1$wealth)
+t1066_ds_UP_w1$wealth <- labelled(t1066_ds_UP_w1$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_UP1, echo=FALSE}
+vari <- t1066_ds_UP_w1$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_UP_w1, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_UP1, echo=FALSE}
+```
+
+```{r save_UP_w1, echo=FALSE}
+wealth <- t1066_ds_UP_w1
+save(wealth, file = "../RData/UP_w1/wealth.RData")
+rm(wealth)
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `f_p_tot`|
+|-|-|
+| **Label** | `total income` |
+| **Table name** | `1066-UrbanPeru-Followup` |
+| **Categories** | `continuous` |
+| **Description** |  |
+
+```{r assign_UP2, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_wealth','10-66.1066-UrbanPeru-Followup',
+                         variables=list('f_p_tot'), missings = TRUE)
+t1066_wealth <- opal.execute(o,'t1066_wealth')
+```
+
+```{r local_UP2, echo=FALSE}
+vari <- t1066_wealth$f_p_tot
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_wealth, aes(f_p_tot)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+
+**R script:**
+
+
+```{r harmo_UP2}
+qq <- quantile(t1066_wealth$f_p_tot, probs = seq(0, 1, .2), na.rm = TRUE)
+
+t1066_ds_UP_w2 <- tibble(id=t1066_wealth$id)
+t1066_ds_UP_w2$wealth <- car::recode(t1066_wealth$f_p_tot, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+t1066_ds_UP_w2$wealth <- car::recode(t1066_ds_UP_w2$wealth, "NA=999")
+t1066_ds_UP_w2$wealth <- as.integer(t1066_ds_UP_w2$wealth)
+t1066_ds_UP_w2$wealth <- labelled(t1066_ds_UP_w2$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_UP2, echo=FALSE}
+vari <- t1066_ds_UP_w2$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_UP_w2, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_UP2, echo=FALSE}
+```
+
+
+```{r save_UP_w2, echo=FALSE}
+wealth <- t1066_ds_UP_w2
+save(wealth, file = "../RData/UP_w2/wealth.RData")
+rm(wealth)
+```
+
+
+
+
+## Rural Peru
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `p_tot`|
+|-|-|
+| **Label** | `total income` |
+| **Table name** | `1066-RuralPeru-Baseline` |
+| **Categories** | `continuous` |
+| **Description** |  |
+
+
+
+```{r assign_RP, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_wealth','10-66.1066-RuralPeru-Baseline',
+                         variables=list('p_tot'), missings = TRUE)
+t1066_wealth <- opal.execute(o,'t1066_wealth')
+```
+
+```{r local_RP1, echo=FALSE}
+vari <- t1066_wealth$p_tot
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_wealth, aes(p_tot)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo_RP1}
+qq <- quantile(t1066_wealth$p_tot, probs = seq(0, 1, .2), na.rm = TRUE)
+
+t1066_ds_RP_w1 <- tibble(id=t1066_wealth$id)
+t1066_ds_RP_w1$wealth <- car::recode(t1066_wealth$p_tot, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+t1066_ds_RP_w1$wealth <- car::recode(t1066_ds_RP_w1$wealth, "NA=999")
+t1066_ds_RP_w1$wealth <- as.integer(t1066_ds_RP_w1$wealth)
+t1066_ds_RP_w1$wealth <- labelled(t1066_ds_RP_w1$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_RP1, echo=FALSE}
+vari <- t1066_ds_RP_w1$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_RP_w1, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_RP1, echo=FALSE}
+```
+
+```{r save_RP_w1, echo=FALSE}
+wealth <- t1066_ds_RP_w1
+save(wealth, file = "../RData/RP_w1/wealth.RData")
+rm(wealth)
+```
+
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `f_p_tot`|
+|-|-|
+| **Label** | `total income` |
+| **Table name** | `1066-RuralPeru-Followup` |
+| **Categories** | `continuous` |
+| **Description** |  |
+
+
+```{r assign_RP2, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_wealth','10-66.1066-RuralPeru-Followup',
+                         variables=list('f_p_tot'), missings = TRUE)
+t1066_wealth <- opal.execute(o,'t1066_wealth')
+```
+
+```{r local_RP2, echo=FALSE}
+vari <- t1066_wealth$f_p_tot
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_wealth, aes(f_p_tot)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo_RP2}
+qq <- quantile(t1066_wealth$f_p_tot, probs = seq(0, 1, .2), na.rm = TRUE)
+
+t1066_ds_RP_w2 <- tibble(id=t1066_wealth$id)
+t1066_ds_RP_w2$wealth <- car::recode(t1066_wealth$f_p_tot, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+t1066_ds_RP_w2$wealth <- car::recode(t1066_ds_RP_w2$wealth, "NA=999")
+t1066_ds_RP_w2$wealth <- as.integer(t1066_ds_RP_w2$wealth)
+t1066_ds_RP_w2$wealth <- labelled(t1066_ds_RP_w2$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_RP2, echo=FALSE}
+vari <- t1066_ds_RP_w2$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_RP_w2, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_RP2, echo=FALSE}
+```
+
+
+```{r save_RP_w2, echo=FALSE}
+wealth <- t1066_ds_RP_w2
+save(wealth, file = "../RData/RP_w2/wealth.RData")
+rm(wealth)
+```
+
+
+
+## Urban Mexico
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `p_tot`|
+|-|-|
+| **Label** | `total income` |
+| **Table name** | `1066-UrbanMexico-Baseline` |
+| **Categories** | `continuous` |
+| **Description** |  |
+
+
+```{r assign_UM1, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_wealth','10-66.1066-UrbanMexico-Baseline',
+                         variables=list('p_tot'), missings = TRUE)
+t1066_wealth <- opal.execute(o,'t1066_wealth')
+```
+
+```{r local_UM1, echo=FALSE}
+vari <- t1066_wealth$p_tot
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_wealth, aes(p_tot)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+
+**R script:**
+
+
+```{r harmo_UM1}
+qq <- quantile(t1066_wealth$p_tot, probs = seq(0, 1, .2), na.rm = TRUE)
+
+t1066_ds_UM_w1 <- tibble(id=t1066_wealth$id)
+t1066_ds_UM_w1$wealth <- car::recode(t1066_wealth$p_tot, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+t1066_ds_UM_w1$wealth <- car::recode(t1066_ds_UM_w1$wealth, "NA=999")
+t1066_ds_UM_w1$wealth <- as.integer(t1066_ds_UM_w1$wealth)
+t1066_ds_UM_w1$wealth <- labelled(t1066_ds_UM_w1$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_UM1, echo=FALSE}
+vari <- t1066_ds_UM_w1$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_UM_w1, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_UM1, echo=FALSE}
+```
+
+```{r save_UM_w1, echo=FALSE}
+wealth <- t1066_ds_UM_w1
+save(wealth, file = "../RData/UM_w1/wealth.RData")
+rm(wealth)
+```
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `f_p_tot`|
+|-|-|
+| **Label** | `total income` |
+| **Table name** | `1066-UrbanMexico-Followup` |
+| **Categories** | `continuous` |
+| **Description** |  |
+
+```{r assign_UM2, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_wealth','10-66.1066-UrbanMexico-Followup',
+                         variables=list('f_p_tot'), missings = TRUE)
+t1066_wealth <- opal.execute(o,'t1066_wealth')
+```
+
+```{r local_UM2, echo=FALSE}
+vari <- t1066_wealth$f_p_tot
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_wealth, aes(f_p_tot)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_UM2}
+qq <- quantile(t1066_wealth$f_p_tot, probs = seq(0, 1, .2), na.rm = TRUE)
+
+t1066_ds_UM_w2 <- tibble(id=t1066_wealth$id)
+t1066_ds_UM_w2$wealth <- car::recode(t1066_wealth$f_p_tot, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+t1066_ds_UM_w2$wealth <- car::recode(t1066_ds_UM_w2$wealth, "NA=999")
+t1066_ds_UM_w2$wealth <- as.integer(t1066_ds_UM_w2$wealth)
+t1066_ds_UM_w2$wealth <- labelled(t1066_ds_UM_w2$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_UM2, echo=FALSE}
+vari <- t1066_ds_UM_w2$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_UM_w2, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_UM2, echo=FALSE}
+```
+
+```{r save_UM_w2, echo=FALSE}
+wealth <- t1066_ds_UM_w2
+save(wealth, file = "../RData/UM_w2/wealth.RData")
+rm(wealth)
+```
+
+
+
+
+
+## Rural Mexico
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `p_tot`|
+|-|-|
+| **Label** | `total income` |
+| **Table name** | `1066-RuralMexico-Baseline` |
+| **Categories** | `continuous` |
+| **Description** |  |
+
+
+```{r assign_RM1, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_wealth','10-66.1066-RuralMexico-Baseline',
+                         variables=list('p_tot'), missings = TRUE)
+t1066_wealth <- opal.execute(o,'t1066_wealth')
+```
+
+```{r local_RM1, echo=FALSE}
+vari <- t1066_wealth$p_tot
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_wealth, aes(p_tot)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+
+```{r harmo_RM1}
+qq <- quantile(t1066_wealth$p_tot, probs = seq(0, 1, .2), na.rm = TRUE)
+
+t1066_ds_RM_w1 <- tibble(id=t1066_wealth$id)
+t1066_ds_RM_w1$wealth <- car::recode(t1066_wealth$p_tot, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+t1066_ds_RM_w1$wealth <- car::recode(t1066_ds_RM_w1$wealth, "NA=999")
+t1066_ds_RM_w1$wealth <- as.integer(t1066_ds_RM_w1$wealth)
+t1066_ds_RM_w1$wealth <- labelled(t1066_ds_RM_w1$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_RM1, echo=FALSE}
+vari <- t1066_ds_RM_w1$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_RM_w1, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_RM1, echo=FALSE}
+```
+
+```{r saveRM1, echo=FALSE}
+wealth <- t1066_ds_RM_w1
+save(wealth, file = "../RData/RM_w1/wealth.RData")
+rm(wealth)
+```
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `f_p_tot`|
+|-|-|
+| **Label** | `total income` |
+| **Table name** | `1066-RuralMexico-Followup` |
+| **Categories** | `continuous` |
+| **Description** |  |
+
+```{r assign_RM2, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_wealth','10-66.1066-RuralMexico-Followup',
+                         variables=list('f_p_tot'), missings = TRUE)
+t1066_wealth <- opal.execute(o,'t1066_wealth')
+```
+
+```{r local_RM2, echo=FALSE}
+vari <- t1066_wealth$f_p_tot
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_wealth, aes(f_p_tot)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+
+```{r harmo_RM2}
+qq <- quantile(t1066_wealth$f_p_tot, probs = seq(0, 1, .2), na.rm = TRUE)
+
+t1066_ds_RM_w2 <- tibble(id=t1066_wealth$id)
+t1066_ds_RM_w2$wealth <- car::recode(t1066_wealth$f_p_tot, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+t1066_ds_RM_w2$wealth <- car::recode(t1066_ds_RM_w2$wealth, "NA=999")
+t1066_ds_RM_w2$wealth <- as.integer(t1066_ds_RM_w2$wealth)
+t1066_ds_RM_w2$wealth <- labelled(t1066_ds_RM_w2$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_RM2, echo=FALSE}
+vari <- t1066_ds_RM_w2$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_RM_w2, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_RM2, echo=FALSE}
+```
+
+
+
+```{r save_RM_w2, echo=FALSE}
+wealth <- t1066_ds_RM_w2
+save(wealth, file = "../RData/RM_w2/wealth.RData")
+rm(wealth)
+```
+
+
+
+
+
+## Puerto Rico
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `p_tot`|
+|-|-|
+| **Label** | `total income` |
+| **Table name** | `1066-PuertoRico-Baseline` |
+| **Categories** | `continuous` |
+| **Description** |  |
+
+```{r assign_PR1, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_wealth','10-66.1066-PuertoRico-Baseline',
+                         variables=list('p_tot'), missings = TRUE)
+t1066_wealth <- opal.execute(o,'t1066_wealth')
+```
+
+```{r local_PR1, echo=FALSE}
+vari <- t1066_wealth$p_tot
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_wealth, aes(p_tot)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo_PR1}
+qq <- quantile(t1066_wealth$p_tot, probs = seq(0, 1, .2), na.rm = TRUE)
+
+t1066_ds_PR_w1 <- tibble(id=t1066_wealth$id)
+t1066_ds_PR_w1$wealth <- car::recode(t1066_wealth$p_tot, "0:qq[2]=1; (qq[2]+0.1):qq[3]=2; (qq[3]+0.1):qq[4]=3; (qq[4]+0.1):qq[5]=4; (qq[5]+0.1):hi=5")
+t1066_ds_PR_w1$wealth <- car::recode(t1066_ds_PR_w1$wealth, "NA=999")
+t1066_ds_PR_w1$wealth <- as.integer(t1066_ds_PR_w1$wealth)
+t1066_ds_PR_w1$wealth <- labelled(t1066_ds_PR_w1$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_PR1, echo=FALSE}
+vari <- t1066_ds_PR_w1$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_PR_w1, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_PR1, echo=FALSE}
+```
+
+```{r save_PR_w1, echo=FALSE}
+wealth <- t1066_ds_PR_w1
+save(wealth, file = "../RData/PR_w1/wealth.RData")
+rm(wealth)
+```
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `f_p_tot`|
+|-|-|
+| **Label** | `total income` |
+| **Table name** | `1066-PuertoRico-Followup` |
+| **Categories** | `continuous` |
+| **Description** |  |
+
+
+```{r assign_PR2, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_wealth','10-66.1066-PuertoRico-Followup',
+                         variables=list('f_p_tot'), missings = TRUE)
+t1066_wealth <- opal.execute(o,'t1066_wealth')
+```
+
+```{r local_PR2, echo=FALSE}
+vari <- t1066_wealth$f_p_tot
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_wealth, aes(f_p_tot)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+
+```{r harmo_PR2}
+qq <- quantile(t1066_wealth$f_p_tot, probs = seq(0, 1, .2), na.rm = TRUE)
+
+t1066_ds_PR_w2 <- tibble(id=t1066_wealth$id)
+t1066_ds_PR_w2$wealth <- car::recode(t1066_wealth$f_p_tot, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+t1066_ds_PR_w2$wealth <- car::recode(t1066_ds_PR_w2$wealth, "NA=999")
+t1066_ds_PR_w2$wealth <- as.integer(t1066_ds_PR_w2$wealth)
+t1066_ds_PR_w2$wealth <- labelled(t1066_ds_PR_w2$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_PR2, echo=FALSE}
+vari <- t1066_ds_PR_w2$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(t1066_ds_PR_w2, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_PR2, echo=FALSE}
+```
+
+```{r save_PR_w2, echo=FALSE}
+wealth <- t1066_ds_PR_w2
+save(wealth, file = "../RData/PR_w2/wealth.RData")
+rm(wealth)
+```
+
+
+
+# Quality estimation
+
+This variable was created taking into account the following sources: 
+Government pension + Occupational pension+ disability pension + pension or benefit + money from family
++ Income from rented land or property + income from paid work + other… for the person with dementia and the principal caregiver.
+We do not know whether this income is the total amount of money after or before taxes and other detractions. 
+All sources monthly income of the whole household is reported.
+
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
