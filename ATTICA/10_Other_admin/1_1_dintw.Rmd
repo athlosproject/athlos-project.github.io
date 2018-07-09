@@ -1,0 +1,128 @@
+---
+title: "Day of interview"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE, echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/Rmds/setup_albert.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+The description of harmonised variable is the following:
+  
+* Name: `dintw`
+* Label: `day of interview`
+* Type of variable: `countinous`
+* Missings: 
+    + `991 = CAPI/interviewer error`
+    + `992 = Impute`
+    + `993 = Disable to measure`
+    + `994 = Not attempt/not done`
+    + `995 = Does not answer`
+    + `996 = Not applicable`
+    + `997 = Refuse`
+    + `998 = Do not know`
+    + `999 = Missing`
+
+
+# Data process
+
+## Wave 1 
+
+There is no variable.
+
+## Wave 2 
+
+There is no variable.
+
+
+## Wave 3 
+
+### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `date10`
+* Label: `Date of 10 year follow up`
+* Type of variable: `countinous`
+
+```{r assign3}
+opal.assign.table.tibble(o, 'ATTICA_w3_dinter','ATTICA.ATTICA_Followup2',
+                         variables=list('date10'), missings = TRUE)
+```
+
+```{r local3}
+ATTICA_w3_dinter <- opal.execute(o,'ATTICA_w3_dinter')
+ATTICA_w3_dinter$dinter <- as.numeric(format(ATTICA_w3_dinter$date10, '%d'))
+Continuous_summary(var = ATTICA_w3_dinter$dinter, missing_values = NA)
+ggplot(ATTICA_w3_dinter, aes(x=factor(dinter))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Day of interview") + ylab("Frequency")
+```
+
+
+### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo3}
+ATTICA_ds_w3 <- tibble(id=ATTICA_w3_dinter$id)
+ATTICA_ds_w3$dintw <- car::recode(ATTICA_w3_dinter$dinter, "NA=999")
+ATTICA_ds_w3$dintw <- labelled(ATTICA_ds_w3$dintw, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+### Statistics of the new harmonised variable
+```{r descript3}
+Continuous_summary(var = ATTICA_ds_w3$dintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ATTICA_ds_w3, aes(dintw)) + geom_histogram(stat="count", fill="steelblue") + xlab("Day of birth") + ylab("Frequency") + xlim(1,31)
+```
+
+### Validation
+```{r crosstabulation3}
+BeforeH <- table(ATTICA_w3_dinter$dinter, useNA = "ifany")
+AfterH <- table(ATTICA_ds_w3$dintw)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:31], "NA->999")
+C
+```
+
+
+#### Quality estimation
+No comments.
+
+
+```{r save, echo=FALSE}
+dintw <- ATTICA_ds_w3
+save(dintw, file = "../RData/w3/dintw.RData")
+rm(dintw)
+```
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+
+

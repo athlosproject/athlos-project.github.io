@@ -1,0 +1,156 @@
+---
+title: "Anxiety symptoms"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `anxiety_symp`
+* Variable label: `Psychological measure of anxiety symptoms`
+* Domain: `Psycological measures`
+* Value type: `categorical`
+* Category coding:
+* Comments: `In this template we will collect any anxiety symptom taking individual questions about worry, trembling, anxiety distress or severity, anxiety in general, other body features or scale items that correspond to these anxiety symptoms. In this sense, here we include a broad definition of anxiety symptoms. On a different variable we will have a more strict definition that will collect "anxiety diagnosis" following consensus criteria of strudies or scale manuals. However, only 5 studies include validated scales as such and most of them are different and some of them do not mention cut-off points, are ambiguous about them, or have different criteria depending on their population.`
+
+**Code** | **Category Label**
+-------- | --------------------
+0        | no anxiety symptoms
+1        | presence of anxiety
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+```{r lab, echo=FALSE}
+ds_label <- "Anxiety symptoms"
+ds_label_all <- "Psychological measure of anxiety symptoms"
+```
+
+# Data process
+
+## Metropolitan Athens area
+
+### Wave 1
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised are:
+
+| **Name** | `spielb`|
+|-|-|
+| **Label** | `Spielberg Anxiety (STAI) scale`|
+| **Table name** | `ATTICA_Baseline` |
+| **Description** |  |
+
+```{r assign1, echo=FALSE}
+opal.assign.table.tibble(o, 'ATTICA_as','ATTICA.ATTICA_Baseline',
+                         variables=list('spielb'), missings = TRUE)
+ATTICA_as <- opal.execute(o,'ATTICA_as')
+```
+
+```{r local11, echo=FALSE}
+vari <- ATTICA_as$spielb
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ATTICA_as, aes(ATTICA_as[[2]])) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `spielb < 51 into 0` 
+* `spielb >= 51 into 1`
+* `NA into 999`
+
+```{r harmo11}
+ATTICA_ds_w1 <- tibble(id=ATTICA_as$id)
+ATTICA_ds_w1$anxiety_symp <- car::recode(ATTICA_as[[2]], "lo:50=0; 51:hi=1; NA=999")
+ATTICA_ds_w1$anxiety_symp <- labelled(ATTICA_ds_w1[[2]], labels = c("no anxiety symptoms"=0, "presence of anxiety"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript11, echo=FALSE}
+vari <- ATTICA_ds_w1$anxiety_symp
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ATTICA_ds_w1, aes(x=factor(ATTICA_ds_w1[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstab11, echo=FALSE}
+BeforeH <- c(sum(na.omit(ATTICA_as[[2]])<51),sum(na.omit(ATTICA_as[[2]])>=51), sum(is.na(ATTICA_as[[2]])))
+AfterH <- table(ATTICA_ds_w1[[2]], useNA = "ifany")
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("<51->0",">=51->1","NA->999") 
+kable(C)
+```
+
+
+```{r read, include=FALSE}
+rm(ATTICA_as)
+```
+
+```{r save, echo=FALSE}
+label(ATTICA_ds_w1$anxiety_symp) <- ds_label_all
+anxiety_symp <- ATTICA_ds_w1
+save(anxiety_symp, file = "../RData/w1/anxiety_symp.RData")
+rm(anxiety_symp, ATTICA_as)
+```
+
+### Wave 2
+
+There is no variable.
+
+### Wave 3
+
+There is no variable.
+
+
+
+# Quality estimation
+
+This variable was based in ssessments performed with the Spielberg Anxiety (STAI) scale. 
+
+
+
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+

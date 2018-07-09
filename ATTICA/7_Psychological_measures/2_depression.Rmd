@@ -1,0 +1,157 @@
+---
+title: "Current depressive status"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE, echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_albert.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `depression`
+* Variable label: `Current depressive status of the participant`
+* Variable description: `Current depressive status of the participant`
+* Domain: `Psycological measures`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | no depression
+1        | depression
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+```{r lab, echo=FALSE}
+ds_label <- "Current depressive status"
+ds_label_all <- "Current depressive status of the participant"
+```
+
+# Data process
+
+## Metropolitan Athens area
+
+### Wave 1
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised are:
+
+| **Name** | `zung`|
+|-|-|
+| **Label** | `Zung Depression scale`|
+| **Table name** | `ATTICA_Baseline` |
+| **Description** |  |
+
+```{r assign1, echo=FALSE}
+opal.assign.table.tibble(o, 'ATTICA_dep','ATTICA.ATTICA_Baseline',
+                         variables=list('zung'), missings = TRUE)
+ATTICA_dep <- opal.execute(o,'ATTICA_dep')
+```
+
+```{r local11, echo=FALSE}
+vari <- ATTICA_dep[[2]]
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ATTICA_dep, aes(ATTICA_dep[[2]])) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+###### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `zung < 49 into 0` 
+* `zung >= 50 into 1`
+* `NA into 999`
+
+```{r harmo11}
+ATTICA_ds_w1 <- tibble(id=ATTICA_dep$id)
+ATTICA_ds_w1$depression <- car::recode(ATTICA_dep[[2]], "lo:49=0; 50:hi=1; NA=999")
+ATTICA_ds_w1$depression <- labelled(ATTICA_ds_w1[[2]], labels = c("no depression"=0, "depression"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+###### Statistical description of the new harmonised variable
+```{r descript11, echo=FALSE}
+vari <- ATTICA_ds_w1$depression
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ATTICA_ds_w1, aes(x=factor(ATTICA_ds_w1[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+###### Validation
+```{r crosstab11, echo=FALSE}
+BeforeH <- c(sum(na.omit(ATTICA_dep[[2]])<50),sum(na.omit(ATTICA_dep[[2]])>=50), sum(is.na(ATTICA_dep[[2]])))
+AfterH <- table(ATTICA_ds_w1[[2]], useNA = "ifany")
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("<50->0",">=50->1","NA->999") 
+kable(C)
+```
+
+
+```{r read, include=FALSE}
+rm(ATTICA_dep)
+```
+
+```{r save, echo=FALSE}
+depression <- ATTICA_ds_w1
+save(depression, file = "../RData/w1/depression.RData")
+rm(depression)
+```
+
+### Wave 2
+
+There is no variable.
+
+### Wave 3
+
+There is no variable.
+
+
+
+# Quality estimation
+
+The Zung Self-Rating Depression Scale is used.
+A ZDRS score below 50 is considered normal; a score of 50-59 indicates mild depression, a score of 60-69 indicates moderate depression, and a score of 70 or more is considered to be indicative of severe depression (paper) = 50
+Variable available only in the first wave.
+
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+

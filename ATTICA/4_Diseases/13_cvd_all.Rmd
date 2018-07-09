@@ -1,0 +1,218 @@
+---
+title: "Cardiovascular diseases"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `cvd_all`
+* Variable label: `History of all Cardiovascular diseases`
+* Variable description: `The participant has been diagnosed by one or more of the following conditions: angina, stroke, myocardial infarction, heart attack, coronary heart disease, congestive heart failure, heart murmur, valve disease, cerebral vascular disease`
+* Domain: `Diseases`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No, the participant has not been diagnosed of any of these conditions
+1        | Yes, the participant has been diagnosed by any of these conditions
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+<!-- ########################################################## --> 
+<!-- # Global variables -->
+```{r global, include=FALSE, echo=F}
+miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
+ds_label <- "History of all Cardiovascular diseases"
+cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
+datafolder <- "../RData/"
+#sing_idlist <- c()
+```
+<!-- ########################################################## --> 
+
+
+
+# Data process
+
+
+
+
+## Greece
+
+
+### Wave 1
+
+
+There is no information.
+
+
+### Wave 2
+
+There is no information.
+
+
+
+### Wave 3
+
+#### Study-specific variable description
+
+| **Name** | `CVD_10_yr`|
+|-|-|
+| **Label** | `CVD during 10-years follow-up`|
+| **Table name**  | `ATTICA_Followup2`|
+| **Categories** |  `0 = No`<br/>`1 = Yes` |
+| **Missings** | `NA` |
+| **Description** |  |
+
+```{r assign w3, echo=F}
+
+opal.assign.table.tibble(o, 'ATTICA_w3','ATTICA.ATTICA_Followup2',variables=list('CVD_10_yr'), missings = T)
+ATTICA_w3 <- opal.execute(o,'ATTICA_w3')
+
+```
+
+```{r local w3, echo=F}
+
+vbl <- ATTICA_w3$CVD_10_yr
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(ATTICA_w3)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(ATTICA_w3, aes(x=factor(CVD_10_yr))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cvd_all` from the study-specific variable it has to be recoded as follows:
+
+* `keep up 0 into 0`
+* `keep up 1 into 1`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo w3}
+
+ATTICA_ds_w3 <- tibble(id=ATTICA_w3$id)
+ATTICA_ds_w3$cvd_all <- car::recode(ATTICA_w3$CVD_10_yr, "NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w3, echo=F}
+
+vbl <- ATTICA_ds_w3$cvd_all
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ATTICA_ds_w3, aes(x=factor(cvd_all))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w3, echo=F, results='asis'}
+
+```
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+
+Percentages of categories in each harmonised variable.
+
+**R script:**
+
+```{r summ}
+ATTICA_ds_w3$cvd_all <- labelled(ATTICA_ds_w3$cvd_all, labels = cat_label)
+label(ATTICA_ds_w3$cvd_all) <- ds_label
+
+ATTICA_m_ds_w3 <- ATTICA_ds_w3
+ATTICA_m_ds_w3$cvd_all <- car::recode(ATTICA_m_ds_w3$cvd_all, "miss_values_vector=NA")
+
+
+tt <-    frq(ATTICA_ds_w3$cvd_all)[[1]][,c(1:2,4)]
+tt[13,] <- c("n", "sample size", 
+            length(ATTICA_ds_w3$cvd_all)
+             )
+names(tt)<-c("val", "label", "w3")
+kable(tt)
+
+```
+
+
+
+# Quality estimation
+
+Incidence of fatal or non-fatal CVD (coronary heart disease, acute coronary syndromes, stroke, or other CVD) as defined according to World Health Organization (WHO)-International Coding Diseases (ICD)-10 criteria.
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+l.ATTICA <- list(w3 = ATTICA_ds_w3)
+
+for(index in seq_along(l.ATTICA)){
+  cvd_all <- l.ATTICA[[index]]
+  save(cvd_all, file = paste0(datafolder,names(l.ATTICA)[index],"/cvd_all.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

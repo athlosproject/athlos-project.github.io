@@ -1,0 +1,164 @@
+---
+title: "Arterial hypertension"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/Rmds/setup_laia.r")
+```
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `ah`
+* Variable label: `Arterial hypertension`
+* Variable description: `Arterial hypertension. Means of all diastolic blood pressure measures.`
+* Domain: `Physical Measures`
+* Value type: `Categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | no hypertension
+1        | hypertension
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done 
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Arterial hypertension"
+ds_label_all <- "Arterial hypertension. Means of all diastolic blood pressure measures."
+```
+
+# Data process
+
+## Greece
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `dbp`
+* Label: `diastolic blood pressure`
+* Type of variable: `countinous`
+
+* Name: `sbp`
+* Label: `systolic blood pressure`
+* Type of variable: `countinous`
+
+```{r assign1, echo=FALSE}
+opal.assign.table.tibble(o, 'ATTICA_ah','ATTICA.ATTICA_Baseline',
+                         variables=list('dbp', 'sbp'), missings = TRUE)
+ATTICA_ah <- opal.execute(o,'ATTICA_ah')
+```
+
+```{r local1, echo=FALSE}
+vari <- ATTICA_ah$dbp
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Immediate recall continuous")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ATTICA_ah, aes(dbp)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+
+vari <- ATTICA_ah$sbp
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Immediate recall continuous")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ATTICA_ah, aes(sbp)) + geom_histogram(stat="count", fill="steelblue") + xlab("Systolic Blood Pressure") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonized variable, first of all, it has to be created two categorical variables as follows:
+
+* dh:
+  + `dbp >= 90 into 1`
+  + `dbp < 90 into 0`
+
+* sh:
+  + `sbp >= 140 into 1`
+  + `sbp < 140 into 0`
+
+After that, to compute the harmonized variable from this two variables has to be recoded as follows
+
+* `if dh = 0 and sh = 0 into 0`
+* `if dh = 1 and sh = 0 into 1`
+* `if dh = 0 and sh = 1 into 1`
+* `if dh = 1 and sh = 1 into 1`
+* `NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo1}
+ATTICA_ah$dh <- recode(ATTICA_ah$dbp, "0:89=0; 90:hi=1")
+ATTICA_ah$sh <- recode(ATTICA_ah$sbp, "0:139=0; 140:hi=1")
+
+ATTICA_ds_w1 <- tibble(id=ATTICA_ah$id)
+ATTICA_ds_w1$ah <- NA
+ATTICA_ds_w1$ah[which(ATTICA_ah$dh==0 & ATTICA_ah$sh==0)] <- 0
+ATTICA_ds_w1$ah[which(ATTICA_ah$dh==1 & ATTICA_ah$sh==0)] <- 1
+ATTICA_ds_w1$ah[which(ATTICA_ah$dh==0 & ATTICA_ah$sh==1)] <- 1
+ATTICA_ds_w1$ah[which(ATTICA_ah$dh==1 & ATTICA_ah$sh==1)] <- 1
+ATTICA_ds_w1$ah <- labelled(ATTICA_ds_w1$ah, labels = c("no hypertension"=0, "hypertension"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=FALSE}
+vari <- ATTICA_ds_w1$ah
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ATTICA_ds_w1, aes(x=factor(ah))) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Validation
+```{r crosstabulation1}
+
+
+#### Quality estimation
+No comments.
+
+
+```
+
+```{r importOPAL1, echo=FALSE}
+#opal.assign.data(o, 'ATTICA_ds_w1', ATTICA_ds_w1)
+#opal.symbol_import(o,'ATTICA_ds_w1', project='_Athlos_Harm_Dataset')
+
+label(ATTICA_ds_w1) <- ds_label_all
+ah <- ATTICA_ds_w1
+save(ah, file = "../RData/w1/ah.RData")
+```
+
+
+
+
+
+### ATTICA - Wave 2 
+
+There is no variable.
+
+### ATTICA - Wave 3 
+
+There is no variable.

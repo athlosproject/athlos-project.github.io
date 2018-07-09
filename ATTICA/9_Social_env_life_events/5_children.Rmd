@@ -1,0 +1,173 @@
+---
+title: "Has children and/or grandchildren"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variables is the following:
+
+* Short name: `child`
+* Variable label: `Has children`
+* Domain: `Social environment`
+* Value type: `categorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+* Short name: `grchild`
+* Variable label: `Has grandchildren`
+* Domain: `Social environment`
+* Value type: `categorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Greece
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `child`
+* Label: `Number of children`
+
+* Description:
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'ATTICA_w1_child','ATTICA.ATTICA_Baseline', variables=list('child'), missings = TRUE)
+```
+
+```{r local1, echo=F}
+ATTICA_w1_child <- opal.execute(o,'ATTICA_w1_child')
+vari <- ATTICA_w1_child$child
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = ATTICA_w1_child$child, missing_values = NA)
+ggplot(ATTICA_w1_child, aes(x=factor(child))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Number of children") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `0 into 0; 1:hi into 1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1, echo=TRUE}
+ATTICA_ds_w1 <- tibble(id=ATTICA_w1_child$id)
+ATTICA_ds_w1$child <- car::recode(as.vector(ATTICA_w1_child$child), "0='0'; NA='999'; 1:hi='1'")
+ATTICA_ds_w1$child <- labelled(ATTICA_ds_w1$child, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1, echo=F}
+vari <- ATTICA_ds_w1$child
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ATTICA_ds_w1$child, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ATTICA_ds_w1, aes(x=factor(child))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has children") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=F}
+AfterH <- table(ATTICA_ds_w1$child)
+BeforeH <- table(ATTICA_w1_child$child, useNA='ifany')
+BeforeH[[2]] <- sum(BeforeH[c(2:10)])
+BeforeH <- BeforeH[c(1,2,11)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0","1","NA->999")
+kable(C)
+```
+
+
+### Wave 2
+Not found.
+
+### Wave 3
+Not found.
+
+
+```{r save, echo=FALSE}
+child <- ATTICA_w1_child
+save(child, file = "../RData/w1/child.RData")
+rm(child)
+
+
+
+```
+
+# Quality estimation
+
+`grchild` cannot be harmonized.
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
