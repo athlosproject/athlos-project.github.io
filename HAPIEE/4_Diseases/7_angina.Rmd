@@ -1,0 +1,411 @@
+---
+title: "Angina"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `h_angina`
+* Variable label: `History of angina`
+* Variable description: `history of angina`
+* Domain: `Diseases`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | no history of angina
+1        | history of angina
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+<!-- ########################################################## --> 
+<!-- # Global variables -->
+```{r global, include=FALSE, echo=F}
+miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
+ds_label <- "History of angina"
+cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
+yes_vector <- c('Yes, diagnosed, never hospitalised','Yes, diagnosed & hospitalised','Yes diagnosed and hospitalized','Yes diagnosed, not hospitalized','Li: Yes, angina')
+datafolder <- "../RData/"
+#sing_idlist <- c()
+```
+<!-- ########################################################## --> 
+
+
+
+# Data process
+
+
+
+## Poland
+
+### Wave 1
+
+#### Study-specific variable description
+
+| **Name** | `h10b` |
+|-|-|
+| **Label** | `Diagnosed/hospitalised for angina/ischaemic heart disease`|
+| **Table name**  | `Po_baseline_etic`|
+| **Categories** | `Yes, diagnosed, never hospitalised`<br/>`Yes, diagnosed & hospitalised`<br/>`No or do not know` |
+| **Missings** | `NA` |
+| **Description** |  |
+
+```{r assign pol_w1, echo=F}
+
+opal.assign.table.tibble(o, 'HAPIEE_pol_w1','HAPIEE.Po_baseline_etic',variables=list('h10b'), missings = T)
+HAPIEE_pol_w1 <- opal.execute(o,'HAPIEE_pol_w1')
+
+```
+
+```{r local pol_w1, echo=F}
+
+vbl <- HAPIEE_pol_w1$h10b
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HAPIEE_pol_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_pol_w1, aes(x=factor(h10b))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency") + theme(axis.text.x = element_text(angle=5))
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_angina` from the study-specific variable it has to be recoded as follows:
+
+* `No or do not know into 0`
+* `some Yes into 1`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo pol_w1}
+
+# Categorical variable harmonization
+HAPIEE_ds_pol_w1 <- tibble(id=HAPIEE_pol_w1$id)
+HAPIEE_ds_pol_w1$h_angina <- car::recode(HAPIEE_pol_w1$h10b, "yes_vector=1; 'No or do not know'=0;NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript pol_w1, echo=F}
+
+vbl <- HAPIEE_ds_pol_w1$h_angina
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_pol_w1, aes(x=factor(h_angina))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation pol_w1, echo=F}
+
+AfterH <- table(HAPIEE_ds_pol_w1$h_angina, useNA = "ifany")
+X <- table(HAPIEE_pol_w1$h10b, useNA = "ifany")
+BeforeH <- c(X[1],sum(X[2:3]), X[4])
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("No->0","some Yes->1","NA->999")
+kable(C)
+rm(HAPIEE_pol_w1)
+
+```
+
+
+
+### Wave 2
+
+Not found.
+
+
+## Czech Republic
+
+### Wave 1
+
+#### Study-specific variable description
+
+| **Name** | `h10b` |
+|-|-|-|
+| **Label** | `Diagnosed/hospitalised for angina/ischaemic heart disease`|
+| **Table name**  | `Cz_baseline_etic`|
+| **Categories** |`Yes, diagnosed, never hospitalised`<br/>`Yes, diagnosed & hospitalised`<br/>`No or do not know`|
+| **Missings** | `9`<br/>`NA` |
+| **Description** |  |
+
+```{r assign cz_w1, echo=F}
+
+opal.assign.table.tibble(o, 'HAPIEE_cz_w1','HAPIEE.Cz_baseline_etic',variables=list('h10b'), missings = T)
+HAPIEE_cz_w1 <- opal.execute(o,'HAPIEE_cz_w1')
+
+```
+
+```{r local cz_w1, echo=F}
+
+vbl <- HAPIEE_cz_w1$h10b
+kable(Categorical_summary(vbl, missing_values = c(9))[3], caption = names(HAPIEE_cz_w1)[2])
+kable(Categorical_summary(vbl, missing_values = c(9))[1], caption = "Category")
+ggplot(HAPIEE_cz_w1, aes(x=factor(h10b))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency") + theme(axis.text.x = element_text(angle=5))
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_angina` from the study-specific variable it has to be recoded as follows:
+
+* `No or do not know into 0`
+* `some Yes into 1`
+* `9,NA into 999`
+
+
+**R script:**
+
+```{r harmo cz_w1}
+
+# Categorical variable harmonization
+HAPIEE_ds_cz_w1 <- tibble(id=HAPIEE_cz_w1$id)
+HAPIEE_ds_cz_w1$h_angina <- car::recode(HAPIEE_cz_w1$h10b, "yes_vector=1; 'No or do not know'=0;9=999;NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript cz_w1, echo=F}
+
+vbl <- HAPIEE_ds_cz_w1$h_angina
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_cz_w1, aes(x=factor(h_angina))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation cz_w1, echo=F}
+
+AfterH <- table(HAPIEE_ds_cz_w1$h_angina, useNA = "ifany")
+X <- table(HAPIEE_cz_w1$h10b, useNA = "ifany")
+BeforeH <- c(X[2],sum(X[4:3]), sum(X[c(1,5)]))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("No->0","some Yes->1","9,NA->999")
+kable(C)
+rm(HAPIEE_cz_w1)
+
+```
+
+
+
+### Wave 2
+
+Not found.
+
+
+## Lithuania
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `h10b` |
+|-|-|
+| **Label** | `Diagnosed/hospitalised for angina/ischaemic heart disease`|
+| **Table name**  | `Li_baseline_etic`|
+| **Categories** |`No or do not know`<br/>`Li: Yes, angina`|
+| **Missings** | `NA` |
+| **Description** |  |
+
+```{r assign li_w1, echo=F}
+
+opal.assign.table.tibble(o, 'HAPIEE_li_w1','HAPIEE.Li_baseline_etic',variables=list('h10b'), missings = T)
+HAPIEE_li_w1 <- opal.execute(o,'HAPIEE_li_w1')
+
+```
+
+```{r local li_w1, echo=F}
+
+vbl <- HAPIEE_li_w1$h10b
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HAPIEE_li_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_li_w1, aes(x=factor(h10b))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_angina` from the study-specific variable it has to be recoded as follows:
+
+* `No or do not know into 0`
+* `Li: Yes, angina into 1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo li_w1}
+
+# Categorical variable harmonization
+HAPIEE_ds_li_w1 <- tibble(id=HAPIEE_li_w1$id)
+HAPIEE_ds_li_w1$h_angina <- car::recode(HAPIEE_li_w1$h10b, "yes_vector=1;'No or do not know'=0; NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript li_w1, echo=F}
+
+vbl <- HAPIEE_ds_li_w1$h_angina
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_li_w1, aes(x=factor(h_angina))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation li_w1, echo=F,results='asis'}
+
+AfterH <- table(HAPIEE_ds_li_w1$h_angina, useNA = "ifany")
+BeforeH <- table(HAPIEE_li_w1$h10b, useNA = "ifany")[c(2,1,3)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("No->0","Yes->1","NA->999")
+kable(C)
+rm(HAPIEE_li_w1)
+
+```
+
+
+
+
+
+## Descriptive statistics of the harmonised variable accross populations and waves
+
+Percentages of categories in each harmonised variable by cohort:
+
+**R script:**
+
+```{r summ}
+
+lb.hds <- list(pol_w1 = HAPIEE_ds_pol_w1, cz_w1 = HAPIEE_ds_cz_w1, li_w1 = HAPIEE_ds_li_w1)
+#lf.hds <- list(pol_w2 = HAPIEE_ds_pol_w2, cz_w2 = HAPIEE_ds_cz_w2)
+
+for(name in names(lb.hds)) {
+  aux_object <- lb.hds[[name]]
+  label(lb.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
+  lb.hds[[name]][[2]] <- labelled(lb.hds[[name]][[2]], labels = cat_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  m_name <- paste0("HAPIEE_m_ds_",name)
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+# for(name in names(lf.hds)) {
+#   aux_object <- lf.hds[[name]]
+#   label(lf.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
+#   lf.hds[[name]][[2]] <- labelled(lf.hds[[name]][[2]], labels = cat_label)
+#   label(lf.hds[[name]][[3]]) <- label(aux_object[[3]]) <- ds_label_age # Text value assigned at the DS description, at the top
+#   lf.hds[[name]][[3]] <- labelled(lf.hds[[name]][[3]], labels = cont_label)
+#   aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+#   aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+#   m_name <- paste0("HAPIEE_m_ds_",name)
+#   assign(m_name, aux_object)
+#   rm(aux_object)
+# }
+# 
+# l.hds <- c(lb.hds,lf.hds)
+# ln.hds <- c("pol_w1","pol_w2","cz_w1","cz_w2","li_w1")
+
+l.hds <- lb.hds
+ln.hds <- names(l.hds)
+
+t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+for (i in seq_along(ln.hds)){
+  t.hds[2+i] <- frq(l.hds[[ln.hds[i]]][2])[[1]][,4] 
+}
+t.hds[13,] <- c("n", "sample size", 
+             length(l.hds[[ln.hds[1]]][[2]]), length(l.hds[[ln.hds[2]]][[2]]) , length(l.hds[[ln.hds[3]]][[2]]))
+names(t.hds)<-c("val", "label", "Poland_W1", "Czech_Republic_W1", "Lithuania_W1")
+kable(t.hds)
+  
+```
+
+
+
+# Quality estimation
+
+No comments
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+for(index in seq_along(l.hds)){
+  h_angina <- l.hds[[index]]
+  save(h_angina, file = paste0(datafolder,names(l.hds)[index],"/h_angina.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

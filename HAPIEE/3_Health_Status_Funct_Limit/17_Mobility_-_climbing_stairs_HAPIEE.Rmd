@@ -1,0 +1,713 @@
+---
+title: "Mobility - climbing stairs"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `mob_climb`
+* Variable label: `Difficulty for climbing stairs`
+* Variable description: `Difficulty for climbing stairs`
+* Domain: `Health status and functional limitations`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | Yes
+1        | No
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+# Data process
+
+```{r global_yes_vectors, echo=F}
+bl_yes <- c('Yes, limited a a lot', 'Yes, limited a little')
+fu_yes <- c('Yes, limited a lot', 'Yes, limited a little')
+```
+
+## Poland
+
+### Wave 1
+
+#### Study-specific variable description
+
+
+  
+  
+| **Name** | `h8d`| `h8e`|
+|-|-|-|
+| **Label** | `Health limits climbing several flights of stairs` | `Health limits climbing one flight of stairs` |
+| **Table name** | `Po_baseline_etic` | `Po_baseline_etic` |
+| **Categories** |`Yes, limited a a lot; Yes, limited a little; No, not limited at all`|`Yes, limited a a lot; Yes, limited a little; No, not limited at all`|
+| **Missings** |`NA`|`NA`|
+| **Description** |  |  |
+
+
+```{r assign pol w1, echo=F}
+opal.assign.table.tibble(o, 'HAPIEE_pol_w1_mob_climb','HAPIEE.Po_baseline_etic', variables=list('h8d','h8e'), missings = TRUE)
+```
+
+```{r local pol w1, echo=F}
+HAPIEE_pol_w1_mob_climb <- opal.execute(o,'HAPIEE_pol_w1_mob_climb')
+vari <- HAPIEE_pol_w1_mob_climb$h8d
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "h8d")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_pol_w1_mob_climb, aes(x=factor(h8d))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Health limits climbing several flights of stairs") + ylab("Frequency")
+
+vari <- HAPIEE_pol_w1_mob_climb$h8e
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "h8e")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_pol_w1_mob_climb, aes(x=factor(h8e))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Health limits climbing one flight of stairs") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
++ `all No, not limited at all into 1`
++ `We interpret incongruences with No as interviewer error transcriptions, so into 991`
++ `some Yes into 0`
++ `NA into 999`
+
+**R script:**
+```{r harmo pol w1}
+HAPIEE_pol_ds_w1 <- tibble(id=HAPIEE_pol_w1_mob_climb$id)
+
+
+HAPIEE_pol_ds_w1$mob_climb <- 999
+
+HAPIEE_pol_ds_w1$mob_climb[(!is.na(HAPIEE_pol_w1_mob_climb$h8d) & HAPIEE_pol_w1_mob_climb$h8d %in% bl_yes) | (!is.na(HAPIEE_pol_w1_mob_climb$h8e) & HAPIEE_pol_w1_mob_climb$h8e %in% bl_yes)] <- 0
+
+HAPIEE_pol_ds_w1$mob_climb[(!is.na(HAPIEE_pol_w1_mob_climb$h8d) & HAPIEE_pol_w1_mob_climb$h8d=="No, not limited at all") & (!is.na(HAPIEE_pol_w1_mob_climb$h8e) & HAPIEE_pol_w1_mob_climb$h8e %in% bl_yes)] <- 991
+
+HAPIEE_pol_ds_w1$mob_climb[(!is.na(HAPIEE_pol_w1_mob_climb$h8d) & HAPIEE_pol_w1_mob_climb$h8d=="No, not limited at all") & (!is.na(HAPIEE_pol_w1_mob_climb$h8e) & HAPIEE_pol_w1_mob_climb$h8e=="No, not limited at all")] <- 1
+
+HAPIEE_pol_ds_w1$mob_climb  <- labelled(HAPIEE_pol_ds_w1$mob_climb, labels = c(Yes=0, No=1, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript pol w1, echo=F}
+vari <- HAPIEE_pol_ds_w1$mob_climb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "mob_climb")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HAPIEE_pol_ds_w1, aes(x=factor(mob_climb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Mobility - Climbing stairs") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation pol w1, echo=F}
+AfterH <- table(HAPIEE_pol_ds_w1$mob_climb)
+
+combi <- c(
+  sum(((!is.na(HAPIEE_pol_w1_mob_climb$h8d) & HAPIEE_pol_w1_mob_climb$h8d %in% bl_yes) | (!is.na(HAPIEE_pol_w1_mob_climb$h8e) & HAPIEE_pol_w1_mob_climb$h8e %in% bl_yes)) & !((!is.na(HAPIEE_pol_w1_mob_climb$h8d) & HAPIEE_pol_w1_mob_climb$h8d=="No, not limited at all") & (!is.na(HAPIEE_pol_w1_mob_climb$h8e) & HAPIEE_pol_w1_mob_climb$h8e %in% bl_yes))),
+  sum((!is.na(HAPIEE_pol_w1_mob_climb$h8d) & HAPIEE_pol_w1_mob_climb$h8d=="No, not limited at all") & (!is.na(HAPIEE_pol_w1_mob_climb$h8e) & HAPIEE_pol_w1_mob_climb$h8e=="No, not limited at all")),
+  sum((!is.na(HAPIEE_pol_w1_mob_climb$h8d) & HAPIEE_pol_w1_mob_climb$h8d=="No, not limited at all") & (!is.na(HAPIEE_pol_w1_mob_climb$h8e) & HAPIEE_pol_w1_mob_climb$h8e %in% bl_yes))
+)
+
+
+BeforeH <- c(combi,length(HAPIEE_pol_w1_mob_climb$id)-sum(combi))
+
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("some Yes->0","all No->1","incongruences with No->991","NA->999") 
+
+
+kable(HAPIEE_pol_w1_mob_climb[(!is.na(HAPIEE_pol_w1_mob_climb$h8d) & HAPIEE_pol_w1_mob_climb$h8d=="No, not limited at all") & (!is.na(HAPIEE_pol_w1_mob_climb$h8e) & HAPIEE_pol_w1_mob_climb$h8e %in% bl_yes),], align = 'c', caption = "There are 36 individuals whose data is that they do not have difficulty climbing several flights of stairs, but they do climbing one flight of stairs. They are categorized as interviewer errors (991).")
+
+kable(HAPIEE_pol_w1_mob_climb[(!is.na(HAPIEE_pol_w1_mob_climb$h8d) & HAPIEE_pol_w1_mob_climb$h8d == bl_yes[2] & !is.na(HAPIEE_pol_w1_mob_climb$h8e) & HAPIEE_pol_w1_mob_climb$h8e == bl_yes[1]),], align = 'c', caption = 'Other incongruences. Individuals having difficulty always, whose answer is that they have greater difficulty climbing one flight of stairs than several flights of stairs. They are categorized as 0 = Yes, having difficulty.')
+
+kable(C)
+```
+
+
+
+
+
+
+```{r importOPAL pol w1, echo=FALSE}
+
+label(HAPIEE_pol_ds_w1$mob_climb) <- "Difficulty for climbing stairs"
+#opal.assign.data(o, 'HAPIEE_pol_ds_w1', HAPIEE_pol_ds_w1)
+#opal.symbol_import(o,'HAPIEE_pol_ds_w1', project='_Athlos_Harm_Dataset')
+mob_climb <- HAPIEE_pol_ds_w1
+save(mob_climb, file = "../RData/pol_w1/mob_climb.RData")
+
+HAPIEE_pol_m_ds_w1 <- HAPIEE_pol_ds_w1
+HAPIEE_pol_m_ds_w1$mob_climb <- car::recode(HAPIEE_pol_m_ds_w1$mob_climb, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HAPIEE_pol_m_ds_w1', HAPIEE_pol_m_ds_w1)
+#opal.symbol_import(o,'HAPIEE_pol_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+
+  
+  
+| **Name** | ` h2h8e`| ` h2h8d`|
+|-|-|-|
+| **Label** | `Q5. Climbing 1 flight of stairs` |`Q5. Climbing several flights of stairs`|
+| **Table name** | `Po_followup_etic` | `Po_followup_etic` |
+| **Categories** |`Yes, limited a lot; Yes, limited a little; No, not limited at all`|`Yes, limited a lot; Yes, limited a little; No, not limited at all`|
+| **Missings** |`NA; 9 = Missing`|`NA; 9 = Missing`|
+| **Description** |  |  |
+
+
+```{r assign pol w2, echo=F}
+opal.assign.table.tibble(o, 'HAPIEE_pol_w2_mob_climb','HAPIEE.Po_followup_etic', variables=list('h2h8d','h2h8e'), missings = TRUE)
+```
+
+```{r local pol w2, echo=F}
+HAPIEE_pol_w2_mob_climb <- opal.execute(o,'HAPIEE_pol_w2_mob_climb')
+vari <- HAPIEE_pol_w2_mob_climb$h2h8e
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "h2h8e")
+kable(Categorical_summary(vari, missing_values = c(9))[1], caption = "Category")
+ggplot(HAPIEE_pol_w2_mob_climb, aes(x=factor(h2h8e))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Climbing 1 flight of stairs (2009)") + ylab("Frequency")
+
+vari <- HAPIEE_pol_w2_mob_climb$h2h8d
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "h2h8d")
+kable(Categorical_summary(vari, missing_values = c(9))[1], caption = "Category")
+ggplot(HAPIEE_pol_w2_mob_climb, aes(x=factor(h2h8d))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Climbing several flights of stairs (2009)") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
++ `all No, not limited at all into 1`
++ `We interpret incongruences with No as interviewer error transcriptions, so into 991`
++ `some Yes into 0`
++ `9,NA into 999`
+
+**R script:**
+```{r harmo pol w2}
+HAPIEE_pol_ds_w2 <- tibble(id=HAPIEE_pol_w2_mob_climb$id)
+HAPIEE_pol_ds_w2$mob_climb <- 999
+
+HAPIEE_pol_ds_w2$mob_climb[(!is.na(HAPIEE_pol_w2_mob_climb$h2h8d) & HAPIEE_pol_w2_mob_climb$h2h8d %in% fu_yes) | (!is.na(HAPIEE_pol_w2_mob_climb$h2h8e) & HAPIEE_pol_w2_mob_climb$h2h8e %in% fu_yes)] <- 0
+
+
+HAPIEE_pol_ds_w2$mob_climb[(!is.na(HAPIEE_pol_w2_mob_climb$h2h8d) & HAPIEE_pol_w2_mob_climb$h2h8d == "No, not limited at all") & (!is.na(HAPIEE_pol_w2_mob_climb$h2h8e) & HAPIEE_pol_w2_mob_climb$h2h8e %in% fu_yes)] <- 991
+
+
+HAPIEE_pol_ds_w2$mob_climb[(!is.na(HAPIEE_pol_w2_mob_climb$h2h8d) & HAPIEE_pol_w2_mob_climb$h2h8d == "No, not limited at all") & (!is.na(HAPIEE_pol_w2_mob_climb$h2h8e) & HAPIEE_pol_w2_mob_climb$h2h8e == "No, not limited at all")] <- 1
+
+HAPIEE_pol_ds_w2$mob_climb  <- labelled(HAPIEE_pol_ds_w2$mob_climb, labels = c(Yes=0, No=1, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript pol w2, echo=F}
+vari <- HAPIEE_pol_ds_w2$mob_climb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "mob_climb")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HAPIEE_pol_ds_w2, aes(x=factor(mob_climb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Mobility - Climbing stairs") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation pol w2, echo=F}
+AfterH <- table(HAPIEE_pol_ds_w2$mob_climb)
+
+combi <- c(
+  sum(((!is.na(HAPIEE_pol_w2_mob_climb$h2h8d) & HAPIEE_pol_w2_mob_climb$h2h8d %in% fu_yes) | (!is.na(HAPIEE_pol_w2_mob_climb$h2h8e) & HAPIEE_pol_w2_mob_climb$h2h8e %in% fu_yes)) & !((!is.na(HAPIEE_pol_w2_mob_climb$h2h8d) & HAPIEE_pol_w2_mob_climb$h2h8d == "No, not limited at all") & (!is.na(HAPIEE_pol_w2_mob_climb$h2h8e) & HAPIEE_pol_w2_mob_climb$h2h8e %in% fu_yes))),
+  sum((!is.na(HAPIEE_pol_w2_mob_climb$h2h8d) & HAPIEE_pol_w2_mob_climb$h2h8d == "No, not limited at all") & (!is.na(HAPIEE_pol_w2_mob_climb$h2h8e) & HAPIEE_pol_w2_mob_climb$h2h8e == "No, not limited at all")),
+  sum((!is.na(HAPIEE_pol_w2_mob_climb$h2h8d) & HAPIEE_pol_w2_mob_climb$h2h8d == "No, not limited at all") & (!is.na(HAPIEE_pol_w2_mob_climb$h2h8e) & HAPIEE_pol_w2_mob_climb$h2h8e %in% fu_yes))
+)
+
+BeforeH <- c(combi, length(HAPIEE_pol_w2_mob_climb$id)-sum(combi))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("some Yes->0","all No->1","incongruences with No->991","9,NA->999") 
+
+
+kable(HAPIEE_pol_w2_mob_climb[(!is.na(HAPIEE_pol_w2_mob_climb$h2h8d) & HAPIEE_pol_w2_mob_climb$h2h8d=="No, not limited at all") & (!is.na(HAPIEE_pol_w2_mob_climb$h2h8e) & HAPIEE_pol_w2_mob_climb$h2h8e %in% fu_yes),], align = 'c', caption = "There are 22 individuals whose data is that they do not have difficulty climbing several flights of stairs, but they do climbing one flight of stairs. They are categorized as interviewer errors (991).")
+
+kable(HAPIEE_pol_w2_mob_climb[(!is.na(HAPIEE_pol_w2_mob_climb$h2h8d) & HAPIEE_pol_w2_mob_climb$h2h8d == fu_yes[2] & !is.na(HAPIEE_pol_w2_mob_climb$h2h8e) & HAPIEE_pol_w2_mob_climb$h2h8e == fu_yes[1]),], align = 'c', caption = 'Other incongruences. Individuals having difficulty always, whose answer is that they have greater difficulty climbing one flight of stairs than several flights of stairs. They are categorized as 0 = Yes, having difficulty.')
+
+kable(C)
+```
+
+
+
+
+
+
+```{r importOPAL pol w2, echo=FALSE}
+
+label(HAPIEE_pol_ds_w2$mob_climb) <- "Difficulty for climbing stairs"
+#opal.assign.data(o, 'HAPIEE_pol_ds_w2', HAPIEE_pol_ds_w2)
+#opal.symbol_import(o,'HAPIEE_pol_ds_w2', project='_Athlos_Harm_Dataset')
+mob_climb <- HAPIEE_pol_ds_w2
+save(mob_climb, file = "../RData/pol_w2/mob_climb.RData")
+
+HAPIEE_pol_m_ds_w2 <- HAPIEE_pol_ds_w2
+HAPIEE_pol_m_ds_w2$mob_climb <- car::recode(HAPIEE_pol_m_ds_w2$mob_climb, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HAPIEE_pol_m_ds_w2', HAPIEE_pol_m_ds_w2)
+#opal.symbol_import(o,'HAPIEE_pol_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+## Czech Republic
+
+### Wave 1
+
+#### Study-specific variable description
+
+
+  
+  
+| **Name** | `h8d`| `h8e`|
+|-|-|-|
+| **Label** | `Health limits climbing several flights of stairs` |`Health limits climbing one flight of stairs`|
+| **Table name** | `Cz_baseline_etic` | `Cz_baseline_etic` |
+| **Categories** |`Yes, limited a a lot; Yes, limited a little; No, not limited at all`|`Yes, limited a a lot; Yes, limited a little; No, not limited at all`|
+| **Missings** |`NA`|`NA`|
+| **Description** |  |  |
+
+
+```{r assign cz w1, echo=F}
+opal.assign.table.tibble(o, 'HAPIEE_cz_w1_mob_climb','HAPIEE.Cz_baseline_etic', variables=list('h8d','h8e'), missings = TRUE)
+```
+
+```{r local cz w1, echo=F}
+HAPIEE_cz_w1_mob_climb <- opal.execute(o,'HAPIEE_cz_w1_mob_climb')
+vari <- HAPIEE_cz_w1_mob_climb$h8e
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "h8e")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_cz_w1_mob_climb, aes(x=factor(h8e))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("climbing one flight of stairs") + ylab("Frequency")
+
+vari <- HAPIEE_cz_w1_mob_climb$h8d
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "h8d")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_cz_w1_mob_climb, aes(x=factor(h8d))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("climbing several flights of stairs") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+  
++ `all No, not limited at all into 1`
++ `We interpret incongruences with No as interviewer error transcriptions, so into 991`
++ `some Yes into 0`
++ `NA into 999`
+
+
+**R script:**
+```{r harmo cz w1}
+HAPIEE_cz_ds_w1 <- tibble(id=HAPIEE_cz_w1_mob_climb$id)
+HAPIEE_cz_ds_w1$mob_climb <- 999
+
+HAPIEE_cz_ds_w1$mob_climb[(!is.na(HAPIEE_cz_w1_mob_climb$h8d) & HAPIEE_cz_w1_mob_climb$h8d %in% bl_yes) | (!is.na(HAPIEE_cz_w1_mob_climb$h8e) & HAPIEE_cz_w1_mob_climb$h8e %in% bl_yes)] <- 0
+
+HAPIEE_cz_ds_w1$mob_climb[(!is.na(HAPIEE_cz_w1_mob_climb$h8d) & HAPIEE_cz_w1_mob_climb$h8d == "No, not limited at all") & (!is.na(HAPIEE_cz_w1_mob_climb$h8e) & HAPIEE_cz_w1_mob_climb$h8e %in% bl_yes)] <- 991
+
+HAPIEE_cz_ds_w1$mob_climb[(!is.na(HAPIEE_cz_w1_mob_climb$h8d) & HAPIEE_cz_w1_mob_climb$h8d == "No, not limited at all") & (!is.na(HAPIEE_cz_w1_mob_climb$h8e) & HAPIEE_cz_w1_mob_climb$h8e == "No, not limited at all")] <- 1
+
+
+
+
+HAPIEE_cz_ds_w1$mob_climb  <- labelled(HAPIEE_cz_ds_w1$mob_climb, labels = c(No=1, Yes=0, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript cz w1, echo=F}
+vari <- HAPIEE_cz_ds_w1$mob_climb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "mob_climb")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HAPIEE_cz_ds_w1, aes(x=factor(mob_climb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Mobility - Climbing stairs") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation cz w1, echo=F}
+AfterH <- table(HAPIEE_cz_ds_w1$mob_climb)
+
+combi <- c(
+  sum(((!is.na(HAPIEE_cz_w1_mob_climb$h8d) & HAPIEE_cz_w1_mob_climb$h8d %in% bl_yes) | (!is.na(HAPIEE_cz_w1_mob_climb$h8e) & HAPIEE_cz_w1_mob_climb$h8e %in% bl_yes)) & !((!is.na(HAPIEE_cz_w1_mob_climb$h8d) & HAPIEE_cz_w1_mob_climb$h8d == "No, not limited at all") & (!is.na(HAPIEE_cz_w1_mob_climb$h8e) & HAPIEE_cz_w1_mob_climb$h8e %in% bl_yes))),
+  sum((!is.na(HAPIEE_cz_w1_mob_climb$h8d) & HAPIEE_cz_w1_mob_climb$h8d == "No, not limited at all") & (!is.na(HAPIEE_cz_w1_mob_climb$h8e) & HAPIEE_cz_w1_mob_climb$h8e == "No, not limited at all")),
+  sum((!is.na(HAPIEE_cz_w1_mob_climb$h8d) & HAPIEE_cz_w1_mob_climb$h8d == "No, not limited at all") & (!is.na(HAPIEE_cz_w1_mob_climb$h8e) & HAPIEE_cz_w1_mob_climb$h8e %in% bl_yes))
+)
+
+BeforeH <- c(combi, length(HAPIEE_cz_w1_mob_climb$id)-sum(combi))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("some Yes->0","all No->1","incongruences with No->991","NA->999") 
+
+kable(HAPIEE_cz_w1_mob_climb[(!is.na(HAPIEE_cz_w1_mob_climb$h8d) & HAPIEE_cz_w1_mob_climb$h8d=="No, not limited at all") & (!is.na(HAPIEE_cz_w1_mob_climb$h8e) & HAPIEE_cz_w1_mob_climb$h8e %in% bl_yes),], align = 'c', caption = "There are 26 individuals whose data is that they do not have difficulty climbing several flights of stairs, but they do climbing one flight of stairs. They are categorized as interviewer errors (991).")
+
+kable(HAPIEE_cz_w1_mob_climb[(!is.na(HAPIEE_cz_w1_mob_climb$h8d) & HAPIEE_cz_w1_mob_climb$h8d == bl_yes[2] & !is.na(HAPIEE_cz_w1_mob_climb$h8e) & HAPIEE_cz_w1_mob_climb$h8e == bl_yes[1]),], align = 'c', caption = 'Other incongruences. Individuals having difficulty always, whose answer is that they have greater difficulty climbing one flight of stairs than several flights of stairs. They are categorized as 0 = Yes, having difficulty.')
+
+kable(C)
+```
+
+
+
+
+
+
+```{r importOPAL cz w1, echo=FALSE}
+
+label(HAPIEE_cz_ds_w1$mob_climb) <- "Difficulty for climbing stairs"
+#opal.assign.data(o, 'HAPIEE_cz_ds_w1', HAPIEE_cz_ds_w1)
+#opal.symbol_import(o,'HAPIEE_cz_ds_w1', project='_Athlos_Harm_Dataset')
+mob_climb <- HAPIEE_cz_ds_w1
+save(mob_climb, file = "../RData/cz_w1/mob_climb.RData")
+
+HAPIEE_cz_m_ds_w1 <- HAPIEE_cz_ds_w1
+HAPIEE_cz_m_ds_w1$mob_climb <- car::recode(HAPIEE_cz_m_ds_w1$mob_climb, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HAPIEE_cz_m_ds_w1', HAPIEE_cz_m_ds_w1)
+#opal.symbol_import(o,'HAPIEE_cz_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 2
+
+
+#### Study-specific variable description
+
+
+  
+  
+| **Name** | `h2h8d`| `h2h8e`|
+|-|-|-|
+| **Label** | `Q5. Climbing several flight of stairs` |`Q5. Climbing 1 flight of stairs`|
+| **Table name** | `Cz_followup_etic` | `Cz_followup_etic` |
+| **Categories** |`Yes, limited a lot; Yes, limited a little; No, not limited at all`|
+| **Missings** |`NA; 9 = Missing`|`NA; 9 = Missing`|
+| **Description** |  |  |
+
+
+```{r assign cz w2, echo=F}
+opal.assign.table.tibble(o, 'HAPIEE_cz_w2_mob_climb','HAPIEE.Cz_followup_etic', variables=list('h2h8d','h2h8e'), missings = TRUE)
+```
+
+```{r local cz w2, echo=F}
+HAPIEE_cz_w2_mob_climb <- opal.execute(o,'HAPIEE_cz_w2_mob_climb')
+vari <- HAPIEE_cz_w2_mob_climb$h2h8d
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "h2h8d")
+kable(Categorical_summary(vari, missing_values = c(9))[1], caption = "Category")
+ggplot(HAPIEE_cz_w2_mob_climb, aes(x=factor(h2h8d))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Climbing several flight of stairs") + ylab("Frequency")
+
+vari <- HAPIEE_cz_w2_mob_climb$h2h8e
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "h2h8e")
+kable(Categorical_summary(vari, missing_values = c(9))[1], caption = "Category")
+ggplot(HAPIEE_cz_w2_mob_climb, aes(x=factor(h2h8e))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Climbing 1 flight of stairs") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
++ `all No, not limited at all into 1`
++ `We interpret incongruences with No as interviewer error transcriptions, so into 991`
++ `some Yes into 0`
++ `9,NA into 999`
+
+**R script:**
+```{r harmo cz w2}
+HAPIEE_cz_ds_w2 <- tibble(id=HAPIEE_cz_w2_mob_climb$id)
+HAPIEE_cz_ds_w2$mob_climb <- 999
+
+HAPIEE_cz_ds_w2$mob_climb[(!is.na(HAPIEE_cz_w2_mob_climb$h2h8d) & HAPIEE_cz_w2_mob_climb$h2h8d %in% fu_yes) | (!is.na(HAPIEE_cz_w2_mob_climb$h2h8e) & HAPIEE_cz_w2_mob_climb$h2h8e %in% fu_yes)] <- 0
+
+HAPIEE_cz_ds_w2$mob_climb[(!is.na(HAPIEE_cz_w2_mob_climb$h2h8d) & HAPIEE_cz_w2_mob_climb$h2h8d == "No, not limited at all") & (!is.na(HAPIEE_cz_w2_mob_climb$h2h8e) & HAPIEE_cz_w2_mob_climb$h2h8e %in% fu_yes)] <- 991
+
+HAPIEE_cz_ds_w2$mob_climb[(!is.na(HAPIEE_cz_w2_mob_climb$h2h8d) & HAPIEE_cz_w2_mob_climb$h2h8d == "No, not limited at all") & (!is.na(HAPIEE_cz_w2_mob_climb$h2h8e) & HAPIEE_cz_w2_mob_climb$h2h8e == "No, not limited at all")] <- 1
+
+
+HAPIEE_cz_ds_w2$mob_climb  <- labelled(HAPIEE_cz_ds_w2$mob_climb, labels = c(Yes=0, No=1, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript cz w2, echo=F}
+vari <- HAPIEE_cz_ds_w2$mob_climb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "mob_climb")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HAPIEE_cz_ds_w2, aes(x=factor(mob_climb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Mobility - Climbing stairs") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation cz w2, echo=F}
+AfterH <- table(HAPIEE_cz_ds_w2$mob_climb)
+combi <- c(
+  sum(((!is.na(HAPIEE_cz_w2_mob_climb$h2h8d) & HAPIEE_cz_w2_mob_climb$h2h8d %in% fu_yes) | (!is.na(HAPIEE_cz_w2_mob_climb$h2h8e) & HAPIEE_cz_w2_mob_climb$h2h8e %in% fu_yes)) & !((!is.na(HAPIEE_cz_w2_mob_climb$h2h8d) & HAPIEE_cz_w2_mob_climb$h2h8d == "No, not limited at all") & (!is.na(HAPIEE_cz_w2_mob_climb$h2h8e) & HAPIEE_cz_w2_mob_climb$h2h8e %in% fu_yes))),
+  sum((!is.na(HAPIEE_cz_w2_mob_climb$h2h8d) & HAPIEE_cz_w2_mob_climb$h2h8d == "No, not limited at all") & (!is.na(HAPIEE_cz_w2_mob_climb$h2h8e) & HAPIEE_cz_w2_mob_climb$h2h8e == "No, not limited at all")),
+  sum((!is.na(HAPIEE_cz_w2_mob_climb$h2h8d) & HAPIEE_cz_w2_mob_climb$h2h8d == "No, not limited at all") & (!is.na(HAPIEE_cz_w2_mob_climb$h2h8e) & HAPIEE_cz_w2_mob_climb$h2h8e %in% fu_yes))
+)
+
+BeforeH <- c(combi, length(HAPIEE_cz_w2_mob_climb$id)-sum(combi))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("some Yes->0","all No->1","incongruences with No->991","9,NA->999") 
+
+
+kable(HAPIEE_cz_w2_mob_climb[(!is.na(HAPIEE_cz_w2_mob_climb$h2h8d) & HAPIEE_cz_w2_mob_climb$h2h8d=="No, not limited at all") & (!is.na(HAPIEE_cz_w2_mob_climb$h2h8e) & HAPIEE_cz_w2_mob_climb$h2h8e %in% fu_yes),], align = 'c', caption = "There are 9 individuals whose data is that they do not have difficulty climbing several flights of stairs, but they do climbing one flight of stairs. They are categorized as interviewer errors (991).")
+
+kable(HAPIEE_cz_w2_mob_climb[(!is.na(HAPIEE_cz_w2_mob_climb$h2h8d) & HAPIEE_cz_w2_mob_climb$h2h8d == fu_yes[2] & !is.na(HAPIEE_cz_w2_mob_climb$h2h8e) & HAPIEE_cz_w2_mob_climb$h2h8e == fu_yes[1]),], align = 'c', caption = 'Other incongruences. Individuals having difficulty always, whose answer is that they have greater difficulty climbing one flight of stairs than several flights of stairs. They are categorized as 0 = Yes, having difficulty.')
+
+kable(C)
+```
+
+
+
+
+
+
+```{r importOPAL cz w2, echo=FALSE}
+
+label(HAPIEE_cz_ds_w2$mob_climb) <- "Difficulty for climbing stairs"
+#opal.assign.data(o, 'HAPIEE_cz_ds_w2', HAPIEE_cz_ds_w2)
+#opal.symbol_import(o,'HAPIEE_cz_ds_w2', project='_Athlos_Harm_Dataset')
+mob_climb <- HAPIEE_cz_ds_w2
+save(mob_climb, file = "../RData/cz_w2/mob_climb.RData")
+
+HAPIEE_cz_m_ds_w2 <- HAPIEE_cz_ds_w2
+HAPIEE_cz_m_ds_w2$mob_climb <- car::recode(HAPIEE_cz_m_ds_w2$mob_climb, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HAPIEE_cz_m_ds_w2', HAPIEE_cz_m_ds_w2)
+#opal.symbol_import(o,'HAPIEE_cz_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+## Lithuania
+
+### Wave 1
+
+#### Study-specific variable description
+
+
+  
+  
+| **Name** | `h8d`|`h8e`|
+|-|-|-|
+| **Label** | `Health limits climbing several flights of stairs` |`Health limits climbing one flight of stairs`|
+| **Table name** | `Li_baseline_etic` |`Li_baseline_etic` |
+| **Categories** |`Yes, limited a lot; Yes, limited a little; No, not limited at all`|`Yes, limited a lot; Yes, limited a little; No, not limited at all`|
+| **Missings** |`NA`|`NA`|
+| **Description** |  |  |
+
+
+```{r assign Li w1, echo=F}
+opal.assign.table.tibble(o, 'HAPIEE_Li_w1_mob_climb','HAPIEE.Li_baseline_etic', variables=list('h8d','h8e'), missings = TRUE)
+```
+
+```{r local Li w1, echo=F}
+HAPIEE_Li_w1_mob_climb <- opal.execute(o,'HAPIEE_Li_w1_mob_climb')
+vari <- HAPIEE_Li_w1_mob_climb$h8d
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "h8d")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_Li_w1_mob_climb, aes(x=factor(h8d))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("climbing several flights of stairs") + ylab("Frequency")
+
+vari <- HAPIEE_Li_w1_mob_climb$h8e
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "h8e")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_Li_w1_mob_climb, aes(x=factor(h8e))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("climbing one flight of stairs") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+  
+* `h8d == "No, not limited at all" into 1`
+* `some Yes into 0`
+* `NA into 999`
+
+In this study, if an individual answers not having difficulty climbing several flights of stairs, the data for climbing one flight are missings (NA). Because of this reason, if an individual has not difficulty climbing several flights of stairs, we categorize it as 1 = No, unlike for the previous waves, where it would be coded as missing (999). This is also the reason why in this wave there are no incongruences with No, categorized previously as interviewer errors (991).
+
+**R script:**
+```{r harmo Li w1}
+HAPIEE_li_ds_w1 <- tibble(id=HAPIEE_Li_w1_mob_climb$id)
+HAPIEE_li_ds_w1$mob_climb <- 999
+
+HAPIEE_li_ds_w1$mob_climb[(!is.na(HAPIEE_Li_w1_mob_climb$h8d) & HAPIEE_Li_w1_mob_climb$h8d %in% fu_yes) | (!is.na(HAPIEE_Li_w1_mob_climb$h8e) & HAPIEE_Li_w1_mob_climb$h8e %in% fu_yes)] <- 0
+
+
+HAPIEE_li_ds_w1$mob_climb[(!is.na(HAPIEE_Li_w1_mob_climb$h8d) & HAPIEE_Li_w1_mob_climb$h8d == "No, not limited at all")] <- 1
+
+
+HAPIEE_li_ds_w1$mob_climb  <- labelled(HAPIEE_li_ds_w1$mob_climb, labels = c(No=1, Yes=0, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript Li w1, echo=F}
+vari <- HAPIEE_li_ds_w1$mob_climb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "mob_climb")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HAPIEE_li_ds_w1, aes(x=factor(mob_climb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Mobility - Climbing stairs") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation Li w1, echo=F}
+AfterH <- table(HAPIEE_li_ds_w1$mob_climb)
+combi <- c(
+  sum((!is.na(HAPIEE_Li_w1_mob_climb$h8d) & HAPIEE_Li_w1_mob_climb$h8d %in% fu_yes) | (!is.na(HAPIEE_Li_w1_mob_climb$h8e) & HAPIEE_Li_w1_mob_climb$h8e %in% fu_yes)),
+  sum((!is.na(HAPIEE_Li_w1_mob_climb$h8d) & HAPIEE_Li_w1_mob_climb$h8d == "No, not limited at all"))
+)
+BeforeH <- c(combi, length(HAPIEE_Li_w1_mob_climb$id)-sum(combi))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("some Yes->0","h8g==No->1","NA->999") 
+
+kable(HAPIEE_Li_w1_mob_climb[(!is.na(HAPIEE_Li_w1_mob_climb$h8d) & HAPIEE_Li_w1_mob_climb$h8d == bl_yes[2] & !is.na(HAPIEE_Li_w1_mob_climb$h8e) & HAPIEE_Li_w1_mob_climb$h8e == bl_yes[1]),], align = 'c',caption = 'Some incongruences. Individuals having difficulty always, whose answer is that they have greater difficulty climbing one flight of stairs than several flights of stairs. They are categorized as 0 = Yes, having difficulty.')
+
+
+kable(C)
+```
+
+
+
+
+
+
+```{r importOPAL Li w1, echo=FALSE}
+
+label(HAPIEE_li_ds_w1$mob_climb) <- "Difficulty for climbing stairs"
+#opal.assign.data(o, 'HAPIEE_li_ds_w1', HAPIEE_li_ds_w1)
+#opal.symbol_import(o,'HAPIEE_li_ds_w1', project='_Athlos_Harm_Dataset')
+mob_climb <- HAPIEE_li_ds_w1
+save(mob_climb, file = "../RData/li_w1/mob_climb.RData")
+
+HAPIEE_li_m_ds_w1 <- HAPIEE_li_ds_w1
+HAPIEE_li_m_ds_w1$mob_climb <- car::recode(HAPIEE_li_m_ds_w1$mob_climb, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HAPIEE_li_m_ds_w1', HAPIEE_li_m_ds_w1)
+#opal.symbol_import(o,'HAPIEE_li_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+
+  
+  
+| **Name** | `h2h8d`|`h2h8e`|
+|-|-|-|
+| **Label** | `Q5. Climbing several flight of stairs` |`Q5. Climbing 1 flight of stairs`|
+| **Table name** | `Li_followup_etic` |`Li_followup_etic` |
+| **Missings** |`NA`|`NA`|
+| **Description** |  |  |
+
+
+```{r assign Li w2, echo=F}
+opal.assign.table.tibble(o, 'HAPIEE_Li_w2_mob_climb','HAPIEE.Li_followup_etic', variables=list('h2h8d','h2h8e'), missings = TRUE)
+```
+
+```{r local Li w2, echo=F}
+HAPIEE_Li_w2_mob_climb <- opal.execute(o,'HAPIEE_Li_w2_mob_climb')
+vari <- HAPIEE_Li_w2_mob_climb$h2h8e
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "h2h8e")
+vari <- HAPIEE_Li_w2_mob_climb$h2h8d
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "h2h8d")
+#kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#ggplot(HAPIEE_Li_w2_mob_climb, aes(x=factor(h2h8e))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Mobility - 'Climbing stairs") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+
++ `NA into 999`
+
+**R script:**
+```{r harmo Li w2}
+HAPIEE_li_ds_w2 <- tibble(id=HAPIEE_Li_w2_mob_climb$id)
+HAPIEE_li_ds_w2$mob_climb <- car::recode(HAPIEE_Li_w2_mob_climb$h2h8e, "NA = '999' ")
+HAPIEE_li_ds_w2$mob_climb  <- labelled(HAPIEE_li_ds_w2$mob_climb, labels = c(Yes=0, No=1, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript Li w2, echo=F}
+vari <- HAPIEE_li_ds_w2$mob_climb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "mob_climb")
+#kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+#kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#ggplot(HAPIEE_li_ds_w2, aes(x=factor(mob_climb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Mobility - 'Climbing stairs") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation Li w2, echo=F}
+AfterH <- table(HAPIEE_li_ds_w2$mob_climb)
+X <- table(HAPIEE_Li_w2_mob_climb$h2h8e)
+BeforeH <-sum(is.na(HAPIEE_Li_w2_mob_climb$h2h8e))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("NA->999") 
+kable(C)
+```
+
+
+
+
+
+
+```{r importOPAL Li w2, echo=FALSE}
+
+label(HAPIEE_li_ds_w2$mob_climb) <- "Difficulty for climbing stairs"
+#opal.assign.data(o, 'HAPIEE_li_ds_w2', HAPIEE_li_ds_w2)
+#opal.symbol_import(o,'HAPIEE_li_ds_w2', project='_Athlos_Harm_Dataset')
+mob_climb <- HAPIEE_li_ds_w2
+save(mob_climb, file = "../RData/li_w2/mob_climb.RData")
+
+HAPIEE_li_m_ds_w2 <- HAPIEE_li_ds_w2
+HAPIEE_li_m_ds_w2$mob_climb <- car::recode(HAPIEE_li_m_ds_w2$mob_climb, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HAPIEE_li_m_ds_w2', HAPIEE_li_m_ds_w2)
+#opal.symbol_import(o,'HAPIEE_li_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+# Quality estimation
+
+
+For the second waves we have chosen the variables `h2h8d, h2h8e` 
+from the 'Postal Ques Survey (2009)'\*, against 
+the variables `h3h8d, h3h8e` from the 'Postal Ques Survey (2012)'\* 
+and against the variables `h4h8d, h4h8e` from the 'Postal Ques Survey (2013)'\* -the last ones only available without missings for Czech Republic-.
+
+\* According to the Hapiee_codebook_data_dictionary.
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

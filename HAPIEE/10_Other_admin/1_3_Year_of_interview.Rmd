@@ -1,0 +1,470 @@
+---
+title: "Year of interview"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+
+
+
+* Short name: `yintw`
+* Variable label: `year of interview`
+* Variable description: `year of interview`
+* Domain: `Other administrative variables`
+* Value type:`continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done 
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+# Data process
+
+
+### HAPIEE - Poland - Baseline 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `hqdate`
+* Label: `Date of Completion of Health questionnaire`
+* Type of variable: `countinous`
+
+```{r assign_po1}
+opal.assign.table.tibble(o, 'HAPIEE_pol_w1_dinter','HAPIEE.Po_baseline_etic',
+                         variables=list('hqdate'), missings = TRUE)
+```
+
+```{r local_po1}
+HAPIEE_pol_w1_dinter <- opal.execute(o,'HAPIEE_pol_w1_dinter')
+Date_of_birth <- function(date){
+  n <- length(date)
+  D <- matrix(NA, nrow = n, ncol = 2)
+  for(i in 1:n){
+    D[i,] <- t(sapply(date[i], function(x) substring(x, first=c(1, 5), last=c(4, 7))))
+  }
+  DD <- data.frame(Year=as.numeric(D[,1]), Month=as.character(D[,2]))
+  DD
+}
+
+HAPIEE_pol_w1_dinter <- cbind(HAPIEE_pol_w1_dinter,Date_of_birth(HAPIEE_pol_w1_dinter$hqdate))
+Categorical_summary(var = HAPIEE_pol_w1_dinter$Year, missing_values = NA)
+ggplot(HAPIEE_pol_w1_dinter, aes(x=factor(Year))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Year of interview") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same of the study-specific variable but the missing values have to be recoded as 2007 since is the most frequent value. 
+
+R code of the ALGORITHM:
+
+```{r harmo_po1}
+HAPIEE_pol_ds_w1 <- tibble(id=HAPIEE_pol_w1_dinter$id)
+HAPIEE_pol_ds_w1$yintw <- car::recode(HAPIEE_pol_w1_dinter$Year, "NA=2007")
+HAPIEE_pol_ds_w1$yintw <- labelled(HAPIEE_pol_ds_w1$yintw, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_po1}
+Categorical_summary(var = HAPIEE_pol_ds_w1$yintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(HAPIEE_pol_ds_w1, aes(x=factor(yintw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Year of interview") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_po1}
+BeforeH <- table(HAPIEE_pol_w1_dinter$Year, useNA = "ifany")
+AfterH <- table(HAPIEE_pol_ds_w1$yintw)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- names(AfterH)
+kable(C)
+```
+
+
+#### Import to OPAL
+```{r importOPAL_po1}
+val_labels(HAPIEE_pol_ds_w1) <- NULL
+#opal.assign.data(o, 'HAPIEE_pol_ds_w1', HAPIEE_pol_ds_w1)
+#opal.symbol_import(o,'HAPIEE_pol_ds_w1', project='_Athlos_Harm_Dataset')
+yintw <- HAPIEE_pol_ds_w1
+save(yintw, file = "../RData/pol_w1/yintw.RData")
+rm(yintw)
+
+HAPIEE_pol_m_ds_w1 <- HAPIEE_pol_ds_w1
+HAPIEE_pol_m_ds_w1$yintw <- car::recode(HAPIEE_pol_m_ds_w1$yintw, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HAPIEE_pol_m_ds_w1', HAPIEE_pol_m_ds_w1)
+#opal.symbol_import(o,'HAPIEE_pol_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### HAPIEE - Poland - Reexamination
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `w2date`
+* Label: `Date of interview-in date format`
+* Type of variable: `countinous`
+
+```{r assign_po2}
+opal.assign.table.tibble(o, 'HAPIEE_pol_w2_dinter','HAPIEE.Po_reexamination_etic',
+                         variables=list('w2date'), missings = TRUE)
+```
+
+```{r local_po2}
+HAPIEE_pol_w2_dinter <- opal.execute(o,'HAPIEE_pol_w2_dinter')
+
+Date_of_birth <- function(date){
+  n <- length(date)
+  D <- matrix(NA, nrow = n, ncol = 2)
+  for(i in 1:n){
+    if(is.na(date[i])){
+      D[i,] <- rep(NA,2)
+    }
+    else{
+      D[i,] <- t(sapply(date[i], function(x) substring(x, first=c(1, 5),last=c(4, 7))))
+    } 
+  }
+ colnames(D) <- c("Year", "Month")    
+ D
+}
+
+HAPIEE_pol_w2_yinter <- cbind(HAPIEE_pol_w2_dinter, Date_of_birth(HAPIEE_pol_w2_dinter$w2date))
+Categorical_summary(var = HAPIEE_pol_w2_yinter$Year, missing_values = NA)
+ggplot(HAPIEE_pol_w2_yinter, aes(x=factor(Year))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Year of interview") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonize variable is the same of the study-specific variable but the missing values have to be recoded as follows:
+
+`NA into 999`
+
+
+R code of the ALGORITHM:
+
+```{r harmo_po2}
+HAPIEE_pol_ds_w2 <- tibble(id=HAPIEE_pol_w2_yinter$id)
+HAPIEE_pol_ds_w2$yintw <- car::recode(as.numeric(as.character(HAPIEE_pol_w2_yinter$Year)), "NA=999")
+HAPIEE_pol_ds_w2$yintw <- labelled(HAPIEE_pol_ds_w2$yintw, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_po2}
+Categorical_summary(var = HAPIEE_pol_ds_w2$yintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(HAPIEE_pol_ds_w2, aes(x=factor(yintw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Year of interview") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_po2}
+BeforeH <- table(HAPIEE_pol_w2_yinter$Year, useNA = "ifany")
+AfterH <- table(HAPIEE_pol_ds_w2$yintw)[c(2:4,1)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2006", "2007", "2008", "NA->999")
+kable(C)
+```
+
+
+#### Import to OPAL
+```{r importOPAL_po2}
+val_labels(HAPIEE_pol_ds_w2) <- NULL
+#opal.assign.data(o, 'HAPIEE_pol_ds_w2', HAPIEE_pol_ds_w2)
+#opal.symbol_import(o,'HAPIEE_pol_ds_w2', project='_Athlos_Harm_Dataset')
+yintw <- HAPIEE_pol_ds_w2
+save(yintw, file = "../RData/pol_w2/yintw.RData")
+rm(yintw)
+
+HAPIEE_pol_m_ds_w2 <- HAPIEE_pol_ds_w2
+HAPIEE_pol_m_ds_w2$yintw <- car::recode(HAPIEE_pol_m_ds_w2$yintw, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HAPIEE_pol_m_ds_w2', HAPIEE_pol_m_ds_w2)
+#opal.symbol_import(o,'HAPIEE_pol_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### HAPIEE - Czech Republic - Baseline
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `hqdate`
+* Label: `Date of Completion of Health questionnaire`
+* Type of variable: `countinous`
+
+```{r assign_cz1}
+opal.assign.table.tibble(o, 'HAPIEE_cz_w1_dinter','HAPIEE.Cz_baseline_etic',
+                         variables=list('hqdate'), missings = TRUE)
+```
+
+```{r local_cz1}
+HAPIEE_cz_w1_dinter <- opal.execute(o,'HAPIEE_cz_w1_dinter')
+Date_of_birth <- function(date){
+  n <- length(date)
+  D <- matrix(NA, nrow = n, ncol = 2)
+  for(i in 1:n){
+    D[i,] <- t(sapply(date[i], function(x) substring(x, first=c(1, 5), last=c(4, 7))))
+  }
+  DD <- data.frame(Year=as.numeric(D[,1]), Month=as.character(D[,2]))
+  DD
+}
+
+HAPIEE_cz_w1_dinter <- cbind(HAPIEE_cz_w1_dinter,Date_of_birth(HAPIEE_cz_w1_dinter$hqdate))
+Categorical_summary(var = HAPIEE_cz_w1_dinter$Year, missing_values = NA)
+ggplot(HAPIEE_cz_w1_dinter, aes(x=factor(Year))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Year of interview") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonize variable is the same of the study-specific variable.
+
+R code of the ALGORITHM:
+
+```{r harmo_cz1}
+HAPIEE_cz_ds_w1 <- tibble(id=HAPIEE_cz_w1_dinter$id)
+HAPIEE_cz_ds_w1$yintw <- HAPIEE_cz_w1_dinter$Year
+HAPIEE_cz_ds_w1$yintw <- labelled(HAPIEE_cz_ds_w1$yintw, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_cz1}
+Categorical_summary(var = HAPIEE_cz_ds_w1$yintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(HAPIEE_cz_ds_w1, aes(x=factor(yintw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Year of interview") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_cz1}
+BeforeH <- table(HAPIEE_cz_w1_dinter$Year, useNA = "ifany")
+AfterH <- table(HAPIEE_cz_ds_w1$yintw)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- names(AfterH)
+kable(C)
+```
+
+
+#### Import to OPAL
+```{r importOPAL_cz1}
+val_labels(HAPIEE_cz_ds_w1) <- NULL
+#opal.assign.data(o, 'HAPIEE_cz_ds_w1', HAPIEE_cz_ds_w1)
+#opal.symbol_import(o,'HAPIEE_cz_ds_w1', project='_Athlos_Harm_Dataset')
+yintw <- HAPIEE_cz_ds_w1
+save(yintw, file = "../RData/cz_w1/yintw.RData")
+rm(yintw)
+
+HAPIEE_cz_m_ds_w1 <- HAPIEE_cz_ds_w1
+HAPIEE_cz_m_ds_w1$yintw <- car::recode(HAPIEE_cz_m_ds_w1$yintw, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HAPIEE_cz_m_ds_w1', HAPIEE_cz_m_ds_w1)
+#opal.symbol_import(o,'HAPIEE_cz_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+
+
+### HAPIEE - Czech Republic - Reexamination
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `w2date`
+* Label: `Date of interview-in date format`
+* Type of variable: `countinous`
+
+```{r assign_cz2}
+opal.assign.table.tibble(o, 'HAPIEE_cz_w1_dinter','HAPIEE.Cz_reexamination_etic',
+                         variables=list('w2date'), missings = TRUE)
+```
+
+```{r local_cz2}
+HAPIEE_cz_w1_dinter <- opal.execute(o,'HAPIEE_cz_w1_dinter')
+
+Date_of_birth <- function(date){
+  n <- length(date)
+  D <- matrix(NA, nrow = n, ncol = 2)
+  for(i in 1:n){
+    D[i,] <- t(sapply(date[i], function(x) substring(x, first=c(1, 5), last=c(4, 7))))
+  }
+  DD <- data.frame(Year=as.numeric(D[,1]), Month=as.character(D[,2]))
+  DD
+}
+
+HAPIEE_cz_w1_dinter <- cbind(HAPIEE_cz_w1_dinter, Date_of_birth(HAPIEE_cz_w1_dinter$w2date))
+Categorical_summary(var = HAPIEE_cz_w1_dinter$Year, missing_values = NA)
+ggplot(HAPIEE_cz_w1_dinter, aes(x=factor(Year))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Year of interview") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows 
+
+`NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo_cz2}
+HAPIEE_cz_ds_w2 <- tibble(id=HAPIEE_cz_w1_dinter$id)
+HAPIEE_cz_ds_w2$yintw <- car::recode(HAPIEE_cz_w1_dinter$Year, "NA=999")
+HAPIEE_cz_ds_w2$yintw <- labelled(HAPIEE_cz_ds_w2$yintw, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_cz2}
+Categorical_summary(var = HAPIEE_cz_ds_w2$yintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(HAPIEE_cz_ds_w2, aes(x=factor(yintw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Year of interview") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_cz2}
+BeforeH <- table(HAPIEE_cz_w1_dinter$Year, useNA = "ifany")
+AfterH <- table(HAPIEE_cz_ds_w2$yintw)[c(2:4,1)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2006", "2007", "2008", "NA->999")
+kable(C)
+```
+
+#### Import to OPAL
+```{r importOPAL_cz2}
+val_labels(HAPIEE_cz_ds_w2) <- NULL
+#opal.assign.data(o, 'HAPIEE_cz_ds_w2', HAPIEE_cz_ds_w2)
+#opal.symbol_import(o,'HAPIEE_cz_ds_w2', project='_Athlos_Harm_Dataset')
+yintw <- HAPIEE_cz_ds_w2
+save(yintw, file = "../RData/cz_w2/yintw.RData")
+rm(yintw)
+
+HAPIEE_cz_m_ds_w2 <- HAPIEE_cz_ds_w2
+HAPIEE_cz_m_ds_w2$yintw <- car::recode(HAPIEE_cz_m_ds_w2$yintw, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HAPIEE_cz_m_ds_w2', HAPIEE_cz_m_ds_w2)
+#opal.symbol_import(o,'HAPIEE_cz_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+
+
+### HAPIEE - Lithuania - Baseline
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `w2date`
+* Label: `Date of interview-in date format`
+* Type of variable: `countinous`
+
+```{r assign_li1}
+opal.assign.table.tibble(o, 'HAPIEE_li_w1_dinter','HAPIEE.Li_baseline_etic',
+                         variables=list('w2date'), missings = TRUE)
+```
+
+```{r local_li1}
+HAPIEE_li_w1_dinter <- opal.execute(o,'HAPIEE_li_w1_dinter')
+
+Date_of_birth <- function(date){
+  n <- length(date)
+  D <- matrix(NA, nrow = n, ncol = 2)
+  for(i in 1:n){
+    D[i,] <- t(sapply(date[i], function(x) substring(x, first=c(1, 5), last=c(4, 7))))
+  }
+  DD <- data.frame(Year=as.numeric(D[,1]), Month=as.character(D[,2]))
+  DD
+}
+
+HAPIEE_li_w1_dinter <- cbind(HAPIEE_li_w1_dinter, Date_of_birth(HAPIEE_li_w1_dinter$w2date))
+Categorical_summary(var = HAPIEE_li_w1_dinter$Year, missing_values = NA)
+ggplot(HAPIEE_li_w1_dinter, aes(x=factor(Year))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Year of interview") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same of the study-specific variable but the missing values have to be recoded as 2007 since is the most frecuent value. 
+
+
+R code of the ALGORITHM:
+
+```{r harmo_li1}
+HAPIEE_li_ds_w1 <- tibble(id=HAPIEE_li_w1_dinter$id)
+HAPIEE_li_ds_w1$yintw <- car::recode(HAPIEE_li_w1_dinter$Year, "NA=2007")
+HAPIEE_li_ds_w1$yintw <- labelled(HAPIEE_li_ds_w1$yintw, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_li1}
+Categorical_summary(var = HAPIEE_li_ds_w1$yintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(HAPIEE_li_ds_w1, aes(x=factor(yintw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Year of interview") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_li1}
+BeforeH <- table(HAPIEE_li_w1_dinter$Year, useNA = "ifany")
+BeforeH <- c(BeforeH[1], sum(BeforeH[c(2,4)]), BeforeH[3])
+AfterH <- table(HAPIEE_li_ds_w1$yintw)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2006", "(NA,2007)->2007", "2008")
+kable(C)
+```
+
+#### Quality estimation
+The date was the same as the study specific variable taking into account the wave time lapse information, the missing values have been recoded as the most frequent year between the no missing values. 
+
+
+#### Import to OPAL
+```{r importOPAL_li1}
+val_labels(HAPIEE_li_ds_w1) <- NULL
+#opal.assign.data(o, 'HAPIEE_li_ds_w1', HAPIEE_li_ds_w1)
+#opal.symbol_import(o,'HAPIEE_li_ds_w1', project='_Athlos_Harm_Dataset')
+yintw <- HAPIEE_li_ds_w1
+save(yintw, file = "../RData/li_w1/yintw.RData")
+rm(yintw)
+
+HAPIEE_li_m_ds_w1 <- HAPIEE_li_ds_w1
+HAPIEE_li_m_ds_w1$yintw <- car::recode(HAPIEE_li_m_ds_w1$yintw, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HAPIEE_li_m_ds_w1', HAPIEE_li_m_ds_w1)
+#opal.symbol_import(o,'HAPIEE_li_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

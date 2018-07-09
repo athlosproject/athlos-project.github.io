@@ -1,0 +1,658 @@
+---
+title: "Alcohol drinking"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/alcoholDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/alcoholDS.R')
+```
+
+
+
+# Data process
+
+
+```{r HAPIEE categories}
+
+HAPIEE2_categ <- c('1-2x/wk','5+/wk','3-4x/wk','Every day or almost every day')
+HAPIEE1_categ <- c('1-2x/yr','3-5x/yr','6-11x/yr','1/mo','2-3x/mo')
+HAPIEE0_categ <- c('Never')
+
+```
+
+
+## Poland
+
+### Wave 1
+
+#### Study-specific variable description
+
+| **Name** | `d_alcfreq`|
+|-|-|
+| **Label** | `Drinking freq. from GF`|
+| **Table name**  | `Po_baseline_etic`|
+| **Categories** | `Never`<br/>`1-2x/wk`<br/>`2-3x/mo`<br/>`1/mo`<br/>`3-5x/yr`<br/>`5+/wk`<br/>`3-4x/wk`<br/>`6-11x/yr`<br/>`1-2x/yr` |
+| **Missings** | `NA` |
+| **Description** |  |
+
+```{r assign pol_w1, echo=F}
+
+opal.assign.table.tibble(o, 'HAPIEE_pol_w1','HAPIEE.Po_baseline_etic',variables=list('d_alcfreq'), missings = T)
+HAPIEE_pol_w1 <- opal.execute(o,'HAPIEE_pol_w1')
+
+```
+
+```{r local pol_w1, echo=F}
+
+vbl <- HAPIEE_pol_w1$d_alcfreq
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HAPIEE_pol_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_pol_w1, aes(x=factor(d_alcfreq))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency") + theme(axis.text.x = element_text(angle=10))
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `current_oh` from the study-specific variable it has to be recoded as follows:
+
+* `d_alcfreq == Never into 0`
+* `d_alcfreq == NA into 999`
+* `otherwise into 1`
+
+To compute `freq_oh` from the study-specific variable it has to be recoded as follows:
+
+* `d_alcfreq == Never into 0`
+* `d_alcfreq == '1-2x/wk','5+/wk','3-4x/wk' into 2`
+* `d_alcfreq == '1-2x/yr','3-5x/yr','6-11x/yr','1/mo','2-3x/mo' into 1`
+* `NA into 999`
+
+Past drinking cannot be harmonized.
+
+**R script:**
+
+```{r harmo pol_w1}
+
+# Categorical variable harmonization
+HAPIEE_ds_pol_w1 <- tibble(id=HAPIEE_pol_w1$id)
+HAPIEE_ds_pol_w1$current_oh <- car::recode(HAPIEE_pol_w1$d_alcfreq, "HAPIEE2_categ = 1; HAPIEE1_categ = 1; HAPIEE0_categ = 0; NA = 999")
+HAPIEE_ds_pol_w1$freq_oh <- car::recode(HAPIEE_pol_w1$d_alcfreq, "HAPIEE2_categ = 2; HAPIEE1_categ = 1; HAPIEE0_categ = 0; NA = 999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript pol_w1, echo=F}
+
+vbl <- HAPIEE_ds_pol_w1$current_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_curr)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_pol_w1, aes(x=factor(current_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_curr) + ylab("Frequency")
+
+vbl <- HAPIEE_ds_pol_w1$freq_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_freq)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_pol_w1, aes(x=factor(freq_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_freq) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation pol_w1, echo=F}
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `d_w2alcfreq`|`w2al9a`|
+|-|-|-|
+| **Label** | `Drinking freq. from GF (9 categories)`|`Have you always been a non-drinker?`|
+| **Table name**  | `Po_reexamination_etic`|`Po_reexamination_etic`|
+| **Categories** | `Never`<br/>`1-2x/wk`<br/>`2-3x/mo`<br/>`1/mo`<br/>`3-5x/yr`<br/>`5+/wk`<br/>`3-4x/wk`<br/>`6-11x/yr`<br/>`1-2x/yr`<br/>`Every day or almost every day` |`No`<br/>`Yes`|
+| **Missings** | `NA` | `NA` |
+| **Description** |  |  |
+
+```{r assign pol_w2, echo=F}
+
+opal.assign.table.tibble(o, 'HAPIEE_pol_w2','HAPIEE.Po_reexamination_etic',variables=list('d_w2alcfreq','w2al9a'), missings = T)
+HAPIEE_pol_w2 <- opal.execute(o,'HAPIEE_pol_w2')
+
+```
+
+```{r local pol_w2, echo=F}
+
+vbl <- HAPIEE_pol_w2$d_w2alcfreq
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HAPIEE_pol_w2)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_pol_w2, aes(x=factor(d_w2alcfreq))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency") + theme(axis.text.x = element_text(angle=10))
+
+vbl <- HAPIEE_pol_w2$w2al9a
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HAPIEE_pol_w2)[3])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_pol_w2, aes(x=factor(w2al9a))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency") + theme(axis.text.x = element_text(angle=10))
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `current_oh` from the study-specific variable it has to be recoded as follows:
+
+* `d_w2alcfreq == Never into 0`
+* `d_w2alcfreq == NA into 999`
+* `otherwise into 1`
+
+To compute `freq_oh` from the study-specific variable it has to be recoded as follows:
+
+* `d_w2alcfreq == Never into 0`
+* `d_w2alcfreq == '1-2x/wk','5+/wk','3-4x/wk','Every day or almost every day' into 2`
+* `d_w2alcfreq == '1-2x/yr','3-5x/yr','6-11x/yr','1/mo','2-3x/mo' into 1`
+* `NA into 999`
+
+To compute `past_oh` from the study-specific variable it has to be recoded as follows:
+
+* `w2al9a == Yes into 0`
+* `w2al9a == No into 1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo pol_w2}
+
+# Categorical variable harmonization
+HAPIEE_ds_pol_w2 <- tibble(id=HAPIEE_pol_w2$id)
+HAPIEE_ds_pol_w2$current_oh <- car::recode(HAPIEE_pol_w2$d_w2alcfreq, "HAPIEE2_categ = 1; HAPIEE1_categ = 1; HAPIEE0_categ = 0; NA = 999")
+HAPIEE_ds_pol_w2$freq_oh <- car::recode(HAPIEE_pol_w2$d_w2alcfreq, "HAPIEE2_categ = 2; HAPIEE1_categ = 1; HAPIEE0_categ = 0; NA = 999")
+HAPIEE_ds_pol_w2$past_oh <- car::recode(HAPIEE_pol_w2$w2al9a, "'No' = 1; 'Yes' = 0; NA = 999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript pol_w2, echo=F}
+
+vbl <- HAPIEE_ds_pol_w2$current_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_curr)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_pol_w2, aes(x=factor(current_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_curr) + ylab("Frequency")
+
+vbl <- HAPIEE_ds_pol_w2$freq_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_freq)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_pol_w2, aes(x=factor(freq_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_freq) + ylab("Frequency")
+
+vbl <- HAPIEE_ds_pol_w2$past_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_past)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_pol_w2, aes(x=factor(past_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_past) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation pol_w2, echo=F}
+
+```
+
+
+
+## Czech Republic
+
+### Wave 1
+
+#### Study-specific variable description
+
+| **Name** | `d_alcfreq`|
+|-|-|
+| **Label** | `Drinking freq. from GF`|
+| **Table name**  | `Cz_baseline_etic`|
+| **Categories** | `Never`<br/>`1-2x/wk`<br/>`2-3x/mo`<br/>`1/mo`<br/>`3-5x/yr`<br/>`5+/wk`<br/>`3-4x/wk`<br/>`6-11x/yr`<br/>`1-2x/yr` |
+| **Missings** | `NA` |
+| **Description** |  |
+
+```{r assign cz_w1, echo=F}
+
+opal.assign.table.tibble(o, 'HAPIEE_cz_w1','HAPIEE.Cz_baseline_etic',variables=list('d_alcfreq'), missings = T)
+HAPIEE_cz_w1 <- opal.execute(o,'HAPIEE_cz_w1')
+
+```
+
+```{r local cz_w1, echo=F}
+
+vbl <- HAPIEE_cz_w1$d_alcfreq
+kable(Categorical_summary(vbl, missing_values = c('9'))[3], caption = names(HAPIEE_cz_w1)[2])
+kable(Categorical_summary(vbl, missing_values = c('9'))[1], caption = "Category")
+ggplot(HAPIEE_cz_w1, aes(x=factor(d_alcfreq))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency") + theme(axis.text.x = element_text(angle=10))
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `current_oh` from the study-specific variable it has to be recoded as follows:
+
+* `d_alcfreq == Never into 0`
+* `d_alcfreq == NA into 999`
+* `otherwise into 1`
+
+To compute `freq_oh` from the study-specific variable it has to be recoded as follows:
+
+* `d_alcfreq == Never into 0`
+* `d_alcfreq == '1-2x/wk','5+/wk','3-4x/wk' into 2`
+* `d_alcfreq == '1-2x/yr','3-5x/yr','6-11x/yr','1/mo','2-3x/mo' into 1`
+* `NA into 999`
+
+Past drinking cannot be harmonized.
+
+**R script:**
+
+```{r harmo cz_w1}
+
+# Categorical variable harmonization
+HAPIEE_ds_cz_w1 <- tibble(id=HAPIEE_cz_w1$id)
+HAPIEE_ds_cz_w1$current_oh <- car::recode(HAPIEE_cz_w1$d_alcfreq, "HAPIEE2_categ = 1; HAPIEE1_categ = 1; HAPIEE0_categ = 0; NA = 999")
+HAPIEE_ds_cz_w1$freq_oh <- car::recode(HAPIEE_cz_w1$d_alcfreq, "HAPIEE2_categ = 2; HAPIEE1_categ = 1; HAPIEE0_categ = 0; NA = 999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript cz_w1, echo=F}
+
+vbl <- HAPIEE_ds_cz_w1$current_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_curr)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_cz_w1, aes(x=factor(current_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_curr) + ylab("Frequency")
+
+vbl <- HAPIEE_ds_cz_w1$freq_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_freq)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_cz_w1, aes(x=factor(freq_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_freq) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation cz_w1, echo=F}
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `d_w2alcfreq`|`w2al9a`|
+|-|-|-|
+| **Label** | `Drinking freq. from GF (9 categories)`|`Have you always been a non-drinker?`|
+| **Table name**  | `Cz_reexamination_etic`|`Cz_reexamination_etic`|
+| **Categories** | `Never`<br/>`1-2x/wk`<br/>`2-3x/mo`<br/>`1/mo`<br/>`3-5x/yr`<br/>`5+/wk`<br/>`3-4x/wk`<br/>`6-11x/yr`<br/>`1-2x/yr`<br/>`Every day or almost every day` |`No`<br/>`Yes`|
+| **Missings** | `NA` | `NA` |
+| **Description** |  |  |
+
+```{r assign cz_w2, echo=F}
+
+opal.assign.table.tibble(o, 'HAPIEE_cz_w2','HAPIEE.Cz_reexamination_etic',variables=list('d_w2alcfreq','w2al9a'), missings = T)
+HAPIEE_cz_w2 <- opal.execute(o,'HAPIEE_cz_w2')
+
+```
+
+```{r local cz_w2, echo=F}
+
+vbl <- HAPIEE_cz_w2$d_w2alcfreq
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HAPIEE_cz_w2)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_cz_w2, aes(x=factor(d_w2alcfreq))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency") + theme(axis.text.x = element_text(angle=10))
+
+vbl <- HAPIEE_cz_w2$w2al9a
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HAPIEE_cz_w2)[3])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_cz_w2, aes(x=factor(w2al9a))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency") + theme(axis.text.x = element_text(angle=10))
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `current_oh` from the study-specific variable it has to be recoded as follows:
+
+* `d_w2alcfreq == Never into 0`
+* `d_w2alcfreq == NA into 999`
+* `otherwise into 1`
+
+To compute `freq_oh` from the study-specific variable it has to be recoded as follows:
+
+* `d_w2alcfreq == Never into 0`
+* `d_w2alcfreq == '1-2x/wk','5+/wk','3-4x/wk','Every day or almost every day' into 2`
+* `d_w2alcfreq == '1-2x/yr','3-5x/yr','6-11x/yr','1/mo','2-3x/mo' into 1`
+* `NA into 999`
+
+To compute `past_oh` from the study-specific variable it has to be recoded as follows:
+
+* `w2al9a == Yes into 0`
+* `w2al9a == No into 1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo cz_w2}
+
+# Categorical variable harmonization
+HAPIEE_ds_cz_w2 <- tibble(id=HAPIEE_cz_w2$id)
+HAPIEE_ds_cz_w2$current_oh <- car::recode(HAPIEE_cz_w2$d_w2alcfreq, "HAPIEE2_categ = 1; HAPIEE1_categ = 1; HAPIEE0_categ = 0; NA = 999")
+HAPIEE_ds_cz_w2$freq_oh <- car::recode(HAPIEE_cz_w2$d_w2alcfreq, "HAPIEE2_categ = 2; HAPIEE1_categ = 1; HAPIEE0_categ = 0; NA = 999")
+HAPIEE_ds_cz_w2$past_oh <- car::recode(HAPIEE_cz_w2$w2al9a, "'No' = 1; 'Yes' = 0; NA = 999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript cz_w2, echo=F}
+
+vbl <- HAPIEE_ds_cz_w2$current_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_curr)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_cz_w2, aes(x=factor(current_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_curr) + ylab("Frequency")
+
+vbl <- HAPIEE_ds_cz_w2$freq_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_freq)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_cz_w2, aes(x=factor(freq_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_freq) + ylab("Frequency")
+
+vbl <- HAPIEE_ds_cz_w2$past_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_past)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_cz_w2, aes(x=factor(past_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_past) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation cz_w2, echo=F}
+
+```
+
+
+
+
+
+## Lithuania
+
+
+#### Study-specific variable description
+
+| **Name** | `d_alcfreq`|`w2al9a`|
+|-|-|-|
+| **Label** | `Drinking freq. from GF`|`Have you always been a non-drinker?`|
+| **Table name**  | `Li_baseline_etic`|`Li_baseline_etic`|
+| **Categories** | `Never`<br/>`1-2x/wk`<br/>`2-3x/mo`<br/>`1/mo`<br/>`3-5x/yr`<br/>`5+/wk`<br/>`3-4x/wk`<br/>`6-11x/yr`<br/>`1-2x/yr` |`No`<br/>`Yes`|
+| **Missings** | `NA` | `NA` |
+| **Description** |  |  |
+
+```{r assign li_w1, echo=F}
+
+opal.assign.table.tibble(o, 'HAPIEE_li_w1','HAPIEE.Li_baseline_etic',variables=list('d_alcfreq','w2al9a'), missings = T)
+HAPIEE_li_w1 <- opal.execute(o,'HAPIEE_li_w1')
+
+```
+
+```{r local li_w1, echo=F}
+
+vbl <- HAPIEE_li_w1$d_alcfreq
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HAPIEE_li_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_li_w1, aes(x=factor(d_alcfreq))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency") + theme(axis.text.x = element_text(angle=10))
+
+vbl <- HAPIEE_li_w1$w2al9a
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HAPIEE_li_w1)[3])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_li_w1, aes(x=factor(w2al9a))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency") + theme(axis.text.x = element_text(angle=10))
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `current_oh` from the study-specific variable it has to be recoded as follows:
+
+* `d_alcfreq == Never into 0`
+* `d_alcfreq == NA into 999`
+* `otherwise into 1`
+
+To compute `freq_oh` from the study-specific variable it has to be recoded as follows:
+
+* `d_alcfreq == Never into 0`
+* `d_alcfreq == '1-2x/wk','5+/wk','3-4x/wk' into 2`
+* `d_alcfreq == '1-2x/yr','3-5x/yr','6-11x/yr','1/mo','2-3x/mo' into 1`
+* `NA into 999`
+
+To compute `past_oh` from the study-specific variable it has to be recoded as follows:
+
+* `w2al9a == Yes into 0`
+* `w2al9a == No into 1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo li_w1}
+
+# Categorical variable harmonization
+HAPIEE_ds_li_w1 <- tibble(id=HAPIEE_li_w1$id)
+HAPIEE_ds_li_w1$current_oh <- car::recode(HAPIEE_li_w1$d_alcfreq, "HAPIEE2_categ = 1; HAPIEE1_categ = 1; HAPIEE0_categ = 0; NA = 999")
+HAPIEE_ds_li_w1$freq_oh <- car::recode(HAPIEE_li_w1$d_alcfreq, "HAPIEE2_categ = 2; HAPIEE1_categ = 1; HAPIEE0_categ = 0; NA = 999")
+HAPIEE_ds_li_w1$past_oh <- car::recode(HAPIEE_li_w1$w2al9a, "'No' = 1; 'Yes' = 0; NA = 999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript li_w1, echo=F}
+
+vbl <- HAPIEE_ds_li_w1$current_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_curr)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_li_w1, aes(x=factor(current_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_curr) + ylab("Frequency")
+
+vbl <- HAPIEE_ds_li_w1$freq_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_freq)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_li_w1, aes(x=factor(freq_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_freq) + ylab("Frequency")
+
+vbl <- HAPIEE_ds_li_w1$past_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_past)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_li_w1, aes(x=factor(past_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_past) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation li_w1, echo=F}
+
+```
+
+
+
+
+
+```{r final, echo=F}
+
+lb.hds <- list(pol_w1 = HAPIEE_ds_pol_w1, cz_w1 = HAPIEE_ds_cz_w1)
+lf.hds <- list(pol_w2 = HAPIEE_ds_pol_w2, cz_w2 = HAPIEE_ds_cz_w2, li_w1 = HAPIEE_ds_li_w1)
+
+for(name in names(lb.hds)) {
+  aux_object <- lb.hds[[name]]
+  label(lb.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label_curr # Text value assigned at the DS description, at the top
+  lb.hds[[name]][[2]] <- labelled(lb.hds[[name]][[2]], labels = cat_label)
+  label(lb.hds[[name]][[3]]) <- label(aux_object[[3]]) <- ds_label_freq # Text value assigned at the DS description, at the top
+  lb.hds[[name]][[3]] <- labelled(lb.hds[[name]][[3]], labels = freq_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  aux_object[[3]] <- car::recode(aux_object[[3]], "miss_values_vector=NA")
+  aux_object[[3]] <- labelled(aux_object[[3]], labels = freq_label[1:3])
+  m_name <- paste0("HAPIEE_m_ds_",name)
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+
+for(name in names(lf.hds)) {
+  aux_object <- lf.hds[[name]]
+  label(lf.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label_curr # Text value assigned at the DS description, at the top
+  lf.hds[[name]][[2]] <- labelled(lf.hds[[name]][[2]], labels = cat_label)
+  label(lf.hds[[name]][[3]]) <- label(aux_object[[3]]) <- ds_label_freq # Text value assigned at the DS description, at the top
+  lf.hds[[name]][[3]] <- labelled(lf.hds[[name]][[3]], labels = freq_label)
+  label(lf.hds[[name]][[4]]) <- label(aux_object[[4]]) <- ds_label_past # Text value assigned at the DS description, at the top
+  lf.hds[[name]][[4]] <- labelled(lf.hds[[name]][[4]], labels = cat_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  aux_object[[3]] <- car::recode(aux_object[[3]], "miss_values_vector=NA")
+  aux_object[[3]] <- labelled(aux_object[[3]], labels = freq_label[1:3])
+  aux_object[[4]] <- car::recode(aux_object[[4]], "miss_values_vector=NA")
+  aux_object[[4]] <- labelled(aux_object[[4]], labels = cat_label[1:2])
+  m_name <- paste0("HAPIEE_m_ds_",name)
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+l.hds <- c(lb.hds,lf.hds)
+ln.hds <- c("pol_w1","pol_w2","cz_w1","cz_w2","li_w1")
+
+```
+
+
+## Descriptive statistics of the harmonised variable `current_oh` accross populations and waves
+
+Percentages of categories in each harmonised variable by cohort:
+
+**R script:**
+
+```{r summ current}
+
+t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+for (i in seq_along(ln.hds)){
+  t.hds[2+i] <- frq(l.hds[[ln.hds[i]]][2])[[1]][,4] 
+}
+t.hds[13,] <- c("n", "sample size",sapply(ln.hds,function(wave) length(l.hds[[wave]][[1]])))
+names(t.hds)<-c("val", "label", "Poland_W1", "Poland_W2","Czech_Republic_W1","Czech_Republic_W2","Lithuania_W1")
+kable(t.hds)
+  
+```
+
+
+## Descriptive statistics of the harmonised variable `freq_oh` accross populations and waves
+
+Percentages of categories in each harmonised variable by cohort:
+
+**R script:**
+
+```{r summ freq}
+
+t.hds <- frq(l.hds[[1]][3])[[1]][,c(1,2)] 
+for (i in seq_along(ln.hds)){
+  t.hds[2+i] <- frq(l.hds[[ln.hds[i]]][3])[[1]][,4] 
+}
+t.hds[14,] <- c("n", "sample size",sapply(ln.hds,function(wave) length(l.hds[[wave]][[1]])))
+names(t.hds)<-c("val", "label", "Poland_W1", "Poland_W2","Czech_Republic_W1","Czech_Republic_W2","Lithuania_W1")
+kable(t.hds)
+  
+```
+
+
+## Descriptive statistics of the harmonised variable `past_oh` accross populations and waves
+
+Percentages of categories in each harmonised variable by cohort:
+
+**R script:**
+
+```{r summ past}
+
+t.hds <- frq(lf.hds[[1]][4])[[1]][,c(1,2)] 
+for (i in seq_along(lf.hds)){
+  t.hds[2+i] <- frq(lf.hds[[i]][4])[[1]][,4] 
+}
+t.hds[13,] <- c("n", "sample size",sapply(lf.hds,function(wave) length(wave[[1]])))
+names(t.hds)<-c("val", "label", "Poland_W2","Czech_Republic_W2","Lithuania_W1")
+kable(t.hds)
+  
+```
+
+
+
+# Quality estimation
+
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+for(index in seq_along(l.hds)){
+  alcohol <- l.hds[[index]]
+  save(alcohol, file = paste0(datafolder,names(l.hds)[index],"/alcohol.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

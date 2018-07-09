@@ -1,0 +1,576 @@
+---
+title: "Month of Birth"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+  
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+```{r lab, echo=FALSE}
+ds_label <- "Month of birth"
+```
+
+
+
+
+
+# Description of DataSchema variable 
+
+The description of harmonised variable is the following:
+
+
+* Short name: `mbirth`
+* Variable label: `month of birth`
+* Variable description: `Month of birth`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+# Data process
+
+## Poland
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `dob` |
+|----------|------------|
+| **Label** | `Date of birth (definitive)` |
+| **Table name** | `Po_baseline_etic` |
+| **Description** |  |
+
+```{r assign_po1, echo=F}
+opal.assign.table.tibble(o, 'HAPIEE_pol_w1_birth','HAPIEE.Po_baseline_etic',
+                         variables=list('dob'), missings = TRUE)
+HAPIEE_pol_w1_birth <- opal.execute(o,'HAPIEE_pol_w1_birth')
+```
+
+```{r local_po1, echo=F}
+Date_of_birth <- function(date){
+  n <- length(date)
+  D <- matrix(NA, nrow = n, ncol = 2)
+  for(i in 1:n){
+    D[i,] <- t(sapply(date[i], function(x) substring(x, first=c(1, 5), last=c(4, 7))))
+  }
+  DD <- data.frame(Year=as.numeric(D[,1]), Month=as.character(D[,2]))
+  DD
+}
+
+HAPIEE_pol_w1_birth <- cbind(HAPIEE_pol_w1_birth,Date_of_birth(HAPIEE_pol_w1_birth$dob))
+
+vari <- HAPIEE_pol_w1_birth$Month
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_pol_w1_birth, aes(x=factor(Month))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To computed the harmonize variable form the study-specific variable, it has to be recoded as follows:
+
+* `recode 'jan' into 1`
+* `recode 'feb' into 2`
+* `recode 'mar' into 3`
+* `recode 'apr' into 4`
+* `recode 'jun' into 5`
+* `recode 'may' into 6`
+* `recode 'jul' into 7`
+* `recode 'aug' into 8`
+* `recode 'sep' into 9`
+* `recode 'oct' into 10`
+* `recode 'nov' into 11`
+* `recode 'dec' into 12`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_po1}
+HAPIEE_pol_ds_w1 <- tibble(id=HAPIEE_pol_w1_birth$id)
+HAPIEE_pol_ds_w1$mbirth <- car::recode(HAPIEE_pol_w1_birth$Month, "'jan'=1; 'feb'=2; 'mar'=3; 'apr'=4; 'may'=5; 'jun'=6; 'jul'=7; 'aug'=8; 'sep'=9; 'oct'=10; 'nov'=11; 'dec'=12; NA=999")
+HAPIEE_pol_ds_w1$mbirth <- as.numeric(paste(HAPIEE_pol_ds_w1$mbirth))
+HAPIEE_pol_ds_w1$mbirth <- labelled(HAPIEE_pol_ds_w1$mbirth, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_po1, echo=F}
+vari <- HAPIEE_pol_ds_w1$mbirth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HAPIEE_pol_ds_w1, aes(x=factor(mbirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_po1, echo=F}
+BeforeH <- table(HAPIEE_pol_w1_birth$Month)[c(5,4,8,1,9,7,6,2,12,11,10,3)]
+AfterH <- table(HAPIEE_pol_ds_w1$mbirth)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c('jan->1', 'feb->2', 'mar->3', 'apr->4', 'may->5', 'jun->6', 'jul->7', 'aug->8', 'sep->9', 'oct->10', 'nov->11', 'dec->12')
+kable(C)
+```
+
+
+
+
+
+```{r importOPAL_po1, echo=F}
+
+#opal.assign.data(o, 'HAPIEE_pol_ds_w1', HAPIEE_pol_ds_w1)
+#opal.symbol_import(o,'HAPIEE_pol_ds_w1', project='_Athlos_Harm_Dataset')
+mbirth <- HAPIEE_pol_ds_w1
+save(mbirth, file = "../RData/pol_w1/mbirth.RData")
+rm(mbirth)
+
+HAPIEE_pol_m_ds_w1 <- HAPIEE_pol_ds_w1
+HAPIEE_pol_m_ds_w1$mbirth <- car::recode(HAPIEE_pol_m_ds_w1$mbirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HAPIEE_pol_m_ds_w1', HAPIEE_pol_m_ds_w1)
+#opal.symbol_import(o,'HAPIEE_pol_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+
+| **Name** | `dob` |
+|----------|------------|
+| **Label** | `Date of birth (definitive)` |
+| **Table name** | `Po_baseline_etic` |
+| **Description** |  |
+
+```{r assign_po2, echo=F}
+opal.assign.table.tibble(o, 'HAPIEE_pol_w1_birth','HAPIEE.Po_baseline_etic',
+                         variables=list('dob'), missings = TRUE)
+HAPIEE_pol_w1_birth <- opal.execute(o,'HAPIEE_pol_w1_birth')
+```
+
+```{r local_po2, echo=F}
+Date_of_birth <- function(date){
+  n <- length(date)
+  D <- matrix(NA, nrow = n, ncol = 2)
+  for(i in 1:n){
+    D[i,] <- t(sapply(date[i], function(x) substring(x, first=c(1, 5), last=c(4, 7))))
+  }
+  DD <- data.frame(Year=as.numeric(D[,1]), Month=as.character(D[,2]))
+  DD
+}
+
+HAPIEE_pol_w1_birth <- cbind(HAPIEE_pol_w1_birth,Date_of_birth(HAPIEE_pol_w1_birth$dob))
+
+vari <- HAPIEE_pol_w1_birth$Month
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_pol_w1_birth, aes(x=factor(Month))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To computed the harmonize variable form the study-specific variable, it has to be recoded as follows:
+
+* `recode 'jan' into 1`
+* `recode 'feb' into 2`
+* `recode 'mar' into 3`
+* `recode 'apr' into 4`
+* `recode 'jun' into 5`
+* `recode 'may' into 6`
+* `recode 'jul' into 7`
+* `recode 'aug' into 8`
+* `recode 'sep' into 9`
+* `recode 'oct' into 10`
+* `recode 'nov' into 11`
+* `recode 'dec' into 12`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_po2}
+HAPIEE_pol_ds_w2 <- tibble(id=HAPIEE_pol_w1_birth$id)
+HAPIEE_pol_ds_w2$mbirth <- car::recode(HAPIEE_pol_w1_birth$Month, "'jan'=1; 'feb'=2; 'mar'=3; 'apr'=4; 'may'=5; 'jun'=6; 'jul'=7; 'aug'=8; 'sep'=9; 'oct'=10; 'nov'=11; 'dec'=12; NA=999")
+HAPIEE_pol_ds_w2$mbirth <- as.numeric(paste(HAPIEE_pol_ds_w2$mbirth))
+HAPIEE_pol_ds_w2$mbirth <- labelled(HAPIEE_pol_ds_w2$mbirth, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_po2, echo=F}
+vari <- HAPIEE_pol_ds_w2$mbirth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HAPIEE_pol_ds_w2, aes(x=factor(mbirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_po2, echo=F}
+BeforeH <- table(HAPIEE_pol_w1_birth$Month)[c(5,4,8,1,9,7,6,2,12,11,10,3)]
+AfterH <- table(HAPIEE_pol_ds_w2$mbirth)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c('jan->1', 'feb->2', 'mar->3', 'apr->4', 'may->5', 'jun->6', 'jul->7', 'aug->8', 'sep->9', 'oct->10', 'nov->11', 'dec->12')
+kable(C)
+```
+
+
+
+
+
+```{r importOPAL_po2, echo=F}
+
+#opal.assign.data(o, 'HAPIEE_pol_ds_w2', HAPIEE_pol_ds_w2)
+#opal.symbol_import(o,'HAPIEE_pol_ds_w2', project='_Athlos_Harm_Dataset')
+mbirth <- HAPIEE_pol_ds_w2
+save(mbirth, file = "../RData/pol_w2/mbirth.RData")
+rm(mbirth)
+
+HAPIEE_pol_m_ds_w2 <- HAPIEE_pol_ds_w2
+HAPIEE_pol_m_ds_w2$mbirth <- car::recode(HAPIEE_pol_m_ds_w2$mbirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HAPIEE_pol_m_ds_w2', HAPIEE_pol_m_ds_w2)
+#opal.symbol_import(o,'HAPIEE_pol_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+## Czech Republic
+
+### Wave 1
+
+#### Study-specific variable description
+
+| **Name** | `dob` |
+|----------|------------|
+| **Label** | `Date of birth (definitive)` |
+| **Table name** | `Cz_baseline_etic` |
+| **Description** |  |
+
+```{r assign_cz1, echo=F}
+opal.assign.table.tibble(o, 'HAPIEE_cz_w1_birth','HAPIEE.Cz_baseline_etic',
+                         variables=list('dob'), missings = TRUE)
+HAPIEE_cz_w1_birth <- opal.execute(o,'HAPIEE_cz_w1_birth')
+```
+
+```{r local_cz1, echo=F}
+Date_of_birth <- function(date){
+  n <- length(date)
+  D <- matrix(NA, nrow = n, ncol = 2)
+  for(i in 1:n){
+    D[i,] <- t(sapply(date[i], function(x) substring(x, first=c(1, 5), last=c(4, 7))))
+  }
+  DD <- data.frame(Year=as.numeric(D[,1]), Month=as.character(D[,2]))
+  DD
+}
+
+HAPIEE_cz_w1_birth <- cbind(HAPIEE_cz_w1_birth,Date_of_birth(HAPIEE_cz_w1_birth$dob))
+
+vari <- HAPIEE_cz_w1_birth$Month
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_cz_w1_birth, aes(x=factor(Month))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To computed the harmonize variable form the study-specific variable, it has to be recoded as follows:
+
+* `recode 'jan' into 1`
+* `recode 'feb' into 2`
+* `recode 'mar' into 3`
+* `recode 'apr' into 4`
+* `recode 'jun' into 5`
+* `recode 'may' into 6`
+* `recode 'jul' into 7`
+* `recode 'aug' into 8`
+* `recode 'sep' into 9`
+* `recode 'oct' into 10`
+* `recode 'nov' into 11`
+* `recode 'dec' into 12`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_cz1}
+HAPIEE_cz_ds_w1 <- tibble(id=HAPIEE_cz_w1_birth$id)
+HAPIEE_cz_ds_w1$mbirth <- car::recode(HAPIEE_cz_w1_birth$Month, "'jan'=1; 'feb'=2; 'mar'=3; 'apr'=4; 'may'=5; 'jun'=6; 'jul'=7; 'aug'=8; 'sep'=9; 'oct'=10; 'nov'=11; 'dec'=12; NA=999")
+HAPIEE_cz_ds_w1$mbirth <- as.numeric(paste(HAPIEE_cz_ds_w1$mbirth))
+HAPIEE_cz_ds_w1$mbirth <- labelled(HAPIEE_cz_ds_w1$mbirth, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_cz1, echo=F}
+vari <- HAPIEE_cz_ds_w1$mbirth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HAPIEE_cz_ds_w1, aes(x=factor(mbirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_cz1, echo=F}
+BeforeH <- table(HAPIEE_cz_w1_birth$Month)[c(5,4,8,1,9,7,6,2,12,11,10,3)]
+AfterH <- table(HAPIEE_cz_ds_w1$mbirth)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c('jan->1', 'feb->2', 'mar->3', 'apr->4', 'may->5', 'jun->6', 'jul->7', 'aug->8', 'sep->9', 'oct->10', 'nov->11', 'dec->12')
+kable(C)
+```
+
+
+
+
+
+```{r importOPAL_cz1, echo=F}
+
+#opal.assign.data(o, 'HAPIEE_cz_ds_w1', HAPIEE_cz_ds_w1)
+#opal.symbol_import(o,'HAPIEE_cz_ds_w1', project='_Athlos_Harm_Dataset')
+mbirth <- HAPIEE_cz_ds_w1
+save(mbirth, file = "../RData/cz_w1/mbirth.RData")
+rm(mbirth)
+
+HAPIEE_cz_m_ds_w1 <- HAPIEE_cz_ds_w1
+HAPIEE_cz_m_ds_w1$mbirth <- car::recode(HAPIEE_cz_m_ds_w1$mbirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HAPIEE_cz_m_ds_w1', HAPIEE_cz_m_ds_w1)
+#opal.symbol_import(o,'HAPIEE_cz_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `dob` |
+|----------|------------|
+| **Label** | `Date of birth (definitive)` |
+| **Table name** | `Cz_baseline_etic` |
+| **Description** |  |
+
+```{r assign_cz2, echo=F}
+opal.assign.table.tibble(o, 'HAPIEE_cz_w1_birth','HAPIEE.Cz_baseline_etic',
+                         variables=list('dob'), missings = TRUE)
+```
+
+```{r local_cz2, echo=F}
+HAPIEE_cz_w1_birth <- opal.execute(o,'HAPIEE_cz_w1_birth')
+Date_of_birth <- function(date){
+  n <- length(date)
+  D <- matrix(NA, nrow = n, ncol = 2)
+  for(i in 1:n){
+    D[i,] <- t(sapply(date[i], function(x) substring(x, first=c(1, 5), last=c(4, 7))))
+  }
+  DD <- data.frame(Year=as.numeric(D[,1]), Month=as.character(D[,2]))
+  DD
+}
+
+HAPIEE_cz_w1_birth <- cbind(HAPIEE_cz_w1_birth,Date_of_birth(HAPIEE_cz_w1_birth$dob))
+
+vari <- HAPIEE_cz_w1_birth$Month
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_cz_w1_birth, aes(x=factor(Month))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To computed the harmonize variable form the study-specific variable, it has to be recoded as follows:
+
+* `recode 'jan' into 1`
+* `recode 'feb' into 2`
+* `recode 'mar' into 3`
+* `recode 'apr' into 4`
+* `recode 'jun' into 5`
+* `recode 'may' into 6`
+* `recode 'jul' into 7`
+* `recode 'aug' into 8`
+* `recode 'sep' into 9`
+* `recode 'oct' into 10`
+* `recode 'nov' into 11`
+* `recode 'dec' into 12`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_cz2}
+HAPIEE_cz_ds_w2 <- tibble(id=HAPIEE_cz_w1_birth$id)
+HAPIEE_cz_ds_w2$mbirth <- car::recode(HAPIEE_cz_w1_birth$Month, "'jan'=1; 'feb'=2; 'mar'=3; 'apr'=4; 'may'=5; 'jun'=6; 'jul'=7; 'aug'=8; 'sep'=9; 'oct'=10; 'nov'=11; 'dec'=12; NA=999")
+HAPIEE_cz_ds_w2$mbirth <- as.numeric(paste(HAPIEE_cz_ds_w2$mbirth))
+HAPIEE_cz_ds_w2$mbirth <- labelled(HAPIEE_cz_ds_w2$mbirth, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_cz2, echo=F}
+vari <- HAPIEE_cz_ds_w2$mbirth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HAPIEE_cz_ds_w2, aes(x=factor(mbirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_cz2, echo=F}
+BeforeH <- table(HAPIEE_cz_w1_birth$Month)[c(5,4,8,1,9,7,6,2,12,11,10,3)]
+AfterH <- table(HAPIEE_cz_ds_w2$mbirth)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c('jan->1', 'feb->2', 'mar->3', 'apr->4', 'may->5', 'jun->6', 'jul->7', 'aug->8', 'sep->9', 'oct->10', 'nov->11', 'dec->12')
+kable(C)
+```
+
+
+
+
+
+```{r importOPAL_cz2, echo=F}
+
+#opal.assign.data(o, 'HAPIEE_cz_ds_w2', HAPIEE_cz_ds_w2)
+#opal.symbol_import(o,'HAPIEE_cz_ds_w2', project='_Athlos_Harm_Dataset')
+mbirth <- HAPIEE_cz_ds_w2
+save(mbirth, file = "../RData/cz_w2/mbirth.RData")
+rm(mbirth)
+
+HAPIEE_cz_m_ds_w2 <- HAPIEE_cz_ds_w2
+HAPIEE_cz_m_ds_w2$mbirth <- car::recode(HAPIEE_cz_m_ds_w2$mbirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HAPIEE_cz_m_ds_w2', HAPIEE_cz_m_ds_w2)
+#opal.symbol_import(o,'HAPIEE_cz_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+## Lithuania
+
+
+### Wave 1
+
+#### Study-specific variable description
+
+| **Name** | `dob` |
+|----------|------------|
+| **Label** | `Date of birth (definitive)` |
+| **Table name** | `Li_baseline_etic` |
+| **Description** |  |
+
+```{r assign_li1, echo=F}
+opal.assign.table.tibble(o, 'HAPIEE_li_w1_birth','HAPIEE.Li_baseline_etic',
+                         variables=list('dob'), missings = TRUE)
+HAPIEE_li_w1_birth <- opal.execute(o,'HAPIEE_li_w1_birth')
+```
+
+```{r local_li1, echo=F}
+Date_of_birth <- function(date){
+  n <- length(date)
+  D <- matrix(NA, nrow = n, ncol = 2)
+  for(i in 1:n){
+    D[i,] <- t(sapply(date[i], function(x) substring(x, first=c(1, 5), last=c(4, 7))))
+  }
+  DD <- data.frame(Year=as.numeric(D[,1]), Month=as.character(D[,2]))
+  DD
+}
+
+HAPIEE_li_w1_birth <- cbind(HAPIEE_li_w1_birth,Date_of_birth(HAPIEE_li_w1_birth$dob))
+
+vari <- HAPIEE_li_w1_birth$Month
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_li_w1_birth, aes(x=factor(Month))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To computed the harmonize variable form the study-specific variable, it has to be recoded as follows:
+
+* `recode 'jan' into 1`
+* `recode 'feb' into 2`
+* `recode 'mar' into 3`
+* `recode 'apr' into 4`
+* `recode 'jun' into 5`
+* `recode 'may' into 6`
+* `recode 'jul' into 7`
+* `recode 'aug' into 8`
+* `recode 'sep' into 9`
+* `recode 'oct' into 10`
+* `recode 'nov' into 11`
+* `recode 'dec' into 12`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_li1}
+HAPIEE_li_ds_w1 <- tibble(id=HAPIEE_li_w1_birth$id)
+HAPIEE_li_ds_w1$mbirth <- car::recode(HAPIEE_li_w1_birth$Month, "'jan'=1; 'feb'=2; 'mar'=3; 'apr'=4; 'may'=5; 'jun'=6; 'jul'=7; 'aug'=8; 'sep'=9; 'oct'=10; 'nov'=11; 'dec'=12; NA=999")
+HAPIEE_li_ds_w1$mbirth <- as.numeric(paste(HAPIEE_li_ds_w1$mbirth))
+HAPIEE_li_ds_w1$mbirth <- labelled(HAPIEE_li_ds_w1$mbirth, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_li1, echo=F}
+vari <- HAPIEE_li_ds_w1$mbirth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HAPIEE_li_ds_w1, aes(x=factor(mbirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_li1, echo=F}
+BeforeH <- table(HAPIEE_li_w1_birth$Month)[c(5,4,8,1,9,7,6,2,12,11,10,3)]
+AfterH <- table(HAPIEE_li_ds_w1$mbirth)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c('jan->1', 'feb->2', 'mar->3', 'apr->4', 'may->5', 'jun->6', 'jul->7', 'aug->8', 'sep->9', 'oct->10', 'nov->11', 'dec->12')
+kable(C)
+```
+
+
+
+
+
+```{r importOPAL_li1, echo=F}
+
+#opal.assign.data(o, 'HAPIEE_li_ds_w1', HAPIEE_li_ds_w1)
+#opal.symbol_import(o,'HAPIEE_li_ds_w1', project='_Athlos_Harm_Dataset')
+mbirth <- HAPIEE_li_ds_w1
+save(mbirth, file = "../RData/li_w1/mbirth.RData")
+rm(mbirth)
+
+HAPIEE_li_m_ds_w1 <- HAPIEE_li_ds_w1
+HAPIEE_li_m_ds_w1$mbirth <- car::recode(HAPIEE_li_m_ds_w1$mbirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HAPIEE_li_m_ds_w1', HAPIEE_li_m_ds_w1)
+#opal.symbol_import(o,'HAPIEE_li_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+# Quality estimation
+No comments.
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

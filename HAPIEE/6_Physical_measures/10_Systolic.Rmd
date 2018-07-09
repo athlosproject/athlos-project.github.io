@@ -1,0 +1,360 @@
+---
+title: "Systolic"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `sbp`
+* Variable label: `Systolic blood pressure of participant at each wave`
+* Variable description: `Means of all sistolic blood pressure measures`
+* Domain: `Physical measures`
+* Value type: `continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+# Data process
+
+
+
+### HAPIEE - Poland - Baseline 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `e11`
+* Label: `Systolic BP - 1st reading`
+* Type of variable: `countinous`
+
+* Name: `e21`
+* Label: `Systolic BP - 2nd reading`
+* Type of variable: `countinous`
+
+* Name: `e31`
+* Label: `Systolic BP - 3rd reading`
+* Type of variable: `countinous`
+
+```{r assign_po1}
+opal.assign.table.tibble(o, 'HAPIEE_pol_w1_sbp','HAPIEE.Po_baseline_etic',
+                         variables=list('e11', 'e21', 'e31'), missings = TRUE)
+```
+
+```{r local_po1}
+HAPIEE_pol_w1_sbp <- opal.execute(o,'HAPIEE_pol_w1_sbp')
+
+Continuous_summary(var = HAPIEE_pol_w1_sbp$e11, missing_values = NA)
+ggplot(HAPIEE_pol_w1_sbp, aes(e11)) + geom_histogram(stat="count", fill="steelblue") + xlab("Systolic Blood Pressure") + ylab("Frequency")
+
+Continuous_summary(var = HAPIEE_pol_w1_sbp$e21, missing_values = NA)
+ggplot(HAPIEE_pol_w1_sbp, aes(e21)) + geom_histogram(stat="count", fill="steelblue") + xlab("Systolic Blood Pressure") + ylab("Frequency")
+
+Continuous_summary(var = HAPIEE_pol_w1_sbp$e31, missing_values = NA)
+ggplot(HAPIEE_pol_w1_sbp, aes(e31)) + geom_histogram(stat="count", fill="steelblue") + xlab("Systolic Blood Pressure") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the mean value between the first, second and third measurement of the study-specific variables, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo_po1}
+HAPIEE_pol_w1_sbp$mean_sbp <- apply(X = HAPIEE_pol_w1_sbp[,c(2,3,4)], MARGIN = 1, FUN = mean)
+
+### NA only in the third one
+idNA_only03 <- which(!is.na(HAPIEE_pol_w1_sbp$e11) & !is.na(HAPIEE_pol_w1_sbp$e21) & is.na(HAPIEE_pol_w1_sbp$e31))
+
+HAPIEE_pol_w1_sbp$mean_sbp[idNA_only03] <- apply(X = HAPIEE_pol_w1_sbp[idNA_only03,c(2,3)], MARGIN = 1, FUN = mean)
+
+### NA in the second and third one
+idNA_02_03 <- which(!is.na(HAPIEE_pol_w1_sbp$e11) & is.na(HAPIEE_pol_w1_sbp$e21) & is.na(HAPIEE_pol_w1_sbp$e31))
+
+HAPIEE_pol_w1_sbp$mean_sbp[idNA_02_03] <- HAPIEE_pol_w1_sbp$e11[idNA_02_03]
+
+
+
+HAPIEE_pol_ds_w1 <- tibble(id=HAPIEE_pol_w1_sbp$id)
+HAPIEE_pol_ds_w1$sbp <- car::recode(HAPIEE_pol_w1_sbp$mean_sbp, "NA=999")
+HAPIEE_pol_ds_w1$sbp <- labelled(HAPIEE_pol_ds_w1$sbp, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_po1}
+Continuous_summary(var = HAPIEE_pol_ds_w1$sbp, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(HAPIEE_pol_ds_w1, aes(sbp)) + geom_histogram(stat="count", fill="steelblue") + xlab("Systolic Blood Pressure") + ylab("Frequency") + xlim(50,300) 
+```
+
+#### Validation
+```{r crosstabulation_po1}
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+#### Import to OPAL
+```{r importOPAL_po1}
+#val_labels(HAPIEE_pol_ds_w1) <- NULL
+#opal.assign.data(o, 'HAPIEE_pol_ds_w1', HAPIEE_pol_ds_w1)
+#opal.symbol_import(o,'HAPIEE_pol_ds_w1', project='_Athlos_Harm_Dataset')
+sbp <- HAPIEE_pol_ds_w1
+save(sbp, file = "../RData/pol_w1/sbp.RData")
+rm(sbp)
+```
+
+
+
+
+
+### HAPIEE - Poland - Reexamination
+
+There is no variable
+
+
+### HAPIEE - Czech Republic - Baseline
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `e11`
+* Label: `Systolic BP - 1st reading`
+* Type of variable: `countinous`
+
+* Name: `e21`
+* Label: `Systolic BP - 2nd reading`
+* Type of variable: `countinous`
+
+* Name: `e31`
+* Label: `Systolic BP - 3rd reading`
+* Type of variable: `countinous`
+
+```{r assign_cz1}
+opal.assign.table.tibble(o, 'HAPIEE_cz_w1_sbp','HAPIEE.Cz_baseline_etic',
+                         variables=list('e11', 'e21', 'e31'), missings = TRUE)
+```
+
+```{r local_cz1}
+HAPIEE_cz_w1_sbp <- opal.execute(o,'HAPIEE_cz_w1_sbp')
+
+Continuous_summary(var = HAPIEE_cz_w1_sbp$e11, missing_values = NA)
+ggplot(HAPIEE_cz_w1_sbp, aes(e11)) + geom_histogram(stat="count", fill="steelblue") + xlab("Systolic Blood Pressure") + ylab("Frequency")
+
+Continuous_summary(var = HAPIEE_cz_w1_sbp$e21, missing_values = NA)
+ggplot(HAPIEE_cz_w1_sbp, aes(e21)) + geom_histogram(stat="count", fill="steelblue") + xlab("Systolic Blood Pressure") + ylab("Frequency")
+
+Continuous_summary(var = HAPIEE_cz_w1_sbp$e31, missing_values = NA)
+ggplot(HAPIEE_cz_w1_sbp, aes(e31)) + geom_histogram(stat="count", fill="steelblue") + xlab("Systolic Blood Pressure") + ylab("Frequency")
+```
+
+
+#### Harmonisation algorithm
+The harmonized variable is the mean value between the first, second and third measurement of the study-specific variables, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo_cz1}
+HAPIEE_cz_w1_sbp$mean_sbp <- apply(X = HAPIEE_cz_w1_sbp[,c(2,3,4)], MARGIN = 1, FUN = mean)
+
+### NA only in the first one
+idNA_only01 <- which(is.na(HAPIEE_cz_w1_sbp$e11) & !is.na(HAPIEE_cz_w1_sbp$e21) & !is.na(HAPIEE_cz_w1_sbp$e31))
+
+HAPIEE_cz_w1_sbp$mean_sbp[idNA_only01] <- apply(X = HAPIEE_cz_w1_sbp[idNA_only01,c(3,4)], MARGIN = 1, FUN = mean)
+
+### NA only in the third one
+idNA_only03 <- which(!is.na(HAPIEE_cz_w1_sbp$e11) & !is.na(HAPIEE_cz_w1_sbp$e21) & is.na(HAPIEE_cz_w1_sbp$e31))
+
+HAPIEE_cz_w1_sbp$mean_sbp[idNA_only03] <- apply(X = HAPIEE_cz_w1_sbp[idNA_only03,c(2,3)], MARGIN = 1, FUN = mean)
+
+### NA in the second and third one
+idNA_02_03 <- which(!is.na(HAPIEE_cz_w1_sbp$e11) & is.na(HAPIEE_cz_w1_sbp$e21) & is.na(HAPIEE_cz_w1_sbp$e31))
+
+HAPIEE_cz_w1_sbp$mean_sbp[idNA_02_03] <- HAPIEE_cz_w1_sbp$e11[idNA_02_03]
+
+
+HAPIEE_cz_ds_w1 <- tibble(id=HAPIEE_cz_w1_sbp$id)
+HAPIEE_cz_ds_w1$sbp <- car::recode(HAPIEE_cz_w1_sbp$mean_sbp, "NA=999")
+HAPIEE_cz_ds_w1$sbp <- labelled(HAPIEE_cz_ds_w1$sbp, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_cz1}
+Continuous_summary(var = HAPIEE_cz_ds_w1$sbp, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(HAPIEE_cz_ds_w1, aes(sbp)) + geom_histogram(stat="count", fill="steelblue") + xlab("Systolic Blood Pressure") + ylab("Frequency") + xlim(50,300) 
+```
+
+#### Validation
+```{r crosstabulation_cz1}
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+#### Import to OPAL
+```{r importOPAL_cz1}
+#val_labels(HAPIEE_cz_ds_w1) <- NULL
+#opal.assign.data(o, 'HAPIEE_cz_ds_w1', HAPIEE_cz_ds_w1)
+#opal.symbol_import(o,'HAPIEE_cz_ds_w1', project='_Athlos_Harm_Dataset')
+sbp <- HAPIEE_cz_ds_w1
+save(sbp, file = "../RData/cz_w1/sbp.RData")
+rm(sbp)
+```
+
+
+
+
+
+
+
+
+
+### HAPIEE - Czech Republic - Reexamination
+
+There is no variable.
+
+
+
+
+
+
+### HAPIEE - Lithuania - Baseline
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `e11`
+* Label: `Systolic BP - 1st reading`
+* Type of variable: `countinous`
+
+* Name: `e21`
+* Label: `Systolic BP - 2nd reading`
+* Type of variable: `countinous`
+
+* Name: `e31`
+* Label: `Systolic BP - 3rd reading`
+* Type of variable: `countinous`
+
+```{r assign_li1}
+opal.assign.table.tibble(o, 'HAPIEE_li_w1_sbp','HAPIEE.Li_baseline_etic',
+                         variables=list('e11', 'e21', 'e31'), missings = TRUE)
+```
+
+```{r local_li1}
+HAPIEE_li_w1_sbp <- opal.execute(o,'HAPIEE_li_w1_sbp')
+
+Continuous_summary(var = HAPIEE_li_w1_sbp$e11, missing_values = c(999))
+ggplot(HAPIEE_li_w1_sbp, aes(e11)) + geom_histogram(stat="count", fill="steelblue") + xlab("Systolic Blood Pressure") + ylab("Frequency")
+
+Continuous_summary(var = HAPIEE_li_w1_sbp$e21, missing_values = c(999))
+ggplot(HAPIEE_li_w1_sbp, aes(e21)) + geom_histogram(stat="count", fill="steelblue") + xlab("Systolic Blood Pressure") + ylab("Frequency")
+
+Continuous_summary(var = HAPIEE_li_w1_sbp$e31, missing_values = c(999))
+ggplot(HAPIEE_li_w1_sbp, aes(e31)) + geom_histogram(stat="count", fill="steelblue") + xlab("Systolic Blood Pressure") + ylab("Frequency")
+```
+
+There are values 999 that are going to be considered as mistakes and will be recoded as missings. 
+
+#### Harmonisation algorithm
+The harmonized variable is the mean value between the first, second and third measurement of the study-specific variables, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo_li1}
+HAPIEE_li_w1_sbp$mean_sbp <- apply(X = HAPIEE_li_w1_sbp[,c(2,3,4)], MARGIN = 1, FUN = mean)
+
+### NA in the second and third reading
+idNA_02_03 <- which(!is.na(HAPIEE_li_w1_sbp$e11) & is.na(HAPIEE_li_w1_sbp$e21) & is.na(HAPIEE_li_w1_sbp$e31))
+
+HAPIEE_li_w1_sbp$mean_sbp[idNA_02_03] <- HAPIEE_li_w1_sbp$e11[idNA_02_03]
+
+### 999 in the secong and third reding
+
+id999_02_03 <- which(HAPIEE_li_w1_sbp$e11!=999 & HAPIEE_li_w1_sbp$e21==999 & HAPIEE_li_w1_sbp$e31==999)
+
+HAPIEE_li_w1_sbp$mean_sbp[id999_02_03] <- HAPIEE_li_w1_sbp$e11[id999_02_03]
+
+### 999 in the third reding
+
+id999_03 <- which(HAPIEE_li_w1_sbp$e11!=999 & HAPIEE_li_w1_sbp$e21!=999 & HAPIEE_li_w1_sbp$e31==999)
+
+HAPIEE_li_w1_sbp$mean_sbp[id999_03] <- apply(X = HAPIEE_li_w1_sbp[id999_03,c(2,3)], MARGIN = 1, FUN = mean)
+
+HAPIEE_li_ds_w1 <- tibble(id=HAPIEE_li_w1_sbp$id)
+HAPIEE_li_ds_w1$sbp <- car::recode(HAPIEE_li_w1_sbp$mean_sbp, "NA=999")
+HAPIEE_li_ds_w1$sbp <- labelled(HAPIEE_li_ds_w1$sbp, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_li1}
+Continuous_summary(var = HAPIEE_li_ds_w1$sbp, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(HAPIEE_li_ds_w1, aes(sbp)) + geom_histogram(stat="count", fill="steelblue") + xlab("Systolic Blood Pressure") + ylab("Frequency") + xlim(50,300) 
+```
+
+#### Validation
+```{r crosstabulation_li1}
+```
+
+#### Quality estimation
+
+Systolic bp was calculated as the mean from the 3 available variables.
+
+
+
+#### Import to OPAL
+```{r importOPAL_li1}
+#val_labels(HAPIEE_li_ds_w1) <- NULL
+#opal.assign.data(o, 'HAPIEE_li_ds_w1', HAPIEE_li_ds_w1)
+#opal.symbol_import(o,'HAPIEE_li_ds_w1', project='_Athlos_Harm_Dataset')
+sbp <- HAPIEE_li_ds_w1
+save(sbp, file = "../RData/li_w1/sbp.RData")
+rm(sbp)
+```
+
+
+
+
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

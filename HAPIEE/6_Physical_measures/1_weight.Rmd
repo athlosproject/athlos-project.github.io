@@ -1,0 +1,307 @@
+---
+title: "Weight"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `weight`
+* Variable label: `weight of the participant in kg`
+* Variable description: `Weight should be collected in kilograms. It should be determined wheather the  variable was collected through a self reported measure or an anthropometric test`
+* Domain: `Physical measures`
+* Value type: `continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+# Data process
+
+### HAPIEE - Poland - Baseline 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `h6`
+* Label: `Weight in kg (self-reported)` 
+* Type of variable: `countinous`
+* Name: `e51`
+* Label: `Weight (kg) (examination)`
+* Type of variable: `countinous`
+
+```{r assign_po1}
+opal.assign.table.tibble(o, 'HAPIEE_pol_w1_weig','HAPIEE.Po_baseline_etic',
+                         variables=list('h6', 'e51'), missings = TRUE)
+```
+
+```{r local_po1}
+HAPIEE_pol_w1_weig <- opal.execute(o,'HAPIEE_pol_w1_weig')
+
+Continuous_summary(var = HAPIEE_pol_w1_weig$h6, missing_values = NA)
+ggplot(HAPIEE_pol_w1_weig, aes(h6)) + geom_histogram(stat="count", fill="steelblue") + xlab("weight") + ylab("Frequency")
+
+Continuous_summary(var = HAPIEE_pol_w1_weig$e51, missing_values = NA)
+ggplot(HAPIEE_pol_w1_weig, aes(e51)) + geom_histogram(stat="count", fill="steelblue") + xlab("weight") + ylab("Frequency")
+```
+
+The variable 'h6' has values 0 that are going to be consider as mistakes and they will be recoded as 999. 
+
+#### Harmonisation algorithm
+The harmonized variable is a comvination of the two study-specific variables 'e51'(examination) and 'h6'(self-reported). The missing values in the medical examination variable are going to be complemented with the self-reported variable and the missings values are going to be recoded as follows:
+
+* `NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo_po1}
+miss <- which(is.na(HAPIEE_pol_w1_weig$e51))
+HAPIEE_pol_w1_weig$weig <- car::recode(HAPIEE_pol_w1_weig$e51, "NA=999")
+HAPIEE_pol_w1_weig$h6_2 <- car::recode(HAPIEE_pol_w1_weig$h6, "NA=999; 0=999")
+HAPIEE_pol_w1_weig$weig[miss] <- HAPIEE_pol_w1_weig$h6_2[miss]
+Continuous_summary(var = HAPIEE_pol_w1_weig$weig, missing_values = c(999))
+
+
+HAPIEE_pol_ds_w1 <- tibble(id=HAPIEE_pol_w1_weig$id)
+HAPIEE_pol_ds_w1$weight <- car::recode(HAPIEE_pol_w1_weig$weig, "NA=999")
+HAPIEE_pol_ds_w1$weight <- labelled(HAPIEE_pol_ds_w1$weight, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_po1}
+Continuous_summary(var = HAPIEE_pol_ds_w1$weight, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(HAPIEE_pol_ds_w1, aes(weight)) + geom_histogram(stat="count", fill="steelblue") + xlab("weight") + ylab("Frequency") + xlim(35,170) 
+```
+
+#### Validation
+```{r crosstabulation_po1}
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+#### Import to OPAL
+```{r importOPAL_po1}
+#val_labels(HAPIEE_pol_ds_w1) <- NULL
+#opal.assign.data(o, 'HAPIEE_pol_ds_w1', HAPIEE_pol_ds_w1)
+#opal.symbol_import(o,'HAPIEE_pol_ds_w1', project='_Athlos_Harm_Dataset')
+weight <- HAPIEE_pol_ds_w1
+save(weight, file = "../RData/pol_w1/weight.RData")
+rm(weight)
+```
+
+
+
+
+
+### HAPIEE - Poland - Reexamination
+
+There is no variable
+
+
+### HAPIEE - Czech Republic - Baseline
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `h6`
+* Label: `Weight in kg`
+* Type of variable: `countinous`
+* Name: `e51`
+* Label: `Weight (kg)`
+* Type of variable: `countinous`
+
+```{r assign_cz1}
+opal.assign.table.tibble(o, 'HAPIEE_cz_w1_weig','HAPIEE.Cz_baseline_etic',
+                         variables=list('h6', 'e51'), missings = TRUE)
+```
+
+```{r local_cz1}
+HAPIEE_cz_w1_weig <- opal.execute(o,'HAPIEE_cz_w1_weig')
+Continuous_summary(var = HAPIEE_cz_w1_weig$h6, missing_values = c(999))
+ggplot(HAPIEE_cz_w1_weig, aes(h6)) + geom_histogram(stat="count", fill="steelblue") + xlab("weight") + ylab("Frequency")
+
+Continuous_summary(var = HAPIEE_cz_w1_weig$e51, missing_values = NA)
+ggplot(HAPIEE_cz_w1_weig, aes(e51)) + geom_histogram(stat="count", fill="steelblue") + xlab("weight") + ylab("Frequency")
+```
+
+The variable 'h6' have a value 999 that is consider as a mistake and it will be recoded as missing
+
+#### Harmonisation algorithm
+The harmonized variable is a comvination of the two study-specific variables 'e51'(examination) and 'h6'(self-reported). The missing values in the medical examination variable are going to be complemented with the self-reported variable and the missings values are going to be recoded as follows:
+
+* `NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo_cz1}
+miss <- which(is.na(HAPIEE_cz_w1_weig$e51))
+HAPIEE_cz_w1_weig$weig <- car::recode(HAPIEE_cz_w1_weig$e51, "NA=999")
+HAPIEE_cz_w1_weig$h6_2 <- car::recode(HAPIEE_cz_w1_weig$h6, "NA=999; 0=999")
+HAPIEE_cz_w1_weig$weig[miss] <- HAPIEE_cz_w1_weig$h6_2[miss]
+Continuous_summary(var = HAPIEE_cz_w1_weig$weig, missing_values = c(999))
+
+
+HAPIEE_cz_ds_w1 <- tibble(id=HAPIEE_cz_w1_weig$id)
+HAPIEE_cz_ds_w1$weight <- car::recode(HAPIEE_cz_w1_weig$weig, "NA=999")
+HAPIEE_cz_ds_w1$weight <- labelled(HAPIEE_cz_ds_w1$weight, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_cz1}
+Continuous_summary(var = HAPIEE_cz_ds_w1$weight, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(HAPIEE_cz_ds_w1, aes(weight)) + geom_histogram(stat="count", fill="steelblue") + xlab("weight") + ylab("Frequency") + xlim(35,170) 
+```
+
+#### Validation
+```{r crosstabulation_cz1}
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+#### Import to OPAL
+```{r importOPAL_cz1}
+#val_labels(HAPIEE_cz_ds_w1) <- NULL
+#opal.assign.data(o, 'HAPIEE_cz_ds_w1', HAPIEE_cz_ds_w1)
+#opal.symbol_import(o,'HAPIEE_cz_ds_w1', project='_Athlos_Harm_Dataset')
+weight <- HAPIEE_cz_ds_w1
+save(weight, file = "../RData/cz_w1/weight.RData")
+rm(weight)
+```
+
+
+
+
+
+
+
+
+
+### HAPIEE - Czech Republic - Reexamination
+
+There is no variable.
+
+
+
+
+
+
+### HAPIEE - Lithuania - Baseline
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `h6`
+* Label: `Weight in kg`
+* Type of variable: `countinous`
+* Name: `e51`
+* Label: `Weight (kg)`
+* Type of variable: `countinous`
+
+```{r assign_li1}
+opal.assign.table.tibble(o, 'HAPIEE_li_w1_weig','HAPIEE.Li_baseline_etic',
+                         variables=list('h6', 'e51'), missings = TRUE)
+```
+
+```{r local_li1}
+HAPIEE_li_w1_weig <- opal.execute(o,'HAPIEE_li_w1_weig')
+
+Continuous_summary(var = HAPIEE_li_w1_weig$h6, missing_values = NA)
+ggplot(HAPIEE_li_w1_weig, aes(h6)) + geom_histogram(stat="count", fill="steelblue") + xlab("weight") + ylab("Frequency")
+
+Continuous_summary(var = HAPIEE_li_w1_weig$e51, missing_values = NA)
+ggplot(HAPIEE_li_w1_weig, aes(e51)) + geom_histogram(stat="count", fill="steelblue") + xlab("weight") + ylab("Frequency")
+```
+
+The variable h6 has values 755(1), 775(1), 975(1) and 999999(4) that are going to be considered as mistakes and are going to be recoded as 999. 
+
+
+#### Harmonisation algorithm
+The harmonized variable is a comvination of the two study-specific variables 'e51'(examination) and 'h6'(self-reported). The missing values in the medical examination variable are going to be complemented with the self-reported variable and the missings values are going to be recoded as follows:
+
+* `NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo_li1}
+miss <- which(is.na(HAPIEE_li_w1_weig$e51))
+HAPIEE_li_w1_weig$weig <- car::recode(HAPIEE_li_w1_weig$e51, "NA=999")
+HAPIEE_li_w1_weig$h6_2 <- car::recode(HAPIEE_li_w1_weig$h6, "NA=999; 0=999")
+HAPIEE_li_w1_weig$weig[miss] <- HAPIEE_li_w1_weig$h6_2[miss]
+Continuous_summary(var = HAPIEE_li_w1_weig$weig, missing_values = c(999))
+
+HAPIEE_li_ds_w1 <- tibble(id=HAPIEE_li_w1_weig$id)
+HAPIEE_li_ds_w1$weight <- car::recode(HAPIEE_li_w1_weig$weig, "NA=999")
+HAPIEE_li_ds_w1$weight <- labelled(HAPIEE_li_ds_w1$weight, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_li1}
+Continuous_summary(var = HAPIEE_li_ds_w1$weight, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(HAPIEE_li_ds_w1, aes(weight)) + geom_histogram(stat="count", fill="steelblue") + xlab("weight") + ylab("Frequency") + xlim(35,176) 
+```
+
+#### Validation
+```{r crosstabulation_li1}
+```
+
+#### Quality estimation
+The missing values in the medical examination variable were complemented with the self-reported variable.
+
+
+
+#### Import to OPAL
+```{r importOPAL_li1}
+#val_labels(HAPIEE_li_ds_w1) <- NULL
+#opal.assign.data(o, 'HAPIEE_li_ds_w1', HAPIEE_li_ds_w1)
+#opal.symbol_import(o,'HAPIEE_li_ds_w1', project='_Athlos_Harm_Dataset')
+weight <- HAPIEE_li_ds_w1
+save(weight, file = "../RData/li_w1/weight.RData")
+rm(weight)
+```
+
+
+
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+

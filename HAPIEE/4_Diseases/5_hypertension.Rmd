@@ -1,0 +1,693 @@
+---
+title: "Hypertension"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `h_hypertension`
+* Variable label: `History of Hypertension`
+* Variable description: `history of hypertension or high blood pressure`
+* Domain: `Diseases`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | NOT High blood pressure or hypertension 
+1        | High blood pressure or hypertension
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+* Short name: `h_hypertension_age`
+* Variable label: `Age first diagnosed hypertension`
+* Variable description: `The age first told had hypertension diagnosis`
+* Domain: `Diseases`
+* Value type: `Continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+<!-- # Global variables -->
+```{r global, include=FALSE, echo=F}
+miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
+ds_label <- "History of Hypertension"
+ds_label_age <- "Age first diagnosed hypertension"
+cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
+cont_label <- cat_label[3:11]
+datafolder <- "../RData/"
+#sing_idlist <- c()
+```
+<!-- ########################################################## --> 
+
+
+
+# Data process
+
+
+
+## Poland
+
+### Wave 1
+
+#### Study-specific variable description
+
+| **Name** | `d_ht140_90` |
+|-|-|
+| **Label** | `Hypertension >140/90 or treated`|
+| **Table name**  | `Po_baseline_etic`|
+| **Categories** | `0 = No`<br/>`1 = Yes` |
+| **Missings** | `NA` |
+| **Description** |  |
+
+```{r assign pol_w1, echo=F}
+
+opal.assign.table.tibble(o, 'HAPIEE_pol_w1','HAPIEE.Po_baseline_etic',variables=list('d_ht140_90'), missings = T)
+HAPIEE_pol_w1 <- opal.execute(o,'HAPIEE_pol_w1')
+
+```
+
+```{r local pol_w1, echo=F}
+
+vbl <- HAPIEE_pol_w1$d_ht140_90
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HAPIEE_pol_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_pol_w1, aes(x=factor(d_ht140_90))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_hypertension` from the study-specific variable it has to be recoded as follows:
+
+* `keep up 0 into 0`
+* `keep up 1 into 1`
+* `NA into 999`
+
+Age of diagnosis cannot be harmonized.
+
+**R script:**
+
+```{r harmo pol_w1}
+
+# Categorical variable harmonization
+HAPIEE_ds_pol_w1 <- tibble(id=HAPIEE_pol_w1$id)
+HAPIEE_ds_pol_w1$h_hypertension <- car::recode(HAPIEE_pol_w1$d_ht140_90, "NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript pol_w1, echo=F}
+
+vbl <- HAPIEE_ds_pol_w1$h_hypertension
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_pol_w1, aes(x=factor(h_hypertension))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation pol_w1, echo=F}
+
+AfterH <- table(HAPIEE_ds_pol_w1$h_hypertension, useNA = "ifany")
+BeforeH <- table(HAPIEE_pol_w1$d_ht140_90, useNA = "ifany")
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0->0","1->1","NA->999")
+kable(C)
+rm(HAPIEE_pol_w1)
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `w2h14` |`ybirth`|`yintw (pol_w1)`|`yintw (pol_w2)`|
+|-|-|-|-|-|
+| **Label** | `Ever told by doctor that you have high blood pressure?`|`year of birth`|`year of interview`|`year of interview`|
+| **Table name**  | `Po_reexamination_etic`|`ybirth`|`yintw`|`yintw`|
+| **Categories** | `yes`<br/>`no` |`continuous`|`continuous`|`continuous`|
+| **Missings** | `.b = Refused`<br/>`.c = Don't know`<br/>`NA`|  |  |  |
+| **Description** |  |  |  |  |
+
+```{r assign pol_w2, echo=F}
+
+opal.assign.table.tibble(o, 'HAPIEE_pol_w2','HAPIEE.Po_reexamination_etic',variables=list('w2h14'), missings = T)
+HAPIEE_pol_w2 <- opal.execute(o,'HAPIEE_pol_w2')
+load(paste0(datafolder,"pol_w2/ybirth.RData"))
+HAPIEE_pol_w2 <- left_join(HAPIEE_pol_w2,ybirth, by="id")
+load(paste0(datafolder,"pol_w1/yintw.RData"))
+HAPIEE_pol_w2 <- left_join(HAPIEE_pol_w2,yintw, by="id")
+names(HAPIEE_pol_w2)[4] <- "yintw_pol_w1"
+rm(yintw)
+load(paste0(datafolder,"pol_w2/yintw.RData"))
+HAPIEE_pol_w2 <- left_join(HAPIEE_pol_w2,yintw, by="id")
+names(HAPIEE_pol_w2)[5] <- "yintw_pol_w2"
+rm(yintw)
+
+```
+
+```{r local pol_w2, echo=F}
+
+vbl <- HAPIEE_pol_w2$w2h14
+kable(Categorical_summary(vbl, missing_values = c('.b','.c'))[3], caption = names(HAPIEE_pol_w2)[2])
+kable(Categorical_summary(vbl, missing_values = c('.b','.c'))[1], caption = "Category")
+ggplot(HAPIEE_pol_w2, aes(x=factor(w2h14))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- HAPIEE_pol_w2$ybirth
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HAPIEE_pol_w2)[3])
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HAPIEE_pol_w2, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1930,1960)
+
+vbl <- HAPIEE_pol_w2$yintw_pol_w1
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HAPIEE_pol_w2)[4])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_pol_w2, aes(x=factor(yintw_pol_w1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- HAPIEE_pol_w2$yintw_pol_w2
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HAPIEE_pol_w2)[5])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_pol_w2, aes(x=factor(yintw_pol_w2))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_hypertension` from the study-specific variable it has to be recoded as follows:
+
+* `d_ht140_90 == 0 and w2h14 == 'no' into 0`
+* `d_ht140_90 == 1 or w2h14 == 'yes' into 1`
+* `.b into 997`
+* `.c into 998`
+* `otherwise into 999`
+
+To compute `h_hypertension_age` from the study-specific variable it has to be recoded as follows:
+
+* `if h_hypertension == 1 in w2 and 0 in w1, h_hypertension_age = (year of interview w2-year of interview w1)/2+(year of interview w1 -ybirth)`
+* `if h_hypertension == 0, h_hypertension_age = 996`
+* `h_hypertension == missing into 999`
+
+**R script:**
+
+```{r harmo pol_w2}
+
+HAPIEE_pol_w2 <- left_join(HAPIEE_pol_w2, HAPIEE_ds_pol_w1, by = "id")
+
+# Categorical variable harmonization
+HAPIEE_ds_pol_w2 <- tibble(id=HAPIEE_pol_w2$id)
+HAPIEE_ds_pol_w2$h_hypertension <- rep(999,length(HAPIEE_pol_w2$id))
+HAPIEE_ds_pol_w2$h_hypertension[which(HAPIEE_pol_w2$w2h14 == 'no' & (HAPIEE_pol_w2$h_hypertension != 1 | is.na(HAPIEE_pol_w2$h_hypertension)))] <- 0
+HAPIEE_ds_pol_w2$h_hypertension[which(HAPIEE_pol_w2$w2h14 == 'yes' | ((!is.na(HAPIEE_pol_w2$w2h14)) & HAPIEE_pol_w2$h_hypertension == 1))] <- 1
+HAPIEE_ds_pol_w2$h_hypertension[which(HAPIEE_pol_w2$w2h14 == '.b' & (HAPIEE_pol_w2$h_hypertension != 1 | is.na(HAPIEE_pol_w2$h_hypertension)))] <- 997
+HAPIEE_ds_pol_w2$h_hypertension[which(HAPIEE_pol_w2$w2h14 == '.c' & (HAPIEE_pol_w2$h_hypertension != 1 | is.na(HAPIEE_pol_w2$h_hypertension)))] <- 998
+
+# Continuous variable harmonization
+HAPIEE_ds_pol_w2$h_hypertension_age <- rep(999,length(HAPIEE_pol_w2$id))
+HAPIEE_ds_pol_w2$h_hypertension_age[which(HAPIEE_ds_pol_w2$h_hypertension == 0)] <- 996
+HAPIEE_ds_pol_w2$h_hypertension_age[which(HAPIEE_ds_pol_w2$h_hypertension == 1 & HAPIEE_pol_w2$h_hypertension==0)] <- (HAPIEE_pol_w2$yintw_pol_w2[which(HAPIEE_ds_pol_w2$h_hypertension == 1 & HAPIEE_pol_w2$h_hypertension==0)]+HAPIEE_pol_w2$yintw_pol_w1[which(HAPIEE_ds_pol_w2$h_hypertension == 1 & HAPIEE_pol_w2$h_hypertension==0)])/2-HAPIEE_pol_w2$ybirth[which(HAPIEE_ds_pol_w2$h_hypertension == 1 & HAPIEE_pol_w2$h_hypertension==0)]
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript pol_w2, echo=F}
+
+vbl <- HAPIEE_ds_pol_w2$h_hypertension
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_pol_w2, aes(x=factor(h_hypertension))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- HAPIEE_ds_pol_w2$h_hypertension_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HAPIEE_ds_pol_w2, aes(h_hypertension_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(45,75)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation pol_w2, echo=F, results='asis'}
+
+AfterH <- table(HAPIEE_ds_pol_w2$h_hypertension, useNA = "ifany")
+X <- c(
+  sum(((!is.na(HAPIEE_pol_w2$w2h14)) & HAPIEE_pol_w2$w2h14 == 'no') & (HAPIEE_pol_w2$h_hypertension != 1)),
+  sum(((!is.na(HAPIEE_pol_w2$w2h14)) & HAPIEE_pol_w2$w2h14 == 'yes') | ((!is.na(HAPIEE_pol_w2$h_hypertension)) & (!is.na(HAPIEE_pol_w2$w2h14)) & HAPIEE_pol_w2$h_hypertension == 1)),
+  sum(((!is.na(HAPIEE_pol_w2$w2h14)) & HAPIEE_pol_w2$w2h14 == '.b') & (HAPIEE_pol_w2$h_hypertension != 1)),
+  sum(((!is.na(HAPIEE_pol_w2$w2h14)) & HAPIEE_pol_w2$w2h14 == '.c') & (HAPIEE_pol_w2$h_hypertension != 1))
+)
+BeforeH <- c(X[1:4],length(HAPIEE_pol_w2$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("'no'->0","'yes'->1",".b->997",".c->998","NA->999")
+kable(C)
+
+cat("There are 695 individuals who had hypertension in the previous wave and in the second wave answer that they were not told to have it. We harmonize them as having hypertension")
+kable(frq(HAPIEE_pol_w2$h_hypertension[HAPIEE_pol_w2$w2h14=='no']), align = 'c')
+
+rm(HAPIEE_pol_w2)
+
+```
+
+
+
+## Czech Republic
+
+### Wave 1
+
+#### Study-specific variable description
+
+| **Name** | `d_ht140_90` |
+|-|-|-|
+| **Label** | `Hypertension >140/90 or treated`|
+| **Table name**  | `Cz_baseline_etic`|
+| **Categories** |`0 = No`<br/>`1 = Yes`|
+| **Missings** | `NA` |
+| **Description** |  |
+
+```{r assign cz_w1, echo=F}
+
+opal.assign.table.tibble(o, 'HAPIEE_cz_w1','HAPIEE.Cz_baseline_etic',variables=list('d_ht140_90'), missings = T)
+HAPIEE_cz_w1 <- opal.execute(o,'HAPIEE_cz_w1')
+
+```
+
+```{r local cz_w1, echo=F}
+
+vbl <- HAPIEE_cz_w1$d_ht140_90
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HAPIEE_cz_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_cz_w1, aes(x=factor(d_ht140_90))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_hypertension` from the study-specific variable it has to be recoded as follows:
+
+* `keep up 0 into 0`
+* `keep up 1 into 1`
+* `NA into 999`
+
+Age of diagnosis cannot be harmonized.
+
+**R script:**
+
+```{r harmo cz_w1}
+
+# Categorical variable harmonization
+HAPIEE_ds_cz_w1 <- tibble(id=HAPIEE_cz_w1$id)
+HAPIEE_ds_cz_w1$h_hypertension <- car::recode(HAPIEE_cz_w1$d_ht140_90, "NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript cz_w1, echo=F}
+
+vbl <- HAPIEE_ds_cz_w1$h_hypertension
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_cz_w1, aes(x=factor(h_hypertension))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation cz_w1, echo=F}
+
+AfterH <- table(HAPIEE_ds_cz_w1$h_hypertension, useNA = "ifany")
+BeforeH <- table(HAPIEE_cz_w1$d_ht140_90, useNA = "ifany")
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0->0","1->1","NA->999")
+kable(C)
+rm(HAPIEE_cz_w1)
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+
+| **Name** | `w2h14` |`ybirth`|`yintw (cz_w1)`|`yintw (cz_w2)`|
+|-|-|-|-|-|
+| **Label** | `Ever told by doctor that you have high blood pressure?`|`year of birth`|`year of interview`|`year of interview`|
+| **Table name**  | `Cz_reexamination_etic`|`ybirth`|`yintw`|`yintw`|
+| **Categories** | `yes`<br/>`no` |`continuous`|`continuous`|`continuous`|
+| **Missings** | `NA`|  |  |  |
+| **Description** |  |  |  |  |
+
+```{r assign cz_w2, echo=F}
+
+opal.assign.table.tibble(o, 'HAPIEE_cz_w2','HAPIEE.Cz_reexamination_etic',variables=list('w2h14'), missings = T)
+HAPIEE_cz_w2 <- opal.execute(o,'HAPIEE_cz_w2')
+load(paste0(datafolder,"cz_w2/ybirth.RData"))
+HAPIEE_cz_w2 <- left_join(HAPIEE_cz_w2,ybirth, by="id")
+load(paste0(datafolder,"cz_w1/yintw.RData"))
+HAPIEE_cz_w2 <- left_join(HAPIEE_cz_w2,yintw, by="id")
+names(HAPIEE_cz_w2)[4] <- "yintw_cz_w1"
+rm(yintw)
+load(paste0(datafolder,"cz_w2/yintw.RData"))
+HAPIEE_cz_w2 <- left_join(HAPIEE_cz_w2,yintw, by="id")
+names(HAPIEE_cz_w2)[5] <- "yintw_cz_w2"
+rm(yintw)
+
+```
+
+
+```{r local cz_w2, echo=F}
+
+vbl <- HAPIEE_cz_w2$w2h14
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HAPIEE_cz_w2)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_cz_w2, aes(x=factor(w2h14))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- HAPIEE_cz_w2$ybirth
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HAPIEE_cz_w2)[3])
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HAPIEE_cz_w2, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1930,1960)
+
+vbl <- HAPIEE_cz_w2$yintw_cz_w1
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HAPIEE_cz_w2)[4])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_cz_w2, aes(x=factor(yintw_cz_w1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- HAPIEE_cz_w2$yintw_cz_w2
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HAPIEE_cz_w2)[5])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HAPIEE_cz_w2, aes(x=factor(yintw_cz_w2))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_hypertension` from the study-specific variable it has to be recoded as follows:
+
+* `d_ht140_90 == 0 and w2h14 == 'no' into 0`
+* `d_ht140_90 == 1 or w2h14 == 'yes' into 1`
+* `otherwise into 999`
+
+To compute `h_hypertension_age` from the study-specific variable it has to be recoded as follows:
+
+* `if h_hypertension == 1 in w2 and 0 in w1, h_hypertension_age = age-(year of interview w2-year of interview w1)/2`
+* `if h_hypertension == 1 in w2 and in w1, h_hypertension_age = age obtained in w1`
+* `if h_hypertension == 0, h_hypertension_age = 996`
+* `h_hypertension == missing into 999`
+
+**R script:**
+
+```{r harmo cz_w2}
+
+HAPIEE_cz_w2 <- left_join(HAPIEE_cz_w2, HAPIEE_ds_cz_w1, by = "id")
+
+# Categorical variable harmonization
+HAPIEE_ds_cz_w2 <- tibble(id=HAPIEE_cz_w2$id)
+HAPIEE_ds_cz_w2$h_hypertension <- rep(999,length(HAPIEE_cz_w2$id))
+HAPIEE_ds_cz_w2$h_hypertension[which(HAPIEE_cz_w2$w2h14 == 'no' & (HAPIEE_cz_w2$h_hypertension != 1 | is.na(HAPIEE_cz_w2$h_hypertension)))] <- 0
+HAPIEE_ds_cz_w2$h_hypertension[which(HAPIEE_cz_w2$w2h14 == 'yes' | ((!is.na(HAPIEE_cz_w2$w2h14)) & HAPIEE_cz_w2$h_hypertension == 1))] <- 1
+
+# Continuous variable harmonization
+HAPIEE_ds_cz_w2$h_hypertension_age <- rep(999,length(HAPIEE_cz_w2$id))
+HAPIEE_ds_cz_w2$h_hypertension_age[which(HAPIEE_ds_cz_w2$h_hypertension == 0)] <- 996
+HAPIEE_ds_cz_w2$h_hypertension_age[which(HAPIEE_ds_cz_w2$h_hypertension == 1 & HAPIEE_cz_w2$h_hypertension==0)] <- (HAPIEE_cz_w2$yintw_cz_w2[which(HAPIEE_ds_cz_w2$h_hypertension == 1 & HAPIEE_cz_w2$h_hypertension==0)]+HAPIEE_cz_w2$yintw_cz_w1[which(HAPIEE_ds_cz_w2$h_hypertension == 1 & HAPIEE_cz_w2$h_hypertension==0)])/2-HAPIEE_cz_w2$ybirth[which(HAPIEE_ds_cz_w2$h_hypertension == 1 & HAPIEE_cz_w2$h_hypertension==0)]
+
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript cz_w2, echo=F}
+
+vbl <- HAPIEE_ds_cz_w2$h_hypertension
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_cz_w2, aes(x=factor(h_hypertension))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- HAPIEE_ds_cz_w2$h_hypertension_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HAPIEE_ds_cz_w2, aes(h_hypertension_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(45,75)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation cz_w2, echo=F, results='asis'}
+
+AfterH <- table(HAPIEE_ds_cz_w2$h_hypertension, useNA = "ifany")
+X <- c(
+  sum(((!is.na(HAPIEE_cz_w2$w2h14)) & HAPIEE_cz_w2$w2h14 == 'no') & (HAPIEE_cz_w2$h_hypertension != 1)),
+  sum(((!is.na(HAPIEE_cz_w2$w2h14)) & HAPIEE_cz_w2$w2h14 == 'yes') | ((!is.na(HAPIEE_cz_w2$h_hypertension)) & (!is.na(HAPIEE_cz_w2$w2h14)) & HAPIEE_cz_w2$h_hypertension == 1))
+)
+BeforeH <- c(X[1:2],length(HAPIEE_cz_w2$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("No->0","Yes->1","NA->999")
+kable(C)
+
+cat("There are 851 individuals who had hypertension in the previous wave and in the second wave answer that they were not told to have it. We harmonize them as having hypertension")
+kable(frq(HAPIEE_cz_w2$h_hypertension[HAPIEE_cz_w2$w2h14=='no']), align = 'c')
+
+rm(HAPIEE_cz_w2)
+
+```
+
+
+
+## Lithuania
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `d_ht140_90` |
+|-|-|
+| **Label** | `Hypertension >140/90 or treated`|
+| **Table name**  | `Li_baseline_etic`|
+| **Categories** |`0 = No`<br/>`1 = Yes`|
+| **Missings** | `NA` |
+| **Description** |  |
+
+```{r assign li_w1, echo=F}
+
+opal.assign.table.tibble(o, 'HAPIEE_li_w1','HAPIEE.Li_baseline_etic',variables=list('d_ht140_90'), missings = T)
+HAPIEE_li_w1 <- opal.execute(o,'HAPIEE_li_w1')
+
+```
+
+```{r local li_w1, echo=F}
+
+vbl <- HAPIEE_li_w1$d_ht140_90
+kable(Categorical_summary(vbl, missing_values = c('.c'))[3], caption = names(HAPIEE_li_w1)[2])
+kable(Categorical_summary(vbl, missing_values = c('.c'))[1], caption = "Category")
+ggplot(HAPIEE_li_w1, aes(x=factor(d_ht140_90))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_hypertension` from the study-specific variable it has to be recoded as follows:
+
+* `keep up 0 into 0`
+* `keep up 1 into 1`
+* `NA into 999`
+
+Age of diagnosis cannot be harmonized.
+
+**R script:**
+
+```{r harmo li_w1}
+
+# Categorical variable harmonization
+HAPIEE_ds_li_w1 <- tibble(id=HAPIEE_li_w1$id)
+HAPIEE_ds_li_w1$h_hypertension <- car::recode(HAPIEE_li_w1$d_ht140_90, "NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript li_w1, echo=F}
+
+vbl <- HAPIEE_ds_li_w1$h_hypertension
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_li_w1, aes(x=factor(h_hypertension))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation li_w1, echo=F,results='asis'}
+
+AfterH <- table(HAPIEE_ds_li_w1$h_hypertension, useNA = "ifany")
+BeforeH <- table(HAPIEE_li_w1$d_ht140_90, useNA = "ifany")
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0->0","1->1","NA->999")
+kable(C)
+rm(HAPIEE_li_w1)
+
+```
+
+
+
+
+
+## Descriptive statistics of the harmonised variable accross populations and waves
+
+Percentages of categories in each harmonised variable by cohort:
+
+**R script:**
+
+```{r summ}
+
+lb.hds <- list(pol_w1 = HAPIEE_ds_pol_w1, cz_w1 = HAPIEE_ds_cz_w1, li_w1 = HAPIEE_ds_li_w1)
+lf.hds <- list(pol_w2 = HAPIEE_ds_pol_w2, cz_w2 = HAPIEE_ds_cz_w2)
+
+for(name in names(lb.hds)) {
+  aux_object <- lb.hds[[name]]
+  label(lb.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
+  lb.hds[[name]][[2]] <- labelled(lb.hds[[name]][[2]], labels = cat_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  m_name <- paste0("HAPIEE_m_ds_",name)
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+for(name in names(lf.hds)) {
+  aux_object <- lf.hds[[name]]
+  label(lf.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
+  lf.hds[[name]][[2]] <- labelled(lf.hds[[name]][[2]], labels = cat_label)
+  label(lf.hds[[name]][[3]]) <- label(aux_object[[3]]) <- ds_label_age # Text value assigned at the DS description, at the top
+  lf.hds[[name]][[3]] <- labelled(lf.hds[[name]][[3]], labels = cont_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  m_name <- paste0("HAPIEE_m_ds_",name)
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+l.hds <- c(lb.hds,lf.hds)
+ln.hds <- c("pol_w1","pol_w2","cz_w1","cz_w2","li_w1")
+
+t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+for (i in seq_along(ln.hds)){
+  t.hds[2+i] <- frq(l.hds[[ln.hds[i]]][2])[[1]][,4] 
+}
+t.hds[13,] <- c("n", "sample size", 
+             length(l.hds[[ln.hds[1]]][[2]]), length(l.hds[[ln.hds[2]]][[2]]) , length(l.hds[[ln.hds[3]]][[2]]), length(l.hds[[ln.hds[4]]][[2]]), length(l.hds[[ln.hds[5]]][[2]]))
+names(t.hds)<-c("val", "label", "Poland_W1", "Poland_W2", "Czech_Republic_W1", "Czech_Republic_W2", "Lithuania_W1")
+kable(t.hds)
+  
+```
+
+
+
+# Quality estimation
+* We assume that if an individual has hypertension in one wave, it has for all the next waves. Individuals with discrepancies with respect to this criterium are specified at the end of each validation.
+* For the baseline waves there is also the study-specific variable `h14` which asks `Ever been told by a doctor you have high blood pressure`.
+
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+for(index in seq_along(l.hds)){
+  h_hypertension <- l.hds[[index]]
+  save(h_hypertension, file = paste0(datafolder,names(l.hds)[index],"/h_hypertension.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

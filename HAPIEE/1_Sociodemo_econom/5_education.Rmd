@@ -1,0 +1,362 @@
+---
+title: "Education"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_ania.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `education`
+* Variable label: `Highest level of formal education achieved`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | less than primary education
+1        | primary education
+2        | secondary education
+3        | tertiary education
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Poland 
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `q3`
+* Label: `Highest completed level of education`
+* Categories: 
+    + `Incomplete primary or no formal education`
+    + `Primary`
+    + `Vocational (apprenticeship)`
+    + `Secondary`
+    + `University (degree)`
+
+* Description: 
+```{r assign_po1,  echo=FALSE}
+opal.assign.table.tibble(o, 'HAPIEE_pol_w1_educ','HAPIEE.Po_baseline_etic',
+                         variables=list('q3'), missings = TRUE)
+```
+
+```{r local_po1,  echo=FALSE}
+HAPIEE_pol_w1_educ <- opal.execute(o,'HAPIEE_pol_w1_educ')
+vari <- HAPIEE_pol_w1_educ$q3
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = HAPIEE_pol_w1_educ$q3, missing_values = NA)
+ggplot(HAPIEE_pol_w1_educ, aes(x=factor(q3))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `recode "Incomplete primary or no formal education" into 0`
+* `recode "Primary" into 1`
+* `recode "Vocational (apprenticeship)" into 2`
+* `recode "Secondary" into 2`
+* `recode "University (degree)" into 3`
+
+**R script:**
+
+```{r harmo_po1,   echo=TRUE}
+HAPIEE_pol_ds_w1 <- tibble(id=HAPIEE_pol_w1_educ$id)
+HAPIEE_pol_ds_w1$education <- car::recode(HAPIEE_pol_w1_educ$q3, "'Incomplete primary or no formal education'=0; 'Primary'=1; 'Vocational (apprenticeship'=2; 'Secondary'=2; 'University (degree)'=3; NA=999")
+HAPIEE_pol_ds_w1$education <- labelled(HAPIEE_pol_ds_w1$education, labels = c("less than primary education"=0, "primary education"=1, "secondary education"=2, "tertiary education"=3, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_po1,  echo=FALSE}
+vari <- HAPIEE_pol_ds_w1$education
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = HAPIEE_pol_ds_w1$education, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(HAPIEE_pol_ds_w1, aes(x=factor(education))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_po1,  echo=FALSE}
+BeforeH <- table(HAPIEE_pol_w1_educ$q3)
+BeforeH <- c(BeforeH[1], BeforeH[2], sum(BeforeH[c(3,5)]), BeforeH[4], sum(is.na(HAPIEE_pol_w1_educ$q3)))
+AfterH <- table(HAPIEE_pol_ds_w1$education)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0", "1", "2", "3", "999")
+kable(C)
+
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_po1,  echo=FALSE}
+val_labels(HAPIEE_pol_ds_w1) <- NULL
+opal.assign.data(o, 'HAPIEE_pol_ds_w1', HAPIEE_pol_ds_w1)
+#opal.symbol_import(o,'HAPIEE_pol_ds_w1', project='_Athlos_Harm_Dataset')
+education <- HAPIEE_pol_ds_w1
+save(education, file = "../RData/pol_w1/education.RData")
+rm(education)
+
+HAPIEE_pol_m_ds_w1 <- HAPIEE_pol_ds_w1
+HAPIEE_pol_m_ds_w1$education <- car::recode(HAPIEE_pol_m_ds_w1$education, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+opal.assign.data(o, 'HAPIEE_pol_m_ds_w1', HAPIEE_pol_m_ds_w1)
+#opal.symbol_import(o,'HAPIEE_pol_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 2
+
+Not found.
+
+
+
+
+## Czech Republic 
+### Wave 1
+
+#### Study-specific variable description
+
+ 
+
+* Name: `q3`
+* Label: `Highest completed level of education`
+* Categories: 
+    + `Incomplete primary or no formal education`
+    + `Primary`
+    + `Vocational (apprenticeship)`
+    + `Secondary`
+    + `University (degree)`
+
+* Description: 
+```{r assign_cz1,  echo=FALSE}
+opal.assign.table.tibble(o, 'HAPIEE_cz_w1_educ','HAPIEE.Cz_baseline_etic',
+                         variables=list('q3'), missings = TRUE)
+```
+
+```{r local_cz1,  echo=FALSE}
+HAPIEE_cz_w1_educ <- opal.execute(o,'HAPIEE_cz_w1_educ')
+vari <- HAPIEE_cz_w1_educ$q3
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = HAPIEE_cz_w1_educ$q3, missing_values = NA)
+ggplot(HAPIEE_cz_w1_educ, aes(x=factor(q3))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `recode "Incomplete primary or no formal education" into 0`
+* `recode "Primary" into 1`
+* `recode "Vocational (apprenticeship)" into 2`
+* `recode "Secondary" into 2`
+* `recode "University (degree)" into 3`
+
+**R script:**
+
+```{r harmo_cz1,   echo=TRUE}
+HAPIEE_cz_ds_w1 <- tibble(id=HAPIEE_cz_w1_educ$id)
+HAPIEE_cz_ds_w1$education <- car::recode(HAPIEE_cz_w1_educ$q3, "'Incomplete primary or no formal education'=0; 'Primary'=1; 'Vocational (apprenticeship'=2; 'Secondary'=2; 'University (degree)'=3; NA=999")
+HAPIEE_cz_ds_w1$education <- labelled(HAPIEE_cz_ds_w1$education, labels = c("less than primary education"=0, "primary education"=1, "secondary education"=2, "tertiary education"=3, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_cz1,  echo=FALSE}
+vari <- HAPIEE_cz_ds_w1$education
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = HAPIEE_cz_ds_w1$education, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(HAPIEE_cz_ds_w1, aes(x=factor(education))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_cz1,  echo=FALSE}
+BeforeH <- table(HAPIEE_cz_w1_educ$q3)
+BeforeH <- c(BeforeH[1], BeforeH[2], sum(BeforeH[c(3,5)]), BeforeH[4], sum(is.na(HAPIEE_cz_w1_educ$q3)))
+AfterH <- table(HAPIEE_cz_ds_w1$education)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0", "1", "2", "3", "999")
+kable(C)
+
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_cz1,  echo=FALSE}
+val_labels(HAPIEE_cz_ds_w1) <- NULL
+opal.assign.data(o, 'HAPIEE_cz_ds_w1', HAPIEE_cz_ds_w1)
+#opal.symbol_import(o,'HAPIEE_cz_ds_w1', project='_Athlos_Harm_Dataset')
+education <- HAPIEE_cz_ds_w1
+save(education, file = "../RData/cz_w1/education.RData")
+rm(education)
+
+HAPIEE_cz_m_ds_w1 <- HAPIEE_cz_ds_w1
+HAPIEE_cz_m_ds_w1$education <- car::recode(HAPIEE_cz_m_ds_w1$education, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+opal.assign.data(o, 'HAPIEE_cz_m_ds_w1', HAPIEE_cz_m_ds_w1)
+#opal.symbol_import(o,'HAPIEE_cz_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+### Wave 2
+
+There is no variable.
+
+
+
+
+
+
+
+## Lithuania 
+### Wave 1
+
+#### Study-specific variable description
+
+ 
+
+* Name: `q3`
+* Label: `Highest completed level of education`
+* Categories: 
+    + `Incomplete primary or no formal education`
+    + `Primary`
+    + `Vocational (apprenticeship)`
+    + `Secondary`
+    + `University (degree)`
+    + `College`
+
+* Description: 
+```{r assign_li1,  echo=FALSE}
+opal.assign.table.tibble(o, 'HAPIEE_li_w1_educ','HAPIEE.Li_baseline_etic',
+                         variables=list('q3'), missings = TRUE)
+```
+
+```{r local_li1,  echo=FALSE}
+HAPIEE_li_w1_educ <- opal.execute(o,'HAPIEE_li_w1_educ')
+vari <- HAPIEE_li_w1_educ$q3
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = HAPIEE_li_w1_educ$q3, missing_values = NA)
+ggplot(HAPIEE_li_w1_educ, aes(x=factor(q3))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `recode "Incomplete primary or no formal education" into 0`
+* `recode "Primary" into 1`
+* `recode "Vocational (apprenticeship)" into 2`
+* `recode "Secondary" into 2`
+* `recode "University (degree)" into 3`
+* `recode "College" into 3`
+
+**R script:**
+
+```{r harmo_li1,   echo=TRUE}
+HAPIEE_li_ds_w1 <- tibble(id=HAPIEE_li_w1_educ$id)
+HAPIEE_li_ds_w1$education <- car::recode(HAPIEE_li_w1_educ$q3, "'Incomplete primary or no formal education'=0; 'Primary'=1; 'Vocational (apprenticeship'=2; 'Secondary'=2; 'University (degree)'=3; 'College'=3; NA=999")
+HAPIEE_li_ds_w1$education <- labelled(HAPIEE_li_ds_w1$education, labels = c("less than primary education"=0, "primary education"=1, "secondary education"=2, "tertiary education"=3, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_li1,  echo=FALSE}
+vari <- HAPIEE_li_ds_w1$education
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = HAPIEE_li_ds_w1$education, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(HAPIEE_li_ds_w1, aes(x=factor(education))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_li1,  echo=FALSE}
+BeforeH <- table(HAPIEE_li_w1_educ$q3)
+BeforeH <- c(BeforeH[2], BeforeH[3], sum(BeforeH[c(4,6)]), sum(BeforeH[c(1,5)]), sum(is.na(HAPIEE_li_w1_educ$q3)))
+AfterH <- table(HAPIEE_li_ds_w1$education)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0", "1", "2", "3", "999")
+kable(C)
+
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_li1,  echo=FALSE}
+val_labels(HAPIEE_li_ds_w1) <- NULL
+opal.assign.data(o, 'HAPIEE_li_ds_w1', HAPIEE_li_ds_w1)
+#opal.symbol_import(o,'HAPIEE_li_ds_w1', project='_Athlos_Harm_Dataset')
+education <- HAPIEE_li_ds_w1
+save(education, file = "../RData/li_w1/education.RData")
+rm(education)
+
+HAPIEE_li_m_ds_w1 <- HAPIEE_li_ds_w1
+HAPIEE_li_m_ds_w1$education <- car::recode(HAPIEE_li_m_ds_w1$education, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+opal.assign.data(o, 'HAPIEE_li_m_ds_w1', HAPIEE_li_m_ds_w1)
+#opal.symbol_import(o,'HAPIEE_li_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+# Quality estimation
+
+No comments
+
+```{r closeRsession, echo=FALSE,  echo=FALSE} 
+opal.logout(o)
+```
+

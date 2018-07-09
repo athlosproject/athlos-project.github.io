@@ -1,0 +1,346 @@
+---
+title: "Has spouse/partner"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `spouse`
+* Variable label: `Has spouse/partner`
+* Domain: `Social environment`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Czech Republic
+
+### Wave 1
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q4`
+* Label: `Marital status`
+* Categories: 
+    + `1.0 = Single`
+    + `2.0 = Married`
+    + `3.0 = Cohabiting`
+    + `4.0 = Divorced or Separated`
+    + `5.0 = Widowed`
+
+
+* Description: 
+```{r assign1 cz, echo=F}
+opal.assign.table.tibble(o, 'HAPIEE_cz_w1_spouse','HAPIEE.Cz_baseline_etic', variables=list('q4'), missings = TRUE)
+```
+
+```{r local1 cz, echo=F}
+HAPIEE_cz_w1_spouse <- opal.execute(o,'HAPIEE_cz_w1_spouse')
+vari <- HAPIEE_cz_w1_spouse$q4
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = HAPIEE_cz_w1_spouse$q4, missing_values = NA)
+ggplot(HAPIEE_cz_w1_spouse, aes(x=factor(q4))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital status") + ylab("Frequency") + theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1))
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `Cohabiting or Married into 1`
+* `Rest into 0`
+* `NA into 999`
+
+ 
+
+**R script:**
+```{r harmo1 cz, echo=TRUE}
+HAPIEE_cz_ds_w1 <- tibble(id=HAPIEE_cz_w1_spouse$id)
+
+HAPIEE_cz_w1_spouse$q4 <- car::recode(as.vector(HAPIEE_cz_w1_spouse$q4), "NA='-999'")
+
+HAPIEE_cz_ds_w1$spouse <- c(NA) 
+for(i in 1:length(HAPIEE_cz_ds_w1$spouse)){
+  if(HAPIEE_cz_w1_spouse$q4[i] == 'Russia: Divorced / Separated'){HAPIEE_cz_ds_w1$spouse[i] ='0'}
+  if(HAPIEE_cz_w1_spouse$q4[i] == 'Cohabiting'){HAPIEE_cz_ds_w1$spouse[i] ='1'}
+  if(HAPIEE_cz_w1_spouse$q4[i] == 'Married'){HAPIEE_cz_ds_w1$spouse[i] ='1'}
+  if(HAPIEE_cz_w1_spouse$q4[i] == 'Single'){HAPIEE_cz_ds_w1$spouse[i] ='0'}
+  if(HAPIEE_cz_w1_spouse$q4[i] == 'Widowed'){HAPIEE_cz_ds_w1$spouse[i] ='0'}
+}
+
+HAPIEE_cz_ds_w1$spouse <- car::recode(as.vector(HAPIEE_cz_ds_w1$spouse), "NA='999'")
+HAPIEE_cz_ds_w1$spouse <- labelled(HAPIEE_cz_ds_w1$spouse, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 cz, echo=F}
+vari <- HAPIEE_cz_ds_w1$spouse
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = HAPIEE_cz_ds_w1$spouse, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(HAPIEE_cz_ds_w1, aes(x=factor(spouse))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has spouse/partner") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 cz, echo=F}
+AfterH <- table(HAPIEE_cz_ds_w1$spouse)
+BeforeH <- table(HAPIEE_cz_w1_spouse$q4, useNA='ifany')
+BeforeH[[2]] <- sum(BeforeH[[2]],BeforeH[[3]])
+BeforeH[[3]] <- sum(BeforeH[[4]],BeforeH[[5]],BeforeH[[6]])
+BeforeH <- BeforeH[c(3,2,1)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("4,5,6->0","2,3->1","NA->999")
+
+kable(C)
+```
+
+ 
+ 
+
+### Wave 2
+Not found.
+
+## Lithuania
+
+### Wave 1
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q4`
+* Label: `Marital status`
+* Categories: 
+    + `1.0 = Single`
+    + `2.0 = Married`
+    + `3.0 = Cohabiting`
+    + `4.0 = Divorced or Separated`
+    + `5.0 = Widowed`
+
+* Description: 
+```{r assign1 li, echo=F}
+opal.assign.table.tibble(o, 'HAPIEE_li_w1_spouse','HAPIEE.Li_baseline_etic', variables=list('q4'), missings = TRUE)
+```
+
+```{r local1 li, echo=F}
+HAPIEE_li_w1_spouse <- opal.execute(o,'HAPIEE_li_w1_spouse')
+vari <- HAPIEE_li_w1_spouse$q4
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = HAPIEE_li_w1_spouse$q4, missing_values = NA)
+ggplot(HAPIEE_li_w1_spouse, aes(x=factor(q4))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital status") + ylab("Frequency") + theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1))
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `2,3 into 1`
+* `1,4,5 into 0`
+* `NA into 999`
+
+ 
+
+**R script:**
+```{r harmo1 li, echo=TRUE}
+HAPIEE_li_ds_w1 <- tibble(id=HAPIEE_li_w1_spouse$id)
+
+HAPIEE_li_w1_spouse$q4 <- car::recode(as.vector(HAPIEE_li_w1_spouse$q4), "NA='-999'")
+
+HAPIEE_li_ds_w1$spouse <- c(NA) 
+for(i in 1:length(HAPIEE_li_ds_w1$spouse)){
+  if(HAPIEE_li_w1_spouse$q4[i] == 'Russia: Divorced / Separated'){HAPIEE_li_ds_w1$spouse[i] ='0'}
+  if(HAPIEE_li_w1_spouse$q4[i] == 'Cohabiting'){HAPIEE_li_ds_w1$spouse[i] ='1'}
+  if(HAPIEE_li_w1_spouse$q4[i] == 'Married'){HAPIEE_li_ds_w1$spouse[i] ='1'}
+  if(HAPIEE_li_w1_spouse$q4[i] == 'Single'){HAPIEE_li_ds_w1$spouse[i] ='0'}
+  if(HAPIEE_li_w1_spouse$q4[i] == 'Widowed'){HAPIEE_li_ds_w1$spouse[i] ='0'}
+}
+
+HAPIEE_li_ds_w1$spouse <- car::recode(as.vector(HAPIEE_li_ds_w1$spouse), "NA='999'")
+HAPIEE_li_ds_w1$spouse <- labelled(HAPIEE_li_ds_w1$spouse, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 li, echo=F}
+vari <- HAPIEE_li_ds_w1$spouse
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = HAPIEE_li_ds_w1$spouse, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(HAPIEE_li_ds_w1, aes(x=factor(spouse))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has spouse/partner") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 li, echo=F}
+AfterH <- table(HAPIEE_li_ds_w1$spouse)
+BeforeH <- table(HAPIEE_li_w1_spouse$q4, useNA='ifany')
+BeforeH[[2]] <- sum(BeforeH[[2]],BeforeH[[3]])
+BeforeH[[3]] <- sum(BeforeH[[4]],BeforeH[[5]],BeforeH[[6]])
+BeforeH <- BeforeH[c(3,2,1)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("4,5,6->0","2,3->1","NA->999")
+
+kable(C)
+```
+
+ 
+
+## Poland
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q4`
+* Label: `Marital status`
+* Categories: 
+    + `1.0 = Single`
+    + `2.0 = Married`
+    + `3.0 = Cohabiting`
+    + `4.0 = Divorced or Separated`
+    + `5.0 = Widowed`
+
+
+* Description: 
+```{r assign1 po, echo=F}
+opal.assign.table.tibble(o, 'HAPIEE_pol_w1_spouse','HAPIEE.Po_baseline_etic', variables=list('q4'), missings = TRUE)
+```
+
+```{r local1 po, echo=F}
+HAPIEE_pol_w1_spouse <- opal.execute(o,'HAPIEE_pol_w1_spouse')
+vari <- HAPIEE_pol_w1_spouse$q4
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = HAPIEE_pol_w1_spouse$q4, missing_values = NA)
+ggplot(HAPIEE_pol_w1_spouse, aes(x=factor(q4))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital status") + ylab("Frequency") + theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1))
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `2,3 into 1`
+* `1,4,5 into 0`
+* `NA into 999`
+
+ 
+
+**R script:**
+```{r harmo1 po, echo=TRUE}
+HAPIEE_pol_ds_w1 <- tibble(id=HAPIEE_pol_w1_spouse$id)
+
+HAPIEE_pol_w1_spouse$q4 <- car::recode(as.vector(HAPIEE_pol_w1_spouse$q4), "NA='-999'")
+
+HAPIEE_pol_ds_w1$spouse <- c(NA) 
+for(i in 1:length(HAPIEE_pol_ds_w1$spouse)){
+  if(HAPIEE_pol_w1_spouse$q4[i] == 'Russia: Divorced / Separated'){HAPIEE_pol_ds_w1$spouse[i] ='0'}
+  if(HAPIEE_pol_w1_spouse$q4[i] == 'Cohabiting'){HAPIEE_pol_ds_w1$spouse[i] ='1'}
+  if(HAPIEE_pol_w1_spouse$q4[i] == 'Married'){HAPIEE_pol_ds_w1$spouse[i] ='1'}
+  if(HAPIEE_pol_w1_spouse$q4[i] == 'Single'){HAPIEE_pol_ds_w1$spouse[i] ='0'}
+  if(HAPIEE_pol_w1_spouse$q4[i] == 'Widowed'){HAPIEE_pol_ds_w1$spouse[i] ='0'}
+}
+
+HAPIEE_pol_ds_w1$spouse <- car::recode(as.vector(HAPIEE_pol_ds_w1$spouse), "NA='999'")
+HAPIEE_pol_ds_w1$spouse <- labelled(HAPIEE_pol_ds_w1$spouse, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 po, echo=F}
+vari <- HAPIEE_pol_ds_w1$spouse
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = HAPIEE_pol_ds_w1$spouse, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(HAPIEE_pol_ds_w1, aes(x=factor(spouse))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has spouse/partner") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 po, echo=F}
+AfterH <- table(HAPIEE_pol_ds_w1$spouse)
+BeforeH <- table(HAPIEE_pol_w1_spouse$q4, useNA='ifany')
+BeforeH[[2]] <- sum(BeforeH[[2]],BeforeH[[3]])
+BeforeH[[3]] <- sum(BeforeH[[4]],BeforeH[[5]],BeforeH[[6]])
+BeforeH <- BeforeH[c(3,2,1)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("4,5,6->0","2,3->1","NA->999")
+
+kable(C)
+```
+
+ 
+ 
+
+### Wave 2
+Not found.
+
+
+
+```{r save, echo=FALSE}
+spouse <- HAPIEE_cz_ds_w1
+save(spouse, file = "../RData/cz_w1/spouse.RData")
+rm(spouse)
+
+spouse <- HAPIEE_li_ds_w1
+save(spouse, file = "../RData/li_w1/spouse.RData")
+rm(spouse)
+
+spouse <- HAPIEE_pol_ds_w1
+save(spouse, file = "../RData/pol_w1/spouse.RData")
+rm(spouse)
+
+```
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```

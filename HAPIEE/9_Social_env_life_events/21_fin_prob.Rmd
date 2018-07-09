@@ -1,0 +1,404 @@
+---
+title: "Ever experienced financial problems"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variables is the following:
+
+* Short name: `fin_prob`
+* Variable label: `Ever experienced financial problems?`
+* Domain: `Social environment`
+* Value type: `categorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Czech Republic
+
+### Wave 1
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `r8`
+* Label: `How are you & your spouse/partner getting along financially these days`
+* Categories: 
+    + `1 = Manage very well` 
+    + `2 = Manage quite well`
+    + `3 = Get by alright` 
+    + `4 = Don't manage very well` 
+    + `5 = Have some financial difficulties`
+    + `6 = In deep financial trouble`
+    + `7 = Other`
+
+* Name: `s62a`
+* Label: `How often do you not have enough money for food for you & your family at present`
+* Categories: 
+    + `1 = All the time`
+    + `2 = Often`
+    + `3 = Sometimes` 
+    + `4 = Rarely` 
+    + `5 = Never`
+
+* Name: `s62b`
+* Label: `How often did you not have enough money for food for you&your family pre 1990`
+* Categories: 
+    + `1 = All the time`
+    + `2 = Often`
+    + `3 = Sometimes` 
+    + `4 = Rarely` 
+    + `5 = Never`
+    
+* Name: `s63a`
+* Label: `How often do you not have enough money for clothing you/your family at present`
+* Categories: 
+    + `1 = All the time`
+    + `2 = Often`
+    + `3 = Sometimes` 
+    + `4 = Rarely` 
+    + `5 = Never`
+    
+* Name: `s63b`
+* Label: `How often did you not have enough money for clothing you/your family pre 1990`
+* Categories: 
+    + `1 = All the time`
+    + `2 = Often`
+    + `3 = Sometimes` 
+    + `4 = Rarely` 
+    + `5 = Never`
+    
+* Name: `s64a`
+* Label: `Do you have dificulty paying bills at present`
+* Categories: 
+    + `1 = All the time`
+    + `2 = Often`
+    + `3 = Sometimes` 
+    + `4 = Rarely` 
+    + `5 = Never`
+    
+* Name: `s64b`
+* Label: `Did you have dificulty paying bills before 1990`
+* Categories: 
+    + `1 = All the time`
+    + `2 = Often`
+    + `3 = Sometimes` 
+    + `4 = Rarely` 
+    + `5 = Never`
+
+
+* Description: 
+```{r assign1 cz, echo=F}
+opal.assign.table.tibble(o, 'HAPIEE_cz_w1_fin_prob','HAPIEE.Cz_baseline_etic', 
+                        variables=list('r8','s62a','s62b','s63a','s63b','s64a','s64b'), missings = TRUE)
+```
+
+```{r local1 cz, echo=F}
+HAPIEE_cz_w1_fin_prob <- opal.execute(o,'HAPIEE_cz_w1_fin_prob')
+
+vari <- HAPIEE_cz_w1_fin_prob$r8
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = HAPIEE_cz_w1_fin_prob$r8, missing_values = NA)
+ggplot(HAPIEE_cz_w1_fin_prob, aes(x=factor(r8))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("How are you & your spouse/partner getting along financially these days?") + ylab("Frequency") + theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1))
+
+vari <- HAPIEE_cz_w1_fin_prob$s62a
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = HAPIEE_cz_w1_fin_prob$s62a, missing_values = NA)
+ggplot(HAPIEE_cz_w1_fin_prob, aes(x=factor(s62a))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("How often do you not have enough money for food for you & your family at present?") + ylab("Frequency") + theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1))
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any of s62a-s64b equals 1,2,3 or r8 equals 4,5,6 then 1`
+* `if all s62a-s64b are equal 4,5 and r8 equals 1,2,3 then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1 cz, echo=TRUE}
+HAPIEE_cz_ds_w1 <- tibble(id=HAPIEE_cz_w1_fin_prob$id)
+
+HAPIEE_cz_w1_fin_prob$r8 <- car::recode(as.vector(HAPIEE_cz_w1_fin_prob$r8), "NA='-999'")
+HAPIEE_cz_w1_fin_prob$s62a <- car::recode(as.vector(HAPIEE_cz_w1_fin_prob$s62a), "NA='-999'")
+HAPIEE_cz_w1_fin_prob$s62b <- car::recode(as.vector(HAPIEE_cz_w1_fin_prob$s62b), "NA='-999'")
+HAPIEE_cz_w1_fin_prob$s63a <- car::recode(as.vector(HAPIEE_cz_w1_fin_prob$s63a), "NA='-999'")
+HAPIEE_cz_w1_fin_prob$s63b <- car::recode(as.vector(HAPIEE_cz_w1_fin_prob$s63b), "NA='-999'")
+HAPIEE_cz_w1_fin_prob$s64a <- car::recode(as.vector(HAPIEE_cz_w1_fin_prob$s64a), "NA='-999'")
+HAPIEE_cz_w1_fin_prob$s64b <- car::recode(as.vector(HAPIEE_cz_w1_fin_prob$s64b), "NA='-999'")
+
+HAPIEE_cz_ds_w1$fin_prob <- c(NA)
+for(i in 1:dim(HAPIEE_cz_w1_fin_prob[1])){
+  if( HAPIEE_cz_w1_fin_prob$r8[i] %in% c("Don't manage very well","Have some financial difficulties","In deep financial trouble") | 
+      HAPIEE_cz_w1_fin_prob$s62a[i] %in% c("All the time","Often","Sometimes") | 
+      HAPIEE_cz_w1_fin_prob$s62b[i] %in% c("All the time","Often","Sometimes") | 
+      HAPIEE_cz_w1_fin_prob$s63a[i] %in% c("All the time","Often","Sometimes") | 
+      HAPIEE_cz_w1_fin_prob$s63b[i] %in% c("All the time","Often","Sometimes") |
+      HAPIEE_cz_w1_fin_prob$s64a[i] %in% c("All the time","Often","Sometimes") | 
+      HAPIEE_cz_w1_fin_prob$s64b[i] %in% c("All the time","Often","Sometimes") ) { 
+    HAPIEE_cz_ds_w1$fin_prob[i] = 1 }
+  else if( HAPIEE_cz_w1_fin_prob$r8[i] %in% c("Manage very well","Manage quite well","Get by alright") & 
+           HAPIEE_cz_w1_fin_prob$s62a[i] %in% c("Rarely","Never") & 
+           HAPIEE_cz_w1_fin_prob$s62b[i] %in% c("Rarely","Never") &
+           HAPIEE_cz_w1_fin_prob$s63a[i] %in% c("Rarely","Never") & 
+           HAPIEE_cz_w1_fin_prob$s63b[i] %in% c("Rarely","Never") & 
+           HAPIEE_cz_w1_fin_prob$s64a[i] %in% c("Rarely","Never") & 
+           HAPIEE_cz_w1_fin_prob$s64b[i] %in% c("Rarely","Never") ) { 
+    HAPIEE_cz_ds_w1$fin_prob[i] = 0 }
+}
+
+HAPIEE_cz_ds_w1$fin_prob <- car::recode(as.vector(HAPIEE_cz_ds_w1$fin_prob), "NA='999'")
+HAPIEE_cz_ds_w1$fin_prob <- labelled(HAPIEE_cz_ds_w1$fin_prob, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 cz, echo=F}
+vari <- HAPIEE_cz_ds_w1$fin_prob
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = HAPIEE_cz_ds_w1$fin_prob, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(HAPIEE_cz_ds_w1, aes(x=factor(fin_prob))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever experienced financial problems?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 cz, echo=F}
+
+```
+
+
+### Wave 2
+Not found. 
+
+
+## Lithuania
+### Wave 1
+Not found. 
+
+
+## Poland
+### Wave 1
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `r8`
+* Label: `How are you & your spouse/partner getting along financially these days`
+* Categories: 
+    + `1 = Manage very well` 
+    + `2 = Manage quite well`
+    + `3 = Get by alright` 
+    + `4 = Don't manage very well` 
+    + `5 = Have some financial difficulties`
+    + `6 = In deep financial trouble`
+    + `7 = Other`
+
+* Name: `s62a`
+* Label: `How often do you not have enough money for food for you & your family at present`
+* Categories: 
+    + `1 = All the time`
+    + `2 = Often`
+    + `3 = Sometimes` 
+    + `4 = Rarely` 
+    + `5 = Never`
+
+* Name: `s62b`
+* Label: `How often did you not have enough money for food for you&your family pre 1990`
+* Categories: 
+    + `1 = All the time`
+    + `2 = Often`
+    + `3 = Sometimes` 
+    + `4 = Rarely` 
+    + `5 = Never`
+    
+* Name: `s63a`
+* Label: `How often do you not have enough money for clothing you/your family at present`
+* Categories: 
+    + `1 = All the time`
+    + `2 = Often`
+    + `3 = Sometimes` 
+    + `4 = Rarely` 
+    + `5 = Never`
+    
+* Name: `s63b`
+* Label: `How often did you not have enough money for clothing you/your family pre 1990`
+* Categories: 
+    + `1 = All the time`
+    + `2 = Often`
+    + `3 = Sometimes` 
+    + `4 = Rarely` 
+    + `5 = Never`
+    
+* Name: `s64a`
+* Label: `Do you have dificulty paying bills at present`
+* Categories: 
+    + `1 = All the time`
+    + `2 = Often`
+    + `3 = Sometimes` 
+    + `4 = Rarely` 
+    + `5 = Never`
+    
+* Name: `s64b`
+* Label: `Did you have dificulty paying bills before 1990`
+* Categories: 
+    + `1 = All the time`
+    + `2 = Often`
+    + `3 = Sometimes` 
+    + `4 = Rarely` 
+    + `5 = Never`
+
+
+* Description: 
+```{r assign1 po, echo=F}
+opal.assign.table.tibble(o, 'HAPIEE_pol_w1_fin_prob','HAPIEE.Po_baseline_etic', 
+                        variables=list('r8','s62a','s62b','s63a','s63b','s64a','s64b'), missings = TRUE)
+```
+
+```{r local1 po, echo=F}
+HAPIEE_pol_w1_fin_prob <- opal.execute(o,'HAPIEE_pol_w1_fin_prob')
+
+vari <- HAPIEE_pol_w1_fin_prob$r8
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = HAPIEE_pol_w1_fin_prob$r8, missing_values = NA)
+ggplot(HAPIEE_pol_w1_fin_prob, aes(x=factor(r8))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("How are you & your spouse/partner getting along financially these days?") + ylab("Frequency") + theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1))
+
+vari <- HAPIEE_pol_w1_fin_prob$s62a
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = HAPIEE_pol_w1_fin_prob$s62a, missing_values = NA)
+ggplot(HAPIEE_pol_w1_fin_prob, aes(x=factor(s62a))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("How often do you not have enough money for food for you & your family at present?") + ylab("Frequency") + theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1))
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any of s62a-s64b equals 1,2,3 or r8 equals 4,5,6 then 1`
+* `if all s62a-s64b are equal 4,5 and r8 equals 1,2,3 then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1 po, echo=TRUE}
+HAPIEE_pol_ds_w1 <- tibble(id=HAPIEE_pol_w1_fin_prob$id)
+
+HAPIEE_pol_w1_fin_prob$r8 <- car::recode(as.vector(HAPIEE_pol_w1_fin_prob$r8), "NA='-999'")
+HAPIEE_pol_w1_fin_prob$s62a <- car::recode(as.vector(HAPIEE_pol_w1_fin_prob$s62a), "NA='-999'")
+HAPIEE_pol_w1_fin_prob$s62b <- car::recode(as.vector(HAPIEE_pol_w1_fin_prob$s62b), "NA='-999'")
+HAPIEE_pol_w1_fin_prob$s63a <- car::recode(as.vector(HAPIEE_pol_w1_fin_prob$s63a), "NA='-999'")
+HAPIEE_pol_w1_fin_prob$s63b <- car::recode(as.vector(HAPIEE_pol_w1_fin_prob$s63b), "NA='-999'")
+HAPIEE_pol_w1_fin_prob$s64a <- car::recode(as.vector(HAPIEE_pol_w1_fin_prob$s64a), "NA='-999'")
+HAPIEE_pol_w1_fin_prob$s64b <- car::recode(as.vector(HAPIEE_pol_w1_fin_prob$s64b), "NA='-999'")
+
+HAPIEE_pol_ds_w1$fin_prob <- c(NA)
+for(i in 1:dim(HAPIEE_pol_w1_fin_prob[1])){
+  if( HAPIEE_pol_w1_fin_prob$r8[i] %in% c("Don't manage very well","Have some financial difficulties","In deep financial trouble") | 
+      HAPIEE_pol_w1_fin_prob$s62a[i] %in% c("All the time","Often","Sometimes") | 
+      HAPIEE_pol_w1_fin_prob$s62b[i] %in% c("All the time","Often","Sometimes") | 
+      HAPIEE_pol_w1_fin_prob$s63a[i] %in% c("All the time","Often","Sometimes") | 
+      HAPIEE_pol_w1_fin_prob$s63b[i] %in% c("All the time","Often","Sometimes") |
+      HAPIEE_pol_w1_fin_prob$s64a[i] %in% c("All the time","Often","Sometimes") | 
+      HAPIEE_pol_w1_fin_prob$s64b[i] %in% c("All the time","Often","Sometimes") ) { 
+    HAPIEE_pol_ds_w1$fin_prob[i] = 1 }
+  else if( HAPIEE_pol_w1_fin_prob$r8[i] %in% c("Manage very well","Manage quite well","Get by alright") & 
+           HAPIEE_pol_w1_fin_prob$s62a[i] %in% c("Rarely","Never") & 
+           HAPIEE_pol_w1_fin_prob$s62b[i] %in% c("Rarely","Never") &
+           HAPIEE_pol_w1_fin_prob$s63a[i] %in% c("Rarely","Never") & 
+           HAPIEE_pol_w1_fin_prob$s63b[i] %in% c("Rarely","Never") & 
+           HAPIEE_pol_w1_fin_prob$s64a[i] %in% c("Rarely","Never") & 
+           HAPIEE_pol_w1_fin_prob$s64b[i] %in% c("Rarely","Never") ) { 
+    HAPIEE_pol_ds_w1$fin_prob[i] = 0 }
+}
+
+HAPIEE_cz_ds_w1$fin_prob <- car::recode(as.vector(HAPIEE_cz_ds_w1$fin_prob), "NA='999'")
+HAPIEE_cz_ds_w1$fin_prob <- labelled(HAPIEE_cz_ds_w1$fin_prob, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 po, echo=F}
+vari <- HAPIEE_pol_ds_w1$fin_prob
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = HAPIEE_pol_ds_w1$fin_prob, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(HAPIEE_pol_ds_w1, aes(x=factor(fin_prob))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever experienced financial problems?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 po, echo=F}
+
+```
+
+### Wave 2
+Not found. 
+
+
+
+```{r save, echo=FALSE}
+fin_prob <- HAPIEE_pol_ds_w1
+save(fin_prob, file = "../RData/pol_w1/fin_prob.RData")
+rm(fin_prob)
+
+fin_prob <- HAPIEE_cz_ds_w1
+save(fin_prob, file = "../RData/cz_w1/fin_prob.RData")
+rm(fin_prob)
+
+
+```
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+
+
