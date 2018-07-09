@@ -1,0 +1,146 @@
+---
+title: "Divorce/Separation"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_ania.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variables is the following:
+
+* Short name: `divorce`
+* Variable label: `Experience of divorce/separation`
+* Domain: `Social environment`
+* Value type: `cathegorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Indian population
+### wave 1
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `dm003`
+* Label: `current marital status`
+* Categories: 
+    + `1 = never married` 
+    + `2 = currently married`
+    + `3 = separated/deserted` 
+    + `4 = divorced` 
+    + `5 = widowed`
+* Description: 
+```{r assign1} 
+opal.assign.table.tibble(o, 'LASI_w1_divorce','LASI.LASI-Pilot_all',variables=list('dm003'), missings = TRUE)
+```
+
+```{r local1}
+LASI_w1_divorce <- opal.execute(o,'LASI_w1_divorce')
+vari <- LASI_w1_divorce$dm003
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = LASI_w1_divorce$dm003, missing_values = NA)
+ggplot(LASI_w1_divorce, aes(x=factor(dm003))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To recode the harmonize variable from the study-specific variable it has to be recoded as follows:  
+
+* `3,4 into 1`
+* `1,2,5 into 0`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo1, echo=TRUE}
+LASI_ds_w1 <- tibble(id=LASI_w1_divorce$id)
+LASI_ds_w1$divorce <- car::recode(as.vector(LASI_w1_divorce$dm003), "3:4='1'; 1:2='0'; 5='0'; NA='999'")
+LASI_ds_w1$divorce <- labelled(LASI_ds_w1$divorce, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1}
+vari <- LASI_ds_w1$divorce
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = LASI_ds_w1$divorce, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(LASI_ds_w1, aes(x=factor(divorce))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Experience of divorce/separation") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1}
+AfterH <- table(LASI_ds_w1$divorce)
+BeforeH <- table(LASI_w1_divorce$dm003, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[2]] <- sum(BeforeH[c(3:4)])
+BeforeH1[[1]] <- sum(BeforeH[c(1,2,5)])
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("1,2,3,5->0","4->1")
+kable(C)
+```
+
+
+```{r save, echo=FALSE}
+divorce <- LASI_ds_w1
+save(divorce, file = "../RData/w1/divorce.RData")
+rm(divorce)
+
+
+```
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+
+
+
+

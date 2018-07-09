@@ -1,0 +1,198 @@
+---
+title: "Experience of a loss of any close person"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_ania.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variables is the following:
+
+* Short name: `bereav`
+* Variable label: `Experience of a loss of any close person`
+* Domain: `Social environment`
+* Value type: `cathegorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Indian population
+### Wave 1 
+
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `dm003`
+* Label: `marital status`
+* Categories: 
+    + `1.0 = never marries`
+    + `2.0 = currently married`
+    + `3.0 = separated/deserted`
+    + `4.0 = divorced`
+    + `5.0 = widowed`
+
+* Name: `fs323`
+* Label: `have any siblings died`
+* Categories: 
+    + `1.0 = yes`
+    + `2.0 = no`
+    
+* Name: `fs312`
+* Label: `is mother alive`
+* Categories: 
+    + `1.0 = yes`
+    + `2.0 = no`
+    
+* Name: `fs302`
+* Label: `is father alive`
+* Categories: 
+    + `1.0 = yes`
+    + `2.0 = no`
+    
+* Name: `fs202`
+* Label: `how many of your children deceased`
+
+* Description
+```{r assign1}
+opal.assign.table.tibble(o, 'LASI_w1_bereav','LASI.LASI-Pilot_all',variables=list('dm003','fs323','fs312','fs302','fs202'), missings = TRUE)
+```
+
+```{r local1}
+LASI_w1_bereav <- opal.execute(o,'LASI_w1_bereav')
+
+vari <- LASI_w1_bereav$fs323
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = LASI_w1_bereav$fs323, missing_values = NA)
+ggplot(LASI_w1_bereav, aes(x=factor(fs323))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("have any siblings died") + ylab("Frequency")
+
+vari <- LASI_w1_bereav$fs312
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = LASI_w1_bereav$fs312, missing_values = NA)
+ggplot(LASI_w1_bereav, aes(x=factor(fs312))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("is mother alive") + ylab("Frequency")
+
+vari <- LASI_w1_bereav$fs302
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = LASI_w1_bereav$fs302, missing_values = NA)
+ggplot(LASI_w1_bereav, aes(x=factor(fs302))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("is father alive") + ylab("Frequency")
+
+vari <- LASI_w1_bereav$dm003
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = LASI_w1_bereav$dm003, missing_values = NA)
+ggplot(LASI_w1_bereav, aes(x=factor(dm003))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("marital status") + ylab("Frequency")
+
+vari <- LASI_w1_bereav$fs202
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = LASI_w1_bereav$fs202, missing_values = NA)
+ggplot(LASI_w1_bereav, aes(fs202)) + geom_histogram(stat="count", width=0.4, fill="steelblue") + xlab("how many of your children deceased") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `dm003=5 OR fs323=1 OR fs312=2 OR fs302=2 OR fs202>0  into 1`
+* `dm003 in (1,2,3,4) AND fs323=2 AND fs312=1 AND fs302=1 AND fs202=0  into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1, echo=TRUE}
+LASI_ds_w1 <- tibble(id=LASI_w1_bereav$id)
+
+LASI_w1_bereav$dm003 <- car::recode(as.vector(LASI_w1_bereav$dm003), "NA='-999'")
+LASI_w1_bereav$fs323 <- car::recode(as.vector(LASI_w1_bereav$fs323), "NA='-999'")
+LASI_w1_bereav$fs312 <- car::recode(as.vector(LASI_w1_bereav$fs312), "NA='-999'")
+LASI_w1_bereav$fs302 <- car::recode(as.vector(LASI_w1_bereav$fs302), "NA='-999'")
+LASI_w1_bereav$fs202 <- car::recode(as.vector(LASI_w1_bereav$fs202), "NA='-999'")
+
+LASI_ds_w1$bereav <- c(NA) 
+for(i in 1:dim(LASI_w1_bereav)[1]){
+  if(LASI_w1_bereav$dm003[i] == 5 | LASI_w1_bereav$fs323[i] == 1 | LASI_w1_bereav$fs312[i] == 2 | 
+     LASI_w1_bereav$fs302[i] == 2 | LASI_w1_bereav$fs202[i] >0 ) { 
+    LASI_ds_w1$bereav[i] = 1 }
+  else if(LASI_w1_bereav$dm003[i] %in% c(1,2,3,4) & LASI_w1_bereav$fs323[i] == 2 & LASI_w1_bereav$fs312[i] == 1 &
+     LASI_w1_bereav$fs302[i] == 1 & LASI_w1_bereav$fs202[i] == 0 ) { 
+    LASI_ds_w1$bereav[i] = 0 }
+}
+
+LASI_ds_w1$bereav <- car::recode(as.vector(LASI_ds_w1$bereav), "NA='999'")
+LASI_ds_w1$bereav <- labelled(LASI_ds_w1$bereav, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1}
+vari <- LASI_ds_w1$bereav
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = LASI_ds_w1$bereav, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(LASI_ds_w1, aes(x=factor(bereav))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Experience of a loss of any close person") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1}
+
+```
+
+```{r save, echo=FALSE}
+bereav <- LASI_ds_w1
+save(bereav, file = "../RData/w1/bereav.RData")
+rm(bereav)
+
+
+```
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```

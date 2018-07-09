@@ -1,0 +1,236 @@
+---
+title: "Cardiac disorders"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `cd_all`
+* Variable label: `History of Cardiac disorders`
+* Variable description: `The participant has been diagnosed by one or more of the following conditions: angina, myocardial infarction, heart attack, coronary heart disease, congestive heart failure, heart murmur, valve disease`
+* Domain: `Diseases`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No, the participant has not been diagnosed of any of these conditions
+1        | Yes, the participant has been diagnosed by any of these conditions
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+<!-- ########################################################## --> 
+<!-- # Global variables -->
+```{r global, include=FALSE, echo=F}
+miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
+ds_label <- "History of Cardiac disorders"
+cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
+datafolder <- "../RData/"
+#sing_idlist <- c()
+```
+<!-- ########################################################## --> 
+
+
+
+# Data process
+
+
+
+## India
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+
+
+| **Name** | `ht023` |`ht024`|`mi_ha`|
+|-|-|-|-|-|
+| **Label** | `doctor told you that you had heart problems`|`who diagnosed you with heart problems`|`Myocardial infarction or heart attack`|
+| **Table name**  | `LASI-Pilot_all`| `LASI-Pilot_all`|`mi_ha`|
+| **Categories** | `1 = yes`<br/>`2 = no` |`1 = a doctor mbbs degree`<br/>`2 = ayurvedic, unani, or homeopathic doctor; rmp; siddha`<br/>`3 = others, please specify:`|`0 = No`<br/>`1 = Yes`|
+| **Missings** | `NA` | `NA` | `999 = Missing` |
+| **Description** |  |  |  |
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'LASI_w1','LASI.LASI-Pilot_all',variables=list('ht023','ht024'), missings = T)
+LASI_w1 <- opal.execute(o,'LASI_w1')
+load(paste0(datafolder,"w1/mi_ha.RData"))
+LASI_w1$mi_ha <- mi_ha$mi_ha
+rm(mi_ha)
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- LASI_w1$ht023
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(LASI_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(LASI_w1, aes(x=factor(ht023))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- LASI_w1$ht024
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(LASI_w1)[3])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(LASI_w1, aes(x=factor(ht024))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- LASI_w1$mi_ha
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(LASI_w1)[4])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(LASI_w1, aes(x=factor(mi_ha))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cd_all` from the study-specific variable it has to be recoded as follows:
+
+* `(ht023 == 2 or (ht023 == 1 and ht024 == 2 or 3)) and mi_ha == 0 into 0`
+* `(ht023 == 1 and ht024 == 1) or mi_ha == 1 into 1`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo w1}
+
+# Categorical variable harmonization
+LASI_ds_w1 <- tibble(id=LASI_w1$id)
+LASI_ds_w1$cd_all <- rep(999,length(LASI_ds_w1$id))
+LASI_ds_w1$cd_all[which((LASI_w1$ht023 == 2 | (LASI_w1$ht023 == 1 & LASI_w1$ht024 %in% c(2,3))) & LASI_w1$mi_ha == 0)] <- 0
+LASI_ds_w1$cd_all[which((LASI_w1$ht023 == 1 & LASI_w1$ht024 == 1) | LASI_w1$mi_ha == 1)] <- 1
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- LASI_ds_w1$cd_all
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(LASI_ds_w1, aes(x=factor(cd_all))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+
+AfterH <- table(LASI_ds_w1$cd_all)
+X <- c(
+  sum((LASI_w1$ht023 == 2 | (LASI_w1$ht023 == 1 & LASI_w1$ht024 %in% c(2,3))) & LASI_w1$mi_ha == 0,na.rm=T),
+  sum((LASI_w1$ht023 == 1 & LASI_w1$ht024 == 1) | LASI_w1$mi_ha == 1,na.rm=T)
+)
+BeforeH <- c(X[1:2],length(LASI_w1$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("(ht023=0 or ht024=2,3)&mi_ha==0->0","1->1","otherwise->999")
+kable(C)
+
+```
+
+
+
+
+
+
+## Descriptive statistics of the harmonised variable accross populations and waves
+
+Percentages of categories in each harmonised variable:
+
+
+**R script:**
+
+```{r summ}
+LASI_ds_w1$cd_all <- labelled(LASI_ds_w1$cd_all, labels = cat_label)
+label(LASI_ds_w1$cd_all) <- ds_label
+
+LASI_m_ds_w1 <- LASI_ds_w1
+LASI_m_ds_w1$cd_all <- car::recode(LASI_m_ds_w1$cd_all, "miss_values_vector=NA")
+
+tt <- frq(LASI_ds_w1$cd_all)[[1]][,c(1:2,4)]
+tt[13,] <- c("n", "sample size", 
+             length(LASI_ds_w1$cd_all)
+             )
+names(tt)<-c("val", "label", "w1")
+kable(tt)
+
+```
+
+
+
+# Quality estimation
+
+It contains information about: heart attack, angina, coronary heart disease, congestive heart failure, or any other heart problems; and the harmonized MI_HA variable 
+
+We codified as 1(yes) if the option "a doctor mbbs degree" was chosen. 
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+l.LASI <- list(w1 = LASI_ds_w1)
+
+for(index in seq_along(l.LASI)){
+  cd_all <- l.LASI[[index]]
+  save(cd_all, file = paste0(datafolder,names(l.LASI)[index],"/cd_all.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

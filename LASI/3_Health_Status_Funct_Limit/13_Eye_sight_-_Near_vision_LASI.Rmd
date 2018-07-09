@@ -1,0 +1,159 @@
+---
+title: "Eye sight - Near vision"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+
+* Short name: `eye_near`
+* Variable label: `Eyesight - Near vision`
+* Variable description: `Difficulties for near vision.`
+* Domain: `Health status and functional limitations`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | Yes
+1        | No
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+# Data process
+
+## India
+
+
+### Wave 1 
+
+#### Study-specific variable description
+
+
+
+| **Name** | `ht078`|`ht076`|
+|-|-|-|
+| **Label** | `how good is eyesight for things up close` |`glasses or corrective lenses`|
+| **Table name** | `LASI-Pilot_all` |`LASI-Pilot_all` |
+| **Categories** |`1 = very good; 2 = good; 3 = fair; 4 = poor; 5 = very poor`|`1 = yes; 2 = blind; 3 = no` |
+| **Missings** |`NA` |`NA` |
+| **Description** |  |  |
+
+
+
+
+
+```{r assign w1, echo=FALSE}
+opal.assign.table.tibble(o, 'LASI_w1_eye_near','LASI.LASI-Pilot_all', variables=list('ht078','ht076'), missings = TRUE)
+```
+
+```{r local w1, echo=FALSE}
+LASI_w1_eye_near <- opal.execute(o,'LASI_w1_eye_near')
+vari <- LASI_w1_eye_near$ht078
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "ht078")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(LASI_w1_eye_near, aes(x=factor(ht078))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Eye Sight - Near Vision") + ylab("Frequency")
+vari <- LASI_w1_eye_near$ht076
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "ht076")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(LASI_w1_eye_near, aes(x=factor(ht076))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Eye Sight - Glasses") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `ht076==2 blind into 0`
+* `1, 2 into 1` 
+* `3, 4, 5 into 0`
+* `NA into 999` 
+
+**R script:**
+
+```{r harmo w1}
+LASI_ds_w1 <- tibble(id=LASI_w1_eye_near$id)
+LASI_ds_w1$eye_near <- car::recode(LASI_w1_eye_near$ht078, "1 = '1';2 = '1';3 = '0';4 = '0'; 5 = '0';NA = '999' ")
+LASI_ds_w1$eye_near[which(LASI_w1_eye_near$ht076==2)] <- 0
+LASI_ds_w1$eye_near <- labelled(LASI_ds_w1$eye_near, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+We remark that the blind individuals of the variable `ht076` are missings for the variable `ht078`.
+
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=FALSE}
+vari <- LASI_ds_w1$eye_near
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "eye_near")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(LASI_ds_w1, aes(x=factor(eye_near))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Eye Sight - Near Vision") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1, echo=FALSE}
+AfterH <- table(LASI_ds_w1$eye_near)
+X<-table(LASI_w1_eye_near$ht078)
+BeforeH <- c(sum(X[3:5],length(which(LASI_w1_eye_near$ht076==2))),sum(X[1:2]),sum(is.na(LASI_w1_eye_near$ht078),-length(which(LASI_w1_eye_near$ht076==2))))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("3,4,5,blind->0","1,2->1","NA->999")
+kable(C)
+```
+
+
+```{r importOPAL w1, echo=FALSE}
+label(LASI_ds_w1$eye_near) <- "Eyesight - Near vision"
+#opal.assign.data(o, 'LASI_ds_w1', LASI_ds_w1)
+#opal.symbol_import(o,'LASI_ds_w1', project='_Athlos_Harm_Dataset')
+eye_near <- LASI_ds_w1
+save(eye_near, file = "../RData/w1/eye_near.RData")
+
+
+LASI_m_ds_w1 <- LASI_ds_w1
+LASI_m_ds_w1$eye_near <- car::recode(LASI_m_ds_w1$eye_near, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'LASI_m_ds_w1', LASI_m_ds_w1)
+#opal.symbol_import(o,'LASI_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+# Quality estimation
+No comments.
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

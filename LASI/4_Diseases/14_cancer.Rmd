@@ -1,0 +1,269 @@
+---
+title: "Cancer"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `cancer`
+* Variable label: `Any malignancy (C00-D48) / information about past or current neoplasm (benign, in situ, malignant)`
+* Variable description: `cancer diagnosis since the last interview`
+* Domain: `Diseases`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | no cancer
+1        | cancer
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+* Short name: `cancer_age`
+* Variable label: `Age of cancer diagnosis`
+* Variable description: `Age of each episode of cancer`
+* Domain: `Diseases`
+* Value type: `Continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+<!-- # Global variables -->
+```{r global, include=FALSE, echo=F}
+miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
+ds_label <- "Any malignancy (C00-D48) / information about past or current neoplasm (benign, in situ, malignant)"
+ds_label_age <- "Age of cancer diagnosis"
+cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
+cont_label <- cat_label[3:11]
+datafolder <- "../RData/"
+#sing_idlist <- c()
+```
+<!-- ########################################################## --> 
+
+
+
+# Data process
+
+
+
+## India
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+
+
+| **Name** | `ht012` |`ht013`|`ht014_age`|
+|-|-|-|-|
+| **Label** | `doctor told you that you had cancer`|`who diagnosed you with cancer`|`when first diagnosed with cancer age`|
+| **Table name**  | `LASI-Pilot_all`| `LASI-Pilot_all`|`LASI-Pilot_all`|
+| **Categories** | `1 = yes`<br/>`2 = no` |`1 = a doctor mbbs degree`<br/>`2 = ayurvedic, unani, or homeopathic doctor; rmp; siddha`<br/>`3 = others, please specify:`|`continuous`|
+| **Missings** | `NA` | `NA` | `NA` |
+| **Description** |  |  |  |
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'LASI_w1','LASI.LASI-Pilot_all',variables=list('ht012','ht013','ht014_age'), missings = T)
+LASI_w1 <- opal.execute(o,'LASI_w1')
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- LASI_w1$ht012
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(LASI_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(LASI_w1, aes(x=factor(ht012))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- LASI_w1$ht013
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(LASI_w1)[3])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(LASI_w1, aes(x=factor(ht013))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- LASI_w1$ht014_age
+kable(Continuous_summary(var = vbl, missing_values = NA)[3], caption = names(LASI_w1)[4])
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(LASI_w1, aes(ht014_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(30,80)
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cancer` from the study-specific variable it has to be recoded as follows:
+
+* `ht012 == 2 or (ht012 == 1 and ht013 == 2 or 3) into 0`
+* `ht012 == 1 and ht013 == 1 into 1`
+* `otherwise into 999`
+
+To compute `cancer_age` from the study-specific variable it has to be recoded as follows:
+
+* `if cancer == 1, cancer_age = ht014_age`
+* `if cancer == 0, cancer_age = 996`
+* `cancer == missing into 999`
+
+**R script:**
+
+```{r harmo w1}
+
+# Categorical variable harmonization
+LASI_ds_w1 <- tibble(id=LASI_w1$id)
+LASI_ds_w1$cancer <- rep(999,length(LASI_ds_w1$id))
+LASI_ds_w1$cancer[which(LASI_w1$ht012 == 2 | (LASI_w1$ht012 == 1 & LASI_w1$ht013 %in% c(2,3)))] <- 0
+LASI_ds_w1$cancer[which(LASI_w1$ht012 == 1 & LASI_w1$ht013 == 1)] <- 1
+
+# Continuous variable harmonization
+cancer_age <- car::recode(LASI_w1$ht014_age[LASI_ds_w1$cancer==1],"NA=999")
+LASI_ds_w1$cancer_age <- car::recode(LASI_ds_w1$cancer, "0=996; 1=cancer_age")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- LASI_ds_w1$cancer
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(LASI_ds_w1, aes(x=factor(cancer))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- LASI_ds_w1$cancer_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(LASI_ds_w1, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(45,60)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+
+AfterH <- table(LASI_ds_w1$cancer)
+X <- c(
+  sum(LASI_w1$ht012 == 2 | (LASI_w1$ht012 == 1 & LASI_w1$ht013 %in% c(2,3)),na.rm=T),
+  sum(LASI_w1$ht012 == 1 & LASI_w1$ht013 == 1,na.rm=T)
+)
+BeforeH <- c(X[1:2],length(LASI_w1$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("ht012=0 or ht013=2,3->0","1->1","otherwise->999")
+kable(C)
+
+```
+
+
+
+
+
+
+## Descriptive statistics of the harmonised variable accross populations and waves
+
+Percentages of categories in each harmonised variable:
+
+
+**R script:**
+
+```{r summ}
+LASI_ds_w1$cancer <- labelled(LASI_ds_w1$cancer, labels = cat_label)
+label(LASI_ds_w1$cancer) <- ds_label
+LASI_ds_w1$cancer_age <- labelled(LASI_ds_w1$cancer_age, labels = cont_label)
+label(LASI_ds_w1$cancer_age) <- ds_label_age
+
+LASI_m_ds_w1 <- LASI_ds_w1
+LASI_m_ds_w1$cancer <- car::recode(LASI_m_ds_w1$cancer, "miss_values_vector=NA")
+
+tt <- frq(LASI_ds_w1$cancer)[[1]][,c(1:2,4)]
+tt[13,] <- c("n", "sample size", 
+             length(LASI_ds_w1$cancer)
+             )
+names(tt)<-c("val", "label", "w1")
+kable(tt)
+
+```
+
+
+
+# Quality estimation
+
+We codified as 1(yes) if the option "a doctor mbbs degree" was chosen.
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+l.LASI <- list(w1 = LASI_ds_w1)
+
+for(index in seq_along(l.LASI)){
+  cancer <- l.LASI[[index]]
+  save(cancer, file = paste0(datafolder,names(l.LASI)[index],"/cancer.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

@@ -1,0 +1,188 @@
+---
+title: "Delayed recall"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `cog_del_c`
+* Variable label: `Cognition - delayed recall - Continuous`
+* Variable description: `Delayed recall of a list previously employed for measuring Immediate recall. The number of words is exactly the same as in the study-specific variable`
+* Domain: `Health status and functional limitations`
+* Value type: `Continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+* Short name: `cog_del`
+* Variable label: `Cognition - delayed recall`
+* Variable description: `Delayed recall of a list of common nouns. Discrete variable: value 0 = <=25%; value 1 = >25%.`
+* Domain: `Health status and functional limitations`
+* Value type: `Categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | <=25%
+1        | >25%
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Delayed recall"
+ds_label_cog_del_c <- "Delayed recall of a list previously employed for measuring Immediate recall. The number of words is exactly the same as in the study-specific variable"
+ds_label_cog_del <- "Delayed recall of a list of common nouns. Discrete variable: value 0 = <=25%; value 1 = >25%"
+```
+
+# Data process
+
+## India
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `ht520`
+* Label: `number of words r correctly recalls`
+* Categories:
+    + `Continuous Variable 0-10`
+* Missings
+   + `NA` 
+
+```{r assign w1, echo=FALSE}
+opal.assign.table.tibble(o, 'LASI_w1_cog_del','LASI.LASI-Pilot_all', variables=list('ht520'), missings = TRUE)
+LASI_w1_cog_del <- opal.execute(o,'LASI_w1_cog_del')
+```
+
+```{r local w1, echo=FALSE}
+vari <- LASI_w1_cog_del$ht520
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Delayed recall continuous")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(LASI_w1_cog_del, aes(x=factor(ht520))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonized variable `cog_del_c` from the study-specific variables you have to sum the total of words and the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_del` from `cog_del_c` it has to be recoded as follows:
+
+* `cog_del_c <=25% into 0`
+* `cog_del_c >25% into 1`
+
+**R script**
+
+```{r harmo w1}
+##cog_del_c
+LASI_ds_w1 <- tibble(id=LASI_w1_cog_del$id)
+LASI_ds_w1$cog_del_c <- car::recode(LASI_w1_cog_del$ht520, "NA = '999' ")
+LASI_ds_w1$cog_del_c <- labelled(LASI_ds_w1$cog_del_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995, Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+
+##cog_del
+Q <- quantile(car::recode(LASI_ds_w1$cog_del_c, "999=NA; 998=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+LASI_ds_w1$cog_del <- car::recode(LASI_ds_w1[[2]], "0:Q=0; (Q+1):10=1")
+LASI_ds_w1$cog_del <- labelled(LASI_ds_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995, "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=FALSE}
+vari <- LASI_ds_w1$cog_del_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Delayed recall continuous")
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(LASI_ds_w1, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("cog_del") + ylab("Frequency")
+
+vari <- LASI_ds_w1$cog_del
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Delayed recall categorical") 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(LASI_ds_w1, aes(x=factor(cog_del))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1, echo=FALSE}
+Continous <- c(sum(na.omit(LASI_ds_w1[[2]])<=Q), sum(na.omit(LASI_ds_w1[[2]])>Q&na.omit(LASI_ds_w1[[2]])<900), sum(na.omit(LASI_ds_w1[[2]])==999))
+Dicotomic <- table(LASI_ds_w1[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:3->0","4:20->1", "NA->999") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+
+
+#### Import to OPAL
+```{r importOPAL w1, echo=FALSE}
+label(LASI_ds_w1$cog_del_c) <- ds_label_cog_del_c
+label(LASI_ds_w1$cog_del) <- ds_label_cog_del
+#opal.assign.data(o, 'LASI_ds_w1', LASI_ds_w1)
+#opal.symbol_import(o,'LASI_ds_w1', project='_Athlos_Harm_Dataset')
+cog_del <- LASI_ds_w1
+save(cog_del, file = "../RData/w1/cog_del.RData")
+rm(cog_del)
+
+LASI_m_ds_w1 <- LASI_ds_w1
+LASI_m_ds_w1$cog_del <- car::recode(LASI_m_ds_w1$cog_del, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+LASI_m_ds_w1$cog_del_c <- car::recode(LASI_m_ds_w1$cog_del_c, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'LASI_m_ds_w1', LASI_m_ds_w1)
+#opal.symbol_import(o,'LASI_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+# Quality estimation
+
+No comments
+
+[Comments on the quality of the new harmonised variable. This section can be done in a later stage, once all variables are harmonised.]
+
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+

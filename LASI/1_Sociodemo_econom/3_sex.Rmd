@@ -1,0 +1,146 @@
+---
+title: "Sex"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE, echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+
+```{r lab, echo=FALSE}
+ds_label <- "Sex"
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `sex`
+* Variable label: `biological sex`
+* Variable description: `participant's biological sex`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | female
+1        | male
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## India
+
+### Wave 1 
+
+#### Study-specific variable description
+
+* Name: `dm002`
+* Label: `gender of respondent`
+* Categories: 
+    + `1 = Male`
+    + `2 = Female`
+* Description:
+```{r assign1, echo=FALSE}
+opal.assign.table.tibble(o, 'LASI_w1_sex','LASI.LASI-Pilot_all',
+                         variables=list('dm002'), missings = TRUE)
+LASI_w1_sex <- opal.execute(o,'LASI_w1_sex')
+```
+
+```{r local1, echo=FALSE}
+vari <- LASI_w1_sex$dm002
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(LASI_w1_sex, aes(x=factor(dm002))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `2 "Female" into 0`
+* `keep "Male" into 1`
+
+**R script:**
+
+```{r harmo1, echo=TRUE}
+LASI_ds_w1 <- tibble(id=LASI_w1_sex$id)
+LASI_ds_w1$sex <- car::recode(LASI_w1_sex$dm002, "2=0; NA=999")
+LASI_ds_w1$sex <- labelled(LASI_ds_w1$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1, echo=FALSE}
+vari <- LASI_ds_w1$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(LASI_ds_w1, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=FALSE}
+AfterH <- table(LASI_ds_w1$sex)
+BeforeH <- table(LASI_w1_sex$dm002)[c(2,1)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1")
+kable(C)
+```
+
+
+```{r importOPAL1, echo=FALSE}
+val_labels(LASI_ds_w1) <- NULL
+opal.assign.data(o, 'LASI_ds_w1', LASI_ds_w1)
+#opal.symbol_import(o,'LASI_ds_w1', project='_Athlos_Harm_Dataset')
+sex <- LASI_ds_w1
+save(sex, file = "../RData/w1/sex.RData")
+rm(sex)
+
+LASI_m_ds_w1 <- LASI_ds_w1
+LASI_m_ds_w1$sex <- car::recode(LASI_m_ds_w1$sex, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+opal.assign.data(o, 'LASI_m_ds_w1', LASI_m_ds_w1)
+#opal.symbol_import(o,'LASI_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+# Quality estimation
+No comments.
+
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+

@@ -1,0 +1,215 @@
+---
+title: "Numeracy"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/Rmds/setup_laia.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `cog_num_c`
+* Variable label: `Cognition - numeracy test - Continuous. It is assessed by means of a numeracy test, composed by six numeracy questions`
+* Domain: `Health status and functional limitations`
+* Value type: `Continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+* Short name: `cog_num`
+* Variable label: `Cognition - numeracy test. It is assessed by means of a numeracy test, composed by six numeracy questions. Discrete variable: value 0 = <=25%; value 1 = >25%.`
+* Domain: `Health status and functional limitations`
+* Value type: `Categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | <=25%
+1        | >25%
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Cognition - numeracy test"
+ds_label_cog_num_c <- "Cognition - numeracy test - Continuous. It is assessed by means of a numeracy test, composed by six numeracy questions"
+ds_label_cog_num <- "Cognition - numeracy test. It is assessed by means of a numeracy test, composed by six numeracy questions. Discrete variable: value 0 = <=25%; value 1 = >25%"
+```
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## India
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `ht518`
+* Label: `sari math problem "How much does 300 Rs sari cost at half price?"`
+* Categories:
+    + `1 = the correct answer of 150 rs`
+    + `2 = incorrect answer`
+* Missings
+   + `NA` 
+
+* Name: `ht519`
+* Label: `lottery problem "If 5 people have  the winning numbers in the lottery how much of the 1,000 Rs prize will each get?"`
+* Categories:
+    + `1 = the correct answer of 200 rs`
+    + `2 = incorrect answer`
+* Missings
+   + `NA` 
+
+
+```{r assign w1, echo=FALSE}
+opal.assign.table.tibble(o, 'LASI_w1_cog_num','LASI.LASI-Pilot_all', variables=list('ht518','ht519'), missings = TRUE)
+LASI_w1_cog_num <- opal.execute(o,'LASI_w1_cog_num')
+```
+
+```{r local w1, echo=FALSE}
+vari <- LASI_w1_cog_num$ht518
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(LASI_w1_cog_num, aes(x=factor(ht518))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Numeracy") + ylab("Frequency")
+
+vari <- LASI_w1_cog_num$ht519
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(LASI_w1_cog_num, aes(x=factor(ht519))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Numeracy") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_num_c` from the study-specific variables sum them after recoded as follows
+
+* `keep 1 into 1`
+* `recode 2 into 0`
+
+and the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_num` from `cog_num_c` it has to be recoded as follows:
+
+* `all 1 into 1` 
+* `other into 0` 
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w1}
+LASI_w1_cog_num$ht518_2 <- car::recode(LASI_w1_cog_num$ht518, "2=0")
+LASI_w1_cog_num$ht519_2 <- car::recode(LASI_w1_cog_num$ht519, "2=0")
+LASI_w1_cog_num$sum <- apply(LASI_w1_cog_num[,c(4,5)], MARGIN = 1, FUN = sum)
+
+#all the individuals have all missing or all no missing
+LASI_w1_cog_num$comp <- apply(LASI_w1_cog_num[,c(4,5)], MARGIN = 1, FUN = function(x) sum(is.na(x)) )
+
+#cog_num_c
+LASI_ds_w1 <- tibble(id=LASI_w1_cog_num$id)
+LASI_ds_w1$cog_num_c <- car::recode(LASI_w1_cog_num$sum, "NA=999")
+LASI_ds_w1$cog_num_c <- labelled(LASI_ds_w1[[2]], labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_num
+LASI_ds_w1$cog_num <- car::recode(LASI_ds_w1$cog_num_c, "2=1; 1=0")
+LASI_ds_w1$cog_num <- labelled(LASI_ds_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=FALSE}
+vari <- LASI_ds_w1$cog_num_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(LASI_ds_w1, aes(x=factor(cog_num_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Numeracy") + ylab("Frequency")
+
+vari <- LASI_ds_w1$cog_num
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(LASI_ds_w1, aes(x=factor(cog_num))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Numeracy") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1, echo=FALSE}
+Continous <- table(LASI_ds_w1$cog_num_c)
+Continous <- c(sum(Continous[1:2]),Continous[3], Continous[4])
+Dicotomic <- table(LASI_ds_w1[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("(0,1)->0","2->1", "NA->999") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL w1, echo=FALSE}
+#opal.assign.data(o, 'LASI_ds_w1', LASI_ds_w1)
+#opal.symbol_import(o,'LASI_ds_w1', project='_Athlos_Harm_Dataset')
+
+label(LASI_ds_w1$cog_num_c) <- ds_label_cog_num_c
+label(LASI_ds_w1$cog_num) <- ds_label_cog_num
+cog_num <- LASI_ds_w1
+save(cog_num, file = "../RData/w1/cog_num.RData")
+```
+
+
+
+# Quality estimation
+
+No comments
+
+[Comments on the quality of the new harmonised variable. This section can be done in a later stage, once all variables are harmonised.]
+
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+

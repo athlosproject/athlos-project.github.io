@@ -1,0 +1,163 @@
+---
+title: "Orientation in time"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+
+* Short name: `orientation`
+* Variable label: `Orientation in time`
+* Variable description: `Difficulties for orientation in time, evaluated by a set of questions about the date and day of the week.`
+* Domain: `Health status and functional limitations`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | Yes
+1        | No
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+# Data process
+
+## India
+
+### Wave 1
+
+#### Study-specific variable description
+
+
+| **Name** |`ht501_day`|`ht501_month`|`ht501_year`|
+|-|-|-|-|
+| **Label** |`today's day`|`today's month`|`today's year`|
+| **Table name** |`LASI-Pilot_all`|`LASI-Pilot_all`|`LASI-Pilot_all`|
+| **Categories** |`1 = yes; 2 = no`|`1 = yes; 2 = no`|`1 = yes; 2 = no`|
+| **Missings** |`NA`|`NA`|`NA`|
+| **Description** |  |  |  |
+
+
+```{r assign w1, echo=F}
+opal.assign.table.tibble(o, 'LASI_w1_orientation','LASI.LASI-Pilot_all', variables=list('ht501_day','ht501_month','ht501_year'), missings = TRUE)
+```
+
+```{r local w1, echo=F}
+LASI_w1_orientation <- opal.execute(o,'LASI_w1_orientation')
+vari <- LASI_w1_orientation$ht501_day
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "ht501_day")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(LASI_w1_orientation, aes(x=factor(ht501_day))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("orientation in time-Day") + ylab("Frequency")
+vari <- LASI_w1_orientation$ht501_month
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "ht501_month")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(LASI_w1_orientation, aes(x=factor(ht501_month))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("orientation in time-Month") + ylab("Frequency")
+vari <- LASI_w1_orientation$ht501_year
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "ht501_year")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(LASI_w1_orientation, aes(x=factor(ht501_year))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("orientation in time-Year") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `all 1 into 1` 
+* `some 2 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w1}
+LASI_ds_w1 <- tibble(id=LASI_w1_orientation$id)
+LASI_ds_w1$orientation <- rep(999,length(LASI_ds_w1$id))
+LASI_ds_w1$orientation[((LASI_w1_orientation$ht501_day==1)&(LASI_w1_orientation$ht501_month==1)&(LASI_w1_orientation$ht501_year==1))]<-1
+LASI_ds_w1$orientation[((LASI_w1_orientation$ht501_day==2)|(LASI_w1_orientation$ht501_month==2)|(LASI_w1_orientation$ht501_year==2))]<- 0
+LASI_ds_w1$orientation <- labelled(LASI_ds_w1$orientation, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=F}
+vari <- LASI_ds_w1$orientation
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "orientation")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(LASI_ds_w1, aes(x=factor(orientation))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("orientation in time") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1, echo=F}
+AfterH <- table(LASI_ds_w1$orientation)
+combi<-sum(na.omit((LASI_w1_orientation$ht501_day==1)&(LASI_w1_orientation$ht501_month==1)&(LASI_w1_orientation$ht501_year==1)))
+nota<-length(LASI_w1_orientation$ht501_day)-length(na.omit(LASI_w1_orientation$ht501_day))
+BeforeH <- c(length(LASI_w1_orientation$ht501_day)-combi-nota,combi,nota)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("some 2->0","all 1->1","NA->999") 
+kable(C)
+```
+
+
+
+```{r importOPAL w1, echo=FALSE}
+label(LASI_ds_w1$orientation) <- "Difficulties for orientation in time, evaluated by a set of questions about the date and day of the week"
+#opal.assign.data(o, 'LASI_ds_w1', LASI_ds_w1)
+#opal.symbol_import(o,'LASI_ds_w1', project='_Athlos_Harm_Dataset')
+orientation <- LASI_ds_w1
+save(orientation, file = "../RData/w1/orientation.RData")
+
+LASI_m_ds_w1 <- LASI_ds_w1
+LASI_m_ds_w1$orientation <- car::recode(LASI_m_ds_w1$orientation, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'LASI_m_ds_w1', LASI_m_ds_w1)
+#opal.symbol_import(o,'LASI_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+# Quality estimation
+For this study, the variable is a composed combining day, month, 
+and year which is different from the 
+calculation performed in other studies other variables are also available 
+(or some of these variables are not).
+
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

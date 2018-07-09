@@ -1,0 +1,193 @@
+---
+title: "Cognition - Immediate recall"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `cog_imm_c`
+* Variable label: `Cognition - Immediate recall - Continuous`
+* Variable description: `Immediate recall of a list of common nouns. The number of words is exactly the same as in the study-specific variable.`
+* Domain: `Health status and functional limitations`
+* Value type: `Continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+* Short name: `cog_imm`
+* Variable label: `Cognition - Immediate recall`
+* Variable description: `Immediate recall of a list of common nouns. Discrete variable: value 0 = <=25%; value 1 = >25%.`
+* Domain: `Health status and functional limitations`
+* Value type: `Categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | <=25%
+1        | >25%
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Immediate recall"
+ds_label_cog_imm_c <- "Immediate recall of a list of common nouns. The number of words is exactly the same as in the study-specific variable"
+ds_label_cog_imm <- "Immediate recall of a list of common nouns. Discrete variable: value 0 = <=25%; value 1 = >25%"
+```
+
+# Data process
+
+## India
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `ht505`
+* Label: `number of words r correctly recalls`
+* Categories:
+    + `Continuous Variable 0-10`
+* Missings
+   + `12 = possible miscoding`
+   + `NA` 
+
+```{r assign w1}
+opal.assign.table.tibble(o, 'LASI_w1_cog_imm','LASI.LASI-Pilot_all', variables=list('ht505'), missings = TRUE)
+LASI_w1_cog_imm <- opal.execute(o,'LASI_w1_cog_imm')
+LASI_w1_cog_imm$ht505 <- as.numeric(LASI_w1_cog_imm$ht505)
+```
+
+```{r local w1}
+vari <- LASI_w1_cog_imm$ht505
+kable(Continuous_summary(var = vari, missing_values = c(-8))[3], caption = "Immediate recall continuous")
+kable(Continuous_summary(vari, missing_values = c(-8))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-8))$summary, caption = "Summary")
+ggplot(LASI_w1_cog_imm, aes(x=factor(ht505))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Immediate recall") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_imm_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `12 into 999`
+* `NA into 999`
+
+To compute the harmonized variable `cog_imm` from `cog_imm_c` it has to be recoded as follows:
+
+* `cog_imm_c <=25% into 0`
+* `cog_imm_c >25% into 1`
+
+
+```{r harmo w1}
+##cog_imm_c
+LASI_ds_w1 <- tibble(id=LASI_w1_cog_imm$id)
+LASI_ds_w1$cog_imm_c <- car::recode(LASI_w1_cog_imm$ht505, "12=999; NA=999")
+LASI_ds_w1$cog_imm_c <- labelled(LASI_ds_w1$cog_imm_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+
+##cog_imm
+Q <- quantile(car::recode(LASI_ds_w1$cog_imm_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+LASI_ds_w1$cog_imm <- car::recode(LASI_ds_w1[[2]], "0:Q=0; (Q+1):10=1")
+LASI_ds_w1$cog_imm <- labelled(LASI_ds_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1}
+vari <- LASI_ds_w1$cog_imm_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Immediate recall continuous")
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(LASI_ds_w1, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- LASI_ds_w1$cog_imm
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Cognition - Immediate recall")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(LASI_ds_w1, aes(x=factor(cog_imm))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Immediate recall") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1}
+Continous <- c(sum(na.omit(LASI_ds_w1[[2]])<=Q), sum(na.omit(LASI_ds_w1[[2]])>Q & na.omit(LASI_ds_w1[[2]])<900), sum(na.omit(LASI_ds_w1[[2]])==999))
+Dicotomic <- table(LASI_ds_w1[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:3->0","4:20->1", "NA->999") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable. This section can be done in a later stage, once all variables are harmonised.]
+
+
+#### Import to OPAL
+```{r importOPAL w1, echo=FALSE}
+label(LASI_ds_w1$cog_imm_c) <- ds_label_cog_imm_c
+label(LASI_ds_w1$cog_imm) <- ds_label_cog_imm
+#opal.assign.data(o, 'LASI_ds_w1', LASI_ds_w1)
+#opal.symbol_import(o,'LASI_ds_w1', project='_Athlos_Harm_Dataset')
+cog_imm <- LASI_ds_w1
+save(cog_imm, file = "../RData/w1/cog_imm.RData")
+rm(cog_imm)
+
+LASI_m_ds_w1 <- LASI_ds_w1
+LASI_m_ds_w1$cog_imm <- car::recode(LASI_m_ds_w1$cog_imm, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+LASI_m_ds_w1$cog_imm_c <- car::recode(LASI_m_ds_w1$cog_imm_c, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'LASI_m_ds_w1', LASI_m_ds_w1)
+#opal.symbol_import(o,'LASI_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+# Quality estimation
+
+No commments
+
+[Comments on the quality of the new harmonised variable. This section can be done in a later stage, once all variables are harmonised.]
+
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+

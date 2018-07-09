@@ -1,0 +1,148 @@
+---
+title: "Can people be trusted? (generalized trust, i.e. trust in other members of the society, not counting relatives and close friends)"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_ania.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variables is the following:
+
+* Short name: `trust`
+* Variable label: `Generalized trust, i.e. trust in other members of the society, not counting relatives and close friends`
+* Domain: `Social environment`
+* Value type: `cathegorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Indian population
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `he029`
+* Label: `can people in neighborhood be trusted`
+* Categories:
+    + `1 = strongly agree`
+    + `2 = agree`
+    + `3 = disagree`
+    + `4 = strongly disagree`
+* Missings:
+    + `5 = dk`
+    + `6 = rf`
+* Description:
+```{r assign1}
+opal.assign.table.tibble(o, 'LASI_w1_trust','LASI.LASI-Pilot_all',variables=list('he029'), missings = TRUE)
+```
+
+```{r local1}
+LASI_w1_trust <- opal.execute(o,'LASI_w1_trust')
+vari <- LASI_w1_trust$he029
+kable(Categorical_summary(vari, missing_values = c(5,6))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(5,6))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(5,6))[2], caption = "Type of missing")
+#Categorical_summary(var = LASI_w1_trust$he029, missing_values = NA)
+ggplot(LASI_w1_trust, aes(x=factor(he029))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("can people in neighborhood be trusted") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1,2 into 1`
+* `3,4 into 0`
+* `7 into 998`
+* `8 into 997`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1, echo=TRUE}
+LASI_ds_w1 <- tibble(id=LASI_w1_trust$id)
+LASI_ds_w1$trust <- car::recode(as.vector(LASI_w1_trust$he029), "1:2='1'; 3:4='0'; 5='998'; 6='997'; NA='999'")
+LASI_ds_w1$trust <- labelled(LASI_ds_w1$trust, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1}
+vari <- LASI_ds_w1$trust
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = LASI_ds_w1$trust, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(LASI_ds_w1, aes(x=factor(trust))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Generalized trust") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1}
+AfterH <- table(LASI_ds_w1$trust)
+BeforeH <- table(LASI_w1_trust$he029, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[2]] <- sum(BeforeH[c(1,2)])
+BeforeH1[[1]] <- sum(BeforeH[c(3,4)])
+BeforeH1[[3]] <- BeforeH[[6]]
+BeforeH1[[4]] <- BeforeH[[5]]
+BeforeH1[[5]] <- BeforeH[[7]]
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("3:4->0","1:2->1","6->997","5->998","NA->999")
+kable(C)
+```
+
+```{r save, echo=FALSE}
+trust <- LASI_ds_w1
+save(trust, file = "../RData/w1/trust.RData")
+rm(trust)
+
+
+```
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```

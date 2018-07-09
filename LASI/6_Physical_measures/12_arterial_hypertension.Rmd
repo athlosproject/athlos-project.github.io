@@ -1,0 +1,140 @@
+---
+title: "Arterial hypertension"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `ah`
+* Variable label: `Arterial hypertension`
+* Variable description: `Arterial hypertension. Means of all diastolic blood pressure measures.`
+* Domain: `Physical Measures`
+* Value type: `Categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | no hypertension
+1        | hypertension
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done 
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Arterial hypertension"
+ds_label_all <- "Arterial hypertension. Means of all diastolic blood pressure measures."
+```
+
+# Data process
+
+## India
+
+### Wave 1 
+
+#### Study-specific variable description
+
+* Name: `ht002`
+* Label: `health professional told you that you have hbp or hypertension`
+* Categories: 
+    + `1 = yes`
+    + `2 = no`
+* Description:
+
+```{r assign1, echo=FALSE}
+opal.assign.table.tibble(o, 'LASI_ah','LASI.LASI-Pilot_all',
+                         variables=list('ht002'), missings = TRUE)
+LASI_ah <- opal.execute(o,'LASI_ah')
+```
+
+```{r local1, echo=FALSE}
+vari <- LASI_ah$ht002
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "Cognition - Immediate recall")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(LASI_ah, aes(x=factor(ht002))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `2 "no" into 0`
+* `keep "yes" into 1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1, echo=TRUE}
+LASI_ds_w1 <- tibble(id=LASI_ah$id)
+LASI_ds_w1$ah <- car::recode(LASI_ah$ht002, "2=0; NA=999")
+LASI_ds_w1$ah <- labelled(LASI_ds_w1$ah, labels = c("no hypertension"=0, "hypertension"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1, echo=FALSE}
+vari <- LASI_ds_w1$ah
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Cognition - Immediate recall")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(LASI_ds_w1, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=FALSE}
+AfterH <- table(LASI_ds_w1$ah, useNA = 'ifany')
+BeforeH <- table(LASI_ah$ht002, useNA = 'ifany')[c(2,1,3)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1", "NA->999")
+kable(C)
+```
+
+
+```{r importOPAL1, echo=FALSE}
+#opal.assign.data(o, 'LASI_ds_w1', LASI_ds_w1)
+#opal.symbol_import(o,'LASI_ds_w1', project='_Athlos_Harm_Dataset')
+
+#LASI_m_ds_w1 <- LASI_ds_w1
+#LASI_m_ds_w1$sex <- car::recode(LASI_m_ds_w1$sex, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'LASI_m_ds_w1', LASI_m_ds_w1)
+#opal.symbol_import(o,'LASI_m_ds_w1', project='_Athlos_Harm_Dataset')
+
+label(LASI_ds_w1) <- ds_label_all
+ah <- LASI_ds_w1
+save(ah, file = "../RData/w1/ah.RData")
+```
+
+# Quality estimation
+
+The variable chosen (ht002) to harmonized arterial hypertension as a physical 
+measure doesn't fit in the definition of the variable, but it was decided to take 
+it is better than nothing.
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+

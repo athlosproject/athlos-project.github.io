@@ -1,0 +1,149 @@
+---
+title: "Living alone"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+  
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_ania.r")
+```
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+
+* Short name: `living_alone`
+* Variable label: `Participant is currently living alone`
+* Variable description: `Participant is currently living alone`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+# Data process 
+
+## India
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `cv002_intro` |
+|-|-|
+| **Label** | `number of people in the household` |
+| **Table name** | `LASI-Pilot_all` |
+| **Description** |  |
+
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'LASI_w1_la','LASI.LASI-Pilot_all',
+                         variables=list('cv002_intro'), missings = TRUE)
+```
+
+```{r local1, echo=F}
+LASI_w1_la <- opal.execute(o,'LASI_w1_la')
+vari <- LASI_w1_la$cv002_intro
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = LASI_w1_la$cv002_intro, missing_values = NA)
+ggplot(LASI_w1_la, aes(x=factor(cv002_intro))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Alone") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `keep 1 into 1`
+* `>1 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1}
+LASI_ds_w1 <- tibble(id=LASI_w1_la$id)
+LASI_ds_w1$living_alone <- car::recode(LASI_w1_la$cv002_intro, "2:hi=0; NA=999")
+LASI_ds_w1$living_alone  <- labelled(LASI_ds_w1$living_alone , labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=F}
+vari <- LASI_ds_w1$living_alone
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = LASI_ds_w1$living_alone, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(LASI_ds_w1, aes(x=factor(living_alone))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Alone") + ylab("Frequency")
+```
+
+
+#### Validation
+```{r crosstabulation1, echo=F}
+BeforeH <- table(LASI_w1_la$cv002_intro)
+BeforeH <- c(sum(BeforeH[2:length(BeforeH)]), BeforeH[1])
+AfterH <- table(LASI_ds_w1$living_alone)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(">=2->0","1")
+kable(C)
+```
+
+
+```{r importOPAL1, echo=F}
+#opal.assign.data(o, 'LASI_ds_w1', LASI_ds_w1)
+#opal.symbol_import(o,'LASI_ds_w1', project='_Athlos_Harm_Dataset')
+living_alone <- LASI_ds_w1
+save(living_alone, file = "../RData/w1/living_alone.RData")
+rm(living_alone)
+
+LASI_m_ds_w1 <- LASI_ds_w1
+LASI_m_ds_w1$living_alone <- car::recode(LASI_m_ds_w1$living_alone, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'LASI_m_ds_w1', LASI_m_ds_w1)
+#opal.symbol_import(o,'LASI_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+# Quality estimation
+No comments.
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+
+
+

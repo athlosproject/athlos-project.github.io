@@ -1,0 +1,240 @@
+---
+title: "Alcohol drinking"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/alcoholDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/alcoholDS.R')
+```
+
+
+
+# Data process
+
+
+
+
+## India
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+
+
+| **Name** | `ht214` | `ht215` |`ht217`|
+|-|-|-|-|
+| **Label** | `consumption of alcoholic beverages`|`currently drink alcoholic beverages`|`number of days per week drinking`|
+| **Table name**  | `LASI-Pilot_all`| `LASI-Pilot_all`| `LASI-Pilot_all`|
+| **Categories** | `1 = yes`<br/>`2 = no, never` | `1 = yes`<br/>`2 = no, i have quit drinking` |`continuous`|
+| **Missings** | `NA` | `NA` | `NA` |
+| **Description** |  |  |  |
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'LASI_w1','LASI.LASI-Pilot_all',variables=list('ht214','ht215','ht217'), missings = T)
+LASI_w1 <- opal.execute(o,'LASI_w1')
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- LASI_w1$ht214
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(LASI_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(LASI_w1, aes(x=factor(ht214))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- LASI_w1$ht215
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(LASI_w1)[3])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(LASI_w1, aes(x=factor(ht215))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- LASI_w1$ht217
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "ht217") 
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(LASI_w1, aes(ht217)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(-1,8)
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `current_oh` from the study-specific variables `ht214` and `ht215` they have to be recoded as follows:
+
+* `some 2 into 0`
+* `all 1 into 1`
+* `otherwise into 999`
+
+To compute `freq_oh` from the study-specific variable `ht217` it has to be recoded as follows:
+
+* `2 to 7 into 2`
+* `1 into 1`
+* `0 into 0`
+* `if current_oh == 0, freq_oh = 0`
+* `otherwise into 999`
+
+To compute `past_oh` from the study-specific variables `ht214` and `ht215` they have to be recoded as follows:
+
+* `ht214 == 1 and ht215 == 0 into 1`
+* `ht214 == 0 into 0`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo w1}
+
+# Categorical variable harmonization
+LASI_ds_w1 <- tibble(id=LASI_w1$id)
+LASI_ds_w1$current_oh <- car::recode(LASI_w1$ht215, "2=0; NA=999")
+LASI_ds_w1$current_oh[which(LASI_w1$ht214==2)] <- 0
+LASI_ds_w1$freq_oh <- car::recode(LASI_w1$ht217, "2:7=2; NA=999; 8:hi=999")
+LASI_ds_w1$freq_oh[which(LASI_ds_w1$current_oh==0)] <- 0
+LASI_ds_w1$past_oh <- car::recode(LASI_w1$ht214, "2=0; NA=999")
+LASI_ds_w1$past_oh[which(LASI_w1$ht215 == 1)] <- 999
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- LASI_ds_w1$current_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_curr)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(LASI_ds_w1, aes(x=factor(current_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_curr) + ylab("Frequency")
+
+vbl <- LASI_ds_w1$freq_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_freq)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(LASI_ds_w1, aes(x=factor(freq_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_freq) + ylab("Frequency")
+
+vbl <- LASI_ds_w1$past_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_past)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(LASI_ds_w1, aes(x=factor(past_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_past) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+
+
+```
+
+
+
+
+
+
+## Descriptive statistics of the harmonised variable accross populations and waves
+
+Percentages of categories in each harmonised variable:
+
+
+**R script:**
+
+```{r summ}
+
+LASI_ds_w1$current_oh <- labelled(LASI_ds_w1$current_oh, labels = cat_label)
+label(LASI_ds_w1$current_oh) <- ds_label_curr
+LASI_ds_w1$freq_oh <- labelled(LASI_ds_w1$current_oh, labels = freq_label)
+label(LASI_ds_w1$freq_oh) <- ds_label_freq
+LASI_ds_w1$past_oh <- labelled(LASI_ds_w1$past_oh, labels = cat_label)
+label(LASI_ds_w1$past_oh) <- ds_label_past
+
+LASI_m_ds_w1 <- LASI_ds_w1
+LASI_m_ds_w1$current_oh <- car::recode(LASI_m_ds_w1$current_oh, "miss_values_vector=NA")
+LASI_m_ds_w1$freq_oh <- car::recode(LASI_m_ds_w1$freq_oh, "miss_values_vector=NA")
+LASI_m_ds_w1$past_oh <- car::recode(LASI_m_ds_w1$past_oh, "miss_values_vector=NA")
+
+
+
+
+
+tt <- frq(LASI_ds_w1$current_oh)[[1]][,c(1:2,4)]
+tt[13,] <- c("n", "sample size", 
+             length(LASI_ds_w1$current_oh)
+             )
+names(tt)<-c("val", "label", "w1")
+kable(tt, caption = 'current_oh')
+
+tt <- frq(LASI_ds_w1$freq_oh)[[1]][,c(1:2,4)]
+tt[14,] <- c("n", "sample size", 
+             length(LASI_ds_w1$freq_oh)
+             )
+names(tt)<-c("val", "label", "w1")
+kable(tt, caption = 'freq_oh')
+
+tt <- frq(LASI_ds_w1$past_oh)[[1]][,c(1:2,4)]
+tt[13,] <- c("n", "sample size", 
+             length(LASI_ds_w1$past_oh)
+             )
+names(tt)<-c("val", "label", "w1")
+kable(tt, caption = 'past_oh')
+
+
+
+```
+
+
+
+# Quality estimation
+
+Only those individuals who currently do not drink but previously did are considered as past drinkers.
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+l.LASI <- list(w1 = LASI_ds_w1)
+
+for(index in seq_along(l.LASI)){
+  alcohol <- l.LASI[[index]]
+  save(alcohol, file = paste0(datafolder,names(l.LASI)[index],"/alcohol.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+
