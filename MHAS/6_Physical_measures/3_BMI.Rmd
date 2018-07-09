@@ -1,0 +1,480 @@
+---
+title: "BMI"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `bmi`
+* Variable label: `Body Mass Index calculated as weight (kg)/height(m)^2`
+* Variable description: `the BMI variable should be created by dividing weight and height variables with the following equation= weight (kg)/height(m)^2`
+* Domain: `Physical measures`
+* Value type: `continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+# Data process
+
+
+
+```{r lab, echo=FALSE}
+ds_label <- "Body Mass Index calculated as weight (kg)/height(m)^2"
+```
+
+
+## Mexico
+
+### MHAS - Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `c71`
+* Label: `Weight`
+* Type of variable: `countinous`
+* Missings
+    + `888 = Doesn't answer`
+    + `999 = Doesn't know`
+
+* Name: `c72`
+* Label: `Height`
+* Type of variable: `countinous`
+* Missings
+    + `888 = Doesn't answer`
+    + `999 = Doesn't know`
+
+
+```{r assign1}
+opal.assign.table.tibble(o, 'MHAS_w1_bmi','Mexican Health Aging Study.MHAS-2001',
+                         variables=list('c71', 'c72'), missings = TRUE)
+```
+
+```{r local1}
+MHAS_w1_bmi <- opal.execute(o,'MHAS_w1_bmi')
+
+Continuous_summary(var = MHAS_w1_bmi$c71, missing_values = c(888,999))
+ggplot(MHAS_w1_bmi, aes(c71)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency") + xlim(30,180)
+
+Continuous_summary(var = MHAS_w1_bmi$c72, missing_values = c(888,999))
+ggplot(MHAS_w1_bmi, aes(c72)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(50,100)
+
+```
+
+#### Harmonisation algorithm
+The harmonized variable will be calculate from the study-specific variables using this formula
+
+bmi=weight/height^2
+
+The missing values have to be recoded as follows:
+
+* `recode 888 "Doesn't answer" into 995`
+* `recode 999 "Doesn't know" into 998`
+* `NA as 999`
+
+R code of the ALGORITHM:
+
+```{r harmo1}
+compute_bmi <- function(Heigth, Weigth, miss, heigth_m = TRUE){
+  Heigth <- car::recode(Heigth, "NA=9999")
+  Weigth <- car::recode(Weigth, "NA=9999")
+  
+  if(heigth_m){
+    bmi <- Weigth/(Heigth^2)
+    
+    bmi[Heigth==9999] <- 9999
+    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
+    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
+    
+    bmi[Weigth==9999] <- 9999
+    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
+    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
+  } else {
+    bmi <- Weigth/((Heigth/100)^2)
+    
+    bmi[Heigth==9999] <- 9999
+    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
+    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
+    
+    bmi[Weigth==9999] <- 9999
+    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
+    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
+  }
+  bmi
+}
+
+MHAS_w1_bmi$c72_2 <- car::recode(MHAS_w1_bmi$c72, "915:992=999")
+
+MHAS_w1_bmi$bmi <- compute_bmi(Heigth = MHAS_w1_bmi$c72_2, 
+                        Weigth = MHAS_w1_bmi$c71, miss = c(888,999), 
+                        heigth_m = FALSE)
+
+
+MHAS_ds_w1 <- tibble(id=MHAS_w1_bmi$id)
+MHAS_ds_w1$bmi <- car::recode(MHAS_w1_bmi$bmi, "888=995; 999=998; 9999=999")
+MHAS_ds_w1$bmi <- labelled(MHAS_ds_w1$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1}
+Continuous_summary(var = MHAS_ds_w1$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_ds_w1, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,100)
+```
+
+#### Validation
+There are some unusual values that are lower than 13 and higger than 70:
+```{r crosstabulation1}
+MHAS_w1_bmi[which(MHAS_w1_bmi$bmi<13 | (MHAS_w1_bmi$bmi>70 & MHAS_w1_bmi$bmi<887)),]
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+
+
+### MHAS - Wave 2 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `c66`
+* Label: `Weight`
+* Type of variable: `countinous`
+* Missings
+    + `888 = Doesn't answer`
+    + `999 = Doesn't know`
+
+* Name: `c67`
+* Label: `Height without shoes`
+* Type of variable: `countinous`
+* Missings
+    + `888 = Doesn't answer`
+    + `999 = Doesn't know`
+
+```{r assign2}
+opal.assign.table.tibble(o, 'MHAS_w2_bmi','Mexican Health Aging Study.MHAS_2003',
+                         variables=list('c66', 'c67'), missings = TRUE)
+```
+
+```{r local2}
+MHAS_w2_bmi <- opal.execute(o,'MHAS_w2_bmi')
+Continuous_summary(var = MHAS_w2_bmi$c66, missing_values = c(888,999))
+ggplot(MHAS_w2_bmi, aes(c66)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency") + xlim(20,180)
+
+Continuous_summary(var = MHAS_w2_bmi$c67, missing_values = c(888,999))
+ggplot(MHAS_w2_bmi, aes(c67)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(50,100)
+```
+
+There is a individual with weigth value 20 that is going to be considered as a mistake, it will be recoded as 999. 
+
+#### Harmonisation algorithm
+The harmonized variable will be calculate from the study-specific variables using this formula
+
+bmi=weight/height^2
+
+The missing values have to be recoded as follows:
+
+* `recode 888 "Doesn't answer" into 995`
+* `recode 999 "Doesn't know" into 998`
+* `NA as 999`
+ 
+
+R code of the ALGORITHM:
+
+```{r harmo2}
+compute_bmi <- function(Heigth, Weigth, miss, heigth_m = TRUE){
+  Heigth <- car::recode(Heigth, "NA=9999")
+  Weigth <- car::recode(Weigth, "NA=9999")
+  
+  if(heigth_m){
+    bmi <- Weigth/(Heigth^2)
+    
+    bmi[Heigth==9999] <- 9999
+    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
+    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
+    
+    bmi[Weigth==9999] <- 9999
+    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
+    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
+  } else {
+    bmi <- Weigth/((Heigth/100)^2)
+    
+    bmi[Heigth==9999] <- 9999
+    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
+    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
+    
+    bmi[Weigth==9999] <- 9999
+    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
+    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
+  }
+  bmi
+}
+
+MHAS_w2_bmi$c66 <- car::recode(MHAS_w2_bmi$c66 , "20=999")
+
+MHAS_w2_bmi$bmi <- compute_bmi(Heigth = MHAS_w2_bmi$c67, 
+                        Weigth = MHAS_w2_bmi$c66, miss = c(888,999), 
+                        heigth_m = FALSE)
+
+
+MHAS_ds_w2 <- tibble(id=MHAS_w2_bmi$id)
+MHAS_ds_w2$bmi <- car::recode(MHAS_w2_bmi$bmi, "888=995; 999=998; 9999=999")
+MHAS_ds_w2$bmi <- labelled(MHAS_ds_w2$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2}
+Continuous_summary(var = MHAS_ds_w2$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ ggplot(MHAS_ds_w2, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,100)
+```
+
+#### Validation
+There are some unusual values that are lower than 13 and higger than 70:
+```{r crosstabulation2}
+MHAS_w2_bmi[which(MHAS_w2_bmi$bmi<13 | (MHAS_w2_bmi$bmi>70 & MHAS_w2_bmi$bmi<887)),]
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+
+
+
+### MHAS - Wave 3 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `peso1_12`
+* Label: `Weight - first measurement`
+* Type of variable: `countinous`
+* Missings
+    + `995.0 = Tried, but could not do 995.0`
+    + `996.0 = Did not try 996.0`
+    + `997.0 = Cannot stand 997.0`
+    + `999.0 = Refused to provide 999.0`
+* Name: `peso2_12`
+* Label: `Weight - second measurement`
+* Type of variable: `countinous`
+* Missings
+    + `995.0 = Tried, but could not do 995.0`
+    + `996.0 = Did not try 996.0`
+    + `997.0 = Cannot stand 997.0`
+    + `999.0 = Refused to provide 999.0`
+    
+* Name: `estatu1_12`
+* Label: `Height - first measurement`
+* Type of variable: `countinous`
+* Missings
+    + `995.0 = Tried, but could not do 995.0`
+    + `996.0 = Did not try 996.0`
+    + `997.0 = Cannot stand 997.0`
+    + `999.0 = Refused to provide 999.0`
+* Name: `estatu2_12`
+* Label: `Weight - second measurement`
+* Type of variable: `countinous`
+* Missings
+    + `995.0 = Tried, but could not do 995.0`
+    + `996.0 = Did not try 996.0`
+    + `997.0 = Cannot stand 997.0`
+    + `999.0 = Refused to provide 999.0`
+
+
+```{r assign3}
+opal.assign.table.tibble(o, 'MHAS_w3_bmi','Mexican Health Aging Study.MHAS_2012_new',
+                         variables=list('peso1_12', 'peso2_12', 'estatu1_12', 'estatu2_12'), missings = TRUE)
+```
+
+```{r local3}
+MHAS_w3_bmi <- opal.execute(o,'MHAS_w3_bmi')
+
+Continuous_summary(var = MHAS_w3_bmi$peso1_12, missing_values = c(995, 996, 997, 999))
+ggplot(MHAS_w3_bmi, aes(peso1_12)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency") + xlim(30,150)
+Continuous_summary(var = MHAS_w3_bmi$peso2_12, missing_values = c(995, 996, 997, 999))
+ggplot(MHAS_w3_bmi, aes(peso2_12)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency") + xlim(30,150)
+
+Continuous_summary(var = MHAS_w3_bmi$estatu1_12, missing_values = c(995, 996, 997, 999))
+ggplot(MHAS_w3_bmi, aes(estatu1_12)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+Continuous_summary(var = MHAS_w3_bmi$estatu2_12, missing_values = c(995, 996, 997, 999))
+ggplot(MHAS_w3_bmi, aes(estatu2_12)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+```
+
+
+#### Harmonisation algorithm
+The harmonized variable will be calculate from the study-specific variables using this formula
+
+bmi=weight/height^2
+
+The missing values have to be recoded as follows:
+
+* `recode 995 "Tried, but could not do 995.0" into 993`
+* `recode 996 "Did not try 996.0" into 994`
+* `recode 997 "Cannot stand 997.0" into 993`
+* `recode 999 "Refused to provide 999.0" into 997`
+* `NA as 999`
+
+R code of the ALGORITHM:
+
+```{r harmo3}
+compute_bmi <- function(Heigth, Weigth, miss, heigth_m = TRUE){
+  Heigth <- car::recode(Heigth, "NA=9999")
+  Weigth <- car::recode(Weigth, "NA=9999")
+  
+  if(heigth_m){
+    bmi <- Weigth/(Heigth^2)
+    
+    bmi[Heigth==9999] <- 9999
+    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
+    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
+    bmi[Heigth==miss[3]] <- Heigth[Heigth==miss[3]]
+    bmi[Heigth==miss[4]] <- Heigth[Heigth==miss[4]]
+    
+    bmi[Weigth==9999] <- 9999
+    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
+    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
+    bmi[Heigth==miss[3]] <- Heigth[Heigth==miss[3]]
+    bmi[Heigth==miss[4]] <- Heigth[Heigth==miss[4]]
+    
+  } else {
+    bmi <- Weigth/((Heigth/100)^2)
+    
+    bmi[Heigth==9999] <- 9999
+    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
+    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
+    bmi[Heigth==miss[3]] <- Heigth[Heigth==miss[3]]
+    bmi[Heigth==miss[4]] <- Heigth[Heigth==miss[4]]
+    
+    bmi[Weigth==9999] <- 9999
+    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
+    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
+    bmi[Heigth==miss[3]] <- Heigth[Heigth==miss[3]]
+    bmi[Heigth==miss[4]] <- Heigth[Heigth==miss[4]]
+  }
+  bmi
+}
+
+MHAS_w3_bmi$mean_estatu <- apply(X = MHAS_w3_bmi[,c(2,3)], MARGIN = 1, FUN = mean)
+MHAS_w3_bmi$mean_peso <- apply(X = MHAS_w3_bmi[,c(4,5)], MARGIN = 1, FUN = mean)
+
+MHAS_w3_bmi$bmi <- compute_bmi(Heigth = MHAS_w3_bmi$mean_estatu, 
+                        Weigth = MHAS_w3_bmi$mean_peso, miss = c(995, 996, 997, 999), 
+                        heigth_m = FALSE)
+
+
+MHAS_ds_w3 <- tibble(id=MHAS_w3_bmi$id)
+MHAS_ds_w3$bmi <- car::recode(MHAS_w3_bmi$bmi, "995=993; 996=994; 997=993; 999=997; 9999=999")
+MHAS_ds_w3$bmi <- labelled(MHAS_ds_w3$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript3}
+Continuous_summary(var = MHAS_ds_w3$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ ggplot(MHAS_ds_w3, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,100)
+```
+
+#### Validation
+```{r crosstabulation3}
+```
+
+
+#### Quality estimation
+No comments.
+
+
+
+<!--- ############################################### Import to OPAL ###########################################-->
+```{r importOPAL, echo=FALSE}
+bmi <- MHAS_m_ds_w1   <- MHAS_ds_w1
+save(bmi, file = "../RData/w1/bmi.RData")
+rm(bmi)
+
+bmi <- MHAS_m_ds_w2   <- MHAS_ds_w2
+save(bmi, file = "../RData/w2/bmi.RData")
+rm(bmi)
+
+bmi <- MHAS_m_ds_w3   <- MHAS_ds_w3
+save(bmi, file = "../RData/w3/bmi.RData")
+rm(bmi)
+
+
+l.hds <- list(MHAS_ds_w1 = MHAS_ds_w1 , MHAS_ds_w2 = MHAS_ds_w2, MHAS_ds_w3=MHAS_ds_w3)
+
+m.hds <- list(MHAS_m_ds_w1 = MHAS_m_ds_w1 , MHAS_m_ds_w2 = MHAS_m_ds_w2, MHAS_m_ds_w3 = MHAS_m_ds_w3)
+
+
+for(i in 1:length(l.hds)) {
+  label(l.hds[[i]][[2]]) <- label(m.hds[[i]][[2]]) <- ds_label # Text value assigned at the DS description, at the top.
+    
+  m.hds[[i]][[2]] <- car::recode(m.hds[[i]][[2]], "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+  nl <- names(l.hds[i])
+  #opal.assign.data(o, nl , l.hds[[i]])
+  #opal.symbol_import(o, nl , project='_Athlos_Harm_Dataset')  
+
+  ml <- names(m.hds[i])
+  #opal.assign.data(o, ml , m.hds[[i]]) 
+  #opal.symbol_import(o, ml , project='_Athlos_Harm_Dataset')  
+
+}
+```
+
+
+## Descriptive statistics of the harmonised variable accross populations and waves
+
+Percentages of categories in each harmonised variable by cohort and wave:
+
+```{r summ}
+# Table HRS
+#t.hds <- frq(l.hds[[2]][2])[[1]][,c(1,2)] 
+#for (i in 1:length(l.hds)){
+#  t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4]
+#}
+#t.hds[13,] <- c("n", "sample size", 
+#             length(l.hds[[1]][[2]]), length(l.hds[[2]][[2]]) , length(l.hds[[3]][[2]]))
+#names(t.hds)<-c("val", "label", "Wave1", "Wave2", "Wave3")
+#kable(t.hds)
+```
+
+
+
+<!--- #### Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+#opal.logout(o)
+```

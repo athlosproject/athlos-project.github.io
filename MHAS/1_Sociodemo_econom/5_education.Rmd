@@ -1,0 +1,376 @@
+---
+title: "Education"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_ania.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `education`
+* Variable label: `Highest level of formal education achieved`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | less than primary education
+1        | primary education
+2        | secondary education
+3        | tertiary education
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Mexico
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `a3_1`
+* Label: `Level of education`
+* Categories: 
+    + `0 = none`
+    + `1 = primary`
+    + `2 = secondary (junior high)`
+    + `3 = technical or commercial`
+    + `4 = preparatory or High School`
+    + `5 = basic teaching school`
+    + `6 = college`
+    + `7 = graduate`
+* Missings: 
+    + `8 = RF`
+    + `9 = DK`
+
+* Description: 
+```{r assign1,  echo=FALSE}
+opal.assign.table.tibble(o, 'MHAS_w1_educ','Mexican Health Aging Study.MHAS-2001',
+                         variables=list('a3_1'), missings = TRUE)
+```
+
+```{r local1,  echo=FALSE}
+MHAS_w1_educ <- opal.execute(o,'MHAS_w1_educ')
+vari <-  MHAS_w1_educ$a3_1
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_w1_educ$a3_1, missing_values = c(8,9))
+ggplot(MHAS_w1_educ, aes(x=factor(a3_1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "none" into 0`
+* `keep "primary" into 1`
+* `keep "secondary (junior high)" into 2`
+* `recode 3 "technical or commercial" into 2`
+* `recode 4 "preparatory or High School" into 2`
+* `recode 5 "basic teaching school" into 2`
+* `recode 6 "college" into 3`
+* `recode 7 "graduate" into 3`
+* `recode 8 "RF" into 997`
+* `recode 9 "DK" into 998`
+
+**R script:**
+
+```{r harmo1,   echo=TRUE}
+MHAS_ds_w1 <- tibble(id=MHAS_w1_educ$id)
+MHAS_ds_w1$education <- car::recode(MHAS_w1_educ$a3_1, "3=2; 4=2; 5=2; 6=3; 7=3; 8=997; 9=998; NA=999")
+MHAS_ds_w1$education <- labelled(MHAS_ds_w1$education, labels = c("less than primary education"=0, "primary education"=1, "secondary education"=2, "tertiary education"=3, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1,  echo=FALSE}
+vari <- MHAS_ds_w1$education
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_ds_w1$education, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_ds_w1, aes(x=factor(education))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1,  echo=FALSE}
+BeforeH <- table(MHAS_w1_educ$a3_1)
+BeforeH <- c(BeforeH[1], BeforeH[2],sum(BeforeH[3:6]), sum(BeforeH[7:8]), BeforeH[9], BeforeH[10])
+AfterH <- table(MHAS_ds_w1$education)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0", "1", "(2,3,4,5)->2", "(6,7)->3", "8->997", "9->998")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL1,  echo=FALSE}
+val_labels(MHAS_ds_w1) <- NULL
+#opal.assign.data(o, 'MHAS_ds_w1', MHAS_ds_w1)
+#opal.symbol_import(o,'MHAS_ds_w1', project='_Athlos_Harm_Dataset')
+education <- MHAS_ds_w1
+save(education, file = "../RData/w1/education.RData")
+rm(education)
+
+MHAS_m_ds_w1 <- MHAS_ds_w1
+MHAS_m_ds_w1$education <- car::recode(MHAS_m_ds_w1$education, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'MHAS_m_ds_w1', MHAS_m_ds_w1)
+#opal.symbol_import(o,'MHAS_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `aa4a_1`
+* Label: `Education level - level`
+* Categories: 
+    + `0 = none`
+    + `1 = primary`
+    + `2 = secondary (junior high)`
+    + `3 = technical or commercial`
+    + `4 = preparatory or High School`
+    + `5 = basic teaching school`
+    + `6 = college`
+    + `7 = graduate`
+* Missings: 
+    + `8 = RF`
+    + `9 = DK`
+    
+* Description: 
+```{r assign2,  echo=FALSE}
+opal.assign.table.tibble(o, 'MHAS_w2_educ','Mexican Health Aging Study.MHAS_2003',
+                         variables=list('aa4a_1'), missings = TRUE)
+```
+
+```{r local2,  echo=FALSE}
+MHAS_w2_educ <- opal.execute(o,'MHAS_w2_educ')
+vari <-  MHAS_w2_educ$aa4a_1
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_w2_educ$aa4a_1, missing_values = c(8,9))
+ggplot(MHAS_w2_educ, aes(x=factor(aa4a_1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "none" into 0`
+* `keep "primary" into 1`
+* `keep "secondary (junior high)" into 2`
+* `recode 3 "technical or commercial" into 2`
+* `recode 4 "preparatory or High School" into 2`
+* `recode 5 "basic teaching school" into 2`
+* `recode 6 "college" into 3`
+* `recode 7 "graduate" into 3`
+* `recode 8 "RF" into 997`
+* `recode 9 "DK" into 998`
+**R script:**
+
+
+
+```{r harmo2,   echo=TRUE}
+MHAS_ds_w2 <- tibble(id=MHAS_w2_educ$id)
+MHAS_ds_w2$education <- car::recode(MHAS_w2_educ$aa4a_1, "3=2; 4=2; 5=2; 6=3; 7=3; 8=997; 9=998; NA=999")
+MHAS_ds_w2$education <- labelled(MHAS_ds_w2$education, labels = c("less than primary education"=0, "primary education"=1, "secondary education"=2, "tertiary education"=3, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2,  echo=FALSE}
+vari <- MHAS_ds_w2$education
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_ds_w2$education, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_ds_w2, aes(x=factor(education))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2,  echo=FALSE}
+BeforeH <- table(MHAS_w2_educ$aa4a_1)
+BeforeH <- c(BeforeH[1], BeforeH[2],sum(BeforeH[3:6]), sum(BeforeH[7:8]), BeforeH[9], sum(is.na(MHAS_w2_educ$aa4a_1)))
+AfterH <- table(MHAS_ds_w2$education)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0", "1", "(2,3,4,5)->2", "(6,7)->3", "9->998", "NA->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL2,  echo=FALSE}
+val_labels(MHAS_ds_w2) <- NULL
+#opal.assign.data(o, 'MHAS_ds_w2', MHAS_ds_w2)
+#opal.symbol_import(o,'MHAS_ds_w2', project='_Athlos_Harm_Dataset')
+education <- MHAS_ds_w2
+save(education, file = "../RData/w2/education.RData")
+rm(education)
+
+MHAS_m_ds_w2 <- MHAS_ds_w2
+MHAS_m_ds_w2$education <- car::recode(MHAS_m_ds_w2$education, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'MHAS_m_ds_w2', MHAS_m_ds_w2)
+#opal.symbol_import(o,'MHAS_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 3 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `aa4a1_12`
+* Label: `Level of education`
+* Categories: 
+    + `0 = None`
+    + `1 = Elementary`
+    + `2 = Secondary`
+    + `3 = Technical or commercial`
+    + `4 = Preparatory or High School`
+    + `5 = Basic teaching school`
+    + `6 = College`
+    + `7 = Graduate school`
+* Missings: 
+    + `8 = RF`
+    + `9 = DK`
+
+
+* Description: 
+```{r assign3,  echo=FALSE}
+opal.assign.table.tibble(o, 'MHAS_w3_educ','Mexican Health Aging Study.MHAS_2012_new',
+                         variables=list('aa4a1_12'), missings = TRUE)
+```
+
+```{r local3,  echo=FALSE}
+MHAS_w3_educ <- opal.execute(o,'MHAS_w3_educ')
+vari <-   MHAS_w3_educ$aa4a1_12
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_w3_educ$aa4a1_12, missing_values = c(8,9))
+ggplot(MHAS_w3_educ, aes(x=factor(aa4a1_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "none" into 0`
+* `keep "primary" into 1`
+* `keep "secondary (junior high)" into 2`
+* `recode 3 "technical or commercial" into 2`
+* `recode 4 "preparatory or High School" into 2`
+* `recode 5 "basic teaching school" into 2`
+* `recode 6 "college" into 3`
+* `recode 7 "graduate" into 3`
+* `recode 8 "RF" into 997`
+* `recode 9 "DK" into 998`
+
+
+**R script:**
+
+```{r harmo3,   echo=TRUE}
+MHAS_ds_w3 <- tibble(id=MHAS_w3_educ$id)
+MHAS_ds_w3$education <- car::recode(MHAS_w3_educ$aa4a1_12, "3=2; 4=2; 5=2; 6=3; 7=3; 8=997; 9=998; NA=999")
+MHAS_ds_w3$education <- labelled(MHAS_ds_w3$education, labels = c("less than primary education"=0, "primary education"=1, "secondary education"=2, "tertiary education"=3, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript3,  echo=FALSE}
+vari <- MHAS_ds_w3$education
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_ds_w3$education, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_ds_w3, aes(x=factor(education))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation3,  echo=FALSE}
+BeforeH <- table(MHAS_w3_educ$aa4a1_12)
+BeforeH <- c(BeforeH[1], BeforeH[2],sum(BeforeH[3:6]), sum(BeforeH[7:8]), BeforeH[9], sum(is.na(MHAS_w3_educ$aa4a1_12)))
+AfterH <- table(MHAS_ds_w3$education)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0", "1", "(2,3,4,5)->2", "(6,7)->3", "9->998", "NA->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL3,  echo=FALSE}
+val_labels(MHAS_ds_w3) <- NULL
+#opal.assign.data(o, 'MHAS_ds_w3', MHAS_ds_w3)
+#opal.symbol_import(o,'MHAS_ds_w3', project='_Athlos_Harm_Dataset')
+education <- MHAS_ds_w3
+save(education, file = "../RData/w3/education.RData")
+rm(education)
+
+MHAS_m_ds_w3 <- MHAS_ds_w3
+MHAS_m_ds_w3$education <- car::recode(MHAS_m_ds_w3$education, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'MHAS_m_ds_w3', MHAS_m_ds_w3)
+#opal.symbol_import(o,'MHAS_m_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+# Quality estimation
+
+No comments
+
+```{r closeRsession, echo=FALSE,  echo=FALSE} 
+opal.logout(o)
+```
+
+

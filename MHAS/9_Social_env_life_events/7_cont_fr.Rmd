@@ -1,0 +1,301 @@
+---
+title: "Are the contacts with friends/neighbours frequent (i.e. contact once a month or more often)"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/cont_frDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/cont_frDS.R')
+```
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Mexico
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `G29`
+* Label: `Social talks and visits`
+* Categories: 
+    + `1 - 29 times`
+    + `30 = Every day`
+* Missings:
+    + `88 = RF`
+    + `98 = Invalid code`
+    + `99 = DK`
+* Description:
+
+```{r assign1, echo=F}
+
+opal.assign.table.tibble(o, 'MHAS_w1_cont_fr','Mexican Health Aging Study.g_house',variables=list('G29','G1'), missings = TRUE)
+MHAS_w1_cont_fr <- opal.execute(o,'MHAS_w1_cont_fr')
+opal.assign.table.tibble(o, 'MHAS_w1_id','Mexican Health Aging Study.MHAS-2001',variables=list('unhhid'), missings = T)
+MHAS_w1_id <- opal.execute(o,'MHAS_w1_id')
+MHAS_w1_id$unhhid <- paste0(as.character(MHAS_w1_id$unhhid),".0")
+MHAS_w1 <- left_join(MHAS_w1_id,MHAS_w1_cont_fr,by=c("unhhid"="id"))
+
+```
+
+```{r local1, echo=F}
+
+vari <- MHAS_w1_cont_fr$G29
+kable(Continuous_summary(var = vari, missing_values = c(88,98,99))[3], caption = attributes(vari)$`spss::shortName`)
+kable(Continuous_summary(vari, missing_values = c(88,98,99))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(88,98,99))$summary, caption = "Summary")
+ggplot(MHAS_w1_cont_fr, aes(x=factor(G29))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Social talks and visits") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+The interviewer manual specifies:
+
+`When both interviews are conducted with proxies, the TR-habitual residents, TR-Children (section B), and the section on Help and Children (section G) will be filled out only for the first interview. In order to facilitate this, Interview Control Sheets are included in the questionnaire.`
+
+* `For each household id we get the id corresponding to the respondent from the household id (substring of the id's) and the interview code (G1). For them:`
+* `0 -> 0`
+* `1:30 -> 1`
+* `88 -> 997`
+* `99 -> 998`
+* `98,NA into 999`
+
+**R script:**
+
+```{r harmo1, echo=TRUE}
+
+MHAS_ds_w1 <- tibble(id=MHAS_w1$id)
+MHAS_ds_w1$cont_fr <- rep(999,length(MHAS_ds_w1$id))
+MHAS_ds_w1$cont_fr[which(paste0(substr(MHAS_w1$id,1,nchar(MHAS_w1$id)-4),as.character(MHAS_w1$G1),"0.0")==MHAS_w1$id)] <- car::recode(as.vector(MHAS_w1$G29[which(paste0(substr(MHAS_w1$id,1,nchar(MHAS_w1$id)-4),as.character(MHAS_w1$G1),"0.0")==MHAS_w1$id)]), "1:30='1'; 0='0'; 88='997'; 98='999'; 99='998'; NA='999'")
+MHAS_ds_w1$cont_fr <- labelled(MHAS_ds_w1$cont_fr, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1, echo=F}
+vari <- MHAS_ds_w1$cont_fr
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_ds_w1$cont_fr, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_ds_w1, aes(x=factor(cont_fr))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are the contacts with friends/neighbours frequent") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=F}
+
+```
+
+
+
+
+### Wave 2
+
+Not found.
+
+
+### Wave 3
+
+
+
+#### Study-specific variable description
+
+
+| **Name** |`g30_12`|
+|-|-|
+| **Label** |`Number of times per month respondent communicates or visits with neighors`|
+| **Table name**  | `sect_g_j_k_sa_2012`|
+| **Categories** |`1 - 29 times`<br/>`30 = Every day`|
+| **Missings** |`88 = RF`<br/>`99 = DK`|
+| **Description** |  |
+
+
+<!--
+
+By contrast with `subhog_01`, `subhog_03`, `subhog_12` and `id`, the values `103, 104, 105, 107, 108, 109, 202` of `g34_12` may be generically imputed to `10`. The value `110` seems to be `20`. The other values could be `10` or in some cases `20`.
+
+-->
+
+
+```{r assign w3, echo=F}
+
+opal.assign.table.tibble(o, 'MHAS_w3_cont_fr','Mexican Health Aging Study.sect_g_j_k_sa_2012',variables=list('g30_12','g34_12'), missings = TRUE)
+MHAS_w3_cont_fr <- opal.execute(o,'MHAS_w3_cont_fr')
+MHAS_w3_cont_fr$aux <- car::recode(MHAS_w3_cont_fr$g34_12, "103:999=NA")
+# JOIN (HH)ID TOGETHER WITH REGISTRATION NUMBER OF THE RESPONDENT
+MHAS_w3_cont_fr$newid <- paste0(substr(MHAS_w3_cont_fr$id,1,nchar(MHAS_w3_cont_fr$id)-2),as.character(MHAS_w3_cont_fr$aux),".0")
+# Remove duplicated rows
+MHAS_w3_cont_fr <- MHAS_w3_cont_fr[-which(duplicated(MHAS_w3_cont_fr)),]
+
+opal.assign.table.tibble(o, 'MHAS_w3_id','Mexican Health Aging Study.MHAS_2012_new',variables=list('cunicah'), missings = T)
+MHAS_w3_id <- opal.execute(o,'MHAS_w3_id')
+MHAS_w3_id$cunicah <- paste0(as.character(MHAS_w3_id$cunicah),".0")
+
+MHAS_w3 <- left_join(MHAS_w3_id,MHAS_w3_cont_fr,by=c("id"="newid"))
+
+```
+
+<!--
+CHECK FUNCTION:
+
+MHAS_w3[which(sapply(MHAS_w3$id, function(x) !paste0(substr(x,1,nchar(x)-4),as.character(MHAS_w3$g34_12[match(x,MHAS_w3$id)]),".0") %in% grep(paste0("^",substr(x,1,nchar(x)-4),"[0-9][0-9]\\.0"),MHAS_w3$id,value = T)) & MHAS_w3$g34_12 %in% c(10,11,12,20,21)),]
+
+DOES NOT WORK WELL
+
+-->
+
+
+```{r local w3, echo=F}
+
+vbl <- MHAS_w3$g30_12
+kable(Continuous_summary(var = vbl, missing_values = c(88,99))[3], caption = 'g30_12')
+kable(Continuous_summary(vbl, missing_values = c(88,99))[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = c(88,99))$summary, caption = "Summary")
+ggplot(MHAS_w3, aes(x=factor(g30_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+
+* `0 -> 0`
+* `1:30 -> 1`
+* `88 -> 997`
+* `99 -> 998`
+* `98,NA into 999`
+
+
+**R script:**
+
+```{r harmo w3}
+
+MHAS_ds_w3 <- tibble(id=MHAS_w3$id)
+MHAS_ds_w3$cont_fr <- rep(999,length(MHAS_ds_w3$id))
+MHAS_ds_w3$cont_fr <- car::recode(as.vector(MHAS_w3$g30_12), "1:30='1'; 0='0'; 88='997'; 99='998'; NA='999'")
+
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript w3, echo=F}
+
+vari <- MHAS_ds_w3$cont_fr
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3]) 
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(MHAS_ds_w3, aes(x=factor(cont_fr))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w3, echo=F}
+
+```
+
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories.
+
+
+**R script:**
+
+```{r summ}
+
+l.hds <- list(w1 = MHAS_ds_w1, w3 = MHAS_ds_w3)
+
+
+for(name in names(l.hds)) {
+  aux_object <- l.hds[[name]]
+  label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
+  l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  m_name <- paste0("MHAS_m_ds_",name)
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+
+t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+for (i in seq_along(l.hds)){
+  t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+}
+t.hds[13,] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+             )
+names(t.hds)<-c("val", "label", names(l.hds))
+kable(t.hds)
+
+dbb <- get(paste0("MHAS_m_ds_",names(l.hds)[1]))[,c("id","cont_fr")]
+for(ind in 2:length(l.hds)){
+  dbb <- merge(dbb, get(paste0("MHAS_m_ds_",names(l.hds)[ind]))[,c("id","cont_fr")], by = "id", suffixes = c("", paste0(".",names(l.hds)[ind])), all = T)
+}
+names(dbb) <- c("id", names(l.hds))
+
+v.dbb <- dbb[,2]
+for(ind in 2:length(l.hds)){
+  v.dbb <- paste0(v.dbb,dbb[,ind+1])
+}
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb)
+
+```
+
+
+
+
+```{r save, echo=FALSE}
+
+cont_fr <- MHAS_ds_w1
+save(cont_fr, file = "../RData/w1/cont_fr.RData")
+rm(cont_fr)
+
+cont_fr <- MHAS_ds_w3
+save(cont_fr, file = "../RData/w3/cont_fr.RData")
+rm(cont_fr)
+
+```
+
+
+
+# Quality estimation
+
+* In wave 2 there is the variable `G28`, similar to the one in wave 1, but we did not found it in databasis.
+
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```

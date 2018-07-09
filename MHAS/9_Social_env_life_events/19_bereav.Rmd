@@ -1,0 +1,476 @@
+---
+title: "Experience of a loss of any close person"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_ania.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variables is the following:
+
+* Short name: `bereav`
+* Variable label: `Experience of a loss of any close person`
+* Domain: `Social environment`
+* Value type: `cathegorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Mexican population
+
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `a10`
+* Label: `Current marital status`
+* Categories: 
+    + `1 = Single`
+    + `2 = Married`
+    + `3 = In a consensual union`
+    + `4 = Divorced`
+    + `5 = Separated from a union`
+    + `6 = Separated from a marriage`
+    + `7 = Widowed from a union`
+    + `8 = Widowed from a marriage`
+    
+* Name: `f7`
+* Label: `Age mother when died`
+
+* Name: `f14`
+* Label: `Age father when died`
+
+
+* Description: 
+```{r assign1}
+opal.assign.table.tibble(o, 'MHAS_w1_bereav','Mexican Health Aging Study.MHAS-2001',variables=list('a10','f7','f14'), missings = TRUE)
+```
+
+```{r local1}
+MHAS_w1_bereav <- opal.execute(o,'MHAS_w1_bereav')
+vari <- MHAS_w1_bereav$a10
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = MHAS_w1_bereav$a10, missing_values = NA)
+ggplot(MHAS_w1_bereav, aes(x=factor(a10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current marital status") + ylab("Frequency")
+
+vari <- MHAS_w1_bereav$f7
+
+kable(Continuous_summary(vari, missing_values = c(999))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Continuous_summary(vari, missing_values = c(999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values =c(999))$summary, caption = "Summary")
+#Continuous_summary(var = MHAS_w1_bereav$f7, missing_values = NA)
+ggplot(MHAS_w1_bereav, aes(f7)) + geom_histogram(stat="count", width=0.4, fill="steelblue") + xlab("Age mother when died") + ylab("Frequency")+ theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1)) + scale_x_continuous(limits = c(0, 130))
+
+vari <- MHAS_w1_bereav$f14
+kable(Continuous_summary(vari, missing_values = c(999))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Continuous_summary(vari, missing_values = c(999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values =c(999))$summary, caption = "Summary")
+#Continuous_summary(var = MHAS_w1_bereav$f14, missing_values = NA)
+ggplot(MHAS_w1_bereav, aes(f14)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Age father when died") + ylab("Frequency")+ theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1, size=6))+ scale_x_continuous(limits = c(0, 130))
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to becar::recode(as.vector(d as follows:
+
+* `a10 in (7,8) OR (f7 != NA AND f7<150 because there are some values 999) OR   `
+`  (f14 != NA AND f14<150 because there are some values 999) into 1`
+* `a10 in (1,.,6) AND f7=NA AND f14=NA into 0`
+* `NA into 999`
+Note: it was observed that some individuals reported to large ages of death of parents. These individuals were used anyway.
+
+**R script:**
+
+```{r harmo1, echo=TRUE}
+MHAS_ds_w1 <- tibble(id=MHAS_w1_bereav$id)
+
+MHAS_w1_bereav$a10 <-car::recode(as.vector(MHAS_w1_bereav$a10), "NA='-999'")
+MHAS_w1_bereav$f7 <-car::recode(as.vector(MHAS_w1_bereav$f7), "NA='-999'")
+MHAS_w1_bereav$f14 <-car::recode(as.vector(MHAS_w1_bereav$f14), "NA='-999'")
+
+MHAS_ds_w1$bereav <- c(NA)  
+for(i in 1:dim(MHAS_w1_bereav)[1]){
+  if(MHAS_w1_bereav$a10[i] %in% c(7,8) | (!(MHAS_w1_bereav$f7[i] == -999) & MHAS_w1_bereav$f7[i] < 150) |
+    (!(MHAS_w1_bereav$f14[i] == -999) & MHAS_w1_bereav$f14[i] < 150) ){ 
+    MHAS_ds_w1$bereav[i] = 1 }
+  else if(MHAS_w1_bereav$a10[i] %in% c(1,2,3,4,5,6) & MHAS_w1_bereav$f7[i] == -999 & MHAS_w1_bereav$f14[i] == -999 ) { 
+    MHAS_ds_w1$bereav[i] = 0 }
+}
+
+MHAS_ds_w1$bereav <-car::recode(as.vector(MHAS_ds_w1$bereav), "NA='999'")
+MHAS_ds_w1$bereav <- labelled(MHAS_ds_w1$bereav, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1}
+vari <- MHAS_ds_w1$bereav
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_ds_w1$bereav, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_ds_w1, aes(x=factor(bereav))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Experience of a loss of any close person") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1}
+
+```
+
+ 
+ 
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `a3`
+* Label: `Respondent's Marital status`
+* Categories: 
+    + `1 = single?`
+    + `2 = married?`
+    + `3 = in a consensual union?`
+    + `4 = divorced?` 
+    + `5 = separated from a union?`
+    + `6 = separated from a marriage?`
+    + `7 = widowed from a union?` 
+    + `8 = widowed from a marriage?`
+
+* Name: `f7`
+* Label: `Mother passed away in these last two years`
+* Categories: 
+    + `1 = Yes`
+    + `2 = No`
+* Missings:
+    + `9 `
+
+* Name: `f16`
+* Label: `Father passed away in these last two years`
+* Categories: 
+    + `1 = Yes`
+    + `2 = No`
+* Missings:
+    + `9 `
+
+* Name: `f35`
+* Label: `Have any siblings passed away since 2001`
+* Categories: 
+    + `1 = Yes`
+    + `2 = No`
+* Missings:
+    + `9`
+
+
+* Description: 
+```{r assign2}
+opal.assign.table.tibble(o, 'MHAS_w2_bereav','Mexican Health Aging Study.MHAS_2003',
+                         variables=list('a3','f7','f16','f35'), missings = TRUE)
+```
+
+```{r local2}
+MHAS_w2_bereav <- opal.execute(o,'MHAS_w2_bereav')
+
+vari <- MHAS_w2_bereav$a3
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = MHAS_w2_bereav$a3, missing_values = NA)
+ggplot(MHAS_w2_bereav, aes(x=factor(a3))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Respondent's Marital status") + ylab("Frequency")
+
+
+vari <-  MHAS_w2_bereav$f7
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(9))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_w2_bereav$f7, missing_values = NA)
+ggplot(MHAS_w2_bereav, aes(x=factor(f7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Mother passed away in these last two years") + ylab("Frequency")
+
+vari <-  MHAS_w2_bereav$f16
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(9))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_w2_bereav$f16, missing_values = NA)
+ggplot(MHAS_w2_bereav, aes(x=factor(f16))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Father passed away in these last two years") + ylab("Frequency")
+
+vari <-  MHAS_w2_bereav$f35
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(9))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_w2_bereav$f35, missing_values = NA)
+ggplot(MHAS_w2_bereav, aes(x=factor(f35))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Have any siblings passed away since 2001") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Tocar::recode(as.vector( the harmonize variable from the study-specific variable it has to becar::recode(as.vector(d as follows:  
+
+* `A3 in (7,8) OR f7=1 OR f16=1 OR f35=1 into 1`
+* `A3 in (1,.,6) AND f7=2 AND f16=2 AND f35=2 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2, echo=TRUE}
+MHAS_ds_w2 <- tibble(id=MHAS_w2_bereav$id)
+
+MHAS_w2_bereav$a3 <-car::recode(as.vector(MHAS_w2_bereav$a3), "NA='-999'")
+MHAS_w2_bereav$f7 <-car::recode(as.vector(MHAS_w2_bereav$f7), "NA='-999'")
+MHAS_w2_bereav$f16 <-car::recode(as.vector(MHAS_w2_bereav$f16), "NA='-999'")
+MHAS_w2_bereav$f35 <-car::recode(as.vector(MHAS_w2_bereav$f35), "NA='-999'")
+
+MHAS_ds_w2$bereav <- c(NA)  
+for(i in 1:dim(MHAS_w2_bereav)[1]){
+  if(MHAS_w2_bereav$a3[i] %in% c(7,8) | MHAS_w2_bereav$f7[i] == 1 | MHAS_w2_bereav$f16[i] == 1 | MHAS_w2_bereav$f35[i] == 1){ 
+    MHAS_ds_w2$bereav[i] = 1 }
+  else if(MHAS_w2_bereav$a3[i] %in% c(1,2,3,4,5,6) & MHAS_w2_bereav$f7[i] == 2 & MHAS_w2_bereav$f16[i] == 2 &
+        MHAS_w2_bereav$f35[i] == 2){ 
+    MHAS_ds_w2$bereav[i] = 0 }
+}
+
+MHAS_ds_w2$bereav <-car::recode(as.vector(MHAS_ds_w2$bereav), "NA='999'")
+MHAS_ds_w2$bereav <- labelled(MHAS_ds_w2$bereav, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2}
+vari <- MHAS_ds_w2$bereav
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_ds_w2$bereav, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_ds_w2, aes(x=factor(bereav))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Experience of a loss of any close person") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2}
+
+```
+
+ 
+ 
+
+
+### Wave 3
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `a3_12`
+* Label: `Current marital status`
+* Categories: 
+    + `1 = Single`
+    + `2 = Married`
+    + `3 = In civil union`
+    + `4 = Divorced` 
+    + `5 = Separated from a civil union`
+    + `6 = Separated from a marriage`
+    + `7 = Widowed from civil union` 
+    + `8 = Widowed from marriage`
+    
+* Name: `f1a_12`
+* Label: `Last interview:Was respondent's mother living`
+* Categories: 
+    + `1 = Was alive 1`
+    + `2 = Passed away 2`
+* Missings:
+    + `8 = RF 8`
+    + `9 = DK 9`
+    
+* Name: `f10a_12`
+* Label: `Last interview:Was respondent's father living`
+* Categories: 
+    + `1 = Was alive 1`
+    + `2 = Passed away 2`
+* Missings:
+    + `8 = RF 8`
+    + `9 = DK 9`
+    
+* Name: `sa19_12`
+* Label: `Major event since 2001:Did any of deceased's children die`
+* Categories: 
+    + `1 = Was alive 1`
+    + `2 = Passed away 2`
+* Missings:
+    + `8 = RF 8`
+    + `9 = DK 9`  
+    
+* Name: `f35_12`
+* Label: `Last 2 years:Has any of the respondent's siblings passed away`
+* Categories: 
+    + `1 = Yes`
+    + `2 = No`
+* Missings:
+    + `8 = RF`
+    + `9 = DK`
+
+
+* Description: 
+```{r assign3}
+opal.assign.table.tibble(o, 'MHAS_w3_bereav','Mexican Health Aging Study.MHAS_2012_new',
+                         variables=list('a3_12','f1a_12','f10a_12','sa19_12','f35_12'), missings = TRUE)
+```
+
+```{r local3}
+MHAS_w3_bereav <- opal.execute(o,'MHAS_w3_bereav')
+vari <- MHAS_w3_bereav$a3_12
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = MHAS_w3_bereav$a3_12, missing_values = NA)
+ggplot(MHAS_w3_bereav, aes(x=factor(a3_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current marital status") + ylab("Frequency")
+
+vari <- MHAS_w3_bereav$f1a_12
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_w3_bereav$f1a_12, missing_values = NA)
+ggplot(MHAS_w3_bereav, aes(x=factor(f1a_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Last interview:Was respondent's mother living") + ylab("Frequency")
+
+vari <- MHAS_w3_bereav$f10a_12
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_w3_bereav$f10a_12, missing_values = NA)
+ggplot(MHAS_w3_bereav, aes(x=factor(f10a_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Last interview:Was respondent's father living") + ylab("Frequency")
+
+vari <- MHAS_w3_bereav$sa19_12
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_w3_bereav$sa19_12, missing_values = NA)
+ggplot(MHAS_w3_bereav, aes(x=factor(sa19_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Major event since 2001:Did any of deceased's children die") + ylab("Frequency")
+
+vari <- MHAS_w3_bereav$f35_12
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_w3_bereav$f35_12, missing_values = NA)
+ggplot(MHAS_w3_bereav, aes(x=factor(f35_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Last 2 years:Has any of the respondent's siblings passed away") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Tocar::recode(as.vector( the harmonize variable from the study-specific variable it has to becar::recode(as.vector(d as follows:  
+
+* `a3_12 in (7,8) OR f1a_12=2 OR f10a_12=2 OR sa19_12=2 OR f35_12=2 into 1`
+* `a3_12 in (1,.,6) AND f1a_12=1 AND f10a_12=1 AND sa19_12=1 AND f35_12=1 into 0`
+* `f1a_12=8 OR f10a_12=8 OR sa19_12=8 OR f35_12=8 into 997`
+* `f1a_12=9 OR f10a_12=9 OR sa19_12=9 OR f35_12=9 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo3, echo=TRUE}
+MHAS_ds_w3 <- tibble(id=MHAS_w3_bereav$id)
+
+MHAS_w3_bereav$a3_12 <-car::recode(as.vector(MHAS_w3_bereav$a3_12), "NA='-999'")
+MHAS_w3_bereav$f1a_12 <-car::recode(as.vector(MHAS_w3_bereav$f1a_12), "NA='-999'")
+MHAS_w3_bereav$f10a_12 <-car::recode(as.vector(MHAS_w3_bereav$f10a_12), "NA='-999'")
+MHAS_w3_bereav$f35_12 <-car::recode(as.vector(MHAS_w3_bereav$f35_12), "NA='-999'")
+MHAS_w3_bereav$sa19_12 <-car::recode(as.vector(MHAS_w3_bereav$sa19_12), "NA='-999'")
+
+
+MHAS_ds_w3$bereav <- c(NA)  
+for(i in 1:dim(MHAS_w3_bereav)[1]){
+  if(MHAS_w3_bereav$a3_12[i] %in% c(7,8) | MHAS_w3_bereav$f1a_12[i] == 2 | MHAS_w3_bereav$f10a_12[i] == 2 |
+     MHAS_w3_bereav$f35_12[i] == 2 | MHAS_w3_bereav$sa19_12[i] == 2 ){ 
+    MHAS_ds_w3$bereav[i] = 1 }
+  else if(MHAS_w3_bereav$a3_12[i] == -999 & MHAS_w3_bereav$f1a_12[i]== -999 & MHAS_w3_bereav$f10a_12[i] == -999 &
+          MHAS_w3_bereav$f35_12[i] == -999 & MHAS_w3_bereav$sa19_12[i] == -999 ){ 
+    MHAS_ds_w3$bereav[i] = 999 }
+  else if(MHAS_w3_bereav$a3_12[i] %in% c(1,2,3,4,5,6,-999) & MHAS_w3_bereav$f1a_12[i] %in% c(1,-999) & 
+          MHAS_w3_bereav$f10a_12[i] %in% c(1,-999) & MHAS_w3_bereav$f35_12[i] %in% c(1,-999) & 
+          MHAS_w3_bereav$sa19_12[i] %in% c(1,-999) ){ 
+    MHAS_ds_w3$bereav[i] = 0 }
+  else if(MHAS_w3_bereav$f1a_12[i] == 8 | MHAS_w3_bereav$f10a_12[i] == 8 |
+          MHAS_w3_bereav$f35_12[i] == 8 | MHAS_w3_bereav$sa19_12[i] == 8 ){ 
+    MHAS_ds_w3$bereav[i] = 997 }
+  else if(MHAS_w3_bereav$f1a_12[i] == 9 | MHAS_w3_bereav$f10a_12[i] == 9 |
+          MHAS_w3_bereav$f35_12[i] == 9 | MHAS_w3_bereav$sa19_12[i] == 9 ){ 
+    MHAS_ds_w3$bereav[i] = 998 }
+}
+
+MHAS_ds_w3$bereav <-car::recode(as.vector(MHAS_ds_w3$bereav), "NA='999'")
+MHAS_ds_w3$bereav <- labelled(MHAS_ds_w3$bereav, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript3}
+vari <- MHAS_ds_w3$bereav
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_ds_w3$bereav, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_ds_w3, aes(x=factor(bereav))) + geom_bar(stat="count", width=0.4, fill="steelblue")+ xlab("Experience of a loss of any close person") + ylab("Frequency")
+```
+
+##### Validation
+```{r crosstabulation3}
+
+```
+
+ 
+```{r save, echo=FALSE}
+bereav <- MHAS_ds_w1
+save(bereav, file = "../RData/w1/bereav.RData")
+rm(bereav)
+
+bereav <- MHAS_ds_w2
+save(bereav, file = "../RData/w2/bereav.RData")
+rm(bereav)
+
+bereav <- MHAS_ds_w3
+save(bereav, file = "../RData/w3/bereav.RData")
+rm(bereav)
+
+```
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+``` 

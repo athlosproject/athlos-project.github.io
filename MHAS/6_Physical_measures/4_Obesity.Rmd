@@ -1,0 +1,333 @@
+---
+title: "Obesity"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ######################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ######################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `obesity`
+* Variable label: `Presence of obesity based in Body Mass Index classification according to the WHO BMI classification (http://apps.who.int/bmi/index.jsp?introPage=intro_3.html): BMI value equal to or above 30Kg/m^2`
+* Variable description: `the BMI variable should be created by dividing weight and hiegh variables by means of the following equation= weight (kg)/height(m)^2. Then, the Obesity variable should be generated according to the WHO cutoff point for BMI classification`
+* Domain: `Physical measures`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | not obese
+1        | obese
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+# Data process
+
+
+```{r lab, echo=FALSE}
+ds_label <- "Precense of obesity based in Body Mass Index classification according to the WHO BMI classification (http://apps.who.int/bmi/index.jsp?introPage=intro_3.html): BMI value equal to or above 30Kg/m^2"
+```
+
+
+## Mexico
+
+### Wave 1
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised are:
+
+* Name: `bmi`
+* Label: `Body Mass Index calculated as weight (kg)/height(m)^2`
+* Type of variable: `continuous`
+* Missings: 
+    + `991 = CAPI/interviewer error`
+    + `992 = Impute`
+    + `993 = Disable to measure`
+    + `994 = Not applicable`
+    + `995 = Does not answer`
+    + `996 = Not attempt/not done`
+    + `997 = Refuse`
+    + `998 = Do not know`
+    + `999 = Missing`
+    
+```{r read1, include=FALSE}
+# opal.assign.table.tibble(o, 'MHAS_bmi','_Athlos_Harm_Dataset.MHAS_ds_w1',
+#                          variables=list('bmi'), missings = TRUE)
+# MHAS_bmi <- opal.execute(o,'MHAS_bmi')
+load("../RData/w1/bmi.RData")
+MHAS_bmi <- bmi
+```
+
+```{r local11}
+Continuous_summary(MHAS_bmi[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_bmi, aes(x=factor(MHAS_bmi[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("BMI") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `BMI<30 into 0` 
+* `BMI>=30 into 1`
+* `NA into 999`
+
+```{r harmo11}
+MHAS_ds_w1 <- tibble(id=MHAS_bmi$id)
+MHAS_ds_w1$obesity <- car::recode(MHAS_bmi[[2]], "lo:29.9999999=0; 30:900=1; NA=999")
+MHAS_ds_w1$obesity <- labelled(MHAS_ds_w1[[2]], labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript11}
+Categorical_summary(var = MHAS_ds_w1[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_ds_w1, aes(x=factor(MHAS_ds_w1[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstab11}
+BeforeH <- c(sum(na.omit(MHAS_bmi[[2]])<30),sum(na.omit(MHAS_bmi[[2]])>=30 & na.omit(MHAS_bmi[[2]])<=900), sum(na.omit(MHAS_bmi[[2]])==995), sum(na.omit(MHAS_bmi[[2]])==998))
+AfterH <- table(MHAS_ds_w1[[2]], useNA = "ifany")
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("<30->0",">=30->1","995", "998") 
+kable(C)
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable. This section can be done in a later stage, once all variables are harmonised.]
+
+```{r read, include=FALSE}
+rm(MHAS_bmi)
+```
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised are:
+
+* Name: `bmi`
+* Label: `Body Mass Index calculated as weight (kg)/height(m)^2`
+* Type of variable: `continuous`
+* Missings: 
+    + `991 = CAPI/interviewer error`
+    + `992 = Impute`
+    + `993 = Disable to measure`
+    + `994 = Not applicable`
+    + `995 = Does not answer`
+    + `996 = Not attempt/not done`
+    + `997 = Refuse`
+    + `998 = Do not know`
+    + `999 = Missing`
+    
+```{r assign2}
+# opal.assign.table.tibble(o, 'MHAS_bmi','_Athlos_Harm_Dataset.MHAS_ds_w2',variables=list('bmi'), missings = TRUE)
+# MHAS_bmi <- opal.execute(o,'MHAS_bmi')
+load("../RData/w2/bmi.RData")
+MHAS_bmi <- bmi
+
+```
+
+```{r local2}
+Continuous_summary(MHAS_bmi[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_bmi, aes(x=factor(MHAS_bmi[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("BMI") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `BMI<30 into 0` 
+* `BMI>=30 into 1`
+* `NA into 999`
+
+```{r harmo2}
+MHAS_ds_w2 <- tibble(id=MHAS_bmi$id)
+MHAS_ds_w2$obesity <- car::recode(MHAS_bmi[[2]], "lo:29.9999999=0; 30:900=1; NA=999")
+MHAS_ds_w2$obesity <- labelled(MHAS_ds_w2[[2]], labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2}
+Categorical_summary(var = MHAS_ds_w2[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_ds_w2, aes(x=factor(MHAS_ds_w2[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstab2}
+BeforeH <- c(sum(na.omit(MHAS_bmi[[2]])<30),sum(na.omit(MHAS_bmi[[2]])>=30 & na.omit(MHAS_bmi[[2]])<=900), sum(na.omit(MHAS_bmi[[2]])==995), sum(na.omit(MHAS_bmi[[2]])==998))
+AfterH <- table(MHAS_ds_w2[[2]], useNA = "ifany")
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("<30->0",">=30->1","995", "998") 
+kable(C)
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable. This section can be done in a later stage, once all variables are harmonised.]
+
+```{r read2, include=FALSE}
+rm(MHAS_bmi)
+```
+
+
+### Wave 3
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised are:
+
+* Name: `bmi`
+* Label: `Body Mass Index calculated as weight (kg)/height(m)^2`
+* Type of variable: `continuous`
+* Missings: 
+    + `991 = CAPI/interviewer error`
+    + `992 = Impute`
+    + `993 = Disable to measure`
+    + `994 = Not applicable`
+    + `995 = Does not answer`
+    + `996 = Not attempt/not done`
+    + `997 = Refuse`
+    + `998 = Do not know`
+    + `999 = Missing`
+
+```{r assign3}
+#opal.assign.table.tibble(o, 'MHAS_bmi','_Athlos_Harm_Dataset.MHAS_ds_w3',variables=list('bmi'), missings = TRUE)
+#MHAS_bmi <- opal.execute(o,'MHAS_bmi')
+load("../RData/w3/bmi.RData")
+MHAS_bmi <- bmi
+
+```
+
+```{r local3}
+Continuous_summary(MHAS_bmi[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_bmi, aes(x=MHAS_bmi[[2]])) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(15,60)
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `BMI<30 into 0` 
+* `BMI>=30 into 1`
+* `NA into 999`
+
+```{r harmo3}
+MHAS_ds_w3 <- tibble(id=MHAS_bmi$id)
+MHAS_ds_w3$obesity <- car::recode(MHAS_bmi[[2]], "lo:29.9999999=0; 30:900=1; NA=999")
+MHAS_ds_w3$obesity <- labelled(MHAS_ds_w3[[2]], labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript3}
+Categorical_summary(var = MHAS_ds_w3[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_ds_w3, aes(x=factor(MHAS_ds_w3[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstab3}
+BeforeH <- c(sum(na.omit(MHAS_bmi[[2]])<30),sum(na.omit(MHAS_bmi[[2]])>=30 & na.omit(MHAS_bmi[[2]])<=900), sum(na.omit(MHAS_bmi[[2]])==993), sum(na.omit(MHAS_bmi[[2]])==999))
+AfterH <- table(MHAS_ds_w3[[2]], useNA = "ifany")
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("<30->0",">=30->1","993", "999") 
+kable(C)
+```
+
+#### Quality estimation
+Once BMI has been calculated using weight (Kg) and Height (m^2),
+Obesity was calculated by using the BMI cutoff>=30kg/m2 following the WHO 
+classification. Finally, the resulting BMI variable was coded as follows: 
+BMI>30kg/m2 =1 (obese); BMI<30kg/m2 =0 (not obese) to generate two categories.
+
+
+<!--- ############################################# Import to OPAL ###########################################-->
+```{r importOPAL, echo=FALSE}
+obesity <- MHAS_m_ds_w1   <- MHAS_ds_w1
+save(obesity, file = "../RData/w1/obesity.RData")
+rm(obesity)
+
+obesity <- MHAS_m_ds_w2   <- MHAS_ds_w2
+save(obesity, file = "../RData/w2/obesity.RData")
+rm(obesity)
+
+obesity <- MHAS_m_ds_w3   <- MHAS_ds_w3
+save(obesity, file = "../RData/w3/obesity.RData")
+rm(obesity)
+
+
+l.hds <- list(MHAS_ds_w1 = MHAS_ds_w1 , MHAS_ds_w2 = MHAS_ds_w2, MHAS_ds_w3=MHAS_ds_w3)
+
+m.hds <- list(MHAS_m_ds_w1 = MHAS_m_ds_w1 , MHAS_m_ds_w2 = MHAS_m_ds_w2, MHAS_m_ds_w3 = MHAS_m_ds_w3)
+
+
+for(i in 1:length(l.hds)) {
+  label(l.hds[[i]][[2]]) <- label(m.hds[[i]][[2]]) <- ds_label # Text value assigned at the DS description, at the top.
+    
+  m.hds[[i]][[2]] <- car::recode(m.hds[[i]][[2]], "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+  m.hds[[i]][[2]] <- labelled(m.hds[[i]][[2]], labels = c("not obese"=0, "obese"=1, "Respond, died after this wave"=2, "Respond(proxy), died"=3, "No respond, alive"=4, "No respond, died this wave"=5, "No respond, died previous waves"=6, "No respond, dropped from sample"=7))
+
+  nl <- names(l.hds[i])
+  #opal.assign.data(o, nl , l.hds[[i]])
+  #opal.symbol_import(o, nl , project='_Athlos_Harm_Dataset')  
+
+  ml <- names(m.hds[i])
+  #opal.assign.data(o, ml , m.hds[[i]]) 
+  #opal.symbol_import(o, ml , project='_Athlos_Harm_Dataset')  
+
+}
+```
+
+
+
+### Descriptive statistics of the harmonised variable accross populations and waves
+
+Percentages of categories in each harmonised variable by cohort and wave:
+
+```{r summ}
+# Table HRS
+t.hds <- frq(l.hds[[2]][2])[[1]][,c(1,2)] 
+for (i in 1:length(l.hds)){
+  t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+}
+t.hds[13,] <- c("n", "sample size", 
+             length(l.hds[[1]][[2]]), length(l.hds[[2]][[2]]), length(l.hds[[3]][[2]]))
+names(t.hds)<-c("val", "label", "Wave1", "Wave2", "Wave3")
+kable(t.hds)
+```
+
+
+
+<!--- ## Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+#opal.logout(o)
+```

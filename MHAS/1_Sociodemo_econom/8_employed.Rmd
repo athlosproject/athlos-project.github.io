@@ -1,0 +1,340 @@
+---
+title: "Employed"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/employedDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/employedDS.R')
+```
+
+
+
+# Data process
+
+
+
+## Mexico
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `i5` |
+|-|-|
+| **Label** | `Worked previous week`|
+| **Table name**  | `MHAS-2001`|
+| **Categories** | `1 = Worked`<br/>`2 = Had work but didn't work`<br/>`3 = Looked for a job`<br/>`4 = Student`<br/>`5 = Devoted to house chores`<br/>`6 = Didn't work`|
+| **Missings** | `8 = Doesn't answer`<br/>`9 = Doesn't know`<br/>`NA` |
+| **Description** |  |
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'MHAS_w1','Mexican Health Aging Study.MHAS-2001',variables=list('i5'), missings = T)
+MHAS_w1 <- opal.execute(o,'MHAS_w1')
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- MHAS_w1$i5
+kable(Categorical_summary(vbl, missing_values = c(8,9))[3], caption = names(MHAS_w1)[2])
+kable(Categorical_summary(vbl, missing_values = c(8,9))[1], caption = "Category")
+ggplot(MHAS_w1, aes(x=factor(i5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `employed` from the study-specific variable it has to be recoded as follows:
+
+* `change 1,2 into 1`
+* `change 3,4,5,6 into 0`
+* `change 8 into 995`
+* `change 9 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w1}
+
+# Categorical variable harmonization
+MHAS_ds_w1 <- tibble(id=MHAS_w1$id)
+MHAS_ds_w1$employed <- car::recode(MHAS_w1$i5, "2=1; c(3,4,5,6)=0; 8=995; 9=998; NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- MHAS_ds_w1$employed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(MHAS_ds_w1, aes(x=factor(employed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `i16`|
+|-|-|
+| **Label** | `Work status`|
+| **Table name**  | `MHAS_2003`|
+| **Categories** |`1 = Works`<br/>`2 = Looking for a job`<br/>`3 = Does not work`|
+| **Missings** | `8 = Doesn't answer`<br/>`9 = Doesn't know` |
+| **Description** |  |
+
+
+```{r assign w2, echo=F}
+
+opal.assign.table.tibble(o, 'MHAS_w2','Mexican Health Aging Study.MHAS_2003',variables=list('i16'), missings = T)
+MHAS_w2 <- opal.execute(o,'MHAS_w2')
+
+```
+
+```{r local w2, echo=F}
+
+vbl <- MHAS_w2$i16
+kable(Categorical_summary(vbl, missing_values = c(8,9))[3], caption = names(MHAS_w2)[2])
+kable(Categorical_summary(vbl, missing_values = c(8,9))[1], caption = "Category")
+ggplot(MHAS_w2, aes(x=factor(i16))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `employed` from the study-specific variable it has to be recoded as follows:
+
+* `change 2,3 into 0`
+* `keep up 1 into 1`
+* `change 8 into 995`
+* `change 9 into 998`
+* `NA into 999`
+
+**R script:**
+
+
+```{r harmo w2}
+
+MHAS_w2 <- left_join(MHAS_w2,MHAS_ds_w1,by="id")
+
+# Categorical variable harmonization
+MHAS_ds_w2 <- tibble(id=MHAS_w2$id)
+MHAS_ds_w2$employed <- car::recode(MHAS_w2$i16, "c(2,3)=0; 8=995; 9=998; NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w2, echo=F}
+
+vbl <- MHAS_ds_w2$employed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(MHAS_ds_w2, aes(x=factor(employed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w2, echo=F, results='asis'}
+
+
+```
+
+
+
+### Wave 3
+
+#### Study-specific variable description
+
+| **Name** | `i16_12`|
+|-|-|
+| **Label** | `Current work status`|
+| **Table name**  | `MHAS_2012_new`|
+| **Categories** | `1 = Are working`<br/>`2 = Are looking for work`<br/>`3 = Don't work`|
+| **Missings** | `8 = Doesn't answer`<br/>`9 = Doesn't know`<br/>`NA` |
+| **Description** |  |
+
+
+
+```{r assign w3, echo=F}
+
+opal.assign.table.tibble(o, 'MHAS_w3','Mexican Health Aging Study.MHAS_2012_new',variables=list('i16_12'), missings = T)
+MHAS_w3 <- opal.execute(o,'MHAS_w3')
+
+```
+
+```{r local w3, echo=F}
+
+vbl <- MHAS_w3$i16_12
+kable(Categorical_summary(vbl, missing_values = c(8,9))[3], caption = names(MHAS_w3)[2])
+kable(Categorical_summary(vbl, missing_values = c(8,9))[1], caption = "Category")
+ggplot(MHAS_w3, aes(x=factor(i16_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `employed` from the study-specific variable it has to be recoded as follows:
+
+* `change 2,3 into 0`
+* `keep up 1 into 1`
+* `change 8 into 995`
+* `change 9 into 998`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo w3}
+
+MHAS_w3 <- left_join(MHAS_w3,MHAS_ds_w2,by="id")
+
+# Categorical variable harmonization
+MHAS_ds_w3 <- tibble(id=MHAS_w3$id)
+MHAS_ds_w3$employed <- car::recode(MHAS_w3$i16_12, "c(2,3)=0; 8=995; 9=998; NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w3, echo=F}
+
+vbl <- MHAS_ds_w3$employed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(MHAS_ds_w3, aes(x=factor(employed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w3, echo=F, results='asis'}
+
+```
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
+
+**R script:**
+
+```{r summ}
+MHAS_ds_w1$employed <- labelled(MHAS_ds_w1$employed, labels = cat_label)
+label(MHAS_ds_w1$employed) <- ds_label
+MHAS_ds_w2$employed <- labelled(MHAS_ds_w2$employed, labels = cat_label)
+label(MHAS_ds_w2$employed) <- ds_label
+MHAS_ds_w3$employed <- labelled(MHAS_ds_w3$employed, labels = cat_label)
+label(MHAS_ds_w3$employed) <- ds_label
+
+
+MHAS_m_ds_w1 <- MHAS_ds_w1
+MHAS_m_ds_w1$employed <- car::recode(MHAS_m_ds_w1$employed, "miss_values_vector=NA")
+MHAS_m_ds_w2 <- MHAS_ds_w2
+MHAS_m_ds_w2$employed <- car::recode(MHAS_m_ds_w2$employed, "miss_values_vector=NA")
+MHAS_m_ds_w3 <- MHAS_ds_w3
+MHAS_m_ds_w3$employed <- car::recode(MHAS_m_ds_w3$employed, "miss_values_vector=NA")
+
+
+tt <-    frq(MHAS_ds_w1$employed)[[1]][,c(1:2,4)]
+tt[4] <- frq(MHAS_ds_w2$employed)[[1]][,c(4)]
+tt[5] <- frq(MHAS_ds_w3$employed)[[1]][,c(4)]
+tt[13,] <- c("n", "sample size", 
+             length(MHAS_ds_w1$employed), length(MHAS_ds_w2$employed), length(MHAS_ds_w3$employed)
+             )
+names(tt)<-c("val", "label", "w1", "w2", "w3")
+kable(tt)
+
+dbb <- merge(MHAS_m_ds_w1[,c("id","employed")], MHAS_m_ds_w2[,c("id","employed")], by="id", suffixes = c(".w1",".w2"), all=T)
+dbb <- merge(dbb, MHAS_m_ds_w3[,c("id","employed")], by="id", all=T)
+names(dbb) <- c("id", "w1", "w2", "w3")
+v.dbb <- paste(dbb[,2],dbb[,3],dbb[,4],sep="")
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb)
+```
+
+
+
+# Quality estimation
+
+No comments
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+l.MHAS <- list(w1 = MHAS_ds_w1, w2 = MHAS_ds_w2, w3 = MHAS_ds_w3)
+
+for(index in seq_along(l.MHAS)){
+  employed <- l.MHAS[[index]]
+  save(employed, file = paste0(datafolder,names(l.MHAS)[index],"/employed.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

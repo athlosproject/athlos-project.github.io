@@ -1,0 +1,373 @@
+---
+title: "Processing speed"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/Rmds/setup_laia.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `cog_proc_c`
+* Variable label: `Cognition - processing speed - Continuous. Test which assesses processing speed`
+* Domain: `Health status and functional limitations`
+* Value type: `Continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+* Short name: `cog_proc`
+* Variable label: `Cognition - processing speed. Test which assesses processing speed. Discrete variable: value 0 = <=25%; value 1 = >25%.`
+* Domain: `Health status and functional limitations`
+* Value type: `Categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | <=25%
+1        | >25%
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Cognition - processing speed"
+ds_label_cog_proc_c <- "Cognition - processing speed - Continuous. Test which assesses processing speed"
+ds_label_cog_proc <- "Cognition - processing speed. Test which assesses processing speed. Discrete variable: value 0 = <=25%; value 1 = >25%"
+```
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Mexico
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `e12`
+* Label: `Visual scanning - Score`
+* Categories:
+    + `Continuous Variable 0-60`
+* Missings
+   + `80 = RF`
+   + `88 = Couldn't do it for sight problems`
+   + `NA`
+
+```{r assign w1}
+opal.assign.table.tibble(o, 'MHAS_w1_cog_proc','Mexican Health Aging Study.MHAS-2001', variables=list('e12'), missings = TRUE)
+MHAS_w1_cog_proc <- opal.execute(o,'MHAS_w1_cog_proc')
+```
+
+```{r local w1}
+vari <- MHAS_w1_cog_proc$e12
+kable(Continuous_summary(var = vari, missing_values = c(80,88))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(80,88))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(80,88))$summary, caption = "Summary")
+ggplot(MHAS_w1_cog_proc, aes(x=(e12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Processing speed") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_proc_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `80 RF into 997`
+* `88 Couldn't do it for sight problems into 993`
+* `NA into 999`
+
+To compute the harmonized variable `cog_proc` from `cog_proc_c` it has to be recoded as follows:
+
+* `cog_proc_c <=25% into 0`
+* `cog_proc_c >25% into 1`
+
+**R script:**
+
+```{r harmo w1}
+#cog_proc_c
+MHAS_ds_w1 <- tibble(id=MHAS_w1_cog_proc$id)
+MHAS_ds_w1$cog_proc_c <- car::recode(MHAS_w1_cog_proc$e12, "80=997; 88=993; NA=999")
+MHAS_ds_w1$cog_proc_c <- labelled(MHAS_ds_w1$cog_proc_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(MHAS_ds_w1$cog_proc_c, "999=NA; 997=NA; 993=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+MHAS_ds_w1$cog_proc <- car::recode(MHAS_ds_w1[[2]], "0:Q=0; (Q+1):79=1")
+MHAS_ds_w1$cog_proc <- labelled(MHAS_ds_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1}
+vari <- MHAS_ds_w1$cog_proc_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(MHAS_ds_w1, aes(x=(cog_proc_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency") + xlim(0,60)
+
+vari <- MHAS_ds_w1$cog_proc
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(MHAS_ds_w1, aes(x=factor(cog_proc))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Processing speed") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1}
+Continous <- c(sum(na.omit(MHAS_ds_w1[[2]])<=Q), sum(na.omit(MHAS_ds_w1[[2]])>Q & na.omit(MHAS_ds_w1[[2]])<900), sum(na.omit(MHAS_ds_w1[[2]])==993),  sum(na.omit(MHAS_ds_w1[[2]])==997),  sum(na.omit(MHAS_ds_w1[[2]])==999))
+Dicotomic <- table(MHAS_ds_w1[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:14->0","15:60->1", "88->993", "80->997", "NA->999") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL w1, echo=FALSE}
+label(MHAS_ds_w1$cog_proc_c) <- ds_label_cog_proc_c
+label(MHAS_ds_w1$cog_proc) <- ds_label_cog_proc
+cog_proc <- MHAS_ds_w1
+save(cog_proc, file = "../RData/w1/cog_proc.RData")
+```
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `e10`
+* Label: `Visual scanning - Score`
+* Categories:
+    + `Continuous Variable 0-60`
+* Missings
+   + `80 = RF`
+   + `88 = Couldn't do it for sight problems`
+   + `NA`
+
+```{r assign w2}
+opal.assign.table.tibble(o, 'MHAS_w2_cog_proc','Mexican Health Aging Study.MHAS_2003', variables=list('e10'), missings = TRUE)
+MHAS_w2_cog_proc <- opal.execute(o,'MHAS_w2_cog_proc')
+```
+
+```{r local w2}
+vari <- MHAS_w2_cog_proc$e10
+kable(Continuous_summary(var = vari, missing_values = c(80,88))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(80,88))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(80,88))$summary, caption = "Summary")
+ggplot(MHAS_w2_cog_proc, aes(x=factor(e10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Processing speed") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_proc_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `80 RF into 997`
+* `88 Couldn't do it for sight problems into 993`
+* `NA into 999`
+
+To compute the harmonized variable `cog_proc` from `cog_proc_c` it has to be recoded as follows:
+
+* `cog_proc_c <=25% into 0`
+* `cog_proc_c >25% into 1`
+
+**R script:**
+
+```{r harmo w2}
+#cog_proc_c
+MHAS_ds_w2 <- tibble(id=MHAS_w2_cog_proc$id)
+MHAS_ds_w2$cog_proc_c <- car::recode(MHAS_w2_cog_proc$e10, "80=997; 88=993; NA=999")
+MHAS_ds_w2$cog_proc_c <- labelled(MHAS_ds_w2$cog_proc_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(MHAS_ds_w2$cog_proc_c, "999=NA; 997=NA; 993=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+MHAS_ds_w2$cog_proc <- car::recode(MHAS_ds_w2[[2]], "0:Q=0; (Q+1):79=1")
+MHAS_ds_w2$cog_proc <- labelled(MHAS_ds_w2[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w2}
+vari <- MHAS_ds_w2$cog_proc_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(MHAS_ds_w2, aes(x=(cog_proc_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency") + xlim(0,60)
+
+vari <- MHAS_ds_w2$cog_proc
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(MHAS_ds_w2, aes(x=factor(cog_proc))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Processing speed") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w2}
+Continous <- c(sum(na.omit(MHAS_ds_w2[[2]])<=Q), sum(na.omit(MHAS_ds_w2[[2]])>Q & na.omit(MHAS_ds_w2[[2]])<900), sum(na.omit(MHAS_ds_w2[[2]])==993),  sum(na.omit(MHAS_ds_w2[[2]])==997),  sum(na.omit(MHAS_ds_w2[[2]])==999))
+Dicotomic <- table(MHAS_ds_w2[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:13->0","14:60->1", "88->993", "80->997", "NA->999") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL w2, echo=FALSE}
+#opal.assign.data(o, 'MHAS_ds_w2', MHAS_ds_w2)
+#opal.symbol_import(o,'MHAS_ds_w2', project='_Athlos_Harm_Dataset')
+
+label(MHAS_ds_w2$cog_proc_c) <- ds_label_cog_proc_c
+label(MHAS_ds_w2$cog_proc) <- ds_label_cog_proc
+cog_proc <- MHAS_ds_w2
+save(cog_proc, file = "../RData/w2/cog_proc.RData")
+```
+
+
+
+#### MHAS - Wave 3
+
+##### Study-specific variables
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `e10_12`
+* Label: `Respondent's visual scanning score`
+* Categories:
+    + `Continuous Variable 0-60`
+* Missings
+   + `80 = RF`
+   + `88 = Couldn't do it for sight problems`
+   + `99 = Not specified`
+   + `NA`
+
+```{r assign w3}
+opal.assign.table.tibble(o, 'MHAS_w3_cog_proc','Mexican Health Aging Study.MHAS_2012_new', variables=list('e10_12'), missings = TRUE)
+MHAS_w3_cog_proc <- opal.execute(o,'MHAS_w3_cog_proc')
+```
+
+```{r local w3}
+vari <- MHAS_w3_cog_proc$e10_12
+kable(Continuous_summary(var = vari, missing_values = c(80,88,99))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(80,88,99))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(80,88,99))$summary, caption = "Summary")
+ggplot(MHAS_w3_cog_proc, aes(x=factor(e10_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Processing speed") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_proc_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `80 RF into 997`
+* `88 Couldn't do it for sight problems into 993`
+* `99 Not specified into 999`
+* `NA into 999`
+
+To compute the harmonized variable `cog_proc` from `cog_proc_c` it has to be recoded as follows:
+
+* `cog_proc_c <=25% into 0`
+* `cog_proc_c >25% into 1`
+
+**R script:**
+
+```{r harmo w3}
+#cog_proc_c
+MHAS_ds_w3 <- tibble(id=MHAS_w3_cog_proc$id)
+MHAS_ds_w3$cog_proc_c <- car::recode(MHAS_w3_cog_proc$e10_12, "80=997; 88=993; 99=999; NA=999")
+MHAS_ds_w3$cog_proc_c <- labelled(MHAS_ds_w3$cog_proc_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(MHAS_ds_w3$cog_proc_c, "999=NA; 997=NA; 993=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+MHAS_ds_w3$cog_proc <- car::recode(MHAS_ds_w3[[2]], "0:Q=0; (Q+1):79=1")
+MHAS_ds_w3$cog_proc <- labelled(MHAS_ds_w3[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w3}
+vari <- MHAS_ds_w3$cog_proc_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(MHAS_ds_w3, aes(x=(cog_proc_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency") + xlim(0,60)
+
+vari <- MHAS_ds_w3$cog_proc
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(MHAS_ds_w3, aes(x=factor(cog_proc))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Processing speed") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w3}
+Continous <- c(sum(na.omit(MHAS_ds_w3[[2]])<=Q), sum(na.omit(MHAS_ds_w3[[2]])>Q & na.omit(MHAS_ds_w3[[2]])<900), sum(na.omit(MHAS_ds_w3[[2]])==993),  sum(na.omit(MHAS_ds_w3[[2]])==997),  sum(na.omit(MHAS_ds_w3[[2]])==999))
+Dicotomic <- table(MHAS_ds_w3[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:17->0","18:60->1", "88->993", "80->997", "(99,NA)->999") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL w3, echo=FALSE}
+#opal.assign.data(o, 'MHAS_ds_w3', MHAS_ds_w3)
+#opal.symbol_import(o,'MHAS_ds_w3', project='_Athlos_Harm_Dataset')
+
+label(MHAS_ds_w3$cog_proc_c) <- ds_label_cog_proc_c
+label(MHAS_ds_w3$cog_proc) <- ds_label_cog_proc
+cog_proc <- MHAS_ds_w3
+save(cog_proc, file = "../RData/w3/cog_proc.RData")
+```
+
+
+
+# Quality estimation
+
+No comments
+
+[Comments on the quality of the new harmonised variable. This section can be done in a later stage, once all variables are harmonised.]
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

@@ -1,0 +1,325 @@
+---
+title: "Year of Birth"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+  
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+
+* Short name: `ybirth`
+* Variable label: `year of birth`
+* Variable description: `Year of birth`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+# Data process
+
+## Mexico
+
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `a1_3` |
+|----------|------------|
+| **Label** | `Year of birth` |
+| **Table name** | `MHAS-2001` |
+| **Description** |  |
+
+
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'MHAS_w1_ybirth','Mexican Health Aging Study.MHAS-2001',
+                         variables=list('a1_3'), missings = TRUE)
+MHAS_w1_ybirth <- opal.execute(o,'MHAS_w1_ybirth')
+```
+
+```{r local1, echo=F}
+vari <- MHAS_w1_ybirth$a1_3
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = "Year of birth") 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(MHAS_w1_ybirth, aes(a1_3)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1}
+MHAS_ds_w1 <- tibble(id=MHAS_w1_ybirth$id)
+MHAS_ds_w1$ybirth <- car::recode(MHAS_w1_ybirth$a1_3, "NA=999")
+MHAS_ds_w1$ybirth <- labelled(MHAS_ds_w1$ybirth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=F}
+vari <- MHAS_ds_w1$ybirth
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Year of birth")
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(MHAS_ds_w1, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=F}
+```
+
+
+
+
+
+```{r importOPAL1, echo=F}
+
+#opal.assign.data(o, 'MHAS_ds_w1', MHAS_ds_w1)
+#opal.symbol_import(o,'MHAS_ds_w1', project='_Athlos_Harm_Dataset')
+ybirth <- MHAS_ds_w1
+save(ybirth, file = "../RData/w1/ybirth.RData")
+rm(ybirth)
+
+MHAS_m_ds_w1 <- MHAS_ds_w1
+MHAS_m_ds_w1$ybirth <- car::recode(MHAS_m_ds_w1$ybirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'MHAS_m_ds_w1', MHAS_m_ds_w1)
+#opal.symbol_import(o,'MHAS_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `a1_3` |
+|----------|------------|
+| **Label** | `Year of birth` | 
+| **Table name** | `MHAS-2001` | 
+| **Description** |  |
+
+
+```{r assign2, echo=F}
+opal.assign.table.tibble(o, 'MHAS_w1_ybirth','Mexican Health Aging Study.MHAS-2001',
+                         variables=list('a1_3'), missings = TRUE)
+opal.assign.table.tibble(o, 'MHAS_w2_id','Mexican Health Aging Study.MHAS_2003',
+                         variables=list('cunicah'), missings = TRUE)
+```	
+
+
+```{r local2, echo=F}
+MHAS_w1_ybirth <- opal.execute(o,'MHAS_w1_ybirth')
+MHAS_w2_id <- opal.execute(o,'MHAS_w2_id')
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], a1_3=as.numeric(new_2[,2]))
+  new_22
+}
+
+MHAS_w2_ybirth <- Add_indiv(old = MHAS_w1_ybirth, new = MHAS_w2_id)
+
+vari <- MHAS_w2_ybirth$a1_3
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = "Year of birth") 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(MHAS_w2_ybirth, aes(a1_3)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo2}
+MHAS_ds_w2 <- tibble(id=MHAS_w2_ybirth$id)
+MHAS_ds_w2$ybirth <- car::recode(MHAS_w2_ybirth$a1_3, "NA=999")
+MHAS_ds_w2$ybirth <- labelled(MHAS_ds_w2$ybirth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2, echo=F}
+vari <- MHAS_ds_w2$ybirth
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Year of birth")
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(MHAS_ds_w2, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1895,1985)
+```
+
+#### Validation
+```{r crosstabulation2, echo=F}
+```
+
+
+
+
+
+```{r importOPAL2, echo=F}
+
+#opal.assign.data(o, 'MHAS_ds_w2', MHAS_ds_w2)
+#opal.symbol_import(o,'MHAS_ds_w2', project='_Athlos_Harm_Dataset')
+ybirth <- MHAS_ds_w2
+save(ybirth, file = "../RData/w2/ybirth.RData")
+rm(ybirth)
+
+MHAS_m_ds_w2 <- MHAS_ds_w2
+MHAS_m_ds_w2$ybirth <- car::recode(MHAS_m_ds_w2$ybirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'MHAS_m_ds_w2', MHAS_m_ds_w2)
+#opal.symbol_import(o,'MHAS_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 3 
+
+#### Study-specific variable description
+
+| **Name** | `a1_3` |
+|----------|------------|
+| **Label** | `Year of birth` |
+| **Table name** | `MHAS-2001` |
+| **Description** |  |
+
+
+```{r assign3, echo=F}
+opal.assign.table.tibble(o, 'MHAS_w1_ybirth','Mexican Health Aging Study.MHAS-2001',
+                         variables=list('a1_3'), missings = TRUE)
+opal.assign.table.tibble(o, 'MHAS_w3_id','Mexican Health Aging Study.MHAS_2012_new',
+                         variables=list('cunicah'), missings = TRUE)
+```	
+
+
+```{r local3, echo=F}
+MHAS_w1_ybirth <- opal.execute(o,'MHAS_w1_ybirth')
+MHAS_w3_id <- opal.execute(o,'MHAS_w3_id')
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], a1_3=as.numeric(new_2[,2]))
+  new_22
+}
+
+MHAS_w3_ybirth <- Add_indiv(old = MHAS_w1_ybirth, new = MHAS_w3_id)
+
+vari <- MHAS_w3_ybirth$a1_3
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = "Year of birth") 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(MHAS_w3_ybirth, aes(a1_3)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo3}
+MHAS_ds_w3 <- tibble(id=MHAS_w3_ybirth$id)
+MHAS_ds_w3$ybirth <- car::recode(MHAS_w3_ybirth$a1_3, "NA=999")
+MHAS_ds_w3$ybirth <- labelled(MHAS_ds_w3$ybirth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript3, echo=F}
+vari <- MHAS_ds_w3$ybirth
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Year of birth")
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(MHAS_ds_w3, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1895,1985)
+```
+
+#### Validation
+```{r crosstabulation3, echo=F}
+```
+
+
+
+
+
+```{r importOPAL3, echo=F}
+
+#opal.assign.data(o, 'MHAS_ds_w3', MHAS_ds_w3)
+#opal.symbol_import(o,'MHAS_ds_w3', project='_Athlos_Harm_Dataset')
+ybirth <- MHAS_ds_w3
+save(ybirth, file = "../RData/w3/ybirth.RData")
+rm(ybirth)
+
+MHAS_m_ds_w3 <- MHAS_ds_w3
+MHAS_m_ds_w3$ybirth <- car::recode(MHAS_m_ds_w3$ybirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'MHAS_m_ds_w3', MHAS_m_ds_w3)
+#opal.symbol_import(o,'MHAS_m_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+
+# Quality estimation
+No comments.
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

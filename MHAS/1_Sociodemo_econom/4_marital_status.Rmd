@@ -1,0 +1,364 @@
+---
+title: "Marital Status"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_ania.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `marital_status`
+* Variable label: `The current marital status of the participant`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+1        | single
+2        | married-cohabitating
+3        | divorced-separated
+4        | widow
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Mexico
+
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `a10`
+* Label: `Current marital status`
+* Categories: 
+    + `1 = single`
+    + `2 = married`
+    + `3 = in a consensual union`
+    + `4 = divorced`
+    + `5 = separated from a union`
+    + `6 = separated from a marriage`
+    + `7 = widowed from a union`
+    + `8 = widowed from a marriage`
+
+
+* Description: 
+```{r assign1,  echo=FALSE}
+opal.assign.table.tibble(o, 'MHAS_w1_ms','Mexican Health Aging Study.MHAS-2001',
+                         variables=list('a10'), missings = TRUE)
+```
+
+```{r local1,  echo=FALSE}
+MHAS_w1_ms <- opal.execute(o,'MHAS_w1_ms')
+vari <- MHAS_w1_ms$a10
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = MHAS_w1_ms$a10, missing_values = NA)
+ggplot(MHAS_w1_ms, aes(x=factor(a10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "single" into 1`
+* `keep "married" into 2`
+* `recode 3 "in a consensual union" into 2`
+* `recode 4 "divorced" into 3`
+* `recode 5 "separated from a union" into 3`
+* `recode 6 "separated from a marriage" into 3`
+* `recode 7 "widowed from a union" into 4`
+* `recode 8 "widowed from a marriage" into 4`
+* `recode NA into 999`
+
+**R script:**
+
+```{r harmo1,   echo=TRUE}
+MHAS_ds_w1 <- tibble(id=MHAS_w1_ms$id)
+MHAS_ds_w1$marital_status <- car::recode(MHAS_w1_ms$a10, "3=2; 4=3; 5=3; 6=3; 7=4; 8=4; NA=999")
+MHAS_ds_w1$marital_status <- labelled(MHAS_ds_w1$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1,  echo=FALSE}
+vari <- MHAS_ds_w1$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_ds_w1$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_ds_w1, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1,  echo=FALSE}
+BeforeH <- table(MHAS_w1_ms$a10)
+BeforeH <- c(BeforeH[1], sum(BeforeH[c(2,3)]), sum(BeforeH[c(4, 5, 6)]), sum(BeforeH[c(7, 8)]), sum(is.na(MHAS_w1_ms$a10)) )
+AfterH <- table(MHAS_ds_w1$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1","(2,3)->2", "(4,5,6)->3", "(7,8)->4", "NA->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL1,  echo=FALSE}
+val_labels(MHAS_ds_w1) <- NULL
+opal.assign.data(o, 'MHAS_ds_w1', MHAS_ds_w1)
+#opal.symbol_import(o,'MHAS_ds_w1', project='_Athlos_Harm_Dataset')
+marital_status <- MHAS_ds_w1
+save(marital_status, file = "../RData/w1/marital_status.RData")
+rm(marital_status)
+
+MHAS_m_ds_w1 <- MHAS_ds_w1
+MHAS_m_ds_w1$marital_status <- car::recode(MHAS_m_ds_w1$marital_status, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+opal.assign.data(o, 'MHAS_m_ds_w1', MHAS_m_ds_w1)
+#opal.symbol_import(o,'MHAS_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `a3`
+* Label: `Respondent's Marital status`
+* Categories: 
+    + `1 = single`
+    + `2 = married`
+    + `3 = in a consensual union`
+    + `4 = divorced`
+    + `5 = separated from a union`
+    + `6 = separated from a marriage`
+    + `7 = widowed from a union`
+    + `8 = widowed from a marriage`
+    
+* Description: 
+```{r assign2,  echo=FALSE}
+opal.assign.table.tibble(o, 'MHAS_w2_ms','Mexican Health Aging Study.MHAS_2003',
+                         variables=list('a3'), missings = TRUE)
+```
+
+```{r local2,  echo=FALSE}
+MHAS_w2_ms <- opal.execute(o,'MHAS_w2_ms')
+vari <- MHAS_w2_ms$a3
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = MHAS_w2_ms$a3, missing_values = NA)
+ggplot(MHAS_w2_ms, aes(x=factor(a3))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "single" into 1`
+* `keep "married" into 2`
+* `recode 3 "in a consensual union" into 2`
+* `recode 4 "divorced" into 3`
+* `recode 5 "separated from a union" into 3`
+* `recode 6 "separated from a marriage" into 3`
+* `recode 7 "widowed from a union" into 4`
+* `recode 8 "widowed from a marriage" into 4`
+* `recode NA into 999`
+
+**R script:**
+
+```{r harmo2,   echo=TRUE}
+MHAS_ds_w2 <- tibble(id=MHAS_w2_ms$id)
+MHAS_ds_w2$marital_status <- car::recode(MHAS_w2_ms$a3, "3=2; 4=3; 5=3; 6=3; 7=4; 8=4; NA=999")
+MHAS_ds_w2$marital_status <- labelled(MHAS_ds_w2$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2,  echo=FALSE}
+vari <- MHAS_ds_w2$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_ds_w2$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_ds_w2, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2,  echo=FALSE}
+BeforeH <- table(MHAS_w2_ms$a3)
+BeforeH <- c(BeforeH[1], sum(BeforeH[c(2,3)]), sum(BeforeH[c(4, 5, 6)]), sum(BeforeH[c(7, 8)]), sum(is.na(MHAS_w2_ms$a3)) )
+AfterH <- table(MHAS_ds_w2$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1","(2,3)->2", "(4,5,6)->3", "(7,8)->4", "NA->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL2,  echo=FALSE}
+val_labels(MHAS_ds_w2) <- NULL
+opal.assign.data(o, 'MHAS_ds_w2', MHAS_ds_w2)
+#opal.symbol_import(o,'MHAS_ds_w2', project='_Athlos_Harm_Dataset')
+marital_status <- MHAS_ds_w2
+save(marital_status, file = "../RData/w2/marital_status.RData")
+rm(marital_status)
+
+MHAS_m_ds_w2 <- MHAS_ds_w2
+MHAS_m_ds_w2$marital_status <- car::recode(MHAS_m_ds_w2$marital_status, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+opal.assign.data(o, 'MHAS_m_ds_w2', MHAS_m_ds_w2)
+#opal.symbol_import(o,'MHAS_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 3 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `a3_12`
+* Label: `Current marital status`
+* Categories: 
+    + `1 = Single`
+    + `2 = Married`
+    + `3 = In a consensual union`
+    + `4 = Divorced`
+    + `5 = Separated from a civil union`
+    + `6 = Separated from a marriage`
+    + `7 = Widowed froma civil union`
+    + `8 = Widowed from marriage`
+
+* Description: 
+```{r assign3,  echo=FALSE}
+opal.assign.table.tibble(o, 'MHAS_w3_ms','Mexican Health Aging Study.MHAS_2012_new',
+                         variables=list('a3_12'), missings = TRUE)
+```
+
+```{r local3,  echo=FALSE}
+MHAS_w3_ms <- opal.execute(o,'MHAS_w3_ms')
+vari <- MHAS_w3_ms$a3_12
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = MHAS_w3_ms$a3_12, missing_values = NA)
+ggplot(MHAS_w3_ms, aes(x=factor(a3_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "Single" into 1`
+* `keep "Married" into 2`
+* `recode 3 "In a consensual union" into 2`
+* `recode 4 "Divorced" into 3`
+* `recode 5 "Separated from a civil union" into 3`
+* `recode 6 "Separated from a marriage" into 3`
+* `recode 7 "Widowed froma civil union" into 4`
+* `recode 8 "Widowed from marriage" into 4`
+* `recode NA into 999`
+
+
+**R script:**
+
+```{r harmo3,   echo=TRUE}
+MHAS_ds_w3 <- tibble(id=MHAS_w3_ms$id)
+MHAS_ds_w3$marital_status <- car::recode(MHAS_w3_ms$a3_12, "3=2; 4=3; 5=3; 6=3; 7=4; 8=4; NA=999")
+MHAS_ds_w3$marital_status <- labelled(MHAS_ds_w3$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript3,  echo=FALSE}
+vari <- MHAS_ds_w3$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_ds_w3$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_ds_w3, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation3,  echo=FALSE}
+BeforeH <- table(MHAS_w3_ms$a3_12)
+BeforeH <- c(BeforeH[1], sum(BeforeH[c(2,3)]), sum(BeforeH[c(4, 5, 6)]), sum(BeforeH[c(7, 8)]), sum(is.na(MHAS_w3_ms$a3_12)) )
+AfterH <- table(MHAS_ds_w3$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1","(2,3)->2", "(4,5,6)->3", "(7,8)->4", "NA->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL3,  echo=FALSE}
+val_labels(MHAS_ds_w3) <- NULL
+opal.assign.data(o, 'MHAS_ds_w3', MHAS_ds_w3)
+#opal.symbol_import(o,'MHAS_ds_w3', project='_Athlos_Harm_Dataset')
+marital_status <- MHAS_ds_w3
+save(marital_status, file = "../RData/w3/marital_status.RData")
+rm(marital_status)
+
+MHAS_m_ds_w3 <- MHAS_ds_w3
+MHAS_m_ds_w3$marital_status <- car::recode(MHAS_m_ds_w3$marital_status, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+opal.assign.data(o, 'MHAS_m_ds_w3', MHAS_m_ds_w3)
+#opal.symbol_import(o,'MHAS_m_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+
+
+# Quality estimation
+
+'3=in a consensual union' was considered as 2=married-cohabitating in the harmonized variable
+
+```{r closeRsession, echo=FALSE,  echo=FALSE} 
+opal.logout(o)
+```
+
+

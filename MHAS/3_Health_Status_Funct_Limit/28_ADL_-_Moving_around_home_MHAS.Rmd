@@ -1,0 +1,433 @@
+---
+title: "ADL- Moving around the home"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/Rmds/setup_ania.r")
+```
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `adl_moving`
+* Variable label: `ADL-Difficulties for moving around the home`
+* Variable description: `ADL-Difficulties for moving around the home`
+* Domain: `Health status and functional limitations`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | Yes
+1        | No
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+```{r, dataDirectory, echo=FALSE}
+datafolder <- "../RData"
+```
+
+
+
+```{r, jumping list, echo=FALSE}
+l <- list('h1', 'h3', 'h4', 'h5', 'h7', 'h8', 'h9', 'h10', 'h11', 'h12', 'h13' )
+```
+
+
+```{r, jumping list w3, echo=FALSE}
+l2 <- list('h1', 'h4', 'h5', 'h6', 'h7', 'h8', 'h9', 'h10', 'h11', 'h12', 'h13' )
+```
+
+
+## Mexican population
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+
+* Name: `h15_1`
+* Label: `Because of a health problem, do you have any difficulty with walking across a room?`
+* Categories:
+   + `1 = Yes`
+   + `2 = No`
+   + `6 = Can't do`
+* Missings
+   + `7 = Doesn't do`
+   + `8 = Doesn't answer`
+   + `9 = DK`
+   + `NA`
+
+
+* Description: 
+```{r assign w1,  echo=FALSE}
+m <- append(l, 'h15_1')
+opal.assign.table.tibble(o, 'MHAS_w1_adl_moving','Mexican Health Aging Study.MHAS-2001', variables=m, missings = TRUE)
+```
+
+```{r local w1,  echo=FALSE}
+MHAS_w1_adl_moving <- opal.execute(o,'MHAS_w1_adl_moving')
+vari <- MHAS_w1_adl_moving$h15_1 # VARIABLE
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(MHAS_w1_adl_moving$h15_1)
+ggplot(MHAS_w1_adl_moving, aes(x=factor(h15_1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Getting in or out of bed") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+```{r, echo=FALSE, eval=FALSE}
+length(which((MHAS_w1_adl_moving$h1==2)&
+                              (MHAS_w1_adl_moving$h3==2)&
+                              (MHAS_w1_adl_moving$h4==2)&
+                              (MHAS_w1_adl_moving$h5==2)&
+                              (MHAS_w1_adl_moving$h7==2)&
+                              (MHAS_w1_adl_moving$h8==2)&
+                              (MHAS_w1_adl_moving$h9==2)&
+                              (MHAS_w1_adl_moving$h10==2)&
+                              (MHAS_w1_adl_moving$h11==2)&
+                              (MHAS_w1_adl_moving$h12==2)&
+                              (MHAS_w1_adl_moving$h13==2)))
+```
+
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 0` 
+* `2 into 1`
+* `6 Can't do into 0`
+* `7 Doesn't do into 994`
+* `8 Doesn't answer into 995`
+* `9 DK into 998`
+* `NA into 999`
+
+**R script:** 
+```{r harmo w1,   echo=TRUE}
+MHAS_ds_w1 <- tibble(id=MHAS_w1_adl_moving$id)
+MHAS_ds_w1$adl_moving <- car::recode(MHAS_w1_adl_moving$h15_1, "1 = '0';2 = '1';NA = '999';6 = '0';7 = '994';8 = '995';9 = '998' ")
+MHAS_ds_w1$adl_moving <- labelled(MHAS_ds_w1$adl_moving, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1,  echo=FALSE}
+vari <- MHAS_ds_w1$adl_moving# variable you want to descrive
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_ds_w1$adl_moving, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_ds_w1, aes(x=factor(adl_moving))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Getting in or out of bed") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1,  echo=FALSE}
+AfterH <- table(MHAS_ds_w1$adl_moving)
+X<-table(MHAS_w1_adl_moving$h15_1)
+BeforeH <- c(sum(X[1],X[3]),X[c(2,4,5,6)],sum(is.na(MHAS_w1_adl_moving$h15_1)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1,6->0","2->1","7->994","8->995","9->998","NA->999") 
+kable(C)
+```
+
+ 
+ 
+
+
+ 
+```{r importOPAL w1, echo=FALSE,  echo=FALSE}
+val_labels(MHAS_ds_w1) <- NULL
+label(MHAS_ds_w1$adl_moving) <- "Difficulties for getting in or out of bed"
+#opal.assign.data(o, 'MHAS_ds_w1', MHAS_ds_w1)
+#opal.symbol_import(o,'MHAS_ds_w1', project='_Athlos_Harm_Dataset')
+
+MHAS_m_ds_w1 <- MHAS_ds_w1
+MHAS_m_ds_w1$adl_moving <- car::recode(MHAS_m_ds_w1$adl_moving, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'MHAS_m_ds_w1', MHAS_m_ds_w1)
+#opal.symbol_import(o,'MHAS_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+```{r,  echo=FALSE}
+adl_moving<- MHAS_ds_w1
+save(adl_moving, file = paste0(datafolder, "/w1/adl_moving.RData"))
+```
+
+### Wave 2
+
+#### Study-specific variable description
+
+ 
+
+
+* Name: `h15a`
+* Label: `Health problem-get in/out of bed`
+* Categories:
+   + `1 = Yes`
+   + `2 = No`
+   + `6 = Can't do`
+* Missings
+   + `7 = Doesn't do`
+   + `8 = Doesn't answer`
+   + `NA`
+
+
+* Description: 
+```{r assign w2,  echo=FALSE}
+m <- append(l, 'h15a')
+opal.assign.table.tibble(o, 'MHAS_w2_adl_moving','Mexican Health Aging Study.MHAS_2003', variables=m, missings = TRUE)
+```
+
+```{r local w2,  echo=FALSE}
+MHAS_w2_adl_moving <- opal.execute(o,'MHAS_w2_adl_moving')
+vari <- MHAS_w2_adl_moving$h15a # VARIABLE
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(MHAS_w2_adl_moving$h15a)
+ggplot(MHAS_w2_adl_moving, aes(x=factor(h15a))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Getting in or out of bed") + ylab("Frequency")
+```
+
+```{r, echo=FALSE, eval=FALSE}
+length(which((MHAS_w2_adl_moving$h1==2)&
+                              (MHAS_w2_adl_moving$h3==2)&
+                              (MHAS_w2_adl_moving$h4==2)&
+                              (MHAS_w2_adl_moving$h5==2)&
+                              (MHAS_w2_adl_moving$h7==2)&
+                              (MHAS_w2_adl_moving$h8==2)&
+                              (MHAS_w2_adl_moving$h9==2)&
+                              (MHAS_w2_adl_moving$h10==2)&
+                              (MHAS_w2_adl_moving$h11==2)&
+                              (MHAS_w2_adl_moving$h12==2)&
+                              (MHAS_w2_adl_moving$h13==2)))
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 0` 
+* `2 into 1`
+* `6 Can't do into 0`
+* `7 Doesn't do into 994`
+* `8 Doesn't answer into 995`
+* `NA into 999`
+
+**R script:** 
+```{r harmo w2,   echo=TRUE}
+MHAS_ds_w2 <- tibble(id=MHAS_w2_adl_moving$id)
+MHAS_ds_w2$adl_moving <- car::recode(MHAS_w2_adl_moving$h15a, "1 = '0';2 = '1';NA = '999';6 = '0';7 = '994';8 = '995';9 = '998' ")
+MHAS_ds_w2$adl_moving <- labelled(MHAS_ds_w2$adl_moving, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w2,  echo=FALSE}
+vari <- MHAS_ds_w2$adl_moving# variable you want to descrive
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_ds_w2$adl_moving, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_ds_w2, aes(x=factor(adl_moving))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Getting in or out of bed") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w2,  echo=FALSE}
+AfterH <- table(MHAS_ds_w2$adl_moving)
+X<-table(MHAS_w2_adl_moving$h15a)
+BeforeH <- c(sum(X[1],X[3]),X[c(2,4,5)],sum(is.na(MHAS_w2_adl_moving$h15a)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1,6->0","2->1","7->994","8->995","NA->999") 
+kable(C)
+```
+
+ 
+ 
+
+
+ 
+```{r importOPAL w2, echo=FALSE,  echo=FALSE}
+val_labels(MHAS_ds_w2) <- NULL
+label(MHAS_ds_w2$adl_moving) <- "Difficulties for getting in or out of bed"
+#opal.assign.data(o, 'MHAS_ds_w2', MHAS_ds_w2)
+#opal.symbol_import(o,'MHAS_ds_w2', project='_Athlos_Harm_Dataset')
+
+MHAS_m_ds_w2 <- MHAS_ds_w2
+MHAS_m_ds_w2$adl_moving <- car::recode(MHAS_m_ds_w2$adl_moving, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'MHAS_m_ds_w2', MHAS_m_ds_w2)
+#opal.symbol_import(o,'MHAS_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+```{r,  echo=FALSE}
+adl_moving<- MHAS_ds_w2
+save(adl_moving, file = paste0(datafolder, "/w2/adl_moving.RData"))
+```
+
+### Wave 3
+
+#### Study-specific variable description
+
+ 
+
+
+* Name: `h15a_12`
+* Label: `Because of health problem, difficulty get in/out of bed`
+* Categories:
+   + `1 = Yes`
+   + `2 = No`
+   + `6 = Can't do`
+* Missings
+   + `7 = Doesn't do`
+   + `8 = RF`
+   + `9 = DK`
+   + `NA`
+
+
+* Description: 
+```{r assign w3,  echo=FALSE}
+m2 <- append(l2, 'h15a_12' )
+opal.assign.table.tibble(o, 'MHAS_w3_adl_moving','Mexican Health Aging Study.MHAS_2012_new', variables=m2, missings = TRUE)
+```
+
+```{r local w3,  echo=FALSE}
+MHAS_w3_adl_moving <- opal.execute(o,'MHAS_w3_adl_moving')
+vari <- MHAS_w3_adl_moving$h15a_12 # VARIABLE
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(MHAS_w3_adl_moving$h15a_12)
+ggplot(MHAS_w3_adl_moving, aes(x=factor(h15a_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Getting in or out of bed") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+```{r, echo=FALSE, eval=FALSE}
+#Checking whether this question was skaped for any subject:
+length(which((MHAS_w3_adl_moving$h1==2)&
+                              (MHAS_w3_adl_moving$h4==2)&
+                              (MHAS_w3_adl_moving$h5==2)&
+                              (MHAS_w3_adl_moving$h6==2)&
+                              (MHAS_w3_adl_moving$h8==2)&
+                              (MHAS_w3_adl_moving$h9==2)&
+                              (MHAS_w3_adl_moving$h10==2)&
+                              (MHAS_w3_adl_moving$h11==2)&
+                              (MHAS_w3_adl_moving$h12==2)&
+                              (MHAS_w3_adl_moving$h13==2)))
+```
+
+```{r, echo=FALSE, eval=FALSE}
+length(which((MHAS_w3_adl_moving$h1==2)&
+                              (MHAS_w3_adl_moving$h4==2)&
+                              (MHAS_w3_adl_moving$h5==2)&
+                              (MHAS_w3_adl_moving$h6!=2)&
+                              (MHAS_w3_adl_moving$h7==2)&
+                              (MHAS_w3_adl_moving$h8==2)&
+                              (MHAS_w3_adl_moving$h9==2)&
+                              (MHAS_w3_adl_moving$h10==2)&
+                              (MHAS_w3_adl_moving$h11==2)&
+                              (MHAS_w3_adl_moving$h12==2)&
+                              (MHAS_w3_adl_moving$h13==2)))
+```
+
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 0` 
+* `2 into 1`
+* `6 Can't do into 0`
+* `7 Doesn't do into 994`
+* `8 RF into 997`
+* `9 DK into 998`
+* `NA into 999`
+
+**R script:** 
+```{r harmo w3,   echo=TRUE}
+MHAS_ds_w3 <- tibble(id=MHAS_w3_adl_moving$id)
+MHAS_ds_w3$adl_moving <- car::recode(MHAS_w3_adl_moving$h15a_12, "1 = '0';2 = '1';NA = '999';6 = '0';7 = '994';8 = '997';9 = '998' ")
+MHAS_ds_w3$adl_moving <- labelled(MHAS_ds_w3$adl_moving, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w3,  echo=FALSE}
+vari <- MHAS_ds_w3$adl_moving# variable you want to descrive
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_ds_w3$adl_moving, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_ds_w3, aes(x=factor(adl_moving))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Getting in or out of bed") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w3,  echo=FALSE}
+AfterH <- table(MHAS_ds_w3$adl_moving)
+X<-table(MHAS_w3_adl_moving$h15a_12)
+BeforeH <- c(sum(X[1], X[3]),X[c(2,4,5,6)],sum(is.na(MHAS_w3_adl_moving$h15a_12)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1,6->0","2->1","7->994","8->997","9->998","NA->999") 
+kable(C)
+```
+
+ 
+ 
+
+
+ 
+```{r importOPAL w3, echo=FALSE,  echo=FALSE}
+val_labels(MHAS_ds_w3) <- NULL
+label(MHAS_ds_w3$adl_moving) <- "Difficulties for getting in or out of bed"
+#opal.assign.data(o, 'MHAS_ds_w3', MHAS_ds_w3)
+#opal.symbol_import(o,'MHAS_ds_w3', project='_Athlos_Harm_Dataset')
+
+MHAS_m_ds_w3 <- MHAS_ds_w3
+MHAS_m_ds_w3$adl_moving <- car::recode(MHAS_m_ds_w3$adl_moving, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'MHAS_m_ds_w3', MHAS_m_ds_w3)
+#opal.symbol_import(o,'MHAS_m_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+```{r,  echo=FALSE}
+adl_moving<- MHAS_ds_w3
+save(adl_moving, file = paste0(datafolder, "/w3/adl_moving.RData"))
+```
+
+# Quality control
+
+
+'Can’t do = 6' was considered as maximum difficulty
+
+
+```{r closeRsession, echo=FALSE,  echo=FALSE}
+opal.logout(o)
+```

@@ -1,0 +1,355 @@
+---
+title: "Has friend(s)/confidant"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/confidantDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/confidantDS.R')
+```
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Mexico
+
+### Wave 1
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `G28`
+* Label: `Friends in neighborhood`
+* Categories: 
+    + `1.0 = Yes` 
+    + `2.0 = No` 
+* Missings:
+    + `8 = RF` 
+    + `9 = DK` 
+
+
+* Description: 
+```{r assign1, echo=F}
+
+opal.assign.table.tibble(o, 'MHAS_w1_confidant','Mexican Health Aging Study.g_house',variables=list('G28','G1'), missings = TRUE)
+MHAS_w1_confidant <- opal.execute(o,'MHAS_w1_confidant')
+opal.assign.table.tibble(o, 'MHAS_w1_id','Mexican Health Aging Study.MHAS-2001',variables=list('unhhid'), missings = T)
+MHAS_w1_id <- opal.execute(o,'MHAS_w1_id')
+MHAS_w1_id$unhhid <- paste0(as.character(MHAS_w1_id$unhhid),".0")
+MHAS_w1 <- left_join(MHAS_w1_id,MHAS_w1_confidant,by=c("unhhid"="id"))
+
+```
+
+
+<!-- Code to check the 41 individuals of difference:
+
+#Instead of the last line above, the next one:
+MHAS_w1 <- left_join(MHAS_w1_id,MHAS_w1_confidant,by=c("unhhid"="id"))
+
+MHAS_w1[which(sapply(paste0("^",substr(MHAS_w1$id,1,nchar(MHAS_w1$id)-4),"[12]0\\.0"),function(x) length(grep(x,MHAS_w1$id)))==1 & MHAS_w1$G1 %in% c(1,2) & MHAS_w1$G1!=as.numeric(substr(MHAS_w1$id,nchar(MHAS_w1$id)-3,nchar(MHAS_w1$id)-3))),]
+
+-->
+
+
+```{r local1, echo=F}
+
+vari <- MHAS_w1_confidant$G28
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = MHAS_w1_confidant$G28, missing_values = NA)
+ggplot(MHAS_w1_confidant, aes(x=factor(G28))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has friends in neighbourhood?") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+
+To recode the harmonize variable from the study-specific variable it has to be recoded as follows:  
+
+The interviewer manual specifies:
+
+`When both interviews are conducted with proxies, the TR-habitual residents, TR-Children (section B), and the section on Help and Children (section G) will be filled out only for the first interview. In order to facilitate this, Interview Control Sheets are included in the questionnaire.`
+
+* `For each household id we get the id corresponding to the respondent from the household id (substring of the id's) and the interview code (G1). For them:`
+* `keep up G28 == 1 into 1`
+* `change G28 == 2 into 0`
+* `change G28 == 8 into 997`
+* `change G28 == 9 into 998`
+* `otherwise into 999`
+
+ 
+
+**R script:** 
+
+
+```{r harmo1, echo=TRUE}
+
+MHAS_ds_w1 <- tibble(id=MHAS_w1$id)
+MHAS_ds_w1$confidant <- rep(999,length(MHAS_ds_w1$id))
+MHAS_ds_w1$confidant[which(paste0(substr(MHAS_w1$id,1,nchar(MHAS_w1$id)-4),as.character(MHAS_w1$G1),"0.0")==MHAS_w1$id)] <- car::recode(as.vector(MHAS_w1$G28[which(paste0(substr(MHAS_w1$id,1,nchar(MHAS_w1$id)-4),as.character(MHAS_w1$G1),"0.0")==MHAS_w1$id)]), "1='1'; 2='0'; 8='997'; 9='998'; NA='999'")
+MHAS_ds_w1$confidant <- labelled(MHAS_ds_w1$confidant, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1, echo=F}
+vari <- MHAS_ds_w1$confidant
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_ds_w1$confidant, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_ds_w1, aes(x=factor(confidant))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has any friend(s)/confidants(s)?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=F}
+
+```
+
+ 
+ 
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `d6`
+* Label: `Have friends and companions`
+* Categories: 
+    + `1.0 = Yes`
+    + `2.0 = No`
+* Missings:
+    + `8.0 = RF`
+    + `9.0 = DK` 
+
+* Description: 
+```{r assign2, echo=F}
+opal.assign.table.tibble(o, 'MHAS_w2_confidant','Mexican Health Aging Study.MHAS_2003',variables=list('d6'), missings = TRUE)
+```
+
+```{r local2, echo=F}
+MHAS_w2_confidant <- opal.execute(o,'MHAS_w2_confidant')
+vari <- MHAS_w2_confidant$d6
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = MHAS_w2_confidant$d6, missing_values = NA)
+ggplot(MHAS_w2_confidant, aes(x=factor(d6))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has friends and companions?") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To recode the harmonize variable from the study-specific variable it has to be recoded as follows:  
+
+* `1 Yes into 1`
+* `2 No into 0`
+* `8 RF into 997`
+* `9 DK into 998`
+* `NA into 999`
+
+ 
+
+**R script:** 
+```{r harmo2, echo=TRUE}
+MHAS_ds_w2 <- tibble(id=MHAS_w2_confidant$id)
+MHAS_ds_w2$confidant <- car::recode(as.vector(MHAS_w2_confidant$d6), "1='1'; 2='0'; 8='997'; 9='998'; NA='999'")
+MHAS_ds_w2$confidant <- labelled(MHAS_ds_w2$confidant, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2, echo=F}
+vari <- MHAS_ds_w2$confidant
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_ds_w2$confidant, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_ds_w2, aes(x=factor(confidant))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has any friend(s)/confidants(s)?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2, echo=F}
+AfterH <- table(MHAS_ds_w2$confidant)
+BeforeH <- table(MHAS_w2_confidant$d6, useNA='ifany')[c(2,1,3,4,5)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1","8->997","9->998","NA->999")
+kable(C)
+```
+
+ 
+ 
+
+
+### Wave 3
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `d23_12`
+* Label: `Does respondent have friends,acquaintances or work colleagues`
+* Categories: 
+    + `1.0 = Yes`
+    + `2.0 = No`
+* Missings:
+    + `8.0 = RF`
+    + `9.0 = DK`
+
+
+* Description: 
+```{r assign3, echo=F}
+opal.assign.table.tibble(o, 'MHAS_w3_confidant','Mexican Health Aging Study.MHAS_2012_new',variables=list('d23_12'), missings = TRUE)
+```
+
+```{r local3, echo=F}
+MHAS_w3_confidant <- opal.execute(o,'MHAS_w3_confidant')
+vari <- MHAS_w3_confidant$d23_12
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = MHAS_w3_confidant$d23_12, missing_values = NA)
+ggplot(MHAS_w3_confidant, aes(x=factor(d23_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has any friends, acquaintances or work colleagues?") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To recode the harmonize variable from the study-specific variable it has to be recoded as follows:  
+
+* `1 Yes into 1`
+* `2 No into 0`
+* `8 Don't Know into 997` 
+* `9 Not answered into 998`
+* `NA into 999`
+
+ 
+
+**R script:** 
+```{r harmo3, echo=TRUE}
+MHAS_ds_w3 <- tibble(id=MHAS_w3_confidant$id)
+MHAS_ds_w3$confidant <- car::recode(as.vector(MHAS_w3_confidant$d23_12), "1='1'; 2='0'; 8='997'; 9='998'; NA='999'")
+MHAS_ds_w3$confidant <- labelled(MHAS_ds_w3$confidant, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript3, echo=F}
+vari <- MHAS_ds_w3$confidant
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = MHAS_ds_w3$confidant, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(MHAS_ds_w3, aes(x=factor(confidant))) + geom_bar(stat="count", width=0.4, fill="steelblue")+ xlab("Has any friend(s)/confidants(s)?") + ylab("Frequency")
+```
+
+##### Validation
+```{r crosstabulation3, echo=F}
+AfterH <- table(MHAS_ds_w3$confidant)
+BeforeH <- table(MHAS_w3_confidant$d23_12, useNA='ifany')[c(2,1,3,4,5)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1","8->997","9->998","NA->999")
+kable(C)
+```
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories.
+
+**R script:**
+
+```{r summ}
+
+l.hds <- list(w1 = MHAS_ds_w1, w2 = MHAS_ds_w2, w3 = MHAS_ds_w3)
+
+
+for(name in names(l.hds)) {
+  aux_object <- l.hds[[name]]
+  label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
+  l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  m_name <- paste0("MHAS_m_ds_",name)
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+
+t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+for (i in seq_along(l.hds)){
+  t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+}
+t.hds[13,] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+             )
+names(t.hds)<-c("val", "label", names(l.hds))
+kable(t.hds)
+
+
+dbb <- get(paste0("MHAS_m_ds_",names(l.hds)[1]))[,c("id","confidant")]
+for(ind in 2:length(l.hds)){
+  dbb <- merge(dbb, get(paste0("MHAS_m_ds_",names(l.hds)[ind]))[,c("id","confidant")], by = "id", suffixes = c("", paste0(".",names(l.hds)[ind])), all = T)
+}
+names(dbb) <- c("id", names(l.hds))
+
+v.dbb <- dbb[,2]
+for(ind in 2:length(l.hds)){
+  v.dbb <- paste0(v.dbb,dbb[,ind+1])
+}
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb)
+
+```
+
+
+
+
+
+
+```{r save, echo=FALSE}
+confidant <- MHAS_ds_w1
+save(confidant, file = "../RData/w1/confidant.RData")
+rm(confidant)
+
+confidant <- MHAS_ds_w2
+save(confidant, file = "../RData/w2/confidant.RData")
+rm(confidant)
+
+confidant <- MHAS_ds_w3
+save(confidant, file = "../RData/w3/confidant.RData")
+rm(confidant)
+
+```
+
+# Quality estimation
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```

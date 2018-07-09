@@ -1,0 +1,406 @@
+---
+title: "Sick or disabled"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/sickdisDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/sickdisDS.R')
+```
+
+
+
+# Data process
+
+
+
+## Mexico
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `K55C` |`J1`|
+|-|-|-|
+| **Label** | `Disability pension`|`Interview code`|
+| **Table name**  | `sect_k`| `sect_j`|
+| **Categories** | `1 = Yes`<br/>`2 = No`|`1 = Respondent`<br/>`2 = Spouse`<br/>`3 = Other`|
+| **Missings** |  | `NA` |
+| **Description** |  |  |
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'MHAS_w1_pre','Mexican Health Aging Study.sect_k',variables=list('K55C'), missings = T)
+MHAS_w1_pre <- opal.execute(o,'MHAS_w1_pre')
+opal.assign.table.tibble(o, 'MHAS_w1_2','Mexican Health Aging Study.sect_j',variables=list('J1'), missings = T)
+MHAS_w1_2 <- opal.execute(o,'MHAS_w1_2')
+MHAS_w1_0 <- inner_join(MHAS_w1_pre,MHAS_w1_2,by="id")
+opal.assign.table.tibble(o, 'MHAS_w1_id','Mexican Health Aging Study.MHAS-2001',variables=list('unhhid'), missings = T)
+MHAS_w1_id <- opal.execute(o,'MHAS_w1_id')
+MHAS_w1_id$unhhid <- paste0(as.character(MHAS_w1_id$unhhid),".0")
+MHAS_w1 <- left_join(MHAS_w1_id,MHAS_w1_0,by=c("unhhid"="id"))
+
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- MHAS_w1_pre$K55C
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'K55C')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(MHAS_w1_pre, aes(x=factor(K55C))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w1_2$J1
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'J1')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(MHAS_w1_2, aes(x=factor(J1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `sickdis` from the study-specific variable it has to be recoded as follows:
+
+The interviewer manual specifies:
+
+`In the case of single household interviews, conduct both section J and K. Both sections are conducted with only one member of the couple. The election of respondent between the two members of the couple will be done according to the preferences of the couple, expressed at the beginning of section J, in the INTERVIEW CONTROL sheet.`
+
+* `For each household id we get the id corresponding to the respondent from the household id (substring of the id's) and the interview code (J1). For them:`
+* `keep up K55C == 2 into 0`
+* `keep up K55C == 1 into 1`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo w1}
+
+# Categorical variable harmonization
+MHAS_ds_w1 <- tibble(id=MHAS_w1$id)
+MHAS_ds_w1$sickdis <- rep(999,length(MHAS_w1$id))
+MHAS_ds_w1$sickdis[which(paste0(substr(MHAS_w1$id,1,nchar(MHAS_w1$id)-4),as.character(MHAS_w1$J1),"0.0")==MHAS_w1$id)] <- 2 - MHAS_w1$K55C[which(paste0(substr(MHAS_w1$id,1,nchar(MHAS_w1$id)-4),as.character(MHAS_w1$J1),"0.0")==MHAS_w1$id)]
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- MHAS_ds_w1$sickdis
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(MHAS_ds_w1, aes(x=factor(sickdis))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+
+```
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** |`i26`|
+|-|-|
+| **Label** |`Main reason for not working`|
+| **Table name**  | `MHAS_2003`|
+| **Categories** |`1 = Dedicated to household chores`<br/>`2 = Retired`<br/>`3 = Old Age`<br/>`4 = Sick or temporarily disabled`<br/>`5 = Unable to work for rest of life`<br/>`6 = Doesn't have customers or can't find work`<br/>`7 = Other`|
+| **Missings** | `8 = Doesn't answer`<br/>`9 = Doesn't know` |
+| **Description** |  |
+
+
+
+```{r assign w2, echo=F}
+
+opal.assign.table.tibble(o, 'MHAS_w2','Mexican Health Aging Study.MHAS_2003',variables=list('i26'), missings = T)
+MHAS_w2 <- opal.execute(o,'MHAS_w2')
+
+```
+
+```{r local w2, echo=F}
+
+vbl <- MHAS_w2$i26
+kable(Categorical_summary(vbl, missing_values = c(8,9))[3], caption = names(MHAS_w2)[2])
+kable(Categorical_summary(vbl, missing_values = c(8,9))[1], caption = "Category")
+ggplot(MHAS_w2, aes(x=factor(i26))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `sickdis` from the study-specific variable it has to be recoded as follows:
+
+* `4,5 into 1`
+* `1,6,7 into 0`
+* `2,3 into 996`
+* `8 into 995`
+* `9 into 998`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo w2}
+
+# Categorical variable harmonization
+MHAS_ds_w2 <- tibble(id=MHAS_w2$id)
+MHAS_ds_w2$sickdis <- car::recode(MHAS_w2$i26, "c(4,5)=1; c(2,3)=996; 8=995; c(1,6,7)=0; 9=998; NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w2, echo=F}
+
+vbl <- MHAS_ds_w2$sickdis
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(MHAS_ds_w2, aes(x=factor(sickdis))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w2, echo=F}
+
+```
+
+
+
+### Wave 3
+
+
+#### Study-specific variable description
+
+| **Name** | `i26_1_12`| `i26_2_12`|`i26_3_12`|  `i26_4_12`| `i26_5_12`| `i26_6_12`| `i26_7_12`| `i26_8_12`| `i26_9_12`|
+|-|-|-|-|-|-|-|-|
+| **Label** |`Reason for not working - dedicated to household chores`| `Reason for not working - retired`|`Reason for not working - old age`|`Reason for not working - sick or temporary disability`|`Reason for not working - unable to work rest of life`|`Reason for not working - no customers or work`|`Reason for not working - other`|`Reason for not working - RF`|`Reason for not working - DK`|
+| **Table name**  | `MHAS_2012_new`| `MHAS_2012_new`| `MHAS_2012_new`| `MHAS_2012_new`|`MHAS_2012_new`| `MHAS_2012_new`| `MHAS_2012_new`| `MHAS_2012_new`|`MHAS_2012_new`|
+| **Categories** | `0 = Not a selected answer`<br/>`1 = Yes`| `0 = Not a selected answer`<br/>`1 = Yes`| `0 = Not a selected answer`<br/>`1 = Yes`| `0 = Not a selected answer`<br/>`1 = Yes`| `0 = Not a selected answer`<br/>`1 = Yes`| `0 = Not a selected answer`<br/>`1 = Yes`| `0 = Not a selected answer`<br/>`1 = Yes`| `0 = Not a selected answer`<br/>`1 = Yes`| `0 = Not a selected answer`<br/>`1 = Yes`|
+| **Missings** | `NA` | `NA` | `NA` | `NA` | `NA` | `NA` | `NA` | `NA` | `NA` |
+| **Description** |  |  |  |  |  |  |  |  |  |
+
+```{r assign w3, echo=F}
+
+opal.assign.table.tibble(o, 'MHAS_w3','Mexican Health Aging Study.MHAS_2012_new',variables=list('i26_1_12','i26_2_12','i26_3_12','i26_4_12','i26_5_12','i26_6_12','i26_7_12','i26_8_12','i26_9_12'), missings = T)
+MHAS_w3 <- opal.execute(o,'MHAS_w3')
+
+```
+
+```{r local w3, echo=F}
+
+vbl <- MHAS_w3$i26_1_12
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(MHAS_w3)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(MHAS_w3, aes(x=factor(i26_1_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w3$i26_2_12
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(MHAS_w3)[3])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(MHAS_w3, aes(x=factor(i26_2_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w3$i26_3_12
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(MHAS_w3)[4])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(MHAS_w3, aes(x=factor(i26_3_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w3$i26_4_12
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(MHAS_w3)[5])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(MHAS_w3, aes(x=factor(i26_4_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w3$i26_5_12
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(MHAS_w3)[6])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(MHAS_w3, aes(x=factor(i26_5_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w3$i26_6_12
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(MHAS_w3)[7])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(MHAS_w3, aes(x=factor(i26_6_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w3$i26_7_12
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(MHAS_w3)[8])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(MHAS_w3, aes(x=factor(i26_7_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w3$i26_8_12
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(MHAS_w3)[9])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(MHAS_w3, aes(x=factor(i26_8_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w3$i26_9_12
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(MHAS_w3)[10])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(MHAS_w3, aes(x=factor(i26_9_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `sickdis` from the study-specific variable it has to be recoded as follows:
+
+* `i26_1_12 == 1 or i26_6_12 == 1 or i26_7_12 == 1 into 0`
+* `i26_2_12 == 1 or i26_3_12 == 1 into 996`
+* `i26_4_12 == 1 or i26_5_12 == 1 into 1`
+* `i26_8_12 == 1 into 995`
+* `i26_9_12 == 1 into 998`
+* `otherwise into 999`
+
+
+**R script:**
+
+```{r harmo w3}
+
+# Categorical variable harmonization
+MHAS_ds_w3 <- tibble(id=MHAS_w3$id)
+MHAS_ds_w3$sickdis <- rep(999,length(MHAS_w3$id))
+MHAS_ds_w3$sickdis[which(MHAS_w3$i26_1_12==1 | MHAS_w3$i26_6_12==1 | MHAS_w3$i26_7_12==1)] <- 0
+MHAS_ds_w3$sickdis[which(MHAS_w3$i26_4_12==1 | MHAS_w3$i26_5_12==1)] <- 1
+MHAS_ds_w3$sickdis[which(MHAS_w3$i26_2_12==1 | MHAS_w3$i26_3_12==1)] <- 996
+MHAS_ds_w3$sickdis[which(MHAS_w3$i26_8_12==1)] <- 995
+MHAS_ds_w3$sickdis[which(MHAS_w3$i26_9_12==1)] <- 998
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w3, echo=F}
+
+vbl <- MHAS_ds_w3$sickdis
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(MHAS_ds_w3, aes(x=factor(sickdis))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w3, echo=F}
+
+```
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories.
+
+**R script:**
+
+```{r summ}
+
+l.hds <- list(w1 = MHAS_ds_w1, w2 = MHAS_ds_w2, w3 = MHAS_ds_w3)
+
+
+for(name in names(l.hds)) {
+  aux_object <- l.hds[[name]]
+  label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
+  l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  m_name <- paste0("MHAS_m_ds_",name)
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+
+t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+for (i in seq_along(l.hds)){
+  t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+}
+t.hds[13,] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+             )
+names(t.hds)<-c("val", "label", names(l.hds))
+kable(t.hds)
+
+
+dbb <- get(paste0("MHAS_m_ds_",names(l.hds)[1]))[,c("id","sickdis")]
+for(ind in 2:length(l.hds)){
+  dbb <- merge(dbb, get(paste0("MHAS_m_ds_",names(l.hds)[ind]))[,c("id","sickdis")], by = "id", suffixes = c("", paste0(".",names(l.hds)[ind])), all = T)
+}
+names(dbb) <- c("id", names(l.hds))
+
+v.dbb <- dbb[,2]
+for(ind in 2:length(l.hds)){
+  v.dbb <- paste0(v.dbb,dbb[,ind+1])
+}
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb)
+
+```
+
+
+
+# Quality estimation
+
+* In wave 1 only answers one member for each household.
+
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+
+for(index in seq_along(l.hds)){
+  sickdis <- l.hds[[index]]
+  save(sickdis, file = paste0(datafolder,names(l.hds)[index],"/sickdis.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+
