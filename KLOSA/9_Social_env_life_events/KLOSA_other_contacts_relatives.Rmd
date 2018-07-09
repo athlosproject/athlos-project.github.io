@@ -1,0 +1,651 @@
+---
+title: "KLOSA"
+author: "Katarzyna Jablonska"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true 
+    depth: 4
+    number_sections: true  
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r prepare, message=FALSE, include=FALSE}
+library(bitops)
+library(RCurl)
+library(rjson)
+library(mime)
+library(opal)
+library(tibble)
+library(car)
+library(labelled)
+library(Hmisc)
+source("Continuous_summary.R")
+source("Categorical_summary.R")
+
+# authenticate within opal server 
+o <- opal.login('','...','http://...')
+```
+
+# Socio-demographic and economic characteristics 
+
+## `Other forms of contacts with relatives`
+
+
+### Description of DataSchema variable `Are other forms of contacts (phone/mail/Internet communicators) with family members/relatives frequent (i.e. contact once a week or more often)`
+
+The description of harmonised variable is the following:
+  
+* Name: `oth_rel`
+* Label: `Are other forms of contacts with family members/relatives frequent (i.e. contact once a week or more often)`
+* Type: categorical
+* Categories: 
+    + `0 = no`
+    + `1 = yes`
+* Missings: 
+    + `991 = CAPI/interviewer error`
+    + `992 = Impute`
+    + `993 = Disable to measure`
+    + `994 = Not attempt/not done/not yet recorded`
+    + `995 = Don't answer`
+    + `996 = Not applicable`
+    + `997 = Refuse`
+    + `998 = Do not know`
+    + `999 = Missing`
+
+
+### KLOSA - Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `w01Ba14_01` UP TO `w01Ba14_10`
+* Label: `The times which 1st child meets(by phone, mail or e-mail)`
+* Categories: 
+    + `1 = Almost every day`
+    + `2 = Once a week`
+    + `3 = 2-3 times a week`
+    + `4 = Once a month`
+    + `5 = Twice a month`
+    + `6 = Once or twice a year`
+    + `7 = Three or for times a year`
+    + `8 = Five or six times a year`
+    + `9 = Almost never`
+    + `10 = Never`
+* Missings:
+    + `-9 = ???`
+    + `-8 = ???`
+    
+* Name: `w01B032`
+* Label: `The frequency which parents meet(by phone, mail or e-mail)`
+* Categories: 
+    + `1 = Almost every day`
+    + `2 = Once a week`
+    + `3 = 2-3 times a week`
+    + `4 = Once a month`
+    + `5 = Twice a month`
+    + `6 = Once or twice a year`
+    + `7 = Three or for times a year`
+    + `8 = Five or six times a year`
+    + `9 = Almost never`
+    + `10 = Never`
+
+* Name: `w01B070`
+* Label: `The frequency which father meets(by phone, mail or e-mail)`
+* Categories: 
+    + `1 = Almost every day`
+    + `2 = Once a week`
+    + `3 = 2-3 times a week`
+    + `4 = Once a month`
+    + `5 = Twice a month`
+    + `6 = Once or twice a year`
+    + `7 = Three or for times a year`
+    + `8 = Five or six times a year`
+    + `9 = Almost never`
+    + `10 = Never`
+
+* Name: `w01B108`
+* Label: `The frequency which mother meets(by phone, mail or e-mail)`
+* Categories: 
+    + `1 = Almost every day`
+    + `2 = Once a week`
+    + `3 = 2-3 times a week`
+    + `4 = Once a month`
+    + `5 = Twice a month`
+    + `6 = Once or twice a year`
+    + `7 = Three or for times a year`
+    + `8 = Five or six times a year`
+    + `9 = Almost never`
+    + `10 = Never`
+    
+
+```{r assign1}
+opal.assign.table.tibble(o, 'KLOSA_w1_oth_rel','KLOSA.w01_main_e', 
+                        variables=list('w01Ba14_01','w01Ba14_02','w01Ba14_03','w01Ba14_04','w01Ba14_05','w01Ba14_06',
+                                       'w01Ba14_07','w01Ba14_08','w01Ba14_09','w01Ba14_10',
+                                       'w01B032','w01B070','w01B108'), missings = TRUE)
+```
+
+```{r local1}
+KLOSA_w1_oth_rel <- opal.execute(o,'KLOSA_w1_oth_rel')
+Categorical_summary(var = KLOSA_w1_oth_rel$w01Ba14_01, missing_values = NA)
+ggplot(KLOSA_w1_oth_rel, aes(x=factor(w01Ba14_01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The times which 1st child meets(by phone, mail or e-mail)") + ylab("Frequency")
+Categorical_summary(var = KLOSA_w1_oth_rel$w01B032, missing_values = NA)
+ggplot(KLOSA_w1_oth_rel, aes(x=factor(w01B032))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The frequency which parents meet(by phone, mail or e-mail)") + ylab("Frequency")
+Categorical_summary(var = KLOSA_w1_oth_rel$w01B070, missing_values = NA)
+ggplot(KLOSA_w1_oth_rel, aes(x=factor(w01B070))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The frequency which father meets(by phone, mail or e-mail)") + ylab("Frequency")
+Categorical_summary(var = KLOSA_w1_oth_rel$w01B108, missing_values = NA)
+ggplot(KLOSA_w1_oth_rel, aes(x=factor(w01B108))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The frequency which mother meets(by phone, mail or e-mail)") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any variable is in 1:3 then 1`
+* `-8, -9 or NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo1}
+KLOSA_ds_w1 <- tibble(id=KLOSA_w1_oth_rel$id)
+
+KLOSA_w1_oth_rel$w01Ba14_01 <- car::recode(as.vector(KLOSA_w1_oth_rel$w01Ba14_01), "NA='-999'")
+KLOSA_w1_oth_rel$w01Ba14_02 <- car::recode(as.vector(KLOSA_w1_oth_rel$w01Ba14_02), "NA='-999'")
+KLOSA_w1_oth_rel$w01Ba14_03 <- car::recode(as.vector(KLOSA_w1_oth_rel$w01Ba14_03), "NA='-999'")
+KLOSA_w1_oth_rel$w01Ba14_04 <- car::recode(as.vector(KLOSA_w1_oth_rel$w01Ba14_04), "NA='-999'")
+KLOSA_w1_oth_rel$w01Ba14_05 <- car::recode(as.vector(KLOSA_w1_oth_rel$w01Ba14_05), "NA='-999'")
+KLOSA_w1_oth_rel$w01Ba14_06 <- car::recode(as.vector(KLOSA_w1_oth_rel$w01Ba14_06), "NA='-999'")
+KLOSA_w1_oth_rel$w01Ba14_07 <- car::recode(as.vector(KLOSA_w1_oth_rel$w01Ba14_07), "NA='-999'")
+KLOSA_w1_oth_rel$w01Ba14_08 <- car::recode(as.vector(KLOSA_w1_oth_rel$w01Ba14_08), "NA='-999'")
+KLOSA_w1_oth_rel$w01Ba14_09 <- car::recode(as.vector(KLOSA_w1_oth_rel$w01Ba14_09), "NA='-999'")
+KLOSA_w1_oth_rel$w01Ba14_10 <- car::recode(as.vector(KLOSA_w1_oth_rel$w01Ba14_10), "NA='-999'")
+KLOSA_w1_oth_rel$w01B032 <- car::recode(as.vector(KLOSA_w1_oth_rel$w01B032), "NA='-999'")
+KLOSA_w1_oth_rel$w01B070 <- car::recode(as.vector(KLOSA_w1_oth_rel$w01B070), "NA='-999'")
+KLOSA_w1_oth_rel$w01B108 <- car::recode(as.vector(KLOSA_w1_oth_rel$w01B108), "NA='-999'")
+
+KLOSA_ds_w1$oth_rel <- c(NA) # I think it is required
+for(i in 1:dim(KLOSA_w1_oth_rel)[1]){
+  if( KLOSA_w1_oth_rel$w01Ba14_01[i] %in% c(1,2,3) | KLOSA_w1_oth_rel$w01Ba14_02[i] %in% c(1,2,3) | KLOSA_w1_oth_rel$w01Ba14_03[i] %in% c(1,2,3) | 
+    KLOSA_w1_oth_rel$w01Ba14_04[i] %in% c(1,2,3) | KLOSA_w1_oth_rel$w01Ba14_05[i] %in% c(1,2,3) | KLOSA_w1_oth_rel$w01Ba14_06[i] %in% c(1,2,3) | 
+    KLOSA_w1_oth_rel$w01Ba14_07[i] %in% c(1,2,3) | KLOSA_w1_oth_rel$w01Ba14_08[i] %in% c(1,2,3) | KLOSA_w1_oth_rel$w01Ba14_09[i] %in% c(1,2,3) | 
+    KLOSA_w1_oth_rel$w01Ba14_10[i] %in% c(1,2,3) | KLOSA_w1_oth_rel$w01B032[i] %in% c(1,2,3) | KLOSA_w1_oth_rel$w01B070[i] %in% c(1,2,3) | 
+    KLOSA_w1_oth_rel$w01B108[i] %in% c(1,2,3) ) {
+  KLOSA_ds_w1$oth_rel[i] = 1 }
+  else if( KLOSA_w1_oth_rel$w01Ba14_01[i] %in% c(-9,-8,-999) & KLOSA_w1_oth_rel$w01Ba14_02[i] %in% c(-9,-8,-999) & KLOSA_w1_oth_rel$w01Ba14_03[i] %in% c(-9,-8,-999) & 
+    KLOSA_w1_oth_rel$w01Ba14_04[i] %in% c(-9,-8,-999) & KLOSA_w1_oth_rel$w01Ba14_05[i] %in% c(-9,-8,-999) & KLOSA_w1_oth_rel$w01Ba14_06[i] %in% c(-9,-8,-999) & 
+    KLOSA_w1_oth_rel$w01Ba14_07[i] %in% c(-9,-8,-999) & KLOSA_w1_oth_rel$w01Ba14_08[i] %in% c(-9,-8,-999) & KLOSA_w1_oth_rel$w01Ba14_09[i] %in% c(-9,-8,-999) & 
+    KLOSA_w1_oth_rel$w01Ba14_10[i] %in% c(-9,-8,-999) & KLOSA_w1_oth_rel$w01B032[i] %in% c(-9,-8,-999) & KLOSA_w1_oth_rel$w01B070[i] %in% c(-9,-8,-999) & 
+    KLOSA_w1_oth_rel$w01B108[i] %in% c(-9,-8,-999) ) {
+  KLOSA_ds_w1$oth_rel[i] = 999 }
+  else if( !( KLOSA_w1_oth_rel$w01Ba14_01[i] %in% c(1,2,3) | KLOSA_w1_oth_rel$w01Ba14_02[i] %in% c(1,2,3) | KLOSA_w1_oth_rel$w01Ba14_03[i] %in% c(1,2,3) | 
+    KLOSA_w1_oth_rel$w01Ba14_04[i] %in% c(1,2,3) | KLOSA_w1_oth_rel$w01Ba14_05[i] %in% c(1,2,3) | KLOSA_w1_oth_rel$w01Ba14_06[i] %in% c(1,2,3) | 
+    KLOSA_w1_oth_rel$w01Ba14_07[i] %in% c(1,2,3) | KLOSA_w1_oth_rel$w01Ba14_08[i] %in% c(1,2,3) | KLOSA_w1_oth_rel$w01Ba14_09[i] %in% c(1,2,3) | 
+    KLOSA_w1_oth_rel$w01Ba14_10[i] %in% c(1,2,3) | KLOSA_w1_oth_rel$w01B032[i] %in% c(1,2,3) | KLOSA_w1_oth_rel$w01B070[i] %in% c(1,2,3) | 
+    KLOSA_w1_oth_rel$w01B108[i] %in% c(1,2,3) ) ) {
+  KLOSA_ds_w1$oth_rel[i] = 0 }
+}
+
+KLOSA_ds_w1$oth_rel <- car::recode(as.vector(KLOSA_ds_w1$oth_rel), "NA='999'")
+KLOSA_ds_w1$oth_rel <- labelled(KLOSA_ds_w1$oth_rel, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1}
+Categorical_summary(var = KLOSA_ds_w1$oth_rel, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w1, aes(x=factor(oth_rel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are other forms of contacts with family members/relatives frequent (i.e. contact once a week or more often)") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1}
+
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+### KLOSA - Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `w02Ba020_01` UP TO `w02Ba020_10`
+* Label: `The contact frequency with 1st child(by phone, letter or e-mail)`
+* Categories: 
+    + `1 = Almost every day (more than 4 times per week)`
+    + `2 = Once a week`
+    + `3 = 2-3 times a week`
+    + `4 = Once a month`
+    + `5 = Twice a month (every two weeks)`
+    + `6 = Once or twice a year`
+    + `7 = Three or for times a year (once every three or four months)`
+    + `8 = Five or six times a year (every two months)`
+    + `9 = Almost never a year`
+    + `10 = Never`
+    
+* Name: `w02Bb022`
+* Label: `The contact frequency with the parents(by phone, letter or e-mail)`
+* Categories: 
+    + `1 = Almost every day (more than 4 times per week)`
+    + `2 = Once a week`
+    + `3 = 2-3 times a week`
+    + `4 = Once a month`
+    + `5 = Twice a month (every two weeks)`
+    + `6 = Once or twice a year`
+    + `7 = Three or for times a year (once every three or four months)`
+    + `8 = Five or six times a year (every two months)`
+    + `9 = Almost never a year`
+    + `10 = Never`
+    
+* Name: `w02Bb060`
+* Label: `The contact frequency with the father by phone, letter or e-mail (term of non-coresiding)`
+* Categories: 
+    + `1 = Almost every day (more than 4 times per week)`
+    + `2 = Once a week`
+    + `3 = 2-3 times a week`
+    + `4 = Once a month`
+    + `5 = Twice a month (every two weeks)`
+    + `6 = Once or twice a year`
+    + `7 = Three or for times a year (once every three or four months)`
+    + `8 = Five or six times a year (every two months)`
+    + `9 = Almost never a year`
+    + `10 = Never`
+    
+* Name: `w02Bb098`
+* Label: `The contact frequency with the father by phone, letter or e-mail (term of non-coresiding)`
+* Categories: 
+    + `1 = Almost every day (more than 4 times per week)`
+    + `2 = Once a week`
+    + `3 = 2-3 times a week`
+    + `4 = Once a month`
+    + `5 = Twice a month (every two weeks)`
+    + `6 = Once or twice a year`
+    + `7 = Three or for times a year (once every three or four months)`
+    + `8 = Five or six times a year (every two months)`
+    + `9 = Almost never a year`
+    + `10 = Never`
+    
+
+```{r assign2}
+opal.assign.table.tibble(o, 'KLOSA_w2_oth_rel','KLOSA.w02_main_e_spss', 
+                        variables=list('w02Ba020_01','w02Ba020_02','w02Ba020_03','w02Ba020_04','w02Ba020_05','w02Ba020_06',
+                                       'w02Ba020_07','w02Ba020_08','w02Ba020_09','w02Ba020_10',
+                                       'w02Bb022','w02Bb060','w02Bb098'), missings = TRUE)
+```
+
+```{r local2}
+KLOSA_w2_oth_rel <- opal.execute(o,'KLOSA_w2_oth_rel')
+Categorical_summary(var = KLOSA_w2_oth_rel$w02Ba020_01, missing_values = NA)
+ggplot(KLOSA_w2_oth_rel, aes(x=factor(w02Ba020_01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The contact frequency with 1st child(by phone, letter or e-mail)") + ylab("Frequency")
+Categorical_summary(var = KLOSA_w2_oth_rel$w02Bb022, missing_values = NA)
+ggplot(KLOSA_w2_oth_rel, aes(x=factor(w02Bb022))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The contact frequency with the parents(by phone, letter or e-mail)") + ylab("Frequency")
+Categorical_summary(var = KLOSA_w2_oth_rel$w02Bb060, missing_values = NA)
+ggplot(KLOSA_w2_oth_rel, aes(x=factor(w02Bb060))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The contact frequency with the mother by phone, letter or e-mail (term of non-coresiding)") + ylab("Frequency")
+Categorical_summary(var = KLOSA_w2_oth_rel$w02Bb098, missing_values = NA)
+ggplot(KLOSA_w2_oth_rel, aes(x=factor(w02Bb098))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The contact frequency with the father by phone, letter or e-mail (term of non-coresiding)") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any variable is in 1:3 then 1`
+
+R code of the ALGORITHM:
+
+```{r harmo2}
+KLOSA_ds_w2 <- tibble(id=KLOSA_w2_oth_rel$id)
+
+KLOSA_w2_oth_rel$w02Ba020_01 <- car::recode(as.vector(KLOSA_w2_oth_rel$w02Ba020_01), "NA='-999'")
+KLOSA_w2_oth_rel$w02Ba020_02 <- car::recode(as.vector(KLOSA_w2_oth_rel$w02Ba020_02), "NA='-999'")
+KLOSA_w2_oth_rel$w02Ba020_03 <- car::recode(as.vector(KLOSA_w2_oth_rel$w02Ba020_03), "NA='-999'")
+KLOSA_w2_oth_rel$w02Ba020_04 <- car::recode(as.vector(KLOSA_w2_oth_rel$w02Ba020_04), "NA='-999'")
+KLOSA_w2_oth_rel$w02Ba020_05 <- car::recode(as.vector(KLOSA_w2_oth_rel$w02Ba020_05), "NA='-999'")
+KLOSA_w2_oth_rel$w02Ba020_06 <- car::recode(as.vector(KLOSA_w2_oth_rel$w02Ba020_06), "NA='-999'")
+KLOSA_w2_oth_rel$w02Ba020_07 <- car::recode(as.vector(KLOSA_w2_oth_rel$w02Ba020_07), "NA='-999'")
+KLOSA_w2_oth_rel$w02Ba020_08 <- car::recode(as.vector(KLOSA_w2_oth_rel$w02Ba020_08), "NA='-999'")
+KLOSA_w2_oth_rel$w02Ba020_09 <- car::recode(as.vector(KLOSA_w2_oth_rel$w02Ba020_09), "NA='-999'")
+KLOSA_w2_oth_rel$w02Ba020_10 <- car::recode(as.vector(KLOSA_w2_oth_rel$w02Ba020_10), "NA='-999'")
+KLOSA_w2_oth_rel$w02Bb022 <- car::recode(as.vector(KLOSA_w2_oth_rel$w02Bb022), "NA='-999'")
+KLOSA_w2_oth_rel$w02Bb060 <- car::recode(as.vector(KLOSA_w2_oth_rel$w02Bb060), "NA='-999'")
+KLOSA_w2_oth_rel$w02Bb098 <- car::recode(as.vector(KLOSA_w2_oth_rel$w02Bb098), "NA='-999'")
+
+KLOSA_ds_w2$oth_rel <- c(NA) # I think it is required
+for(i in 1:dim(KLOSA_w2_oth_rel)[1]){
+  if( KLOSA_w2_oth_rel$w02Ba020_01[i] %in% c(1,2,3) | KLOSA_w2_oth_rel$w02Ba020_02[i] %in% c(1,2,3) | KLOSA_w2_oth_rel$w02Ba020_03[i] %in% c(1,2,3) | 
+    KLOSA_w2_oth_rel$w02Ba020_04[i] %in% c(1,2,3) | KLOSA_w2_oth_rel$w02Ba020_05[i] %in% c(1,2,3) | KLOSA_w2_oth_rel$w02Ba020_06[i] %in% c(1,2,3) | 
+    KLOSA_w2_oth_rel$w02Ba020_07[i] %in% c(1,2,3) | KLOSA_w2_oth_rel$w02Ba020_08[i] %in% c(1,2,3) | KLOSA_w2_oth_rel$w02Ba020_09[i] %in% c(1,2,3) | 
+    KLOSA_w2_oth_rel$w02Ba020_10[i] %in% c(1,2,3) | KLOSA_w2_oth_rel$w02Bb022[i] %in% c(1,2,3) | KLOSA_w2_oth_rel$w02Bb060[i] %in% c(1,2,3) | 
+    KLOSA_w2_oth_rel$w02Bb098[i] %in% c(1,2,3) ) {
+  KLOSA_ds_w2$oth_rel[i] = 1 }
+  else if( KLOSA_w2_oth_rel$w02Ba020_01[i] == -999 & KLOSA_w2_oth_rel$w02Ba020_02[i] == -999 & KLOSA_w2_oth_rel$w02Ba020_03[i] == -999 & 
+    KLOSA_w2_oth_rel$w02Ba020_04[i] == -999 & KLOSA_w2_oth_rel$w02Ba020_05[i] == -999 & KLOSA_w2_oth_rel$w02Ba020_06[i] == -999 & 
+    KLOSA_w2_oth_rel$w02Ba020_07[i] == -999 & KLOSA_w2_oth_rel$w02Ba020_08[i] == -999 & KLOSA_w2_oth_rel$w02Ba020_09[i] == -999 & 
+    KLOSA_w2_oth_rel$w02Ba020_10[i] == -999 & KLOSA_w2_oth_rel$w02Bb022[i] == -999 & KLOSA_w2_oth_rel$w02Bb060[i] == -999 & 
+    KLOSA_w2_oth_rel$w02Bb098[i] == -999 ) {
+  KLOSA_ds_w2$oth_rel[i] = 999 }
+  else if( !( KLOSA_w2_oth_rel$w02Ba020_01[i] %in% c(1,2,3) | KLOSA_w2_oth_rel$w02Ba020_02[i] %in% c(1,2,3) | KLOSA_w2_oth_rel$w02Ba020_03[i] %in% c(1,2,3) | 
+    KLOSA_w2_oth_rel$w02Ba020_04[i] %in% c(1,2,3) | KLOSA_w2_oth_rel$w02Ba020_05[i] %in% c(1,2,3) | KLOSA_w2_oth_rel$w02Ba020_06[i] %in% c(1,2,3) | 
+    KLOSA_w2_oth_rel$w02Ba020_07[i] %in% c(1,2,3) | KLOSA_w2_oth_rel$w02Ba020_08[i] %in% c(1,2,3) | KLOSA_w2_oth_rel$w02Ba020_09[i] %in% c(1,2,3) | 
+    KLOSA_w2_oth_rel$w02Ba020_10[i] %in% c(1,2,3) | KLOSA_w2_oth_rel$w02Bb022[i] %in% c(1,2,3) | KLOSA_w2_oth_rel$w02Bb060[i] %in% c(1,2,3) | 
+    KLOSA_w2_oth_rel$w02Bb098[i] %in% c(1,2,3) ) ) {
+  KLOSA_ds_w2$oth_rel[i] = 0 }
+}
+
+KLOSA_ds_w2$oth_rel <- car::recode(as.vector(KLOSA_ds_w2$oth_rel), "NA='999'")
+KLOSA_ds_w2$oth_rel <- labelled(KLOSA_ds_w2$oth_rel, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2}
+Categorical_summary(var = KLOSA_ds_w2$oth_rel, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w2, aes(x=factor(oth_rel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are other forms of contacts with family members/relatives frequent (i.e. contact once a week or more often)") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2}
+
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+### KLOSA - Wave 3
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `w03Ba020_01` UP TO `w03Ba020_10`
+* Label: `The frequency which 1st child meets(by phone, mail or e-mail)`
+* Categories: 
+    + `1 = Almost every day (more than 4 times per week)`
+    + `2 = Once a week`
+    + `3 = 2-3 times a week`
+    + `4 = Once a month`
+    + `5 = Twice a month (every two weeks)`
+    + `6 = Once or twice a year`
+    + `7 = Three or for times a year (once every three or four months)`
+    + `8 = Five or six times a year (every two months)`
+    + `9 = Almost never a year`
+    + `10 = Never`
+* Missings: 
+    + `-9, -8 = ???`
+    
+* Name: `w03Bb022`
+* Label: `The frequency which parents meet(by phone, mail or e-mail)`
+* Categories: 
+    + `1 = Almost every day (more than 4 times per week)`
+    + `2 = Once a week`
+    + `3 = 2-3 times a week`
+    + `4 = Once a month`
+    + `5 = Twice a month (every two weeks)`
+    + `6 = Once or twice a year`
+    + `7 = Three or for times a year (once every three or four months)`
+    + `8 = Five or six times a year (every two months)`
+    + `9 = Almost never a year`
+    + `10 = Never`
+    
+* Name: `w03Bb060`
+* Label: `The frequency which father meets(by phone, mail or e-mail) (term of non-coresiding)`
+* Categories: 
+    + `1 = Almost every day (more than 4 times per week)`
+    + `2 = Once a week`
+    + `3 = 2-3 times a week`
+    + `4 = Once a month`
+    + `5 = Twice a month (every two weeks)`
+    + `6 = Once or twice a year`
+    + `7 = Three or for times a year (once every three or four months)`
+    + `8 = Five or six times a year (every two months)`
+    + `9 = Almost never a year`
+    + `10 = Never`
+    
+* Name: `w03Bb098`
+* Label: `The frequency which mother meets(by phone, mail or e-mail) (term of non-coresiding)`
+* Categories: 
+    + `1 = Almost every day (more than 4 times per week)`
+    + `2 = Once a week`
+    + `3 = 2-3 times a week`
+    + `4 = Once a month`
+    + `5 = Twice a month (every two weeks)`
+    + `6 = Once or twice a year`
+    + `7 = Three or for times a year (once every three or four months)`
+    + `8 = Five or six times a year (every two months)`
+    + `9 = Almost never a year`
+    + `10 = Never`
+    
+
+```{r assign3}
+opal.assign.table.tibble(o, 'KLOSA_w3_oth_rel','KLOSA.w03_main_e_spss_albert', 
+                        variables=list('w03Ba020_01','w03Ba020_02','w03Ba020_03','w03Ba020_04','w03Ba020_05','w03Ba020_06',
+                                       'w03Ba020_07','w03Ba020_08','w03Ba020_09','w03Ba020_10',
+                                       'w03Bb022','w03Bb060','w03Bb098'), missings = TRUE)
+```
+
+```{r local3}
+KLOSA_w3_oth_rel <- opal.execute(o,'KLOSA_w3_oth_rel')
+Categorical_summary(var = KLOSA_w3_oth_rel$w03Ba020_01, missing_values = NA)
+ggplot(KLOSA_w3_oth_rel, aes(x=factor(w03Ba020_01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The frequency which 1st child meets(by phone, mail or e-mail)") + ylab("Frequency")
+Categorical_summary(var = KLOSA_w3_oth_rel$w03Bb022, missing_values = NA)
+ggplot(KLOSA_w3_oth_rel, aes(x=factor(w03Bb022))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The frequency which parents meet(by phone, mail or e-mail)") + ylab("Frequency")
+Categorical_summary(var = KLOSA_w3_oth_rel$w03Bb060, missing_values = NA)
+ggplot(KLOSA_w3_oth_rel, aes(x=factor(w03Bb060))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The frequency which father meets(by phone, mail or e-mail) (term of non-coresiding)") + ylab("Frequency")
+Categorical_summary(var = KLOSA_w3_oth_rel$w03Bb098, missing_values = NA)
+ggplot(KLOSA_w3_oth_rel, aes(x=factor(w03Bb098))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The frequency which mother meets(by phone, mail or e-mail) (term of non-coresiding)") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any variable is in 1:3 then 1`
+* `-9, -8, NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo3}
+KLOSA_ds_w3 <- tibble(id=KLOSA_w3_oth_rel$id)
+
+KLOSA_w3_oth_rel$w03Ba020_01 <- car::recode(as.vector(KLOSA_w3_oth_rel$w03Ba020_01), "NA='-999'")
+KLOSA_w3_oth_rel$w03Ba020_02 <- car::recode(as.vector(KLOSA_w3_oth_rel$w03Ba020_02), "NA='-999'")
+KLOSA_w3_oth_rel$w03Ba020_03 <- car::recode(as.vector(KLOSA_w3_oth_rel$w03Ba020_03), "NA='-999'")
+KLOSA_w3_oth_rel$w03Ba020_04 <- car::recode(as.vector(KLOSA_w3_oth_rel$w03Ba020_04), "NA='-999'")
+KLOSA_w3_oth_rel$w03Ba020_05 <- car::recode(as.vector(KLOSA_w3_oth_rel$w03Ba020_05), "NA='-999'")
+KLOSA_w3_oth_rel$w03Ba020_06 <- car::recode(as.vector(KLOSA_w3_oth_rel$w03Ba020_06), "NA='-999'")
+KLOSA_w3_oth_rel$w03Ba020_07 <- car::recode(as.vector(KLOSA_w3_oth_rel$w03Ba020_07), "NA='-999'")
+KLOSA_w3_oth_rel$w03Ba020_08 <- car::recode(as.vector(KLOSA_w3_oth_rel$w03Ba020_08), "NA='-999'")
+KLOSA_w3_oth_rel$w03Ba020_09 <- car::recode(as.vector(KLOSA_w3_oth_rel$w03Ba020_09), "NA='-999'")
+KLOSA_w3_oth_rel$w03Ba020_10 <- car::recode(as.vector(KLOSA_w3_oth_rel$w03Ba020_10), "NA='-999'")
+KLOSA_w3_oth_rel$w03Bb022 <- car::recode(as.vector(KLOSA_w3_oth_rel$w03Bb022), "NA='-999'")
+KLOSA_w3_oth_rel$w03Bb060 <- car::recode(as.vector(KLOSA_w3_oth_rel$w03Bb060), "NA='-999'")
+KLOSA_w3_oth_rel$w03Bb098 <- car::recode(as.vector(KLOSA_w3_oth_rel$w03Bb098), "NA='-999'")
+
+KLOSA_ds_w3$oth_rel <- c(NA) # I think it is required
+for(i in 1:dim(KLOSA_w3_oth_rel)[1]){
+  if( KLOSA_w3_oth_rel$w03Ba020_01[i] %in% c(1,2,3) | KLOSA_w3_oth_rel$w03Ba020_02[i] %in% c(1,2,3) | KLOSA_w3_oth_rel$w03Ba020_03[i] %in% c(1,2,3) | 
+    KLOSA_w3_oth_rel$w03Ba020_04[i] %in% c(1,2,3) | KLOSA_w3_oth_rel$w03Ba020_05[i] %in% c(1,2,3) | KLOSA_w3_oth_rel$w03Ba020_06[i] %in% c(1,2,3) | 
+    KLOSA_w3_oth_rel$w03Ba020_07[i] %in% c(1,2,3) | KLOSA_w3_oth_rel$w03Ba020_08[i] %in% c(1,2,3) | KLOSA_w3_oth_rel$w03Ba020_09[i] %in% c(1,2,3) | 
+    KLOSA_w3_oth_rel$w03Ba020_10[i] %in% c(1,2,3) | KLOSA_w3_oth_rel$w03Bb022[i] %in% c(1,2,3) | KLOSA_w3_oth_rel$w03Bb060[i] %in% c(1,2,3) | 
+    KLOSA_w3_oth_rel$w03Bb098[i] %in% c(1,2,3) ) {
+  KLOSA_ds_w3$oth_rel[i] = 1 }
+  else if( KLOSA_w3_oth_rel$w03Ba020_01[i] %in% c(-999,-9,-8) & KLOSA_w3_oth_rel$w03Ba020_02[i] %in% c(-999,-9,-8) & KLOSA_w3_oth_rel$w03Ba020_03[i] %in% c(-999,-9,-8) & 
+    KLOSA_w3_oth_rel$w03Ba020_04[i] %in% c(-999,-9,-8) & KLOSA_w3_oth_rel$w03Ba020_05[i] %in% c(-999,-9,-8) & KLOSA_w3_oth_rel$w03Ba020_06[i] %in% c(-999,-9,-8) & 
+    KLOSA_w3_oth_rel$w03Ba020_07[i] %in% c(-999,-9,-8) & KLOSA_w3_oth_rel$w03Ba020_08[i] %in% c(-999,-9,-8) & KLOSA_w3_oth_rel$w03Ba020_09[i] %in% c(-999,-9,-8) & 
+    KLOSA_w3_oth_rel$w03Ba020_10[i] %in% c(-999,-9,-8) & KLOSA_w3_oth_rel$w03Bb022[i] %in% c(-999,-9,-8) & KLOSA_w3_oth_rel$w03Bb060[i] %in% c(-999,-9,-8) & 
+    KLOSA_w3_oth_rel$w03Bb098[i] %in% c(-999,-9,-8) ) {
+  KLOSA_ds_w3$oth_rel[i] = 999 }
+  else if( !( KLOSA_w3_oth_rel$w03Ba020_01[i] %in% c(1,2,3) | KLOSA_w3_oth_rel$w03Ba020_02[i] %in% c(1,2,3) | KLOSA_w3_oth_rel$w03Ba020_03[i] %in% c(1,2,3) | 
+    KLOSA_w3_oth_rel$w03Ba020_04[i] %in% c(1,2,3) | KLOSA_w3_oth_rel$w03Ba020_05[i] %in% c(1,2,3) | KLOSA_w3_oth_rel$w03Ba020_06[i] %in% c(1,2,3) | 
+    KLOSA_w3_oth_rel$w03Ba020_07[i] %in% c(1,2,3) | KLOSA_w3_oth_rel$w03Ba020_08[i] %in% c(1,2,3) | KLOSA_w3_oth_rel$w03Ba020_09[i] %in% c(1,2,3) | 
+    KLOSA_w3_oth_rel$w03Ba020_10[i] %in% c(1,2,3) | KLOSA_w3_oth_rel$w03Bb022[i] %in% c(1,2,3) | KLOSA_w3_oth_rel$w03Bb060[i] %in% c(1,2,3) | 
+    KLOSA_w3_oth_rel$w03Bb098[i] %in% c(1,2,3) ) ) {
+  KLOSA_ds_w3$oth_rel[i] = 0 }
+}
+
+KLOSA_ds_w3$oth_rel <- car::recode(as.vector(KLOSA_ds_w3$oth_rel), "NA='999'")
+KLOSA_ds_w3$oth_rel <- labelled(KLOSA_ds_w3$oth_rel, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript3}
+Categorical_summary(var = KLOSA_ds_w3$oth_rel, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w3, aes(x=factor(oth_rel))) + geom_bar(stat="count", width=0.4, fill="steelblue")+ xlab("Are other forms of contacts with family members/relatives frequent (i.e. contact once a week or more often)") + ylab("Frequency")
+```
+
+##### Validation
+```{r crosstabulation3}
+
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+### KLOSA - Wave 4
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `w04Ba020_01` UP TO `w04Ba020_10`
+* Label: `The frequency which 1st child meets(by phone, mail or e-mail)`
+* Categories: 
+    + `1 = Almost every day (more than 4 times per week)`
+    + `2 = Once a week`
+    + `3 = 2-3 times a week`
+    + `4 = Once a month`
+    + `5 = Twice a month (every two weeks)`
+    + `6 = Once or twice a year`
+    + `7 = Three or for times a year (once every three or four months)`
+    + `8 = Five or six times a year (every two months)`
+    + `9 = Almost never a year`
+    + `10 = Never`
+    
+* Name: `w04Bb022`
+* Label: `The frequency which parents meet(by phone, mail or e-mail)`
+* Categories: 
+    + `1 = Almost every day (more than 4 times per week)`
+    + `2 = Once a week`
+    + `3 = 2-3 times a week`
+    + `4 = Once a month`
+    + `5 = Twice a month (every two weeks)`
+    + `6 = Once or twice a year`
+    + `7 = Three or for times a year (once every three or four months)`
+    + `8 = Five or six times a year (every two months)`
+    + `9 = Almost never a year`
+    + `10 = Never`
+    
+* Name: `w04Bb060`
+* Label: `The frequency which father meets(by phone, mail or e-mail) (term of non-coresiding)`
+* Categories: 
+    + `1 = Almost every day (more than 4 times per week)`
+    + `2 = Once a week`
+    + `3 = 2-3 times a week`
+    + `4 = Once a month`
+    + `5 = Twice a month (every two weeks)`
+    + `6 = Once or twice a year`
+    + `7 = Three or for times a year (once every three or four months)`
+    + `8 = Five or six times a year (every two months)`
+    + `9 = Almost never a year`
+    + `10 = Never`
+    
+* Name: `w04Bb098`
+* Label: `The frequency which mother meets(by phone, mail or e-mail) (term of non-coresiding)`
+* Categories: 
+    + `1 = Almost every day (more than 4 times per week)`
+    + `2 = Once a week`
+    + `3 = 2-3 times a week`
+    + `4 = Once a month`
+    + `5 = Twice a month (every two weeks)`
+    + `6 = Once or twice a year`
+    + `7 = Three or for times a year (once every three or four months)`
+    + `8 = Five or six times a year (every two months)`
+    + `9 = Almost never a year`
+    + `10 = Never`
+    
+
+```{r assign4}
+opal.assign.table.tibble(o, 'KLOSA_w4_oth_rel','KLOSA.w04_main_e_spss', 
+                        variables=list('w04Ba020_01','w04Ba020_02','w04Ba020_03','w04Ba020_04','w04Ba020_05','w04Ba020_06',
+                                       'w04Ba020_07','w04Ba020_08','w04Ba020_09','w04Ba020_10',
+                                       'w04Bb022','w04Bb060','w04Bb098'), missings = TRUE)
+```
+
+```{r local4}
+KLOSA_w4_oth_rel <- opal.execute(o,'KLOSA_w4_oth_rel')
+Categorical_summary(var = KLOSA_w4_oth_rel$w04Ba020_01, missing_values = NA)
+ggplot(KLOSA_w4_oth_rel, aes(x=factor(w04Ba020_01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The frequency which 1st child meets(by phone, mail or e-mail)") + ylab("Frequency")
+Categorical_summary(var = KLOSA_w4_oth_rel$w04Bb022, missing_values = NA)
+ggplot(KLOSA_w4_oth_rel, aes(x=factor(w04Bb022))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The frequency which parents meet(by phone, mail or e-mail)") + ylab("Frequency")
+Categorical_summary(var = KLOSA_w4_oth_rel$w04Bb060, missing_values = NA)
+ggplot(KLOSA_w4_oth_rel, aes(x=factor(w04Bb060))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The frequency which father meets(by phone, mail or e-mail) (term of non-coresiding)") + ylab("Frequency")
+Categorical_summary(var = KLOSA_w4_oth_rel$w04Bb098, missing_values = NA)
+ggplot(KLOSA_w4_oth_rel, aes(x=factor(w04Bb098))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The frequency which mother meets(by phone, mail or e-mail) (term of non-coresiding)") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any variable is in 1:3 then 1`
+
+R code of the ALGORITHM:
+
+```{r harmo4}
+KLOSA_ds_w4 <- tibble(id=KLOSA_w4_oth_rel$id)
+
+KLOSA_w4_oth_rel$w04Ba020_01 <- car::recode(as.vector(KLOSA_w4_oth_rel$w04Ba020_01), "NA='-999'")
+KLOSA_w4_oth_rel$w04Ba020_02 <- car::recode(as.vector(KLOSA_w4_oth_rel$w04Ba020_02), "NA='-999'")
+KLOSA_w4_oth_rel$w04Ba020_03 <- car::recode(as.vector(KLOSA_w4_oth_rel$w04Ba020_03), "NA='-999'")
+KLOSA_w4_oth_rel$w04Ba020_04 <- car::recode(as.vector(KLOSA_w4_oth_rel$w04Ba020_04), "NA='-999'")
+KLOSA_w4_oth_rel$w04Ba020_05 <- car::recode(as.vector(KLOSA_w4_oth_rel$w04Ba020_05), "NA='-999'")
+KLOSA_w4_oth_rel$w04Ba020_06 <- car::recode(as.vector(KLOSA_w4_oth_rel$w04Ba020_06), "NA='-999'")
+KLOSA_w4_oth_rel$w04Ba020_07 <- car::recode(as.vector(KLOSA_w4_oth_rel$w04Ba020_07), "NA='-999'")
+KLOSA_w4_oth_rel$w04Ba020_08 <- car::recode(as.vector(KLOSA_w4_oth_rel$w04Ba020_08), "NA='-999'")
+KLOSA_w4_oth_rel$w04Ba020_09 <- car::recode(as.vector(KLOSA_w4_oth_rel$w04Ba020_09), "NA='-999'")
+KLOSA_w4_oth_rel$w04Ba020_10 <- car::recode(as.vector(KLOSA_w4_oth_rel$w04Ba020_10), "NA='-999'")
+KLOSA_w4_oth_rel$w04Bb022 <- car::recode(as.vector(KLOSA_w4_oth_rel$w04Bb022), "NA='-999'")
+KLOSA_w4_oth_rel$w04Bb060 <- car::recode(as.vector(KLOSA_w4_oth_rel$w04Bb060), "NA='-999'")
+KLOSA_w4_oth_rel$w04Bb098 <- car::recode(as.vector(KLOSA_w4_oth_rel$w04Bb098), "NA='-999'")
+
+KLOSA_ds_w4$oth_rel <- c(NA) # I think it is required
+for(i in 1:dim(KLOSA_w4_oth_rel)[1]){
+  if( KLOSA_w4_oth_rel$w04Ba020_01[i] %in% c(1,2,3) | KLOSA_w4_oth_rel$w04Ba020_02[i] %in% c(1,2,3) | KLOSA_w4_oth_rel$w04Ba020_03[i] %in% c(1,2,3) | 
+    KLOSA_w4_oth_rel$w04Ba020_04[i] %in% c(1,2,3) | KLOSA_w4_oth_rel$w04Ba020_05[i] %in% c(1,2,3) | KLOSA_w4_oth_rel$w04Ba020_06[i] %in% c(1,2,3) | 
+    KLOSA_w4_oth_rel$w04Ba020_07[i] %in% c(1,2,3) | KLOSA_w4_oth_rel$w04Ba020_08[i] %in% c(1,2,3) | KLOSA_w4_oth_rel$w04Ba020_09[i] %in% c(1,2,3) | 
+    KLOSA_w4_oth_rel$w04Ba020_10[i] %in% c(1,2,3) | KLOSA_w4_oth_rel$w04Bb022[i] %in% c(1,2,3) | KLOSA_w4_oth_rel$w04Bb060[i] %in% c(1,2,3) | 
+    KLOSA_w4_oth_rel$w04Bb098[i] %in% c(1,2,3) ) {
+  KLOSA_ds_w4$oth_rel[i] = 1 }
+  else if( KLOSA_w4_oth_rel$w04Ba020_01[i] %in% c(-999,-9,-8) & KLOSA_w4_oth_rel$w04Ba020_02[i] %in% c(-999,-9,-8) & KLOSA_w4_oth_rel$w04Ba020_03[i] %in% c(-999,-9,-8) & 
+    KLOSA_w4_oth_rel$w04Ba020_04[i] %in% c(-999,-9,-8) & KLOSA_w4_oth_rel$w04Ba020_05[i] %in% c(-999,-9,-8) & KLOSA_w4_oth_rel$w04Ba020_06[i] %in% c(-999,-9,-8) & 
+    KLOSA_w4_oth_rel$w04Ba020_07[i] %in% c(-999,-9,-8) & KLOSA_w4_oth_rel$w04Ba020_08[i] %in% c(-999,-9,-8) & KLOSA_w4_oth_rel$w04Ba020_09[i] %in% c(-999,-9,-8) & 
+    KLOSA_w4_oth_rel$w04Ba020_10[i] %in% c(-999,-9,-8) & KLOSA_w4_oth_rel$w04Bb022[i] %in% c(-999,-9,-8) & KLOSA_w4_oth_rel$w04Bb060[i] %in% c(-999,-9,-8) & 
+    KLOSA_w4_oth_rel$w04Bb098[i] %in% c(-999,-9,-8) ) {
+  KLOSA_ds_w4$oth_rel[i] = 999 }
+  else if( !( KLOSA_w4_oth_rel$w04Ba020_01[i] %in% c(1,2,3) | KLOSA_w4_oth_rel$w04Ba020_02[i] %in% c(1,2,3) | KLOSA_w4_oth_rel$w04Ba020_03[i] %in% c(1,2,3) | 
+    KLOSA_w4_oth_rel$w04Ba020_04[i] %in% c(1,2,3) | KLOSA_w4_oth_rel$w04Ba020_05[i] %in% c(1,2,3) | KLOSA_w4_oth_rel$w04Ba020_06[i] %in% c(1,2,3) | 
+    KLOSA_w4_oth_rel$w04Ba020_07[i] %in% c(1,2,3) | KLOSA_w4_oth_rel$w04Ba020_08[i] %in% c(1,2,3) | KLOSA_w4_oth_rel$w04Ba020_09[i] %in% c(1,2,3) | 
+    KLOSA_w4_oth_rel$w04Ba020_10[i] %in% c(1,2,3) | KLOSA_w4_oth_rel$w04Bb022[i] %in% c(1,2,3) | KLOSA_w4_oth_rel$w04Bb060[i] %in% c(1,2,3) | 
+    KLOSA_w4_oth_rel$w04Bb098[i] %in% c(1,2,3) ) ) {
+  KLOSA_ds_w4$oth_rel[i] = 0 }
+}
+
+KLOSA_ds_w4$oth_rel <- car::recode(as.vector(KLOSA_ds_w4$oth_rel), "NA='999'")
+KLOSA_ds_w4$oth_rel <- labelled(KLOSA_ds_w4$oth_rel, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript4}
+Categorical_summary(var = KLOSA_ds_w4$oth_rel, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w4, aes(x=factor(oth_rel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are other forms of contacts with family members/relatives frequent (i.e. contact once a week or more often)") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation4}
+
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]

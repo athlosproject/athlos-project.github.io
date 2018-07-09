@@ -1,0 +1,751 @@
+---
+title: "Retired"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/retiredDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/retiredDS.R')
+```
+
+
+
+# Data process
+
+
+
+## Korea
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `w01D010` | `w01D002` |`w01D601m`|`w01D601y`|`mbirth`|`ybirth`|
+|-|-|-|-|-|-|-|
+| **Label** | `The current retirement state of a respondent (if currently we do not make application activity)`|`Main job`|`Day of retirement (unit: month)`|`Day of retirement (unit: year)`|`month of birth`|`year of birth`|
+| **Table name**  | `w01_main_e`|`w01_main_e`| `w01_main_e`|`w01_main_e`| `mbirth`|`ybirth`|
+| **Categories** |  `1 = Worked before but currently retired`<br/>`3 = Worked before and intend to work in the future`<br/>`5 = Never had a job before` | `1 = Wage workers`<br/>`2 = Self employed`<br/>`3 = Non wage family worker(for 18 hours or more per week)`<br/>`4 = Non wage family worker(for less than 18 hours)` |`continuous`|`continuous`|`continuous`|`continuous`|
+| **Missings** | `NA` | `NA` | `-9 = Do not know`<br/>`-8 = Refuse to answer`<br/>`NA` | `-9 = Do not know`<br/>`-8 = Refuse to answer`<br/>`NA` |  |  |
+| **Description** |  |  |  |  |  |  |
+
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'KLOSA_w1','KLOSA.w01_main_e',variables=list('w01D010','w01D002','w01D601m','w01D601y'), missings = T)
+KLOSA_w1 <- opal.execute(o,'KLOSA_w1')
+load(paste0(datafolder,"w1/mbirth.RData"))
+KLOSA_w1 <- left_join(KLOSA_w1,mbirth, by ="id")
+rm(mbirth)
+load(paste0(datafolder,"w1/ybirth.RData"))
+KLOSA_w1 <- left_join(KLOSA_w1,ybirth, by ="id")
+rm(ybirth)
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- KLOSA_w1$w01D010
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'w01D010')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_w1, aes(x=factor(w01D010))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w1$w01D002
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'w01D002')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_w1, aes(x=factor(w01D002))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w1$w01D601m
+vbl_miss <- c(-8,-9)
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'w01D601m')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(KLOSA_w1,!vbl %in% vbl_miss), aes(w01D601m)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+scale_x_continuous(breaks=c(3,6,9,12))
+
+vbl <- KLOSA_w1$w01D601y
+vbl_miss <- c(-8,-9)
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'w01D601y')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(KLOSA_w1,!vbl %in% vbl_miss), aes(w01D601y)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w1$mbirth
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'mbirth')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(KLOSA_w1,!vbl %in% vbl_miss), aes(mbirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+scale_x_continuous(breaks=c(3,6,9,12))
+
+vbl <- KLOSA_w1$ybirth
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'ybirth')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(KLOSA_w1,!vbl %in% vbl_miss), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `retired` from the study-specific variable `w01D010` it has to be recoded as follows:
+
+* `change 3,5 into 0`
+* `keep up 1 into 1`
+* `w01D002 == 1,2 or 3 into 0`
+
+To compute `age_retired` from the study-specific variable it has to be recoded as follows:
+
+* `age_retired = date of retirement - date of birth`
+* `-8 into 997`
+* `-9 into 998`
+
+**R script:**
+
+```{r harmo w1}
+
+# Categorical variable harmonization
+KLOSA_ds_w1 <- tibble(id=KLOSA_w1$id)
+KLOSA_ds_w1$retired <- car::recode(KLOSA_w1$w01D010,"c(3,5) = 0; NA = 999")
+KLOSA_ds_w1$retired[which(KLOSA_w1$w01D002 %in% c(1,2,3))] <- 0
+
+# Continuous variable harmonization
+KLOSA_w1$month <- car::recode(KLOSA_w1$w01D601m, "-9 = 998; -8 = 997; NA = 999")
+KLOSA_w1$year <- car::recode(KLOSA_w1$w01D601y, "-9 = 998; -8 = 997; NA = 999")
+
+#function to compute the age
+comp_age <- function(y_birth, m_birth, a_year, a_month, miss){
+  N <- length(y_birth)
+  #first, it's computed the age of all
+  age <- rep(NA,N)
+  age[which(a_month<m_birth)] <- (a_year[which(a_month<m_birth)]-y_birth[which(a_month<m_birth)])-1
+  age[which(a_month>=m_birth)] <- a_year[which(a_month>=m_birth)]-y_birth[which(a_month>=m_birth)]
+  age[which(m_birth>900)] <- a_year[which(m_birth>900)]-y_birth[which(m_birth>900)]
+  
+  #It's emphasized the individues having missing
+  
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(y_birth==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(a_year==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+  
+  
+  age
+
+}
+
+KLOSA_ds_w1$age_retired <- comp_age(y_birth=KLOSA_w1$ybirth, m_birth=KLOSA_w1$mbirth , a_year=KLOSA_w1$year, a_month=KLOSA_w1$month, miss=miss_values_vector)
+KLOSA_ds_w1$age_retired[which(KLOSA_ds_w1$retired==0)] <- 996
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- KLOSA_ds_w1$retired
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w1, aes(x=factor(retired))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- KLOSA_ds_w1$age_retired
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(filter(KLOSA_ds_w1,!vbl %in% miss_values_vector), aes(age_retired)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+
+| **Name** | `w02D006` |`w02D002`|`w02D501m`|`w02D501y`|`mbirth`|`ybirth`|
+|-|-|-|-|-|-|-|
+| **Label** | `The respondent's status of labor market`|`Main job`|`Since last interview, the time of retirement (mm) (a new retiree)`|`Since last interview, the time of retirement (yyyy) (a new retiree)`|`month of birth`|`year of birth`|
+| **Table name**  | `w02_main_e_spss`| `w02_main_e_spss`| `w02_main_e_spss`| `w02_main_e_spss`|`mbirth`|`ybirth`|
+| **Categories** | `1 = Never had a job before`<br/>`3 = Currently retired (no intent to work unless circumstances change)`<br/>`5 = Intend to work if the wage and working conditions meet my expectations and circumstances are good`<br/>`7 = Intend to work if the wage and working conditions meet my expectations`<br/>`9 = Intend to work even if the wage and working conditions are slightly below my expectations` |`1 = I am employed by another person or a company and receive wages`<br/>`2 = I am self-employed??`<br/>`3 = I help my family / relative's business without pay for 18 hours or more per week`<br/>`4 = I help my family / relative's business without pay for less than 18 hours a week`|`continuous`|`continuous`|`continuous`|`continuous`|
+| **Missings** | `NA` | `NA` |`-9 = Do not know`<br/>`-8 = Refuse to answer`<br/>`NA` | `-9 = Do not know`<br/>`-8 = Refuse to answer`<br/>`NA` |  |  |
+| **Description** |  |  |  |  |  |  |
+
+```{r assign w2, echo=F}
+
+opal.assign.table.tibble(o, 'KLOSA_w2','KLOSA.w02_main_e_spss',variables=list('w02D006','w02D002','w02D501m','w02D501y'), missings = T)
+KLOSA_w2 <- opal.execute(o,'KLOSA_w2')
+load(paste0(datafolder,"w2/mbirth.RData"))
+KLOSA_w2 <- left_join(KLOSA_w2,mbirth, by ="id")
+rm(mbirth)
+load(paste0(datafolder,"w2/ybirth.RData"))
+KLOSA_w2 <- left_join(KLOSA_w2,ybirth, by ="id")
+rm(ybirth)
+
+```
+
+```{r local w2, echo=F}
+
+vbl <- KLOSA_w2$w02D006
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'w02D006')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_w2, aes(x=factor(w02D006))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w2$w02D002
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'w02D002')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_w2, aes(x=factor(w02D002))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w2$w02D501m
+vbl_miss <- c(-8,-9)
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'w02D501m')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(KLOSA_w2,!vbl %in% vbl_miss), aes(w02D501m)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+scale_x_continuous(breaks=c(3,6,9,12))
+
+vbl <- KLOSA_w2$w02D501y
+vbl_miss <- c(-8,-9)
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'w02D501y')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(KLOSA_w2,!vbl %in% vbl_miss), aes(w02D501y)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w2$mbirth
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'mbirth')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(KLOSA_w2,!vbl %in% vbl_miss), aes(mbirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+scale_x_continuous(breaks=c(3,6,9,12))
+
+vbl <- KLOSA_w2$ybirth
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'ybirth')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(KLOSA_w2,!vbl %in% vbl_miss), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `retired` from the study-specific variable `w02D006` it has to be recoded as follows:
+
+* `change 1,5,7 or 9 into 0`
+* `change 3 into 1`
+* `NA into 999`
+* `w02D002 == 1,2 or 3 into 0`
+
+To compute `age_retired` from the study-specific variable it has to be recoded as follows:
+
+* `age_retired = date of retirement - date of birth`
+* `-8 into 997`
+* `-9 into 998`
+
+**R script:**
+
+```{r harmo w2}
+
+# Categorical variable harmonization
+KLOSA_ds_w2 <- tibble(id=KLOSA_w2$id)
+KLOSA_ds_w2$retired <- car::recode(KLOSA_w2$w02D006,"c(1,5,7,9) = 0; 3 = 1; NA = 999")
+KLOSA_ds_w2$retired[which(KLOSA_w2$w02D002 %in% c(1,2,3))] <- 0
+
+KLOSA_w2 <- left_join(KLOSA_w2,KLOSA_ds_w1, by="id")
+
+# Continuous variable harmonization
+KLOSA_w2$month <- car::recode(KLOSA_w2$w02D501m, "-9 = 998; -8 = 997; NA = 999")
+KLOSA_w2$year <- car::recode(KLOSA_w2$w02D501y, "-9 = 998; -8 = 997; NA = 999")
+
+#function to compute the age
+comp_age <- function(y_birth, m_birth, a_year, a_month, miss){
+  N <- length(y_birth)
+  #first, it's computed the age of all
+  age <- rep(NA,N)
+  age[which(a_month<m_birth)] <- (a_year[which(a_month<m_birth)]-y_birth[which(a_month<m_birth)])-1
+  age[which(a_month>=m_birth)] <- a_year[which(a_month>=m_birth)]-y_birth[which(a_month>=m_birth)]
+  age[which(m_birth>900)] <- a_year[which(m_birth>900)]-y_birth[which(m_birth>900)]
+  
+  #It's emphasized the individues having missing
+  
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(y_birth==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(a_year==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+  
+  
+  age
+
+}
+
+KLOSA_ds_w2$age_retired <- comp_age(y_birth=KLOSA_w2$ybirth, m_birth=KLOSA_w2$mbirth , a_year=KLOSA_w2$year, a_month=KLOSA_w2$month, miss=miss_values_vector)
+KLOSA_ds_w2$age_retired[which(!is.na(KLOSA_w2$age_retired) & !KLOSA_w2$age_retired %in% miss_values_vector)] <- KLOSA_w2$age_retired[which(!is.na(KLOSA_w2$age_retired) & !KLOSA_w2$age_retired %in% miss_values_vector)]
+KLOSA_ds_w2$age_retired[which(KLOSA_ds_w2$retired==0)] <- 996
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w2, echo=F}
+
+vbl <- KLOSA_ds_w2$retired
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w2, aes(x=factor(retired))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- KLOSA_ds_w2$age_retired
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(filter(KLOSA_ds_w2,!vbl %in% miss_values_vector), aes(age_retired)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w2, echo=F}
+
+```
+
+
+
+### Wave 3
+
+
+#### Study-specific variable description
+
+| **Name** | `w03D006` |`w03D002`|`w03D501m`|`w03D501y`|`mbirth`|`ybirth`|
+|-|-|-|-|-|-|-|
+| **Label** | `The respondent's status of labor market`|`Main job`|`Since last interview, the time of retirement (mm) (a new retiree)`|`Since last interview, the time of retirement (yyyy) (a new retiree)`|`month of birth`|`year of birth`|
+| **Table name**  | `w03_main_e_spss_albert`| `w03_main_e_spss_albert`| `w03_main_e_spss_albert`| `w03_main_e_spss_albert`|`mbirth`|`ybirth`|
+| **Categories** | `1 = Never had a job before`<br/>`3 = Currently retired (no intent to work unless circumstances change)`<br/>`5 = Intend to work if the wage and working conditions meet my expectations and circumstances are good`<br/>`7 = Intend to work if the wage and working conditions meet my expectations`<br/>`9 = Intend to work even if the wage and working conditions are slightly below my expectations` |`1 = I am employed by another person or a company and receive wages`<br/>`2 = I am self-employed??`<br/>`3 = I help my family / relative's business without pay for 18 hours or more per week`<br/>`4 = I help my family / relative's business without pay for less than 18 hours a week`|`continuous`|`continuous`|`continuous`|`continuous`|
+| **Missings** | `NA` | `NA` |`-9 = Do not know`<br/>`-8 = Refuse to answer`<br/>`NA` | `-9 = Do not know`<br/>`-8 = Refuse to answer`<br/>`NA` |  |  |
+| **Description** |  |  |  |  |  |  |
+
+```{r assign w3, echo=F}
+
+opal.assign.table.tibble(o, 'KLOSA_w3','KLOSA.w03_main_e_spss_albert',variables=list('w03D006','w03D002','w03D501m','w03D501y'), missings = T)
+KLOSA_w3 <- opal.execute(o,'KLOSA_w3')
+load(paste0(datafolder,"w3/mbirth.RData"))
+KLOSA_w3 <- left_join(KLOSA_w3,mbirth, by ="id")
+rm(mbirth)
+load(paste0(datafolder,"w3/ybirth.RData"))
+KLOSA_w3 <- left_join(KLOSA_w3,ybirth, by ="id")
+rm(ybirth)
+# The id's in the third wave add a '.0' at the end of the id's at the previous waves. We correct this. Note that gregexpr("\\.0",ids) == nchar(ids)-1
+KLOSA_w3$id <- substr(KLOSA_w3$id,1,nchar(KLOSA_w3$id)-2)
+
+```
+
+```{r local w3, echo=F}
+
+vbl <- KLOSA_w3$w03D006
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'w03D006')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_w3, aes(x=factor(w03D006))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w3$w03D002
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'w03D002')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_w3, aes(x=factor(w03D002))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w3$w03D501m
+vbl_miss <- c(-8,-9)
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'w03D501m')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(KLOSA_w3,!vbl %in% vbl_miss), aes(w03D501m)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+scale_x_continuous(breaks=c(3,6,9,12))
+
+vbl <- KLOSA_w3$w03D501y
+vbl_miss <- c(-8,-9)
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'w03D501y')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(KLOSA_w3,!vbl %in% vbl_miss), aes(w03D501y)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w3$mbirth
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'mbirth')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(KLOSA_w3,!vbl %in% vbl_miss), aes(mbirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+scale_x_continuous(breaks=c(3,6,9,12))
+
+vbl <- KLOSA_w3$ybirth
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'ybirth')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(KLOSA_w3,!vbl %in% vbl_miss), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `retired` from the study-specific variable `w03D006` it has to be recoded as follows:
+
+* `change 1,5,7 or 9 into 0`
+* `change 3 into 1`
+* `NA into 999`
+* `w03D002 == 1,2 or 3 into 0`
+
+To compute `age_retired` from the study-specific variable it has to be recoded as follows:
+
+* `age_retired = date of retirement - date of birth`
+* `-8 into 997`
+* `-9 into 998`
+
+**R script:**
+
+```{r harmo w3}
+
+# Categorical variable harmonization
+KLOSA_ds_w3 <- tibble(id=KLOSA_w3$id)
+KLOSA_ds_w3$retired <- car::recode(KLOSA_w3$w03D006,"c(1,5,7,9) = 0; 3 = 1; NA = 999")
+KLOSA_ds_w3$retired[which(KLOSA_w3$w03D002 %in% c(1,2,3))] <- 0
+
+# Continuous variable harmonization
+KLOSA_w3$month <- car::recode(KLOSA_w3$w03D501m, "-9 = 998; -8 = 997; NA = 999")
+KLOSA_w3$year <- car::recode(KLOSA_w3$w03D501y, "-9 = 998; -8 = 997; NA = 999")
+
+#function to compute the age
+comp_age <- function(y_birth, m_birth, a_year, a_month, miss){
+  N <- length(y_birth)
+  #first, it's computed the age of all
+  age <- rep(NA,N)
+  age[which(a_month<m_birth)] <- (a_year[which(a_month<m_birth)]-y_birth[which(a_month<m_birth)])-1
+  age[which(a_month>=m_birth)] <- a_year[which(a_month>=m_birth)]-y_birth[which(a_month>=m_birth)]
+  age[which(m_birth>900)] <- a_year[which(m_birth>900)]-y_birth[which(m_birth>900)]
+  
+  #It's emphasized the individues having missing
+  
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(y_birth==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(a_year==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+  
+  
+  age
+
+}
+
+KLOSA_ds_w3$age_retired <- comp_age(y_birth=KLOSA_w3$ybirth, m_birth=KLOSA_w3$mbirth , a_year=KLOSA_w3$year, a_month=KLOSA_w3$month, miss=miss_values_vector)
+KLOSA_ds_w3$age_retired[which(!is.na(KLOSA_w3$age_retired) & !KLOSA_w3$age_retired %in% miss_values_vector)] <- KLOSA_w3$age_retired[which(!is.na(KLOSA_w3$age_retired) & !KLOSA_w3$age_retired %in% miss_values_vector)]
+KLOSA_ds_w3$age_retired[which(KLOSA_ds_w3$retired==0)] <- 996
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w3, echo=F}
+
+vbl <- KLOSA_ds_w3$retired
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w3, aes(x=factor(retired))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- KLOSA_ds_w3$age_retired
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(filter(KLOSA_ds_w3,!vbl %in% miss_values_vector), aes(age_retired)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w3, echo=F, results='asis'}
+
+```
+
+
+
+### Wave 4
+
+
+#### Study-specific variable description
+
+| **Name** | `w04D006` |`w04D002`|`w04D501m`|`w04D501y`|`mbirth`|`ybirth`|
+|-|-|-|-|-|-|-|
+| **Label** | `The respondent's status of labor market`|`Main job`|`Since last interview, the time of retirement (mm) (a new retiree)`|`Since last interview, the time of retirement (yyyy) (a new retiree)`|`month of birth`|`year of birth`|
+| **Table name**  | `w04_main_e_spss`| `w04_main_e_spss`|`w04_main_e_spss`| `w04_main_e_spss`|`mbirth`|`ybirth`|
+| **Categories** | `1 = Never had a job before`<br/>`3 = Currently retired (no intent to work unless circumstances change)`<br/>`5 = Intend to work if the wage and working conditions meet my expectations and circumstances are good`<br/>`7 = Intend to work if the wage and working conditions meet my expectations`<br/>`9 = Intend to work even if the wage and working conditions are slightly below my expectations` |`1 = I am employed by another person or a company and receive wages`<br/>`2 = I am self-employed??`<br/>`3 = I help my family / relative's business without pay for 18 hours or more per week`<br/>`4 = I help my family / relative's business without pay for less than 18 hours a week`| `continuous`|`continuous`|`continuous`|`continuous`|
+| **Missings** | `NA` | `NA` |`-9 = Do not know`<br/>`-8 = Refuse to answer`<br/>`NA` | `-9 = Do not know`<br/>`-8 = Refuse to answer`<br/>`NA` |  |  |
+| **Description** |  |  |  |  |  |  |
+
+```{r assign w4, echo=F}
+
+opal.assign.table.tibble(o, 'KLOSA_w4','KLOSA.w04_main_e_spss',variables=list('w04D006','w04D002','w04D501m','w04D501y'), missings = T)
+KLOSA_w4 <- opal.execute(o,'KLOSA_w4')
+load(paste0(datafolder,"w4/mbirth.RData"))
+KLOSA_w4 <- left_join(KLOSA_w4,mbirth, by ="id")
+rm(mbirth)
+load(paste0(datafolder,"w4/ybirth.RData"))
+KLOSA_w4 <- left_join(KLOSA_w4,ybirth, by ="id")
+rm(ybirth)
+
+```
+
+```{r local w4, echo=F}
+
+vbl <- KLOSA_w4$w04D006
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'w04D006')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_w4, aes(x=factor(w04D006))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w4$w04D002
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'w04D002')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_w4, aes(x=factor(w04D002))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w4$w04D501m
+vbl_miss <- c(-8,-9)
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'w04D501m')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(KLOSA_w4,!vbl %in% vbl_miss), aes(w04D501m)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+scale_x_continuous(breaks=c(3,6,9,12))
+
+vbl <- KLOSA_w4$w04D501y
+vbl_miss <- c(-8,-9)
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'w04D501y')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(KLOSA_w4,!vbl %in% vbl_miss), aes(w04D501y)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w4$mbirth
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'mbirth')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(KLOSA_w4,!vbl %in% vbl_miss), aes(mbirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+scale_x_continuous(breaks=c(3,6,9,12))
+
+vbl <- KLOSA_w4$ybirth
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'ybirth')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(KLOSA_w4,!vbl %in% vbl_miss), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `retired` from the study-specific variable `w04D006` it has to be recoded as follows:
+
+* `change 1,5,7 or 9 into 0`
+* `change 3 into 1`
+* `NA into 999`
+* `w04D002 == 1,2 or 3 into 0`
+
+To compute `age_retired` from the study-specific variable it has to be recoded as follows:
+
+* `age_retired = date of retirement - date of birth`
+* `-8 into 997`
+* `-9 into 998`
+
+**R script:**
+
+```{r harmo w4}
+
+# Categorical variable harmonization
+KLOSA_ds_w4 <- tibble(id=KLOSA_w4$id)
+KLOSA_ds_w4$retired <- car::recode(KLOSA_w4$w04D006,"c(1,5,7,9) = 0; 3 = 1; NA = 999")
+KLOSA_ds_w4$retired[which(KLOSA_w4$w04D002 %in% c(1,2,3))] <- 0
+
+# Continuous variable harmonization
+KLOSA_w4$month <- car::recode(KLOSA_w4$w04D501m, "-9 = 998; -8 = 997; NA = 999")
+KLOSA_w4$year <- car::recode(KLOSA_w4$w04D501y, "-9 = 998; -8 = 997; NA = 999")
+
+#function to compute the age
+comp_age <- function(y_birth, m_birth, a_year, a_month, miss){
+  N <- length(y_birth)
+  #first, it's computed the age of all
+  age <- rep(NA,N)
+  age[which(a_month<m_birth)] <- (a_year[which(a_month<m_birth)]-y_birth[which(a_month<m_birth)])-1
+  age[which(a_month>=m_birth)] <- a_year[which(a_month>=m_birth)]-y_birth[which(a_month>=m_birth)]
+  age[which(m_birth>900)] <- a_year[which(m_birth>900)]-y_birth[which(m_birth>900)]
+  
+  #It's emphasized the individues having missing
+  
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(y_birth==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(a_year==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+  
+  
+  age
+
+}
+
+KLOSA_ds_w4$age_retired <- comp_age(y_birth=KLOSA_w4$ybirth, m_birth=KLOSA_w4$mbirth , a_year=KLOSA_w4$year, a_month=KLOSA_w4$month, miss=miss_values_vector)
+KLOSA_ds_w4$age_retired[which(!is.na(KLOSA_w4$age_retired) & !KLOSA_w4$age_retired %in% miss_values_vector)] <- KLOSA_w4$age_retired[which(!is.na(KLOSA_w4$age_retired) & !KLOSA_w4$age_retired %in% miss_values_vector)]
+KLOSA_ds_w4$age_retired[which(KLOSA_ds_w4$retired==0)] <- 996
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w4, echo=F}
+
+vbl <- KLOSA_ds_w4$retired
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w4, aes(x=factor(retired))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- KLOSA_ds_w4$age_retired
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(filter(KLOSA_ds_w4,!vbl %in% miss_values_vector), aes(age_retired)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w4, echo=F, results='asis'}
+
+
+```
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
+
+**R script:**
+
+```{r summ}
+KLOSA_ds_w1$retired <- labelled(KLOSA_ds_w1$retired, labels = cat_label)
+label(KLOSA_ds_w1$retired) <- ds_label
+KLOSA_ds_w2$retired <- labelled(KLOSA_ds_w2$retired, labels = cat_label)
+label(KLOSA_ds_w2$retired) <- ds_label
+KLOSA_ds_w3$retired <- labelled(KLOSA_ds_w3$retired, labels = cat_label)
+label(KLOSA_ds_w3$retired) <- ds_label
+KLOSA_ds_w4$retired <- labelled(KLOSA_ds_w4$retired, labels = cat_label)
+label(KLOSA_ds_w4$retired) <- ds_label
+KLOSA_ds_w1$age_retired <- labelled(KLOSA_ds_w1$age_retired, labels = cont_label)
+label(KLOSA_ds_w1$age_retired) <- ds_label_age
+KLOSA_ds_w2$age_retired <- labelled(KLOSA_ds_w2$age_retired, labels = cont_label)
+label(KLOSA_ds_w2$age_retired) <- ds_label_age
+KLOSA_ds_w3$age_retired <- labelled(KLOSA_ds_w3$age_retired, labels = cont_label)
+label(KLOSA_ds_w3$age_retired) <- ds_label_age
+KLOSA_ds_w4$age_retired <- labelled(KLOSA_ds_w4$age_retired, labels = cont_label)
+label(KLOSA_ds_w4$age_retired) <- ds_label_age
+
+KLOSA_m_ds_w1 <- KLOSA_ds_w1
+KLOSA_m_ds_w1$retired <- car::recode(KLOSA_m_ds_w1$retired, "miss_values_vector=NA")
+KLOSA_m_ds_w2 <- KLOSA_ds_w2
+KLOSA_m_ds_w2$retired <- car::recode(KLOSA_m_ds_w2$retired, "miss_values_vector=NA")
+KLOSA_m_ds_w3 <- KLOSA_ds_w3
+KLOSA_m_ds_w3$retired <- car::recode(KLOSA_m_ds_w3$retired, "miss_values_vector=NA")
+KLOSA_m_ds_w4 <- KLOSA_ds_w4
+KLOSA_m_ds_w4$retired <- car::recode(KLOSA_m_ds_w4$retired, "miss_values_vector=NA")
+
+
+tt <-    frq(KLOSA_ds_w1$retired)[[1]][,c(1:2,4)]
+tt[4] <- frq(KLOSA_ds_w2$retired)[[1]][,c(4)]
+tt[5] <- frq(KLOSA_ds_w3$retired)[[1]][,c(4)]
+tt[6] <- frq(KLOSA_ds_w4$retired)[[1]][,c(4)]
+tt[13,] <- c("n", "sample size", 
+             length(KLOSA_ds_w1$retired), length(KLOSA_ds_w2$retired), length(KLOSA_ds_w3$retired), length(KLOSA_ds_w4$retired)
+             )
+names(tt)<-c("val", "label", "w1", "w2", "w3", "w4")
+kable(tt)
+
+dbb <- merge(KLOSA_m_ds_w1[,c("id","retired")], KLOSA_m_ds_w2[,c("id","retired")], by="id", suffixes = c(".w1",".w2"), all=T)
+dbb <- merge(dbb, KLOSA_m_ds_w3[,c("id","retired")], by="id", all=T)
+dbb <- merge(dbb, KLOSA_m_ds_w4[,c("id","retired")], by="id", suffixes = c(".w3",".w4"), all=T)
+names(dbb) <- c("id", "w1", "w2", "w3", "w4")
+v.dbb <- paste(dbb[,2],dbb[,3],dbb[,4],dbb[,5],sep="")
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb[f.dbb[,3]>=0.3,])
+```
+
+
+
+# Quality estimation
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+l.KLOSA <- list(w1 = KLOSA_ds_w1, w2 = KLOSA_ds_w2, w3 = KLOSA_ds_w3, w4 = KLOSA_ds_w4)
+
+for(index in seq_along(l.KLOSA)){
+  retired <- l.KLOSA[[index]]
+  save(retired, file = paste0(datafolder,names(l.KLOSA)[index],"/retired.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

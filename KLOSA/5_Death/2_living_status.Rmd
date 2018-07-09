@@ -1,0 +1,478 @@
+---
+title: "Living status"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+  
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `living_status`
+* Variable label: `Living status`
+* Variable description: `The individual is dead or alive?`
+* Domain: `Death`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | alive
+1        | Dead
+2        | Dropout  
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Living status"
+ds_label_all <- "The individual is dead or alive?"
+```
+
+# Data process
+
+## Korea
+
+### Wave 1 
+
+#### Study-specific variable description
+
+
+```{r assign1, echo=FALSE}
+opal.assign.table.tibble(o, 'KLOSA_w1_id','KLOSA.w01_main_e',
+                         variables=list('w01gender1'), missings = TRUE)
+KLOSA_w1_id <- opal.execute(o,'KLOSA_w1_id')
+```
+
+
+#### Harmonisation algorithm
+It's considered that at baseline all the individuals are alive. Therefore it is going to compute the variable with all the values as 0. 
+
+**R script:**
+
+```{r harmo1}
+KLOSA_ds_w1 <- tibble(id=KLOSA_w1_id$id)
+KLOSA_ds_w1$living_status <- 0
+KLOSA_ds_w1$living_status <- labelled(KLOSA_ds_w1$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=FALSE}
+vari <- KLOSA_ds_w1$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w1, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=FALSE}
+```
+
+
+```{r importOPAL1, echo=FALSE}
+val_labels(KLOSA_ds_w1) <- NULL
+#opal.assign.data(o, 'KLOSA_ds_w1', KLOSA_ds_w1)
+#opal.symbol_import(o,'KLOSA_ds_w1', project='_Athlos_Harm_Dataset')
+living_status <- KLOSA_ds_w1
+save(living_status, file = "../RData/w1/living_status.RData")
+rm(living_status)
+
+KLOSA_m_ds_w1 <- KLOSA_ds_w1
+KLOSA_m_ds_w1$living_status <- car::recode(KLOSA_m_ds_w1$living_status, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'KLOSA_m_ds_w1', KLOSA_m_ds_w1)
+#opal.symbol_import(o,'KLOSA_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `w02Xa010y`
+* Label: `The time of the respondent's death (unit : yyyy)`
+* Type of variable: `countinous`
+* Missings: 
+    + `-9 = Don't know`
+
+```{r assign2, echo=FALSE}
+#w1:
+opal.assign.table.tibble(o, 'KLOSA_w1_id','KLOSA.w01_main_e',
+                         variables=list('w01gender1'), missings = TRUE)
+KLOSA_w1_id <- opal.execute(o,'KLOSA_w1_id')
+#w2:
+opal.assign.table.tibble(o, 'KLOSA_w2_inter','KLOSA.w02_main_e_spss',
+                         variables=list('w02mniw_y'), missings = TRUE)
+KLOSA_w2_inter <- opal.execute(o,'KLOSA_w2_inter')
+
+#Exit w2:
+opal.assign.table.tibble(o, 'KLOSA_w2_ydeath','KLOSA.w02_exit_e_spss_modifAlbert',
+                         variables=list('w02Xa010y'), missings = TRUE)
+KLOSA_w2_ydeath <- opal.execute(o,'KLOSA_w2_ydeath')
+```
+
+```{r local2, echo=FALSE}
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = length(new), ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new)){
+    if(sum(new[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], ydeath=as.numeric(new_2[,2]))
+  new_22
+}
+
+KLOSA_w2_LS <- Add_indiv(old = KLOSA_w2_ydeath, new = KLOSA_w1_id$id)
+
+vari <- KLOSA_w2_LS$ydeath
+kable(Categorical_summary(vari, missing_values = c(-9))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-9))[2], caption = "Type of missing")
+ggplot(KLOSA_w2_LS, aes(factor(ydeath))) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of death") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable it have to recode: 
+
+* `the individuals include in wave 2 dataset as 0 'alive' `
+* `the individuals with a value in year of death into 1 'death' `
+* `the individuals don't include in wave 2 and without year of death into 2 'dropout'` 
+
+**R script:**
+
+```{r harmo2}
+KLOSA_ds_w2 <- tibble(id=KLOSA_w2_LS$id)
+KLOSA_ds_w2$living_status <- 2
+KLOSA_ds_w2$living_status[KLOSA_w2_LS$id %in% KLOSA_w2_inter$id] <- 0
+KLOSA_ds_w2$living_status[!is.na(KLOSA_w2_LS$ydeath)] <- 1
+
+KLOSA_ds_w2$living_status <- labelled(KLOSA_ds_w2$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2, echo=FALSE}
+vari <- KLOSA_ds_w2$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w2, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2, echo=FALSE}
+```
+
+
+```{r importOPAL2, echo=FALSE}
+#opal.assign.data(o, 'KLOSA_ds_w2', KLOSA_ds_w2)
+#opal.symbol_import(o,'KLOSA_ds_w2', project='_Athlos_Harm_Dataset')
+
+living_status <- KLOSA_ds_w2
+save(living_status, file = "../RData/w2/living_status.RData")
+rm(living_status)
+
+KLOSA_m_ds_w2 <- KLOSA_ds_w2
+KLOSA_m_ds_w2$living_status <- car::recode(KLOSA_m_ds_w2$living_status, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'KLOSA_m_ds_w2', KLOSA_m_ds_w2)
+#opal.symbol_import(o,'KLOSA_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 3 
+
+#### Study-specific variable description
+
+* Name: `w03Xa010y`
+* Label: `The time of the respondent's death (unit : yyyy)`
+* Type of variable: `countinous`
+* Missings: 
+    + `-9 = Don't know`
+
+
+```{r assign3, echo=FALSE}
+#w1:
+opal.assign.table.tibble(o, 'KLOSA_w1_id','KLOSA.w01_main_e',
+                         variables=list('w01gender1'), missings = TRUE)
+KLOSA_w1_id <- opal.execute(o,'KLOSA_w1_id')
+#w3
+opal.assign.table.tibble(o, 'KLOSA_w3_yinter','KLOSA.w03_main_e_spss_albert',
+                         variables=list('w03mniw_y'), missings = TRUE)
+KLOSA_w3_yinter <- opal.execute(o,'KLOSA_w3_yinter')
+KLOSA_w3_yinter$id <- substring(text = KLOSA_w3_yinter$id, first=1, last=(nchar(KLOSA_w3_yinter$id)-2))
+
+#Exit w2:
+opal.assign.table.tibble(o, 'KLOSA_w2_ydeath','KLOSA.w02_exit_e_spss_modifAlbert',
+                         variables=list('w02Xa010y'), missings = TRUE)
+KLOSA_w2_ydeath <- opal.execute(o,'KLOSA_w2_ydeath')
+
+#Exit w3:
+opal.assign.table.tibble(o, 'KLOSA_w3_ydeath','KLOSA.w03_exit_v12e_modifLaia',
+                         variables=list('w03Xa010y'), missings = TRUE)
+KLOSA_w3_ydeath <- opal.execute(o,'KLOSA_w3_ydeath')
+KLOSA_w3_ydeath$id <- substring(text = KLOSA_w3_ydeath$id, first=1, last=(nchar(KLOSA_w3_ydeath$id)-2))
+```
+
+```{r local3, echo=FALSE}
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = length(new), ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new)){
+    if(sum(new[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], ydeath=as.numeric(new_2[,2]))
+  new_22
+}
+
+KLOSA_w3_LS <- Add_indiv(old = KLOSA_w3_ydeath, new = KLOSA_w1_id$id)
+KLOSA_w2_LS <- Add_indiv(old = KLOSA_w2_ydeath, new = KLOSA_w1_id$id)
+KLOSA_w3_LS$ydeath[is.na(KLOSA_w3_LS$ydeath)] <- KLOSA_w2_LS$ydeath[is.na(KLOSA_w3_LS$ydeath)]
+
+
+vari <- KLOSA_w3_LS$ydeath
+kable(Categorical_summary(vari, missing_values = c(-9))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-9))[2], caption = "Type of missing")
+ggplot(KLOSA_w3_LS, aes(factor(ydeath))) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of death") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable it have to recode: 
+
+* `the individuals include in wave 3 dataset as 0 'alive' `
+* `the individuals with a value in year of death into 1 'death' `
+* `the individuals don't include in wave 3 and without year of death into 2 'dropout'` 
+
+**R script:**
+
+```{r harmo3}
+KLOSA_ds_w3 <- tibble(id=KLOSA_w3_LS$id)
+KLOSA_ds_w3$living_status <- 2
+KLOSA_ds_w3$living_status[KLOSA_w3_LS$id %in% KLOSA_w3_yinter$id] <- 0
+KLOSA_ds_w3$living_status[!is.na(KLOSA_w3_LS$ydeath)] <- 1
+
+KLOSA_ds_w3$living_status <- labelled(KLOSA_ds_w3$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript3, echo=FALSE}
+vari <- KLOSA_ds_w3$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w3, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation3, echo=FALSE}
+```
+
+```{r importOPAL3, echo=FALSE}
+#opal.assign.data(o, 'KLOSA_ds_w3', KLOSA_ds_w3)
+#opal.symbol_import(o,'KLOSA_ds_w3', project='_Athlos_Harm_Dataset')
+living_status <- KLOSA_ds_w3
+save(living_status, file = "../RData/w3/living_status.RData")
+rm(living_status)
+
+KLOSA_m_ds_w3 <- KLOSA_ds_w3
+KLOSA_m_ds_w3$living_status <- car::recode(KLOSA_m_ds_w3$living_status, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'KLOSA_m_ds_w3', KLOSA_m_ds_w3)
+#opal.symbol_import(o,'KLOSA_m_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+### Wave 4 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `w04Xa010y`
+* Label: `The time of the respondent's death (unit : yyyy)`
+* Type of variable: `countinous`
+* Missings: 
+    + `-9 = Don't know`
+
+```{r assign4, echo=FALSE}
+#w1:
+opal.assign.table.tibble(o, 'KLOSA_w1_id','KLOSA.w01_main_e',
+                         variables=list('w01gender1'), missings = TRUE)
+KLOSA_w1_id <- opal.execute(o,'KLOSA_w1_id')
+#Exit w2:
+opal.assign.table.tibble(o, 'KLOSA_w2_ydeath','KLOSA.w02_exit_e_spss_modifAlbert',
+                         variables=list('w02Xa010y'), missings = TRUE)
+KLOSA_w2_ydeath <- opal.execute(o,'KLOSA_w2_ydeath')
+
+#Exit w3:
+opal.assign.table.tibble(o, 'KLOSA_w3_ydeath','KLOSA.w03_exit_v12e_modifLaia',
+                         variables=list('w03Xa010y'), missings = TRUE)
+KLOSA_w3_ydeath <- opal.execute(o,'KLOSA_w3_ydeath')
+KLOSA_w3_ydeath$id <- substring(text = KLOSA_w3_ydeath$id, first=1, last=(nchar(KLOSA_w3_ydeath$id)-2))
+
+#Exit w4:
+opal.assign.table.tibble(o, 'KLOSA_w4_ydeath','KLOSA.w04_exit_v12e',
+                         variables=list('w04Xa010y'), missings = TRUE)
+KLOSA_w4_ydeath <- opal.execute(o,'KLOSA_w4_ydeath')
+
+#w4:
+opal.assign.table.tibble(o, 'KLOSA_w4_yinter','KLOSA.w04_main_e_spss',
+                         variables=list('w04mniw_y'), missings = TRUE)
+KLOSA_w4_yinter <- opal.execute(o,'KLOSA_w4_yinter')
+```
+
+```{r local4, echo=FALSE}
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = length(new), ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new)){
+    if(sum(new[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], ydeath=as.numeric(new_2[,2]))
+  new_22
+}
+
+KLOSA_w3_LS <- Add_indiv(old = KLOSA_w3_ydeath, new = KLOSA_w1_id$id)
+KLOSA_w2_LS <- Add_indiv(old = KLOSA_w2_ydeath, new = KLOSA_w1_id$id)
+KLOSA_w3_LS$ydeath[is.na(KLOSA_w3_LS$ydeath)] <- KLOSA_w2_LS$ydeath[is.na(KLOSA_w3_LS$ydeath)]
+
+
+KLOSA_w4_LS <- Add_indiv(old = KLOSA_w4_ydeath, new = KLOSA_w1_id$id)
+KLOSA_w4_LS$ydeath[is.na(KLOSA_w4_LS$ydeath)] <- KLOSA_w3_LS$ydeath[is.na(KLOSA_w4_LS$ydeath)]
+
+
+
+vari <- KLOSA_w4_LS$ydeath
+kable(Categorical_summary(vari, missing_values = c(-9))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-9))[2], caption = "Type of missing")
+ggplot(KLOSA_w4_LS, aes(factor(ydeath))) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of death") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable it have to recode: 
+
+* `the individuals include in wave 4 dataset as 0 'alive' `
+* `the individuals with a value in year of death into 1 'death' `
+* `the individuals don't include in wave 4 and without year of death into 2 'dropout'` 
+
+**R script:**
+
+```{r harmo4}
+KLOSA_ds_w4 <- tibble(id=KLOSA_w4_LS$id)
+KLOSA_ds_w4$living_status <- 2
+KLOSA_ds_w4$living_status[KLOSA_w4_LS$id %in% KLOSA_w4_yinter$id] <- 0
+KLOSA_ds_w4$living_status[!is.na(KLOSA_w4_LS$ydeath)] <- 1
+
+KLOSA_ds_w4$living_status <- labelled(KLOSA_ds_w4$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript4, echo=FALSE}
+vari <- KLOSA_ds_w4$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w4, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+
+```{r importOPAL4, echo=FALSE}
+val_labels(KLOSA_ds_w4) <- NULL
+#opal.assign.data(o, 'KLOSA_ds_w4', KLOSA_ds_w4)
+#opal.symbol_import(o,'KLOSA_ds_w4', project='_Athlos_Harm_Dataset')
+living_status <- KLOSA_ds_w4
+save(living_status, file = "../RData/w4/living_status.RData")
+rm(living_status)
+
+KLOSA_m_ds_w4 <- KLOSA_ds_w4
+KLOSA_m_ds_w4$living_status <- car::recode(KLOSA_m_ds_w4$living_status, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'KLOSA_m_ds_w4', KLOSA_m_ds_w4)
+#opal.symbol_import(o,'KLOSA_m_ds_w4', project='_Athlos_Harm_Dataset')
+```
+
+
+### Validation throughout waves
+
+```{r valid_klosa, echo=F}
+dbb <- left_join(x = KLOSA_ds_w1, y = KLOSA_ds_w2, by = "id", suffix = c(".w1", ".w2"))
+dbb <- left_join(x = dbb, y = KLOSA_ds_w3, by = "id")
+dbb <- left_join(x = dbb, y = KLOSA_ds_w4, by = "id")
+names(dbb) <- c("id", "w1", "w2", "w3", "w4")
+
+dbb$join <- apply(dbb[, 2:5], MARGIN = 1, FUN = function(x) paste(x[1], x[2], x[3], x[4], sep=""))
+f.dbb <- frq(dbb$join)[[1]][, c(1, 2, 4)]
+kable(f.dbb)
+#kable(f.dbb[f.dbb[, 3] >= 0.3, ])
+```
+
+
+
+# Quality estimation
+No comments.
+
+
+
+```{r closeRsession, echo=FALSE}
+#opal.logout(o)
+```
+

@@ -1,0 +1,492 @@
+---
+title: "Any form of religious participation (religious services attendance, religious meetings, religious organization membership, etc.)"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variables is the following:
+
+* Short name: `relig`
+* Variable label: `Any form of religious participation`
+* Domain: `Social environment`
+* Value type: `cathegorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Korea
+
+### Wave 1
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised are:
+
+* Name: `w01A017m01`
+* Label: `Participating to the religious meeting`
+* Categories: 
+    + `0 = no`
+    + `1 = yes`
+    
+* Name: `w01A019_01`
+* Label: `The number of times which participates to the religious meeting`
+* Categories:
+    + `1 = Almost every day (more than 4 times per week)`
+    + `2 = Once a week`
+    + `3 = 2-3 times a week`
+    + `4 = Once a month`
+    + `5 = Twice a month (every two weeks)`
+    + `6 = Once or twice a year`
+    + `7 = Three or four times a year`
+    + `8 = Five or six times a year`
+    + `9 = Almost never a year`
+    + `10 = Almost never`
+
+
+* Description: 
+```{r assign1, echo=F}
+opal.assign.table.tibble(o,'KLOSA_w1_relig','KLOSA.w01_main_e',variables=list('w01A017m01','w01A019_01'), missings = TRUE)
+```
+
+```{r local1, echo=F}
+KLOSA_w1_relig <- opal.execute(o,'KLOSA_w1_relig')
+vari <- KLOSA_w1_relig$w01A017m01
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w1_relig$w01A017m01, missing_values = NA)
+ggplot(KLOSA_w1_relig, aes(x=factor(w01A017m01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Participating to the religious meeting") + ylab("Frequency")
+
+vari <- KLOSA_w1_relig$w01A019_01
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w1_relig$w01A019_01, missing_values = NA)
+ggplot(KLOSA_w1_relig, aes(x=factor(w01A019_01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The number of times which participates to the religious meeting") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To recode the harmonize variable from the study-specific variable it has to be recoded as follows:  
+
+* `if w01A017m01=1 and w01A019_01 in c(1,2,3,4,5,7,8) then 1`
+* `if w01A017m01=0 or ( w01A017m01=1 and w01A019_01 in c(6,9,10) ) then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1, echo=TRUE}
+KLOSA_ds_w1 <- tibble(id=KLOSA_w1_relig$id)
+
+KLOSA_w1_relig$w01A017m01 <- car::recode(as.vector(KLOSA_w1_relig$w01A017m01), "NA='-999'")
+KLOSA_w1_relig$w01A019_01 <- car::recode(as.vector(KLOSA_w1_relig$w01A019_01), "NA='-999'")
+
+KLOSA_ds_w1$relig <- c(NA)  
+for(i in 1:dim(KLOSA_w1_relig)[1]){
+  if( KLOSA_w1_relig$w01A017m01[i] == 1 & KLOSA_w1_relig$w01A019_01[i] %in% c(1:5,7,8) ) {
+    KLOSA_ds_w1$relig[i] = 1 }
+  else if( KLOSA_w1_relig$w01A017m01[i] == 0 | (KLOSA_w1_relig$w01A017m01[i] == 1 & KLOSA_w1_relig$w01A019_01[i] %in% c(6,9,10)) ) {
+    KLOSA_ds_w1$relig[i] = 0 }
+}
+
+KLOSA_ds_w1$relig <- car::recode(as.vector(KLOSA_ds_w1$relig), "NA='999'")
+KLOSA_ds_w1$relig <- labelled(KLOSA_ds_w1$relig, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1, echo=F}
+vari <- KLOSA_ds_w1$relig
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_ds_w1$relig, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w1, aes(x=factor(relig))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Religious participation") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=F}
+AfterH <- table(KLOSA_ds_w1$relig)
+BeforeH <- table(KLOSA_w1_relig$w01A017m01, KLOSA_w1_relig$w01A019_01, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[1]] <- sum(sum(BeforeH[1,]), sum(BeforeH[2,c(7,10:11)]))
+BeforeH1[[2]] <- sum(BeforeH[2,c(2:6,8,9)])
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("0","1")
+kable(C)
+```
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised are:
+
+* Name: `w02A033m01`
+* Label: `Participating to the religious meeting`
+* Categories: 
+    + `0 = no`
+    + `1 = yes`
+    
+* Name: `w02A035_01`
+* Label: `The number of times which participates to the religious meeting`
+* Categories:
+    + `1 = Almost every day (more than 4 times per week)`
+    + `2 = Once a week`
+    + `3 = 2-3 times a week`
+    + `4 = Once a month`
+    + `5 = Twice a month (every two weeks)`
+    + `6 = Once or twice a year`
+    + `7 = Three or four times a year`
+    + `8 = Five or six times a year`
+    + `9 = Almost never a year`
+    + `10 = Almost never`
+
+* Description: 
+```{r assign2, echo=F}
+opal.assign.table.tibble(o,'KLOSA_w2_relig','KLOSA.w02_main_e_spss',variables=list('w02A033m01','w02A035_01'), missings = TRUE)
+```
+
+```{r local2, echo=F}
+KLOSA_w2_relig <- opal.execute(o,'KLOSA_w2_relig')
+vari <- KLOSA_w2_relig$w02A033m01
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w2_relig$w02A033m01, missing_values = NA)
+ggplot(KLOSA_w2_relig, aes(x=factor(w02A033m01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Participating to the religious meeting?") + ylab("Frequency")
+
+vari <- KLOSA_w2_relig$w02A035_01
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w2_relig$w02A035_01, missing_values = NA)
+ggplot(KLOSA_w2_relig, aes(x=factor(w02A035_01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The number of times which participates to the religious meeting") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To recode the harmonize variable from the study-specific variable it has to be recoded as follows:  
+
+* `if w02A033m01=1 and w02A035_01 in c(1,2,3,4,5,7,8) then 1`
+* `if w02A033m01=0 or ( w02A033m01=1 and w02A035_01 in c(6,9,10) ) then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2, echo=TRUE}
+KLOSA_ds_w2 <- tibble(id=KLOSA_w2_relig$id)
+
+KLOSA_w2_relig$w02A033m01 <- car::recode(as.vector(KLOSA_w2_relig$w02A033m01), "NA='-999'")
+KLOSA_w2_relig$w02A035_01 <- car::recode(as.vector(KLOSA_w2_relig$w02A035_01), "NA='-999'")
+
+KLOSA_ds_w2$relig <- c(NA)  
+for(i in 1:dim(KLOSA_w2_relig)[1]){
+  if( KLOSA_w2_relig$w02A033m01[i] == 1 & KLOSA_w2_relig$w02A035_01[i] %in% c(1:5,7,8) ) {
+    KLOSA_ds_w2$relig[i] = 1 }
+  else if( KLOSA_w2_relig$w02A033m01[i] == 0 | (KLOSA_w2_relig$w02A033m01[i] == 1 & KLOSA_w2_relig$w02A035_01[i] %in% c(6,9,10)) ) {
+    KLOSA_ds_w2$relig[i] = 0 }
+}
+
+KLOSA_ds_w2$relig <- car::recode(as.vector(KLOSA_ds_w2$relig), "NA='999'")
+KLOSA_ds_w2$relig <- labelled(KLOSA_ds_w2$relig, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2, echo=F}
+vari <- KLOSA_ds_w2$relig
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_ds_w2$relig, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w2, aes(x=factor(relig))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Religious participation") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2, echo=F}
+AfterH <- table(KLOSA_ds_w2$relig)
+BeforeH <- table(KLOSA_w2_relig$w02A033m01, KLOSA_w2_relig$w02A035_01, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[1]] <- sum(sum(BeforeH[1,]), sum(BeforeH[2,c(7,10:11)]))
+BeforeH1[[2]] <- sum(BeforeH[2,c(2:6,8,9)])
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("0","1")
+kable(C)
+```
+
+ 
+ 
+
+
+
+
+### Wave 3
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised are:
+
+* Name: `w03A033m01`
+* Label: `Participating to the religious meeting?`
+* Categories: 
+    + `0 = no`
+    + `1 = yes`
+    
+* Name: `w03A035_01`
+* Label: `The number of times which participates to the religious meeting`
+* Categories:
+    + `1 = Almost every day (more than 4 times per week)`
+    + `2 = Once a week`
+    + `3 = 2-3 times a week`
+    + `4 = Once a month`
+    + `5 = Twice a month (every two weeks)`
+    + `6 = Once or twice a year`
+    + `7 = Three or four times a year`
+    + `8 = Five or six times a year`
+    + `9 = Almost never a year`
+    + `10 = Almost never`
+
+
+* Description: 
+```{r assign3, echo=F}
+opal.assign.table.tibble(o, 'KLOSA_w3_relig','KLOSA.w03_main_e_spss_albert',variables=list('w03A033m01','w03A035_01'), missings = TRUE)
+KLOSA_w3_relig <- opal.execute(o,'KLOSA_w3_relig')
+# The id's in the third wave add a '.0' at the end of the id's at the previous waves. We correct this. Note that gregexpr("\\.0",ids) == nchar(ids)-1
+KLOSA_w3_relig$id <- substr(KLOSA_w3_relig$id,1,nchar(KLOSA_w3_relig$id)-2)
+```
+
+```{r local3, echo=F}
+vari <- KLOSA_w3_relig$w03A033m01
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w3_relig$w03A033m01, missing_values = NA)
+ggplot(KLOSA_w3_relig, aes(x=factor(w03A033m01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Participating to the religious meeting?") + ylab("Frequency")
+
+vari <- KLOSA_w3_relig$w03A035_01
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w3_relig$w03A035_01, missing_values = NA)
+ggplot(KLOSA_w3_relig, aes(x=factor(w03A035_01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The number of times which participates to the religious meeting") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To recode the harmonize variable from the study-specific variable it has to be recoded as follows:  
+
+* `if w03A033m01=1 and w03A035_01 in c(1,2,3,4,5,7,8) then 1`
+* `if w03A033m01=0 or ( w03A033m01=1 and w03A035_01 in c(6,9,10) ) then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo3, echo=TRUE}
+KLOSA_ds_w3 <- tibble(id=KLOSA_w3_relig$id)
+
+KLOSA_w3_relig$w03A033m01 <- car::recode(as.vector(KLOSA_w3_relig$w03A033m01), "NA='-999'")
+KLOSA_w3_relig$w03A035_01 <- car::recode(as.vector(KLOSA_w3_relig$w03A035_01), "NA='-999'")
+
+KLOSA_ds_w3$relig <- c(NA)  
+for(i in 1:dim(KLOSA_w3_relig)[1]){
+  if( KLOSA_w3_relig$w03A033m01[i] == 1 & KLOSA_w3_relig$w03A035_01[i] %in% c(1:5,7,8) ) {
+    KLOSA_ds_w3$relig[i] = 1 }
+  else if( KLOSA_w3_relig$w03A033m01[i] == 0 | (KLOSA_w3_relig$w03A033m01[i] == 1 & KLOSA_w3_relig$w03A035_01[i] %in% c(6,9,10)) ) {
+    KLOSA_ds_w3$relig[i] = 0 }
+}
+
+KLOSA_ds_w3$relig <- car::recode(as.vector(KLOSA_ds_w3$relig), "NA='999'")
+KLOSA_ds_w3$relig <- labelled(KLOSA_ds_w3$relig, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript3, echo=F}
+vari <- KLOSA_ds_w3$relig
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_ds_w3$relig, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w3, aes(x=factor(relig))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Religious participation") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation3, echo=F}
+AfterH <- table(KLOSA_ds_w3$relig)
+BeforeH <- table(KLOSA_w3_relig$w03A033m01, KLOSA_w3_relig$w03A035_01, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[1]] <- sum(sum(BeforeH[1,]), sum(BeforeH[2,c(7,10:11)]))
+BeforeH1[[2]] <- sum(BeforeH[2,c(2:6,8,9)])
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("0","1")
+kable(C)
+```
+
+ 
+ 
+
+
+
+### Wave 4
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised are:
+
+* Name: `w04A033m01`
+* Label: `Participating to the religious meeting?`
+* Categories: 
+    + `0 = no`
+    + `1 = yes`
+    
+* Name: `w04A035_01`
+* Label: `The number of times which participates to the religious meeting`
+* Categories:
+    + `1 = Almost every day (more than 4 times per week)`
+    + `2 = Once a week`
+    + `3 = 2-3 times a week`
+    + `4 = Once a month`
+    + `5 = Twice a month (every two weeks)`
+    + `6 = Once or twice a year`
+    + `7 = Three or four times a year`
+    + `8 = Five or six times a year`
+    + `9 = Almost never a year`
+    + `10 = Almost never`
+
+
+* Description: 
+```{r assign4, echo=F}
+opal.assign.table.tibble(o, 'KLOSA_w4_relig','KLOSA.w04_main_e_spss',variables=list('w04A033m01','w04A035_01'), missings = TRUE)
+```
+
+```{r local4, echo=F}
+KLOSA_w4_relig <- opal.execute(o,'KLOSA_w4_relig')
+
+vari <- KLOSA_w4_relig$w04A033m01
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w4_relig$w04A033m01, missing_values = NA)
+ggplot(KLOSA_w4_relig, aes(x=factor(w04A033m01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Participating to the religious meeting?") + ylab("Frequency")
+
+vari <- KLOSA_w4_relig$w04A035_01
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w4_relig$w04A035_01, missing_values = NA)
+ggplot(KLOSA_w4_relig, aes(x=factor(w04A035_01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The number of times which participates to the religious meeting") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To recode the harmonize variable from the study-specific variable it has to be recoded as follows:  
+
+* `if w04A033m01=1 and w04A035_01 in c(1,2,3,4,5,7,8) then 1`
+* `if w04A033m01=0 or ( w04A033m01=1 and w04A035_01 in c(6,9,10) ) then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo4, echo=TRUE}
+KLOSA_ds_w4 <- tibble(id=KLOSA_w4_relig$id)
+
+KLOSA_w4_relig$w04A033m01 <- car::recode(as.vector(KLOSA_w4_relig$w04A033m01), "NA='-999'")
+KLOSA_w4_relig$w04A035_01 <- car::recode(as.vector(KLOSA_w4_relig$w04A035_01), "NA='-999'")
+
+KLOSA_ds_w4$relig <- c(NA)  
+for(i in 1:dim(KLOSA_w4_relig)[1]){
+  if( KLOSA_w4_relig$w04A033m01[i] == 1 & KLOSA_w4_relig$w04A035_01[i] %in% c(1:5,7,8) ) {
+    KLOSA_ds_w4$relig[i] = 1 }
+  else if( KLOSA_w4_relig$w04A033m01[i] == 0 | (KLOSA_w4_relig$w04A033m01[i] == 1 & KLOSA_w4_relig$w04A035_01[i] %in% c(6,9,10)) ) {
+    KLOSA_ds_w4$relig[i] = 0 }
+}
+
+KLOSA_ds_w4$relig <- car::recode(as.vector(KLOSA_ds_w4$relig), "NA='999'")
+KLOSA_ds_w4$relig <- labelled(KLOSA_ds_w4$relig, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript4, echo=F}
+vari <- KLOSA_ds_w4$relig
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_ds_w4$relig, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w4, aes(x=factor(relig))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Religious participation") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation4, echo=F}
+AfterH <- table(KLOSA_ds_w4$relig)
+BeforeH <- table(KLOSA_w4_relig$w04A033m01, KLOSA_w4_relig$w04A035_01, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[1]] <- sum(sum(BeforeH[1,]), sum(BeforeH[2,c(7,10:11)]))
+BeforeH1[[2]] <- sum(BeforeH[2,c(2:6,8,9)])
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("0","1")
+kable(C)
+```
+
+ 
+
+```{r save, echo=FALSE}
+relig <- KLOSA_ds_w1
+save(relig, file = "../RData/w1/relig.RData")
+rm(relig)
+
+relig <- KLOSA_ds_w2
+save(relig, file = "../RData/w2/relig.RData")
+rm(relig)
+
+relig <- KLOSA_ds_w3
+save(relig, file = "../RData/w3/relig.RData")
+rm(relig)
+
+
+relig <- KLOSA_ds_w4
+save(relig, file = "../RData/w4/relig.RData")
+rm(relig)
+
+
+```
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+

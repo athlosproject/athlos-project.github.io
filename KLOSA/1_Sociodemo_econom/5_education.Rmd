@@ -1,0 +1,502 @@
+---
+title: "Education"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("../../setup_iago.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `education`
+* Variable label: `Highest level of formal education achieved`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | less than primary education
+1        | primary education
+2        | secondary education
+3        | tertiary education
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Korea
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `w01A003`
+* Label: `Educational background(a school).`
+* Categories: 
+    + `1 = No formal education (illiterate)`
+    + `2 = No formal education (capable of reading)`
+    + `3 = Elementary school`
+    + `4 = Middle school`
+    + `5 = High school`
+    + `6 = Two-year college`
+    + `7 = College grad`
+    + `8 = Post college (Master)`
+    + `9 = Post college (PhD)`
+    + `97 = Other`
+* Missings: 
+    + `-9 = Do not know`
+    + `-8 = Refuse to answer`
+
+
+* Description: 
+```{r assign1,  echo=FALSE}
+opal.assign.table.tibble(o, 'KLOSA_w1_educ','KLOSA.w01_main_e',
+                         variables=list('w01A003'), missings = TRUE)
+```
+
+```{r local1,  echo=FALSE}
+KLOSA_w1_educ <- opal.execute(o,'KLOSA_w1_educ')
+vari <- KLOSA_w1_educ$w01A003
+kable(Categorical_summary(vari, missing_values = c(-8,-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-8,-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-8,-9))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_w1_educ$w01A003, missing_values = c(-8,-9))
+ggplot(KLOSA_w1_educ, aes(x=factor(w01A003))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "No formal education (illiterate)" into 0`
+* `recode 2 "No formal education (capable of reading)" into 0`
+* `recode 3 "Elementary school" into 1`
+* `recode 4 "Middle school" into 2`
+* `recode 5 "High school" into 2`
+* `recode 6 "Two-year college" into 3`
+* `recode 7 "College grad" into 3`
+* `recode 8 "Post college (Master)" into 3`
+* `recode 9 "Post college (PhD)" into 3`
+* `recode 97 "Other" into 999`
+* `recode -9 "Do not know" into 998`
+* `recode -8 "Refuse to answer" into 997`
+* `recode NA into 999`
+
+**R script:**
+
+```{r harmo1,   echo=TRUE}
+KLOSA_ds_w1 <- tibble(id=KLOSA_w1_educ$id)
+KLOSA_ds_w1$education <- car::recode(KLOSA_w1_educ$w01A003, "1=0; 2=0; 3=1; 4=2; 5=2; 6=3; 7=3; 8=3; 9=3; 97=999; -8=997; -9=998; NA=999")
+KLOSA_ds_w1$education <- labelled(KLOSA_ds_w1$education, labels = c("less than primary education"=0, "primary education"=1, "secondary education"=2, "tertiary education"=3, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1,  echo=FALSE}
+vari <- KLOSA_ds_w1$education
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_ds_w1$education, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w1, aes(x=factor(education))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1,  echo=FALSE}
+BeforeH <- table(KLOSA_w1_educ$w01A003)
+BeforeH <- c(sum(BeforeH[2:3]), BeforeH[4],sum(BeforeH[5:6]), sum(BeforeH[7:10]), BeforeH[1])
+AfterH <- table(KLOSA_ds_w1$education)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("(1,2)->0", "3->1", "(4,5)->2", "(6,7,8,9)->3", "-8->997")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL1,  echo=FALSE}
+val_labels(KLOSA_ds_w1) <- NULL
+
+#opal.symbol_import(o,'KLOSA_ds_w1', project='_Athlos_Harm_Dataset')
+education <- KLOSA_ds_w1
+save(education, file = "../RData/w1/education.RData")
+rm(education)
+
+KLOSA_m_ds_w1 <- KLOSA_ds_w1
+KLOSA_m_ds_w1$education <- car::recode(KLOSA_m_ds_w1$education, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+
+#opal.symbol_import(o,'KLOSA_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `w02A005_`
+* Label: `In last interview, respondent's educational background re-answer`
+* Categories: 
+    + `1 = No formal education (illiterate)`
+    + `2 = No formal education (capable of reading)`
+    + `3 = Elementary school`
+    + `4 = Middle school`
+    + `5 = High school`
+    + `6 = Two-year college`
+    + `7 = College grad`
+    + `8 = Post college (Master)`
+    + `9 = Post college (PhD)`
+    + `97 = Other`
+* Missings: 
+    + `-9 = Do not know`
+    + `-8 = Refuse to answer`
+
+* Description: 
+```{r assign2,  echo=FALSE}
+opal.assign.table.tibble(o, 'KLOSA_w2_educ','KLOSA.w02_main_e_spss',
+                         variables=list('w02A005_'), missings = TRUE)
+```
+
+```{r local2,  echo=FALSE}
+KLOSA_w2_educ <- opal.execute(o,'KLOSA_w2_educ')
+vari <- KLOSA_w2_educ$w02A005_
+kable(Categorical_summary(vari, missing_values = c(-8,-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-8,-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-8,-9))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_w2_educ$w02A005_, missing_values = c(-8,-9))
+ggplot(KLOSA_w2_educ, aes(x=factor(w02A005_))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "No formal education (illiterate)" into 0`
+* `recode 2 "No formal education (capable of reading)" into 0`
+* `recode 3 "Elementary school" into 1`
+* `recode 4 "Middle school" into 2`
+* `recode 5 "High school" into 2`
+* `recode 6 "Two-year college" into 3`
+* `recode 7 "College grad" into 3`
+* `recode 8 "Post college (Master)" into 3`
+* `recode 9 "Post college (PhD)" into 3`
+* `recode 97 "Other" into 999`
+* `recode -9 "Do not know" into 998`
+* `recode -8 "Refuse to answer" into 997`
+* `recode NA into 999`
+
+**R script:**
+
+```{r harmo2,   echo=TRUE}
+KLOSA_ds_w2 <- tibble(id=KLOSA_w2_educ$id)
+KLOSA_ds_w2$education <- car::recode(KLOSA_w2_educ$w02A005_, "1=0; 2=0; 3=1; 4=2; 5=2; 6=3; 7=3; 8=3; 9=3; 97=999; -8=997; -9=998; NA=999")
+KLOSA_ds_w2$education <- labelled(KLOSA_ds_w2$education, labels = c("less than primary education"=0, "primary education"=1, "secondary education"=2, "tertiary education"=3, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2,  echo=FALSE}
+vari <- KLOSA_ds_w2$education
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_ds_w2$education, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w2, aes(x=factor(education))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2,  echo=FALSE}
+BeforeH <- table(KLOSA_w2_educ$w02A005_)
+BeforeH <- c(sum(BeforeH[2:3]), BeforeH[4],sum(BeforeH[5:6]), sum(BeforeH[7:10]), BeforeH[1])
+AfterH <- table(KLOSA_ds_w2$education)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("(1,2)->0", "3->1", "(4,5)->2", "(6,7,8,9)->3", "-8->997")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL2,  echo=FALSE}
+val_labels(KLOSA_ds_w2) <- NULL
+
+#opal.symbol_import(o,'KLOSA_ds_w2', project='_Athlos_Harm_Dataset')
+education <- KLOSA_ds_w2
+save(education, file = "../RData/w2/education.RData")
+rm(education)
+
+KLOSA_m_ds_w2 <- KLOSA_ds_w2
+KLOSA_m_ds_w2$education <- car::recode(KLOSA_m_ds_w2$education, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+
+#opal.symbol_import(o,'KLOSA_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 3 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `w03A005_`
+* Label: `In last survey, respondent's educational background re-answer`
+* Categories: 
+    + `1 = No formal education (illiterate)`
+    + `2 = No formal education (capable of reading)`
+    + `3 = Elementary school`
+    + `4 = Middle school`
+    + `5 = High school`
+    + `6 = Two-year college`
+    + `7 = College grad`
+    + `8 = Post college (Master)`
+    + `9 = Post college (PhD)`
+    + `97 = Other`
+* Missings: 
+    + `-9 = Do not know`
+    + `-8 = Refuse to answer`
+
+* Description: 
+```{r assign3,  echo=FALSE}
+opal.assign.table.tibble(o, 'KLOSA_w3_educ','KLOSA.w03_main_e_spss_albert',
+                         variables=list('w03A005_'), missings = TRUE)
+KLOSA_w3_educ <- opal.execute(o,'KLOSA_w3_educ')
+# The id's in the third wave add a '.0' at the end of the id's at the previous waves. We correct this. Note that gregexpr("\\.0",ids) == nchar(ids)-1
+KLOSA_w3_educ$id <- substr(KLOSA_w3_educ$id,1,nchar(KLOSA_w3_educ$id)-2)
+
+```
+
+```{r local3,  echo=FALSE}
+vari <- KLOSA_w3_educ$w03A005_
+kable(Categorical_summary(vari, missing_values = c(-8,-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-8,-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-8,-9))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_w3_educ$w03A005_, missing_values = c(-8,-9))
+ggplot(KLOSA_w3_educ, aes(x=factor(w03A005_))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "No formal education (illiterate)" into 0`
+* `recode 2 "No formal education (capable of reading)" into 0`
+* `recode 3 "Elementary school" into 1`
+* `recode 4 "Middle school" into 2`
+* `recode 5 "High school" into 2`
+* `recode 6 "Two-year college" into 3`
+* `recode 7 "College grad" into 3`
+* `recode 8 "Post college (Master)" into 3`
+* `recode 9 "Post college (PhD)" into 3`
+* `recode 97 "Other" into 999`
+* `recode -9 "Do not know" into 998`
+* `recode -8 "Refuse to answer" into 997`
+* `recode NA into 999`
+
+**R script:**
+
+```{r harmo3,   echo=TRUE}
+KLOSA_ds_w3 <- tibble(id=KLOSA_w3_educ$id)
+KLOSA_ds_w3$education <- car::recode(KLOSA_w3_educ$w03A005_, "1=0; 2=0; 3=1; 4=2; 5=2; 6=3; 7=3; 8=3; 9=3; 97=999; -8=997; -9=998; NA=999")
+KLOSA_ds_w3$education <- labelled(KLOSA_ds_w3$education, labels = c("less than primary education"=0, "primary education"=1, "secondary education"=2, "tertiary education"=3, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript3,  echo=FALSE}
+vari <- KLOSA_ds_w3$education
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_ds_w3$education, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w3, aes(x=factor(education))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation3,  echo=FALSE}
+BeforeH <- table(KLOSA_w3_educ$w03A005_)
+BeforeH <- c(sum(BeforeH[2:3]), BeforeH[4],sum(BeforeH[5:6]), sum(BeforeH[7:10]), BeforeH[1])
+AfterH <- table(KLOSA_ds_w3$education)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("(1,2)->0", "3->1", "(4,5)->2", "(6,7,8,9)->3", "-8->997")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL3,  echo=FALSE}
+val_labels(KLOSA_ds_w3) <- NULL
+
+#opal.symbol_import(o,'KLOSA_ds_w3', project='_Athlos_Harm_Dataset')
+education <- KLOSA_ds_w3
+save(education, file = "../RData/w3/education.RData")
+rm(education)
+
+KLOSA_m_ds_w3 <- KLOSA_ds_w3
+KLOSA_m_ds_w3$education <- car::recode(KLOSA_m_ds_w3$education, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'KLOSA_m_ds_w3', KLOSA_m_ds_w3)
+#opal.symbol_import(o,'KLOSA_m_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+### Wave 4 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `w04A005`
+* Label: `In last survey, respondent's educational background re-answer`
+* Categories: 
+    + `1 = No formal education (illiterate)`
+    + `2 = No formal education (capable of reading)`
+    + `3 = Elementary school`
+    + `4 = Middle school`
+    + `5 = High school`
+    + `6 = Two-year college`
+    + `7 = College grad`
+    + `8 = Post college (Master)`
+    + `9 = Post college (PhD)`
+    + `97 = Other`
+* Missings: 
+    + `-9 = Do not know`
+    + `-8 = Refuse to answer`
+
+* Description: 
+```{r assign4,  echo=FALSE}
+opal.assign.table.tibble(o, 'KLOSA_w4_educ','KLOSA.w04_main_e_spss',
+                         variables=list('w04A005'), missings = TRUE)
+```
+
+```{r local4,  echo=FALSE}
+KLOSA_w4_educ <- opal.execute(o,'KLOSA_w4_educ')
+vari <- KLOSA_w4_educ$w04A005
+kable(Categorical_summary(vari, missing_values = c(-8,-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-8,-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-8,-9))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_w4_educ$w04A005, missing_values = c(-8,-9))
+ggplot(KLOSA_w4_educ, aes(x=factor(w04A005))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "No formal education (illiterate)" into 0`
+* `recode 2 "No formal education (capable of reading)" into 0`
+* `recode 3 "Elementary school" into 1`
+* `recode 4 "Middle school" into 2`
+* `recode 5 "High school" into 2`
+* `recode 6 "Two-year college" into 3`
+* `recode 7 "College grad" into 3`
+* `recode 8 "Post college (Master)" into 3`
+* `recode 9 "Post college (PhD)" into 3`
+* `recode 97 "Other" into 999`
+* `recode -9 "Do not know" into 998`
+* `recode -8 "Refuse to answer" into 997`
+* `recode NA into 999`
+
+
+**R script:**
+
+```{r harmo4,   echo=TRUE}
+KLOSA_ds_w4 <- tibble(id=KLOSA_w4_educ$id)
+KLOSA_ds_w4$education <- car::recode(KLOSA_w4_educ$w04A005, "1=0; 2=0; 3=1; 4=2; 5=2; 6=3; 7=3; 8=3; 9=3; 97=999; -8=997; -9=998; NA=999")
+KLOSA_ds_w4$education <- labelled(KLOSA_ds_w4$education, labels = c("less than primary education"=0, "primary education"=1, "secondary education"=2, "tertiary education"=3, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript4,  echo=FALSE}
+vari <- KLOSA_ds_w4$education
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_ds_w4$education, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w4, aes(x=factor(education))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation4,  echo=FALSE}
+BeforeH <- table(KLOSA_w4_educ$w04A005)
+BeforeH <- c(sum(BeforeH[2:3]), BeforeH[4],sum(BeforeH[5:6]), sum(BeforeH[7:10]), BeforeH[1])
+AfterH <- table(KLOSA_ds_w4$education)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("(1,2)->0", "3->1", "(4,5)->2", "(6,7,8,9)->3", "-8->997")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL4,  echo=FALSE}
+val_labels(KLOSA_ds_w4) <- NULL
+
+#opal.symbol_import(o,'KLOSA_ds_w4', project='_Athlos_Harm_Dataset')
+education <- KLOSA_ds_w4
+save(education, file = "../RData/w4/education.RData")
+rm(education)
+
+KLOSA_m_ds_w4 <- KLOSA_ds_w4
+KLOSA_m_ds_w4$education <- car::recode(KLOSA_m_ds_w4$education, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+
+#opal.symbol_import(o,'KLOSA_m_ds_w4', project='_Athlos_Harm_Dataset')
+```
+
+
+# Quality estimation
+
+No comments
+
+```{r closeRsession, echo=FALSE,  echo=FALSE} 
+opal.logout(o)
+```
+
+

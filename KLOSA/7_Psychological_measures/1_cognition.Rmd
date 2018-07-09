@@ -1,0 +1,379 @@
+---
+title: "Cognition"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `cog_stat`
+* Variable label: `Cognitive status of the participant, assessed by the Mini Mental State Examination`
+* Domain: `Psycological measures`
+* Value type: `categorical`
+* Category coding:
+* Comments: `The test used is the Mini Mental State Examination (MMSE). Two values have been created for the potential variable: 0=no cognitive impairment (when the score is greater or equal to 23) and 1=cognitive impairment (when the score is lower to 23).`
+
+**Code** | **Category Label**
+-------- | ------------------------
+0        | no cognitive impairment
+1        | cognitive impairment
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+```{r lab, echo=FALSE}
+ds_label <- "Cognitive status"
+ds_label_all <- "Cognitive status of the participant, assessed by the Mini Mental State Examination"
+```
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Korea
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `w01mmse`|
+|-|-|
+| **Label** | `Cognition marks`|
+| **Table name** | `w01_main_e` |
+| **Description** |  |
+
+```{r assign1, echo=FALSE}
+opal.assign.table.tibble(o, 'KLOSA_cog','KLOSA.w01_main_e',
+                         variables=list('w01mmse'), missings = TRUE)
+KLOSA_cog <- opal.execute(o,'KLOSA_cog')
+```
+
+```{r local1, echo=FALSE}
+vari <- KLOSA_cog[[2]]
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(KLOSA_cog, aes(KLOSA_cog[[2]])) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `w01mmse < 24 into 1` 
+* `w01mmse >= 24 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1, echo=TRUE}
+KLOSA_ds_w1 <- tibble(id=KLOSA_cog$id)
+KLOSA_ds_w1$cog_stat <- car::recode(KLOSA_cog[[2]], "lo:23=1; 24:900=0; NA=999")
+KLOSA_ds_w1$cog_stat <- labelled(KLOSA_ds_w1$cog_stat, labels = c("no cognitive impairment"=0, "cognitive impairment"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1, echo=FALSE}
+vari <- KLOSA_ds_w1$cog_stat
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w1, aes(x=factor(cog_stat))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=FALSE}
+BeforeH <- c(sum(na.omit(KLOSA_cog[[2]])>23),sum(na.omit(KLOSA_cog[[2]])<=23))
+AfterH <- table(KLOSA_ds_w1$cog_stat)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("(24-30)->0","(0-23)->1")
+kable(C)
+```
+
+
+```{r importOPAL1, echo=FALSE}
+#opal.assign.data(o, 'KLOSA_ds_w1', KLOSA_ds_w1)
+#opal.symbol_import(o,'KLOSA_ds_w1', project='_Athlos_Harm_Dataset')
+
+label(KLOSA_ds_w1$cog_stat) <- ds_label_all
+cog_stat <- KLOSA_ds_w1
+save(cog_stat, file = "../RData/w1/cog_stat.RData")
+rm(cog_stat)
+
+KLOSA_m_ds_w1 <- KLOSA_ds_w1
+KLOSA_m_ds_w1$cog_stat <- car::recode(KLOSA_m_ds_w1$cog_stat, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'KLOSA_m_ds_w1', KLOSA_m_ds_w1)
+#opal.symbol_import(o,'KLOSA_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+
+| **Name** | `w02mmse`|
+|-|-|
+| **Label** | `The points of cognitive funtion`|
+| **Table name** | `w02_main_e_spss` |
+| **Description** |  |
+
+```{r assign2, echo=FALSE}
+opal.assign.table.tibble(o, 'KLOSA_cog','KLOSA.w02_main_e_spss',
+                         variables=list('w02mmse'), missings = TRUE)
+KLOSA_cog <- opal.execute(o,'KLOSA_cog')
+```
+
+```{r local2, echo=FALSE}
+vari <- KLOSA_cog$w02mmse
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = "MMSE points") 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(KLOSA_cog, aes(vari)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `w02mmse < 24 into 1` 
+* `w02mmse >= 24 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2, echo=TRUE}
+KLOSA_ds_w2 <- tibble(id=KLOSA_cog$id)
+KLOSA_ds_w2$cog_stat <- car::recode(KLOSA_cog[[2]], "lo:23=1; 24:900=0; NA=999")
+KLOSA_ds_w2$cog_stat <- labelled(KLOSA_ds_w2$cog_stat, labels = c("no cognitive impairment"=0, "cognitive impairment"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2, echo=FALSE}
+vari <- KLOSA_ds_w2$cog_stat
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w2, aes(x=factor(cog_stat))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2, echo=FALSE}
+BeforeH <- c(sum(na.omit(KLOSA_cog[[2]])>23),sum(na.omit(KLOSA_cog[[2]])<=23))
+AfterH <- table(KLOSA_ds_w2$cog_stat)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("(23-30)->0","(0-22)->1")
+kable(C)
+```
+
+
+```{r importOPAL2, echo=FALSE}
+#opal.assign.data(o, 'KLOSA_ds_w2', KLOSA_ds_w2)
+#opal.symbol_import(o,'KLOSA_ds_w2', project='_Athlos_Harm_Dataset')
+label(KLOSA_ds_w2$cog_stat) <- ds_label_all
+cog_stat <- KLOSA_ds_w2
+save(cog_stat, file = "../RData/w2/cog_stat.RData")
+rm(cog_stat)
+
+KLOSA_m_ds_w2 <- KLOSA_ds_w2
+KLOSA_m_ds_w2$cog_stat <- car::recode(KLOSA_m_ds_w2$cog_stat, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'KLOSA_m_ds_w2', KLOSA_m_ds_w2)
+#opal.symbol_import(o,'KLOSA_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 3 
+
+#### Study-specific variable description
+
+| **Name** | `w03mmse`|
+|-|-|
+| **Label** | `The points of cognitive funtion`|
+| **Table name** | `w03_main_e_spss_albert` |
+| **Description** |  |
+
+```{r assign3, echo=FALSE}
+opal.assign.table.tibble(o, 'KLOSA_cog','KLOSA.w03_main_e_spss_albert',
+                         variables=list('w03mmse'), missings = TRUE)
+KLOSA_cog <- opal.execute(o,'KLOSA_cog')
+# The id's in the third wave add a '.0' at the end of the id's at the previous waves. We correct this. Note that gregexpr("\\.0",ids) == nchar(ids)-1
+KLOSA_cog$id <- substr(KLOSA_cog$id,1,nchar(KLOSA_cog$id)-2)
+```
+
+```{r local3, echo=FALSE}
+vari <- KLOSA_cog$w03mmse
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_cog, aes(x=factor(KLOSA_cog[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `w03mmse < 24 into 1` 
+* `w03mmse >= 24 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo3, echo=TRUE}
+KLOSA_ds_w3 <- tibble(id=KLOSA_cog$id)
+KLOSA_ds_w3$cog_stat <- car::recode(KLOSA_cog[[2]], "lo:23=1; 24:900=0; NA=999")
+KLOSA_ds_w3$cog_stat <- labelled(KLOSA_ds_w3$cog_stat, labels = c("no cognitive impairment"=0, "cognitive impairment"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript3, echo=FALSE}
+vari <- KLOSA_ds_w3$cog_stat
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w3, aes(x=factor(cog_stat))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation3, echo=FALSE}
+BeforeH <- c(sum(na.omit(KLOSA_cog[[2]])>23),sum(na.omit(KLOSA_cog[[2]])<=23))
+AfterH <- table(KLOSA_ds_w3$cog_stat)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("(24-30)->0","(0-23)->1")
+kable(C)
+```
+
+
+```{r importOPAL3, echo=FALSE}
+#opal.assign.data(o, 'KLOSA_ds_w3', KLOSA_ds_w3)
+#opal.symbol_import(o,'KLOSA_ds_w3', project='_Athlos_Harm_Dataset')
+label(KLOSA_ds_w3$cog_stat) <- ds_label_all
+cog_stat <- KLOSA_ds_w3
+save(cog_stat, file = "../RData/w3/cog_stat.RData")
+rm(cog_stat)
+
+KLOSA_m_ds_w3 <- KLOSA_ds_w3
+KLOSA_m_ds_w3$cog_stat <- car::recode(KLOSA_m_ds_w3$cog_stat, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'KLOSA_m_ds_w3', KLOSA_m_ds_w3)
+#opal.symbol_import(o,'KLOSA_m_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 4 
+
+#### Study-specific variable description
+
+| **Name** | `w04mmse`|
+|-|-|
+| **Label** | `The points of cognitive funtion`|
+| **Table name** | `w04_main_e_spss` |
+| **Description** |  |
+
+```{r assign4, echo=FALSE}
+opal.assign.table.tibble(o, 'KLOSA_cog','KLOSA.w04_main_e_spss',
+                         variables=list('w04mmse'), missings = TRUE)
+KLOSA_cog <- opal.execute(o,'KLOSA_cog')
+```
+
+```{r local4, echo=FALSE}
+vari <- KLOSA_cog$w04mmse
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = "MMSE points") 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(KLOSA_cog, aes(vari)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `w04mmse < 24 into 1` 
+* `w04mmse >= 24 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo4, echo=TRUE}
+KLOSA_ds_w4 <- tibble(id=KLOSA_cog$id)
+KLOSA_ds_w4$cog_stat <- car::recode(KLOSA_cog[[2]], "lo:23=1; 24:900=0; NA=999")
+KLOSA_ds_w4$cog_stat <- labelled(KLOSA_ds_w4$cog_stat, labels = c("no cognitive impairment"=0, "cognitive impairment"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript4, echo=FALSE}
+vari <- KLOSA_ds_w4$cog_stat
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w4, aes(x=factor(cog_stat))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation4, echo=FALSE}
+BeforeH <- c(sum(na.omit(KLOSA_cog[[2]])>23),sum(na.omit(KLOSA_cog[[2]])<=23))
+AfterH <- table(KLOSA_ds_w4$cog_stat)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("(24-30)->0","(0-23)->1")
+kable(C)
+```
+
+
+```{r importOPAL4, echo=FALSE}
+#opal.assign.data(o, 'KLOSA_ds_w4', KLOSA_ds_w4)
+#opal.symbol_import(o,'KLOSA_ds_w4', project='_Athlos_Harm_Dataset')
+label(KLOSA_ds_w4$cog_stat) <- ds_label_all
+cog_stat <- KLOSA_ds_w4
+save(cog_stat, file = "../RData/w4/cog_stat.RData")
+rm(cog_stat)
+
+
+KLOSA_m_ds_w4 <- KLOSA_ds_w4
+KLOSA_m_ds_w4$cog_stat <- car::recode(KLOSA_m_ds_w4$cog_stat, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'KLOSA_m_ds_w4', KLOSA_m_ds_w4)
+#opal.symbol_import(o,'KLOSA_m_ds_w4', project='_Athlos_Harm_Dataset')
+```
+
+
+# Quality estimation
+
+No comments.
+
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```

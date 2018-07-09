@@ -1,0 +1,487 @@
+---
+title: "Divorce/Separation"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variables is the following:
+
+* Short name: `divorce`
+* Variable label: `Experience of divorce/separation`
+* Domain: `Social environment`
+* Value type: `cathegorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Korea
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `w01A006`
+* Label: `Currently marital status`
+* Categories: 
+    + `1 = Currently married or living with a partner`
+    + `2 = Separated`
+    + `3 = Divorced`
+    + `4 = Widowed or missing (dispersed family)`
+    + `5 = Never married`
+* Missings:
+    + `-8 = Refuse to answer`
+
+* Description: 
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'KLOSA_w1_divorce','KLOSA.w01_main_e',variables=list('W01A006'), missings = TRUE)
+```
+
+```{r local1, echo=F}
+KLOSA_w1_divorce <- opal.execute(o,'KLOSA_w1_divorce')
+vari <- KLOSA_w1_divorce$W01A006
+kable(Categorical_summary(vari, missing_values = c(-8))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-8))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-8))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_w1_divorce$W01A006, missing_values = NA)
+ggplot(KLOSA_w1_divorce, aes(x=factor(W01A006))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `2,3 into 1`
+* `1,4,5 into 0`
+* `-8 Refuse into 997`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1}
+KLOSA_ds_w1 <- tibble(id=KLOSA_w1_divorce$id)
+KLOSA_ds_w1$divorce <- car::recode(as.vector(KLOSA_w1_divorce$W01A006), "2:3='1'; 1='0'; 4:5='0'; -8='997'; NA='999'")
+KLOSA_ds_w1$divorce <- labelled(KLOSA_ds_w1$divorce, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1, echo=F}
+vari <- KLOSA_ds_w1$divorce
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_ds_w1$divorce, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w1, aes(x=factor(divorce))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Experience of divorce/separation") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=F}
+AfterH <- table(KLOSA_ds_w1$divorce)
+BeforeH <- table(KLOSA_w1_divorce$W01A006, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[2]] <- sum(BeforeH[c(2,3)])
+BeforeH1[[1]] <- sum(BeforeH[c(1,4,5)])
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("1&4&5->0","2&3->1")
+kable(C)
+```
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `w02marital`
+* Label: `In 2008, currently the respondont's marital status`
+* Categories: 
+    + `1 = Currently married or living with a partner (i.e., common-law marriage)`
+    + `2 = Separated`
+    + `3 = Divorced`
+    + `4 = Widowed or missing (dispersed family)`
+    + `5 = Never been married`
+    
+* Name: `divorce` **harmonized in Wave1**  
+
+
+* Description: 
+```{r assign2, echo=F}
+opal.assign.table.tibble(o, 'KLOSA_w2_divorce','KLOSA.w02_main_e_spss',variables=list('w02marital'), missings = TRUE)
+```
+
+```{r local2, echo=F}
+KLOSA_w2_divorce <- opal.execute(o,'KLOSA_w2_divorce')
+vari <- KLOSA_w2_divorce$w02marital
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w2_divorce$w02marital, missing_values = NA)
+ggplot(KLOSA_w2_divorce, aes(x=factor(w02marital))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To recode the harmonize variable from the study-specific variable it has to be recoded as follows:  
+
+* `divorce=1 or w02marital=2 or 3 - into 1`
+* `divorce=0 and w02marital in {1,4,5} - into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2}
+same_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  colnames(new_2) <- colnames(old)
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], rep_len(NA,dim(old)[2]-1))
+    }
+  }
+  new_2 <- data.frame(new_2)
+  new_22 <- data.frame(id=new_2$id, w02marital=new$w02marital, divorce=new_2$divorce)  # divorce(W1), w02marital(W2)
+  new_22
+}
+
+# old = KLOSA_ds_w1
+# new = KLOSA_w2_divorce
+
+KLOSA_merge_w12 <- same_indiv(KLOSA_ds_w1, KLOSA_w2_divorce)
+KLOSA_ds_w2 <- tibble(id=KLOSA_merge_w12$id)
+
+KLOSA_merge_w12$divorce <- car::recode(as.vector(KLOSA_merge_w12$divorce), "NA='-999'")
+KLOSA_merge_w12$w02marital <- car::recode(as.vector(KLOSA_merge_w12$w02marital), "NA='-999'")
+
+KLOSA_ds_w2$divorce <- c(NA)
+for(i in 1:dim(KLOSA_merge_w12)[1]){
+  if( KLOSA_merge_w12$divorce[i] == 1 | KLOSA_merge_w12$w02marital[i] %in% c(2,3) ) {
+    KLOSA_ds_w2$divorce[i] = 1 }
+  else if( KLOSA_merge_w12$divorce[i] == 0 & KLOSA_merge_w12$w02marital[i] %in% c(1,4,5) ) { 
+    KLOSA_ds_w2$divorce[i] = 0 }
+}
+
+KLOSA_ds_w2$divorce <- car::recode(as.vector(KLOSA_ds_w2$divorce), "NA='999'")
+KLOSA_ds_w2$divorce <- labelled(KLOSA_ds_w2$divorce, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2, echo=F}
+vari <- KLOSA_ds_w2$divorce
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_ds_w2$divorce, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w2, aes(x=factor(divorce))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Experience of divorce/separation") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2, echo=F}
+AfterH <- table(KLOSA_ds_w2$divorce)
+BeforeH <- table(KLOSA_merge_w12$w02marital, KLOSA_merge_w12$divorce, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[2]] <- sum(sum(BeforeH[c(2,3),1]),sum(BeforeH[,2]))
+BeforeH1[[1]] <- sum(BeforeH[c(1,4,5),1])
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("0","1")
+kable(C)
+```
+
+
+
+### Wave 3
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `w03marital`
+* Label: `In 2010, the respondont's marital status`
+* Categories: 
+    + `1 = Currently married or living with a partner (i.e., common-law marriage)`
+    + `2 = Separated`
+    + `3 = Divorced`
+    + `4 = Widowed or missing (dispersed family)`
+    + `5 = Never been married`
+    
+* Name: `divorce` **harmonized in Wave2**  
+
+
+* Description: 
+```{r assign3, echo=F}
+opal.assign.table.tibble(o, 'KLOSA_w3_divorce','KLOSA.w03_main_e_spss_albert',variables=list('w03marital'), missings = TRUE)
+KLOSA_w3_divorce <- opal.execute(o,'KLOSA_w3_divorce')
+# The id's in the third wave add a '.0' at the end of the id's at the previous waves. We correct this. Note that gregexpr("\\.0",ids) == nchar(ids)-1
+KLOSA_w3_divorce$id <- substr(KLOSA_w3_divorce$id,1,nchar(KLOSA_w3_divorce$id)-2)
+```
+
+```{r local3, echo=F}
+vari <- KLOSA_w3_divorce$w03marital
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w3_divorce$w03marital, missing_values = NA)
+ggplot(KLOSA_w3_divorce, aes(x=factor(w03marital))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To recode the harmonize variable from the study-specific variable it has to be recoded as follows:  
+
+* `divorce=1 or w03marital=2 or 3 - into 1`
+* `divorce=0 and w03marital in {1,4,5} - into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo3}
+same_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  colnames(new_2) <- colnames(old)
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], rep_len(NA,dim(old)[2]-1))
+    }
+  }
+  new_2 <- data.frame(new_2)
+  new_22 <- data.frame(id=new_2$id, w03marital=new$w03marital, divorce=new_2$divorce)  # divorce(W2), w03marital(W3)
+  new_22
+}
+
+# old = KLOSA_ds_w2
+# new = KLOSA_w3_divorce
+
+KLOSA_merge_w23 <- same_indiv(KLOSA_ds_w2, KLOSA_w3_divorce)
+KLOSA_ds_w3 <- tibble(id=KLOSA_merge_w23$id)
+
+KLOSA_merge_w23$divorce <- car::recode(as.vector(KLOSA_merge_w23$divorce), "NA='-999'")
+KLOSA_merge_w23$w03marital <- car::recode(as.vector(KLOSA_merge_w23$w03marital), "NA='-999'")
+
+KLOSA_ds_w3 <- tibble(id=KLOSA_w3_divorce$id)
+
+KLOSA_ds_w3$divorce <- c(NA)
+for(i in 1:dim(KLOSA_merge_w23)[1]){
+  if( KLOSA_merge_w23$divorce[i] == 1 | KLOSA_merge_w23$w03marital[i] %in% c(2,3) ) {
+    KLOSA_ds_w3$divorce[i] = 1 }
+  else if( KLOSA_merge_w23$w03marital[i] %in% c(1,4,5) ) { 
+    KLOSA_ds_w3$divorce[i] = 0 }
+}
+
+KLOSA_ds_w3$divorce <- car::recode(as.vector(KLOSA_ds_w3$divorce), "NA='999'")
+KLOSA_ds_w3$divorce <- labelled(KLOSA_ds_w3$divorce, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript3, echo=F}
+vari <- KLOSA_ds_w3$divorce
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_ds_w3$divorce, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w3, aes(x=factor(divorce))) + geom_bar(stat="count", width=0.4, fill="steelblue")+ xlab("Experience of divorce/separation") + ylab("Frequency")
+```
+
+##### Validation
+```{r crosstabulation3, echo=F}
+AfterH <- table(KLOSA_ds_w3$divorce)
+BeforeH <- table(KLOSA_merge_w23$w03marital, KLOSA_merge_w23$divorce, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[2]] <- sum(BeforeH[c(2,3),1])
+BeforeH1[[1]] <- sum(BeforeH[c(1,4,5),1])
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("0","1")
+kable(C)
+```
+
+
+### Wave 4
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `w04marital`
+* Label: `In 2012, the respondont's marital status`
+* Categories: 
+    + `1 = Currently married or living with a partner (i.e., common-law marriage)`
+    + `2 = Separated`
+    + `3 = Divorced`
+    + `4 = Widowed or missing (dispersed family)`
+    + `5 = Never been married`
+    
+* Name: `divorce` **harmonized in Wave3**
+
+
+* Description: 
+```{r assign4, echo=F}
+opal.assign.table.tibble(o, 'KLOSA_w4_divorce','KLOSA.w04_main_e_spss',variables=list('w04marital'), missings = TRUE)
+```
+
+```{r local4, echo=F}
+KLOSA_w4_divorce <- opal.execute(o,'KLOSA_w4_divorce')
+vari <- KLOSA_w4_divorce$w04marital
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w4_divorce$w04marital, missing_values = NA)
+ggplot(KLOSA_w4_divorce, aes(x=factor(w04marital))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To recode the harmonize variable from the study-specific variable it has to be recoded as follows:  
+
+* `divorce=1 or w04marital=2 or 3 - into 1`
+* `divorce=0 and w04marital in {1,4,5} - into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo4}
+same_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  colnames(new_2) <- colnames(old)
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], rep_len(NA,dim(old)[2]-1))
+    }
+  }
+  new_2 <- data.frame(new_2)
+  new_22 <- data.frame(id=new_2$id, w04marital=new$w04marital, divorce=new_2$divorce)  # divorce(W3), w04marital(W4)
+  new_22
+}
+
+# old = KLOSA_ds_w3
+# new = KLOSA_w4_divorce
+
+KLOSA_merge_w34 <- same_indiv(KLOSA_ds_w3, KLOSA_w4_divorce)
+
+KLOSA_merge_w34$divorce <- car::recode(as.vector(KLOSA_merge_w34$divorce), "NA='-999'")
+KLOSA_merge_w34$w04marital <- car::recode(as.vector(KLOSA_merge_w34$w04marital), "NA='-999'")
+
+
+KLOSA_ds_w4 <- tibble(id=KLOSA_w4_divorce$id)
+
+KLOSA_ds_w4$divorce <- c(NA)
+for(i in 1:dim(KLOSA_merge_w34)[1]){
+  if( KLOSA_merge_w34$divorce[i] == 1 | KLOSA_merge_w34$w04marital[i] %in% c(2,3) ) {
+    KLOSA_ds_w4$divorce[i] = 1 }
+  else if( KLOSA_merge_w34$w04marital[i] %in% c(1,4,5) ) { 
+    KLOSA_ds_w4$divorce[i] = 0 }
+}
+
+KLOSA_ds_w4$divorce <- car::recode(as.vector(KLOSA_ds_w4$divorce), "NA='999'")
+KLOSA_ds_w4$divorce <- labelled(KLOSA_ds_w4$divorce, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript4, echo=F}
+vari <- KLOSA_ds_w4$divorce
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_ds_w4$divorce, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w4, aes(x=factor(divorce))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Experience of divorce/separation") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation4, echo=F}
+AfterH <- table(KLOSA_ds_w4$divorce)
+BeforeH <- table(KLOSA_merge_w34$w04marital, KLOSA_merge_w34$divorce, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[2]] <- sum(BeforeH[c(2,3),1])
+BeforeH1[[1]] <- sum(BeforeH[c(1,4,5),1])
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("0","1")
+kable(C)
+```
+
+
+
+```{r save, echo=FALSE}
+divorce <- KLOSA_ds_w1
+save(divorce, file = "../RData/w1/divorce.RData")
+rm(divorce)
+
+divorce <- KLOSA_ds_w2
+save(divorce, file = "../RData/w2/divorce.RData")
+rm(divorce)
+
+divorce <- KLOSA_ds_w3
+save(divorce, file = "../RData/w3/divorce.RData")
+rm(divorce)
+
+
+divorce <- KLOSA_ds_w4
+save(divorce, file = "../RData/w4/divorce.RData")
+rm(divorce)
+
+
+```
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+
+
+
+
+

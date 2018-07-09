@@ -1,0 +1,368 @@
+---
+title: "Has spouse/partner"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `spouse`
+* Variable label: `Has spouse/partner`
+* Domain: `Social environment`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Korea
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `W01A006`
+* Label: `Currently marital status`
+* Categories: 
+    + `1 = Currently married or living with a partner`
+    + `2 = Separated`
+    + `3 = Divorced`
+    + `4 = Widowed or missing (dispersed family)`
+    + `5 = Never married`
+* Missings:
+    + `-8 = Refuse to answer`
+
+* Description: 
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'KLOSA_w1_spouse','KLOSA.w01_main_e', variables=list('W01A006'), missings = TRUE)
+```
+
+```{r local1, echo=F}
+KLOSA_w1_spouse <- opal.execute(o,'KLOSA_w1_spouse')
+vari <- KLOSA_w1_spouse$W01A006
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w1_spouse$W01A006, missing_values = NA)
+ggplot(KLOSA_w1_spouse, aes(x=factor(W01A006))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1`
+* `2:5 into 0`
+* `-8 Refuse into 997`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1, echo=TRUE}
+KLOSA_ds_w1 <- tibble(id=KLOSA_w1_spouse$id)
+KLOSA_ds_w1$spouse <- car::recode(as.vector(KLOSA_w1_spouse$W01A006), "1='1'; 2:5='0'; -8='997'; NA='999'")
+KLOSA_ds_w1$spouse <- labelled(KLOSA_ds_w1$spouse, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1, echo=F}
+vari <- KLOSA_ds_w1$spouse
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_ds_w1$spouse, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w1, aes(x=factor(spouse))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has spouse/partner") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=F}
+AfterH <- table(KLOSA_ds_w1$spouse)
+BeforeH <- table(KLOSA_w1_spouse$W01A006, useNA='ifany')
+BeforeH[[2]] <- sum(BeforeH[[2]],BeforeH[[3]],BeforeH[[4]],BeforeH[[5]])
+BeforeH <- BeforeH[c(2,1)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2:5->0","1->1")
+
+kable(C)
+```
+
+ 
+ 
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `w02marital`
+* Label: `In 2008, currently the respondont's marital status`
+* Categories: 
+    + `1 = Currently married or living with a partner (i.e., common-law marriage)`
+    + `2 = Separated`
+    + `3 = Divorced`
+    + `4 = Widowed or missing (dispersed family)`
+    + `5 = Never been married`
+
+* Description: 
+```{r assign2, echo=F}
+opal.assign.table.tibble(o, 'KLOSA_w2_spouse','KLOSA.w02_main_e_spss',variables=list('w02marital'), missings = TRUE)
+```
+
+```{r local2, echo=F}
+KLOSA_w2_spouse <- opal.execute(o,'KLOSA_w2_spouse')
+KLOSA_w1_spouse <- opal.execute(o,'KLOSA_w1_spouse')
+vari <- KLOSA_w2_spouse$w02marital
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w2_spouse$w02marital, missing_values = NA)
+ggplot(KLOSA_w2_spouse, aes(x=factor(w02marital))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To recode the harmonize variable from the study-specific variable it has to be recoded as follows:  
+
+* `1 into 1`
+* `2:5 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2, echo=TRUE}
+KLOSA_ds_w2 <- tibble(id=KLOSA_w2_spouse$id)
+KLOSA_ds_w2$spouse <- car::recode(as.vector(KLOSA_w2_spouse$w02marital), "1='1'; 2:5='0'; NA='999'")
+KLOSA_ds_w2$spouse <- labelled(KLOSA_ds_w2$spouse, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2, echo=F}
+vari <- KLOSA_ds_w2$spouse
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_ds_w2$spouse, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w2, aes(x=factor(spouse))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has spouse/partner") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2, echo=F}
+AfterH <- table(KLOSA_ds_w2$spouse)
+BeforeH <- table(KLOSA_w2_spouse$w02marital, useNA='ifany')
+BeforeH[[2]] <- sum(BeforeH[[2]],BeforeH[[3]],BeforeH[[4]],BeforeH[[5]])
+BeforeH <- BeforeH[c(2,1)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2:5->0","1->1")
+
+kable(C)
+```
+
+ 
+
+ 
+
+
+### Wave 3
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `w03marital`
+* Label: `In 2010, the respondont's marital status`
+* Categories: 
+    + `1 = Currently married or living with a partner (i.e., common-law marriage)`
+    + `2 = Separated`
+    + `3 = Divorced`
+    + `4 = Widowed or missing (dispersed family)`
+    + `5 = Never been married`
+
+* Description: 
+```{r assign3, echo=F}
+opal.assign.table.tibble(o, 'KLOSA_w3_spouse','KLOSA.w03_main_e_spss_albert',variables=list('w03marital'), missings = TRUE)
+KLOSA_w3_spouse <- opal.execute(o,'KLOSA_w3_spouse')
+# The id's in the third wave add a '.0' at the end of the id's at the previous waves. We correct this. Note that gregexpr("\\.0",ids) == nchar(ids)-1
+KLOSA_w3_spouse$id <- substr(KLOSA_w3_spouse$id,1,nchar(KLOSA_w3_spouse$id)-2)
+```
+
+```{r local3, echo=F}
+vari <- KLOSA_w3_spouse$w03marital
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w3_spouse$w03marital, missing_values = NA)
+ggplot(KLOSA_w3_spouse, aes(x=factor(w03marital))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To recode the harmonize variable from the study-specific variable it has to be recoded as follows:  
+
+* `1 into 1`
+* `2:5 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo3, echo=TRUE}
+KLOSA_ds_w3 <- tibble(id=KLOSA_w3_spouse$id)
+KLOSA_ds_w3$spouse <- car::recode(as.vector(KLOSA_w3_spouse$w03marital), "1='1'; 2:5='0'; NA='999'")
+KLOSA_ds_w3$spouse <- labelled(KLOSA_ds_w3$spouse, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript3, echo=F}
+vari <- KLOSA_ds_w3$spouse
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_ds_w3$spouse, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w3, aes(x=factor(spouse))) + geom_bar(stat="count", width=0.4, fill="steelblue")+ xlab("Has spouse/partner") + ylab("Frequency")
+```
+
+##### Validation
+```{r crosstabulation3, echo=F}
+AfterH <- table(KLOSA_ds_w3$spouse)
+BeforeH <- table(KLOSA_w3_spouse$w03marital, useNA='ifany')
+BeforeH[[2]] <- sum(BeforeH[[2]],BeforeH[[3]],BeforeH[[4]],BeforeH[[5]])
+BeforeH <- BeforeH[c(2,1)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2:5->0","1->1")
+
+kable(C)
+```
+
+ 
+ 
+
+### Wave 4
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `w04marital`
+* Label: `In 2012, the respondont's marital status`
+* Categories: 
+    + `1 = Currently married or living with a partner (i.e., common-law marriage)`
+    + `2 = Separated`
+    + `3 = Divorced`
+    + `4 = Widowed or missing (dispersed family)`
+    + `5 = Never been married`
+
+* Description: 
+```{r assign4, echo=F}
+opal.assign.table.tibble(o, 'KLOSA_w4_spouse','KLOSA.w04_main_e_spss',variables=list('w04marital'), missings = TRUE)
+```
+
+```{r local4, echo=F}
+KLOSA_w4_spouse <- opal.execute(o,'KLOSA_w4_spouse')
+vari <- KLOSA_w4_spouse$w04marital
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w4_spouse$w04marital, missing_values = NA)
+ggplot(KLOSA_w4_spouse, aes(x=factor(w04marital))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To recode the harmonize variable from the study-specific variable it has to be recoded as follows:  
+
+* `1 into 1`
+* `2:5 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo4, echo=TRUE}
+KLOSA_ds_w4 <- tibble(id=KLOSA_w4_spouse$id)
+KLOSA_ds_w4$spouse <- car::recode(as.vector(KLOSA_w4_spouse$w04marital), "1='1'; 2:5='0'; NA='999'")
+KLOSA_ds_w4$spouse <- labelled(KLOSA_ds_w4$spouse, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript4, echo=F}
+vari <- KLOSA_ds_w4$spouse
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_ds_w4$spouse, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w4, aes(x=factor(spouse))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has spouse/partner") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation4, echo=F}
+AfterH <- table(KLOSA_ds_w4$spouse)
+BeforeH <- table(KLOSA_w4_spouse$w04marital, useNA='ifany')
+BeforeH[[2]] <- sum(BeforeH[[2]],BeforeH[[3]],BeforeH[[4]],BeforeH[[5]])
+BeforeH <- BeforeH[c(2,1)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2:5->0","1->1")
+
+kable(C)
+```
+
+ 
+```{r save, echo=FALSE}
+spouse <- KLOSA_ds_w1
+save(spouse, file = "../RData/w1/spouse.RData")
+rm(spouse)
+
+spouse <- KLOSA_ds_w2
+save(spouse, file = "../RData/w2/spouse.RData")
+rm(spouse)
+
+spouse <- KLOSA_ds_w3
+save(spouse, file = "../RData/w3/spouse.RData")
+rm(spouse)
+
+spouse <- KLOSA_ds_w4
+save(spouse, file = "../RData/w4/spouse.RData")
+rm(spouse)
+```
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```

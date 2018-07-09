@@ -1,0 +1,399 @@
+---
+title: "Wealth"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `wealth`
+* Variable label: `Total score based in all sources of income transformed into a comparable and normalized categoric variable.`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `categorical ordinal`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+1        | 1st quintile
+2        | 2nd quintile
+3        | 3rd quintile
+4        | 4th quintile
+5        | 5th quintile
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+* Comments: `Need to pay attention to specificities like: before/after taxes or contributions. People: HH income is prioritized. When not available individual/caregiver/informant/family income is caolected. Source: Pension/family/work/government/disablity/total. all sources are taken into account. For some studies, the maximum value can be compared (and crossed by sex and age to control biases) . Time-lapse: weekly, monthly, in the last 12 months. 'Many values are missing since not all respondents have all sources of income or, within the household there is not always more members, in these cases do not confuse missing data with missing values and mean a 0 should be added to the total sum in each case.`
+
+```{r lab, echo=FALSE}
+ds_label <- "Wealth"
+ds_label_all <- "Total score based in all sources of income transformed into a comparable and normalized categoric variable"
+```
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Korea
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `w01E126`|
+|-|-|
+| **Label** | `Income total a last year drought disaster family.`|
+| **Table name** | `w01_main_e` |
+| **Missing Categories** | `-9 = Do not know` |
+| | `-8 = Refuse to answer` |
+| **Description** |  |
+
+```{r assign1, echo=FALSE}
+opal.assign.table.tibble(o, 'KLOSA_wealth','KLOSA.w01_main_e',
+                         variables=list('w01E126'), missings = TRUE)
+KLOSA_wealth <- opal.execute(o,'KLOSA_wealth')
+```
+
+```{r local1, echo=FALSE}
+vari <- KLOSA_wealth$w01E126
+kable(Continuous_summary(var = vari, missing_values = c(-9, -8))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-9, -8))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-9, -8))$summary, caption = "Summary")
+ggplot(KLOSA_wealth, aes(w01E126)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,3000)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `-9 into 998`
+* `-8 into 997`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1, echo=TRUE}
+KLOSA_wealth$w01E126_2 <- car::recode(KLOSA_wealth$w01E126, "-9=NA; -8=NA")
+
+qq <- quantile(KLOSA_wealth$w01E126_2, probs = seq(0, 1, .2), na.rm = TRUE)
+
+KLOSA_ds_w1 <- tibble(id=KLOSA_wealth$id)
+KLOSA_ds_w1$wealth <- car::recode(KLOSA_wealth$w01E126_2, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+KLOSA_ds_w1$wealth[is.na(KLOSA_ds_w1$wealth)] <- car::recode(KLOSA_wealth$w01E126[is.na(KLOSA_ds_w1$wealth)], "-9=998; -8=997; NA=999")
+KLOSA_ds_w1$wealth <- as.integer(KLOSA_ds_w1$wealth)
+KLOSA_ds_w1$wealth <- labelled(KLOSA_ds_w1$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1, echo=FALSE}
+vari <- KLOSA_ds_w1$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w1, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=FALSE}
+```
+
+
+```{r importOPAL1, echo=FALSE}
+#opal.assign.data(o, 'KLOSA_ds_w1', KLOSA_ds_w1)
+#opal.symbol_import(o,'KLOSA_ds_w1', project='_Athlos_Harm_Dataset')
+
+label(KLOSA_ds_w1$wealth) <- ds_label_all
+wealth <- KLOSA_ds_w1
+save(wealth, file = "../RData/w1/wealth.RData")
+rm(wealth)
+
+KLOSA_m_ds_w1 <- KLOSA_ds_w1
+KLOSA_m_ds_w1$wealth <- car::recode(KLOSA_m_ds_w1$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'KLOSA_m_ds_w1', KLOSA_m_ds_w1)
+#opal.symbol_import(o,'KLOSA_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+
+| **Name** | `w02E126`|
+|-|-|
+| **Label** | `In last year, the total amount of household memebers' income`|
+| **Table name** | `w02_main_e_spss` |
+| **Missing Categories** | `-9 = Do not know` |
+| | `-8 = Refuse to answer` |
+| **Description** |  |
+
+```{r assign2, echo=FALSE}
+opal.assign.table.tibble(o, 'KLOSA_wealth','KLOSA.w02_main_e_spss',
+                         variables=list('w02E126'), missings = TRUE)
+KLOSA_wealth <- opal.execute(o,'KLOSA_wealth')
+```
+
+```{r local2, echo=FALSE}
+vari <- KLOSA_wealth$w02E126
+kable(Continuous_summary(var = vari, missing_values = c(-9, -8))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-9, -8))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-9, -8))$summary, caption = "Summary")
+ggplot(KLOSA_wealth, aes(w02E126)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,3000)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `-9 into 998`
+* `-8 into 997`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2, echo=TRUE}
+KLOSA_wealth$w02E126_2 <- car::recode(KLOSA_wealth$w02E126, "-9=NA; -8=NA")
+
+qq <- quantile(KLOSA_wealth$w02E126_2, probs = seq(0, 1, .2), na.rm = TRUE)
+
+KLOSA_ds_w2 <- tibble(id=KLOSA_wealth$id)
+KLOSA_ds_w2$wealth <- car::recode(KLOSA_wealth$w02E126_2, "0:qq[2]=1; (qq[2]+0.1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+KLOSA_ds_w2$wealth[is.na(KLOSA_ds_w2$wealth)] <- car::recode(KLOSA_wealth$w02E126[is.na(KLOSA_ds_w2$wealth)], "-9=998; -8=997; NA=999")
+KLOSA_ds_w2$wealth <- as.integer(KLOSA_ds_w2$wealth)
+KLOSA_ds_w2$wealth <- labelled(KLOSA_ds_w2$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2, echo=FALSE}
+vari <- KLOSA_ds_w2$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w2, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2, echo=FALSE}
+```
+
+
+```{r importOPAL2, echo=FALSE}
+#opal.assign.data(o, 'KLOSA_ds_w2', KLOSA_ds_w2)
+#opal.symbol_import(o,'KLOSA_ds_w2', project='_Athlos_Harm_Dataset')
+label(KLOSA_ds_w2$wealth) <- ds_label_all
+wealth <- KLOSA_ds_w2
+save(wealth, file = "../RData/w2/wealth.RData")
+rm(wealth)
+
+KLOSA_m_ds_w2 <- KLOSA_ds_w2
+KLOSA_m_ds_w2$wealth <- car::recode(KLOSA_m_ds_w2$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'KLOSA_m_ds_w2', KLOSA_m_ds_w2)
+#opal.symbol_import(o,'KLOSA_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 3 
+
+#### Study-specific variable description
+
+| **Name** | `w03E126`|
+|-|-|
+| **Label** | `In last year, the total amount of household memebers' income`|
+| **Table name** | `w03_main_e_spss_albert` |
+| **Missing Categories** | `-9 = Do not know` |
+| **Description** |  |
+
+```{r assign3, echo=FALSE}
+opal.assign.table.tibble(o, 'KLOSA_wealth','KLOSA.w03_main_e_spss_albert',
+                         variables=list('w03E126'), missings = TRUE)
+KLOSA_wealth <- opal.execute(o,'KLOSA_wealth')
+# The id's in the third wave add a '.0' at the end of the id's at the previous waves. We correct this. Note that gregexpr("\\.0",ids) == nchar(ids)-1
+KLOSA_wealth$id <- substr(KLOSA_wealth$id,1,nchar(KLOSA_wealth$id)-2)
+
+```
+
+```{r local3, echo=FALSE}
+vari <- KLOSA_wealth$w03E126
+kable(Continuous_summary(var = vari, missing_values = c(-9))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-9))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-9))$summary, caption = "Summary")
+ggplot(KLOSA_wealth, aes(w03E126)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,3000)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `-9 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo3, echo=TRUE}
+KLOSA_wealth$w03E126_2 <- car::recode(KLOSA_wealth$w03E126, "-9=NA; -8=NA")
+
+qq <- quantile(KLOSA_wealth$w03E126_2, probs = seq(0, 1, .2), na.rm = TRUE)
+
+KLOSA_ds_w3 <- tibble(id=KLOSA_wealth$id)
+KLOSA_ds_w3$wealth <- car::recode(KLOSA_wealth$w03E126_2, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+KLOSA_ds_w3$wealth[is.na(KLOSA_ds_w3$wealth)] <- car::recode(KLOSA_wealth$w03E126[is.na(KLOSA_ds_w3$wealth)], "-9=998; -8=997; NA=999")
+KLOSA_ds_w3$wealth <- as.integer(KLOSA_ds_w3$wealth)
+KLOSA_ds_w3$wealth <- labelled(KLOSA_ds_w3$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript3, echo=FALSE}
+vari <- KLOSA_ds_w3$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w3, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation3, echo=FALSE}
+```
+
+
+```{r importOPAL3, echo=FALSE}
+#opal.assign.data(o, 'KLOSA_ds_w3', KLOSA_ds_w3)
+#opal.symbol_import(o,'KLOSA_ds_w3', project='_Athlos_Harm_Dataset')
+label(KLOSA_ds_w3$wealth) <- ds_label_all
+wealth <- KLOSA_ds_w3
+save(wealth, file = "../RData/w3/wealth.RData")
+rm(wealth)
+
+KLOSA_m_ds_w3 <- KLOSA_ds_w3
+KLOSA_m_ds_w3$wealth <- car::recode(KLOSA_m_ds_w3$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'KLOSA_m_ds_w3', KLOSA_m_ds_w3)
+#opal.symbol_import(o,'KLOSA_m_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 4 
+
+#### Study-specific variable description
+
+| **Name** | `w04E126`|
+|-|-|
+| **Label** | `In last year, the total amount of household memebers' income`|
+| **Table name** | `w04_main_e_spss` |
+| **Missing Categories** | `-9 = Do not know` |
+| | `-8 = Refuse to answer` |
+| **Description** |  |
+
+```{r assign4, echo=FALSE}
+opal.assign.table.tibble(o, 'KLOSA_wealth','KLOSA.w04_main_e_spss',
+                         variables=list('w04E126'), missings = TRUE)
+KLOSA_wealth <- opal.execute(o,'KLOSA_wealth')
+```
+
+```{r local4, echo=FALSE}
+vari <- KLOSA_wealth$w04E126
+kable(Continuous_summary(var = vari, missing_values = c(-9, -8))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-9, -8))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-9, -8))$summary, caption = "Summary")
+ggplot(KLOSA_wealth, aes(w04E126)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,3000)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows:  
+
+* `-9 into 998`
+* `-8 into 997`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo4, echo=TRUE}
+KLOSA_wealth$w04E126_2 <- car::recode(KLOSA_wealth$w04E126, "-9=NA; -8=NA")
+
+qq <- quantile(KLOSA_wealth$w04E126_2, probs = seq(0, 1, .2), na.rm = TRUE)
+
+KLOSA_ds_w4 <- tibble(id=KLOSA_wealth$id)
+KLOSA_ds_w4$wealth <- car::recode(KLOSA_wealth$w04E126_2, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+KLOSA_ds_w4$wealth[is.na(KLOSA_ds_w4$wealth)] <- car::recode(KLOSA_wealth$w04E126[is.na(KLOSA_ds_w4$wealth)], "-9=998; -8=997; NA=999")
+KLOSA_ds_w4$wealth <- as.integer(KLOSA_ds_w4$wealth)
+KLOSA_ds_w4$wealth <- labelled(KLOSA_ds_w4$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript4, echo=FALSE}
+vari <- KLOSA_ds_w4$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w4, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation4, echo=FALSE}
+```
+
+
+```{r importOPAL4, echo=FALSE}
+#opal.assign.data(o, 'KLOSA_ds_w4', KLOSA_ds_w4)
+#opal.symbol_import(o,'KLOSA_ds_w4', project='_Athlos_Harm_Dataset')
+label(KLOSA_ds_w4$wealth) <- ds_label_all
+wealth <- KLOSA_ds_w4
+save(wealth, file = "../RData/w4/wealth.RData")
+rm(wealth)
+
+
+KLOSA_m_ds_w4 <- KLOSA_ds_w4
+KLOSA_m_ds_w4$wealth <- car::recode(KLOSA_m_ds_w4$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'KLOSA_m_ds_w4', KLOSA_m_ds_w4)
+#opal.symbol_import(o,'KLOSA_m_ds_w4', project='_Athlos_Harm_Dataset')
+```
+
+
+# Quality estimation
+Quintiles were based on the household income of each participant and were created by dividing the population
+into 5 groups each containing 20% of the corresponding N.
+The continuous variable (or the categorical one in the cases in which the first is not available).
+After taxes yearly income from: Paid Work+Self-Employment Income +Private Pension and Annuity +Public Pension +Government and Welfare Transfers +Asset Income +Income of Other Household Members
+was collected.
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```

@@ -1,0 +1,1088 @@
+---
+title: "Experience of a loss of any close person"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variables is the following:
+
+* Short name: `bereav`
+* Variable label: `Experience of a loss of any close person`
+* Domain: `Social environment`
+* Value type: `cathegorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Korea
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `W01A006`
+* Label: `Currently marital status`
+* Categories: 
+    + `1 = Currently married or living with a partner`
+    + `2 = Separated`
+    + `3 = Divorced`
+    + `4 = Widowed or missing (dispersed family)`
+    + `5 = Never married`
+* Missings:
+    + `-8 = Refuse to answer`
+
+* Name: `w01B010`
+* Label: `Father's survival`
+* Categories: 
+    + `1.0 = Yes`
+    + `3.0 = Missing (Dispersed family)`
+    + `5.0 = No`
+    
+* Name: `w01B020`
+* Label: `Mother's survival`
+* Categories: 
+    + `1.0 = Yes`
+    + `3.0 = Missing (Dispersed family)`
+    + `5.0 = No`
+    
+
+* Description: 
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'KLOSA_w1_bereav','KLOSA.w01_main_e',variables=list('W01A006','w01B010','w01B020'), missings = TRUE)
+```
+
+```{r local1, echo=F}
+KLOSA_w1_bereav <- opal.execute(o,'KLOSA_w1_bereav')
+
+
+vari <- KLOSA_w1_bereav$W01A006
+kable(Categorical_summary(vari, missing_values = c(-8))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-8))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-8))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_w1_bereav$W01A006, missing_values = NA)
+ggplot(KLOSA_w1_bereav, aes(x=factor(W01A006))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Currently marital status") + ylab("Frequency")
+
+vari <- KLOSA_w1_bereav$w01B010
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w1_bereav$w01B010, missing_values = NA)
+ggplot(KLOSA_w1_bereav, aes(x=factor(w01B010))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Father's survival") + ylab("Frequency")
+
+vari <- KLOSA_w1_bereav$w01B020
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w1_bereav$w01B020, missing_values = NA)
+ggplot(KLOSA_w1_bereav, aes(x=factor(w01B020))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Mother's survival") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `W01A006=4 OR w01B010=5 OR w01B020=5 INTO 1`
+* `W01A006 in (1,2,3,5) AND w01B010 in (1,3) AND w01B020 in (1,3)  INTO 0`
+* `W01A006=-8 INTO 997`
+* `NA into 999`
+
+ **R script:**
+
+```{r harmo1, echo=TRUE}
+KLOSA_ds_w1 <- tibble(id=KLOSA_w1_bereav$id)
+
+KLOSA_w1_bereav$W01A006 <- car::recode(as.vector(KLOSA_w1_bereav$W01A006), "NA='-999'")
+KLOSA_w1_bereav$w01B010 <- car::recode(as.vector(KLOSA_w1_bereav$w01B010), "NA='-999'")
+KLOSA_w1_bereav$w01B020 <- car::recode(as.vector(KLOSA_w1_bereav$w01B020), "NA='-999'")
+
+KLOSA_ds_w1$bereav <- c(NA)  
+for(i in 1:dim(KLOSA_w1_bereav)[1]){
+  if(KLOSA_w1_bereav$W01A006[i] == 4 | KLOSA_w1_bereav$w01B010[i] == 5 | KLOSA_w1_bereav$w01B020[i] == 5) { 
+    KLOSA_ds_w1$bereav[i] = 1 }
+  else if(KLOSA_w1_bereav$W01A006[i] %in% c(1,2,3,5) & KLOSA_w1_bereav$w01B010[i] %in% c(1,3) & KLOSA_w1_bereav$w01B020[i] %in% c(1,3) ) { 
+    KLOSA_ds_w1$bereav[i] = 0 }
+  else if(KLOSA_w1_bereav$W01A006[i] == -8) { 
+    KLOSA_ds_w1$bereav[i] = 997 }
+}
+
+KLOSA_ds_w1$bereav <- car::recode(as.vector(KLOSA_ds_w1$bereav), "NA='999'")
+KLOSA_ds_w1$bereav <- labelled(KLOSA_ds_w1$bereav, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995, "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1, echo=F}
+vari <- KLOSA_ds_w1$bereav
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_ds_w1$bereav, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w1, aes(x=factor(bereav))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Experience of a loss of any close person") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=F}
+
+```
+
+ 
+ 
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised are:
+
+* Name: `w02marital`
+* Label: `In 2008, currently the respondont's marital status`
+* Categories: 
+    + `1 = Currently married or living with a partner (i.e., common-law marriage)`
+    + `2 = Separated`
+    + `3 = Divorced`
+    + `4 = Widowed or missing (dispersed family)`
+    + `5 = Never been married`
+    
+    
+* Name: `w02Bb010`
+* Label: `Mother existence`
+* Categories:
+    + `1 = yes`
+    + `5 = no (passed away)`
+
+    
+* Name: `w02Bb004`
+* Label: `Father existence`
+* Categories:
+    + `1 = yes`
+    + `5 = no (passed away)`  
+
+
+* Name: `w02Ba005_01`
+* Label: `The time of death_1st child(yyyy/mm)`
+* Missings:
+    + `-9 = Don't know`
+    
+    
+* Name: `w02Ba005_02`
+* Label: `The time of death_2nd child(yyyy/mm)`
+* Missings:
+    + `-9 = Don't know`
+
+
+* Name: `w02Bb001_01`
+* Label: `1st sibling existence`
+* Categories: 
+    + `1 = yes`
+    + `5 = no (passed away)`
+# up to w02Bb001_14 `14th sibling existence`
+
+
+* Description: 
+```{r assign2, echo=F}
+opal.assign.table.tibble(o, 'KLOSA_w2_bereav','KLOSA.w02_main_e_spss', 
+                        variables=list('w02marital','w02Bb004','w02Bb010','w02Ba005_01','w02Ba005_02',
+                                       'w02Bb001_01','w02Bb001_02','w02Bb001_03','w02Bb001_04','w02Bb001_05',
+                                       'w02Bb001_06','w02Bb001_07','w02Bb001_08','w02Bb001_09','w02Bb001_10',
+                                       'w02Bb001_11','w02Bb001_12','w02Bb001_13','w02Bb001_14', missings = TRUE) )
+```
+
+```{r local2, echo=F}
+KLOSA_w2_bereav <- opal.execute(o,'KLOSA_w2_bereav')
+
+vari <- KLOSA_w2_bereav$w02marital
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w2_bereav$w02marital, missing_values = NA)
+ggplot(KLOSA_w2_bereav, aes(x=factor(w02marital))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("In 2008, currently the respondont's marital status") + ylab("Frequency")
+
+vari <- KLOSA_w2_bereav$w02Bb010
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w2_bereav$w02Bb010, missing_values = NA)
+ggplot(KLOSA_w2_bereav, aes(x=factor(w02Bb010))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Mother existence") + ylab("Frequency")
+
+vari <- KLOSA_w2_bereav$w02Bb004
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w2_bereav$w02Bb004, missing_values = NA)
+ggplot(KLOSA_w2_bereav, aes(x=factor(w02Bb004))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Father existence") + ylab("Frequency")
+
+# Date format yyyy/mm:
+vari <-KLOSA_w2_bereav$w02Ba005_01
+kable(Continuous_summary(vari, missing_values = c(-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Continuous_summary(vari, missing_values = c(-9))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values =c(-9))$summary, caption = "Summary")
+#Continuous_summary(var = KLOSA_w2_bereav$w02Ba005_01, missing_values = NA)
+ggplot(KLOSA_w2_bereav, aes(x=factor(w02Ba005_01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The time of death_1st child(yyyy/mm)") + ylab("Frequency") + theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1))
+
+
+
+# Date format yyyy/mm:
+vari <-KLOSA_w2_bereav$w02Ba005_02
+kable(Continuous_summary(vari, missing_values = c(-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Continuous_summary(vari, missing_values = c(-9))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values =c(-9))$summary, caption = "Summary")
+#Continuous_summary(var = KLOSA_w2_bereav$w02Ba005_02, missing_values = NA)
+ggplot(KLOSA_w2_bereav, aes(x=factor(w02Ba005_02))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The time of death_2nd child(yyyy/mm)") + ylab("Frequency") + theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1))
+
+vari <- KLOSA_w2_bereav$w02Bb001_01
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w2_bereav$w02Bb001_01, missing_values = NA)
+ggplot(KLOSA_w2_bereav, aes(x=factor(w02Bb001_01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("1st sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w2_bereav$w02Bb001_02
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w2_bereav$w02Bb001_01, missing_values = NA)
+ggplot(KLOSA_w2_bereav, aes(x=factor(w02Bb001_02))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("2nd sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w2_bereav$w02Bb001_03
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w2_bereav$w02Bb001_01, missing_values = NA)
+ggplot(KLOSA_w2_bereav, aes(x=factor(w02Bb001_03))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("3rd sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w2_bereav$w02Bb001_04
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w2_bereav$w02Bb001_01, missing_values = NA)
+ggplot(KLOSA_w2_bereav, aes(x=factor(w02Bb001_04))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("4th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w2_bereav$w02Bb001_05
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w2_bereav$w02Bb001_01, missing_values = NA)
+ggplot(KLOSA_w2_bereav, aes(x=factor(w02Bb001_05))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("5th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w2_bereav$w02Bb001_06
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w2_bereav$w02Bb001_01, missing_values = NA)
+ggplot(KLOSA_w2_bereav, aes(x=factor(w02Bb001_06))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("6th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w2_bereav$w02Bb001_07
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w2_bereav$w02Bb001_01, missing_values = NA)
+ggplot(KLOSA_w2_bereav, aes(x=factor(w02Bb001_07))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("7th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w2_bereav$w02Bb001_08
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w2_bereav$w02Bb001_01, missing_values = NA)
+ggplot(KLOSA_w2_bereav, aes(x=factor(w02Bb001_08))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("8th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w2_bereav$w02Bb001_09
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w2_bereav$w02Bb001_01, missing_values = NA)
+ggplot(KLOSA_w2_bereav, aes(x=factor(w02Bb001_09))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("9th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w2_bereav$w02Bb001_10
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w2_bereav$w02Bb001_01, missing_values = NA)
+ggplot(KLOSA_w2_bereav, aes(x=factor(w02Bb001_10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("10th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w2_bereav$w02Bb001_11
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w2_bereav$w02Bb001_01, missing_values = NA)
+ggplot(KLOSA_w2_bereav, aes(x=factor(w02Bb001_11))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("11th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w2_bereav$w02Bb001_12
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w2_bereav$w02Bb001_01, missing_values = NA)
+ggplot(KLOSA_w2_bereav, aes(x=factor(w02Bb001_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("12th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w2_bereav$w02Bb001_13
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w2_bereav$w02Bb001_01, missing_values = NA)
+ggplot(KLOSA_w2_bereav, aes(x=factor(w02Bb001_13))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("13th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w2_bereav$w02Bb001_14
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w2_bereav$w02Bb001_01, missing_values = NA)
+ggplot(KLOSA_w2_bereav, aes(x=factor(w02Bb001_14))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("14th sibling existence") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `w02marital=4 OR w02Bb010=5 OR w02Bb004=5 OR w02Ba005_01 !=NA OR w02Ba005_02 !=NA OR  `
+`  w02Bb001_01=5 OR w02Bb001_02=5 OR w02Bb001_03=5 OR w02Bb001_04=5 OR w02Bb001_05=5 OR w02Bb001_06=5 OR  `
+`  w02Bb001_07=5 OR w02Bb001_08=5 OR w02Bb001_09=5 OR w02Bb001_10=5 OR w02Bb001_11=5 OR w02Bb001_12=5 OR  `
+`  w02Bb001_13=5 OR w02Bb001_14=5 INTO 1`
+
+* `w02marital in (1,2,3,5) AND w02Bb010=1 AND w02Bb004=1 AND `
+`  w02Ba005_01 =NA OR w02Ba005_02 =NA w02Bb001_01=1 AND w02Bb001_02=1 AND w02Bb001_03=1 AND  ` 
+`  w02Bb001_04=1 AND w02Bb001_05=1 AND w02Bb001_06=1 AND w02Bb001_07=1 AND w02Bb001_08=1 AND   `
+`  w02Bb001_09=1 AND w02Bb001_10=1 AND w02Bb001_11=1 AND w02Bb001_12=1 AND w02Bb001_13=1 AND w02Bb001_14=1 INTO 0`
+
+* `w02Ba005_01 = -8 | w02Ba005_02 = -8 INTO 997`
+* `w02Ba005_01 = -9 | w02Ba005_02 = -9 INTO 998`
+
+* `NA into 999`
+
+ **R script:**
+
+```{r harmo2, echo=TRUE}
+KLOSA_ds_w2 <- tibble(id=KLOSA_w2_bereav$id)
+
+KLOSA_w2_bereav$w02marital <- car::recode(as.vector(KLOSA_w2_bereav$w02marital), "NA='-999'")
+KLOSA_w2_bereav$w02Bb010 <- car::recode(as.vector(KLOSA_w2_bereav$w02Bb010), "NA='-999'")
+KLOSA_w2_bereav$w02Bb004 <- car::recode(as.vector(KLOSA_w2_bereav$w02Bb004), "NA='-999'")
+KLOSA_w2_bereav$w02Bb001_01 <- car::recode(as.vector(KLOSA_w2_bereav$w02Bb001_01), "NA='-999'")
+KLOSA_w2_bereav$w02Bb001_02 <- car::recode(as.vector(KLOSA_w2_bereav$w02Bb001_02), "NA='-999'")
+KLOSA_w2_bereav$w02Bb001_03 <- car::recode(as.vector(KLOSA_w2_bereav$w02Bb001_03), "NA='-999'")
+KLOSA_w2_bereav$w02Bb001_04 <- car::recode(as.vector(KLOSA_w2_bereav$w02Bb001_04), "NA='-999'")
+KLOSA_w2_bereav$w02Bb001_05 <- car::recode(as.vector(KLOSA_w2_bereav$w02Bb001_05), "NA='-999'")
+KLOSA_w2_bereav$w02Bb001_06 <- car::recode(as.vector(KLOSA_w2_bereav$w02Bb001_06), "NA='-999'")
+KLOSA_w2_bereav$w02Bb001_07 <- car::recode(as.vector(KLOSA_w2_bereav$w02Bb001_07), "NA='-999'")
+KLOSA_w2_bereav$w02Bb001_08 <- car::recode(as.vector(KLOSA_w2_bereav$w02Bb001_08), "NA='-999'")
+KLOSA_w2_bereav$w02Bb001_09 <- car::recode(as.vector(KLOSA_w2_bereav$w02Bb001_09), "NA='-999'")
+KLOSA_w2_bereav$w02Bb001_10 <- car::recode(as.vector(KLOSA_w2_bereav$w02Bb001_10), "NA='-999'")
+KLOSA_w2_bereav$w02Bb001_11 <- car::recode(as.vector(KLOSA_w2_bereav$w02Bb001_11), "NA='-999'")
+KLOSA_w2_bereav$w02Bb001_12 <- car::recode(as.vector(KLOSA_w2_bereav$w02Bb001_12), "NA='-999'")
+KLOSA_w2_bereav$w02Bb001_13 <- car::recode(as.vector(KLOSA_w2_bereav$w02Bb001_13), "NA='-999'")
+KLOSA_w2_bereav$w02Bb001_14 <- car::recode(as.vector(KLOSA_w2_bereav$w02Bb001_14), "NA='-999'")
+KLOSA_w2_bereav$w02Ba005_01 <- car::recode(as.vector(KLOSA_w2_bereav$w02Ba005_01), "NA='-999'")
+KLOSA_w2_bereav$w02Ba005_02 <- car::recode(as.vector(KLOSA_w2_bereav$w02Ba005_02), "NA='-999'")
+
+
+KLOSA_ds_w2$bereav <- c(NA)  
+
+for(i in 1:dim(KLOSA_w2_bereav)[1]){
+  if(KLOSA_w2_bereav$w02marital[i] == 4 | KLOSA_w2_bereav$w02Bb010[i] == 5 |
+   ( !(KLOSA_w2_bereav$w02Ba005_01[i] == -999) & !(KLOSA_w2_bereav$w02Ba005_01[i] == -9) ) |
+   ( !(KLOSA_w2_bereav$w02Ba005_02[i] == -999) & !(KLOSA_w2_bereav$w02Ba005_02[i] == -9) ) |
+   KLOSA_w2_bereav$w02Bb004[i] == 5 | KLOSA_w2_bereav$w02Bb001_01[i] == 5 | KLOSA_w2_bereav$w02Bb001_02[i] == 5 |       
+   KLOSA_w2_bereav$w02Bb001_03[i] == 5 | KLOSA_w2_bereav$w02Bb001_04[i] == 5 | KLOSA_w2_bereav$w02Bb001_05[i] == 5 |     
+   KLOSA_w2_bereav$w02Bb001_06[i] == 5 | KLOSA_w2_bereav$w02Bb001_07[i] == 5 | KLOSA_w2_bereav$w02Bb001_08[i] == 5 |   
+   KLOSA_w2_bereav$w02Bb001_09[i] == 5 | KLOSA_w2_bereav$w02Bb001_10[i] == 5 | KLOSA_w2_bereav$w02Bb001_11[i] == 5 |
+   KLOSA_w2_bereav$w02Bb001_12[i] == 5 | KLOSA_w2_bereav$w02Bb001_13[i] == 5 | KLOSA_w2_bereav$w02Bb001_14[i] == 5 ) { 
+  KLOSA_ds_w2$bereav[i] = 1 }
+  
+  
+  else if(KLOSA_w2_bereav$w02marital[i] %in% c(1,2,3,5) & 
+        KLOSA_w2_bereav$w02Ba005_01[i] == -999 & KLOSA_w2_bereav$w02Ba005_02[i] == -999 &
+        KLOSA_w2_bereav$w02Bb010[i] == 1 & KLOSA_w2_bereav$w02Bb004[i] == 1 & KLOSA_w2_bereav$w02Bb001_01[i] == 1 & 
+        KLOSA_w2_bereav$w02Bb001_02[i] %in% c(1,-999) & KLOSA_w2_bereav$w02Bb001_03[i] %in% c(1,-999) & KLOSA_w2_bereav$w02Bb001_04[i] %in% c(1,-999) &
+        KLOSA_w2_bereav$w02Bb001_05[i] %in% c(1,-999) & KLOSA_w2_bereav$w02Bb001_06[i] %in% c(1,-999) & KLOSA_w2_bereav$w02Bb001_07[i] %in% c(1,-999) & 
+        KLOSA_w2_bereav$w02Bb001_08[i] %in% c(1,-999) & KLOSA_w2_bereav$w02Bb001_09[i] %in% c(1,-999) & KLOSA_w2_bereav$w02Bb001_10[i] %in% c(1,-999) & 
+        KLOSA_w2_bereav$w02Bb001_11[i] %in% c(1,-999) & KLOSA_w2_bereav$w02Bb001_12[i] %in% c(1,-999) & KLOSA_w2_bereav$w02Bb001_13[i] %in% c(1,-999) &
+        KLOSA_w2_bereav$w02Bb001_14[i] %in% c(1,-999) ) { 
+    ## w02Bb001_02,..,w02Bb001_14 has got a lot of NAs so I recode into zeros with a commend "%in% c(1,-999)":
+  KLOSA_ds_w2$bereav[i] = 0 }
+  
+  else if( !(KLOSA_w2_bereav$w02Ba005_01[i] == -999) & !(KLOSA_w2_bereav$w02Ba005_02[i] == -999) & 
+         ( KLOSA_w2_bereav$w02Ba005_01[i] == -8 | KLOSA_w2_bereav$w02Ba005_02[i] == -8) ) { 
+  KLOSA_ds_w2$bereav[i] = 997 }
+  else if( !(KLOSA_w2_bereav$w02Ba005_01[i] == -999) & !(KLOSA_w2_bereav$w02Ba005_02[i] == -999) &
+         ( KLOSA_w2_bereav$w02Ba005_01[i] == -9 | KLOSA_w2_bereav$w02Ba005_02[i] == -9) ) { 
+  KLOSA_ds_w2$bereav[i] = 998 }
+}
+
+KLOSA_ds_w2$bereav <- car::recode(as.vector(KLOSA_ds_w2$bereav), "NA='999'")
+KLOSA_ds_w2$bereav <- labelled(KLOSA_ds_w2$bereav, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2, echo=F}
+vari <- KLOSA_ds_w2$bereav
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_ds_w2$bereav, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w2, aes(x=factor(bereav))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Experience of a loss of any close person") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2, echo=F}
+
+```
+
+ 
+ 
+
+
+
+### Wave 3
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised are:
+
+* Name: `w03marital`
+* Label: `In 2010, the respondont's marital status`
+* Categories: 
+    + `1 = Currently married or living with a partner (i.e., common-law marriage)`
+    + `2 = Separated`
+    + `3 = Divorced`
+    + `4 = Widowed or missing (dispersed family)`
+    + `5 = Never been married`
+    
+    
+* Name: `w03Bb010`
+* Label: `Mother existence`
+* Categories:
+    + `1 = yes`
+    + `5 = no (passed away)`
+
+    
+* Name: `w03Bb004`
+* Label: `Father existence`
+* Categories:
+    + `1 = yes`
+    + `5 = no (passed away)`  
+
+
+* Name: `w03Ba005_01`
+* Label: `The time of death_children 1(yyyy/mm)`
+* Missings:
+    + `-9 = Don't know`
+    
+* Name: `w03Ba005_02`
+* Label: `The time of death_children 2(yyyy/mm)`
+* Missings:
+    + `-9 = Don't know`
+    
+* Name: `w03Ba005_03`
+* Label: `The time of death_children 3(yyyy/mm)`
+* Missings:
+    + `-9 = Don't know`
+    
+* Name: `w03Ba005_04`
+* Label: `The time of death_children 4(yyyy/mm)`
+* Missings:
+    + `-9 = Don't know`
+
+
+* Name: `w03Bb001_01`
+* Label: `1st sibling existence`
+* Categories: 
+    + `1 = yes`
+    + `5 = no (passed away)`
+# up to w03Bb001_14 `14th sibling existence`
+
+
+
+* Description: 
+```{r assign3, echo=F}
+opal.assign.table.tibble(o, 'KLOSA_w3_bereav','KLOSA.w03_main_e_spss_albert',
+                         variables=list('w03marital','w03Bb004','w03Bb010',
+                                        'w03Ba005_01','w03Ba005_02','w03Ba005_03','w03Ba005_04',
+                                       'w03Bb001_01','w03Bb001_02','w03Bb001_03','w03Bb001_04','w03Bb001_05',
+                                       'w03Bb001_06','w03Bb001_07','w03Bb001_08','w03Bb001_09','w03Bb001_10',
+                                       'w03Bb001_11','w03Bb001_12','w03Bb001_13','w03Bb001_14', missings = TRUE) )
+KLOSA_w3_bereav <- opal.execute(o,'KLOSA_w3_bereav')
+# The id's in the third wave add a '.0' at the end of the id's at the previous waves. We correct this. Note that gregexpr("\\.0",ids) == nchar(ids)-1
+KLOSA_w3_bereav$id <- substr(KLOSA_w3_bereav$id,1,nchar(KLOSA_w3_bereav$id)-2)
+```
+
+
+```{r local3, echo=F}
+
+
+vari <- KLOSA_w3_bereav$w03marital
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w3_bereav$w03marital, missing_values = NA)
+ggplot(KLOSA_w3_bereav, aes(x=factor(w03marital))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("In 2008, currently the respondont's marital status") + ylab("Frequency")
+
+vari <- KLOSA_w3_bereav$w03Bb010
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w3_bereav$w03Bb010, missing_values = NA)
+ggplot(KLOSA_w3_bereav, aes(x=factor(w03Bb010))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Mother existence") + ylab("Frequency")
+
+vari <- KLOSA_w3_bereav$w03Bb004
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w3_bereav$w03Bb004, missing_values = NA)
+ggplot(KLOSA_w3_bereav, aes(x=factor(w03Bb004))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Father existence") + ylab("Frequency")
+
+# Date format yyyy/mm:
+vari <-KLOSA_w3_bereav$w03Ba005_01
+kable(Continuous_summary(vari, missing_values = c(-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Continuous_summary(vari, missing_values = c(-9))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values =c(-9))$summary, caption = "Summary")
+#Continuous_summary(var = KLOSA_w3_bereav$w03Ba005_01, missing_values = NA)
+ggplot(KLOSA_w3_bereav, aes(x=factor(w03Ba005_01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The time of death_1st child(yyyy/mm)") + ylab("Frequency") + theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1))
+
+
+
+# Date format yyyy/mm:
+vari <-KLOSA_w3_bereav$w03Ba005_02
+kable(Continuous_summary(vari, missing_values = c(-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Continuous_summary(vari, missing_values = c(-9))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values =c(-9))$summary, caption = "Summary")
+#Continuous_summary(var = KLOSA_w3_bereav$w03Ba005_02, missing_values = NA)
+ggplot(KLOSA_w3_bereav, aes(x=factor(w03Ba005_02))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The time of death_2nd child(yyyy/mm)") + ylab("Frequency") + theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1))
+
+vari <- KLOSA_w3_bereav$w03Bb001_01
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w3_bereav$w03Bb001_01, missing_values = NA)
+ggplot(KLOSA_w3_bereav, aes(x=factor(w03Bb001_01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("1st sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w3_bereav$w03Bb001_02
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w3_bereav$w03Bb001_01, missing_values = NA)
+ggplot(KLOSA_w3_bereav, aes(x=factor(w03Bb001_02))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("2nd sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w3_bereav$w03Bb001_03
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w3_bereav$w03Bb001_01, missing_values = NA)
+ggplot(KLOSA_w3_bereav, aes(x=factor(w03Bb001_03))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("3rd sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w3_bereav$w03Bb001_04
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w3_bereav$w03Bb001_01, missing_values = NA)
+ggplot(KLOSA_w3_bereav, aes(x=factor(w03Bb001_04))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("4th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w3_bereav$w03Bb001_05
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w3_bereav$w03Bb001_01, missing_values = NA)
+ggplot(KLOSA_w3_bereav, aes(x=factor(w03Bb001_05))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("5th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w3_bereav$w03Bb001_06
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w3_bereav$w03Bb001_01, missing_values = NA)
+ggplot(KLOSA_w3_bereav, aes(x=factor(w03Bb001_06))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("6th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w3_bereav$w03Bb001_07
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w3_bereav$w03Bb001_01, missing_values = NA)
+ggplot(KLOSA_w3_bereav, aes(x=factor(w03Bb001_07))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("7th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w3_bereav$w03Bb001_08
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w3_bereav$w03Bb001_01, missing_values = NA)
+ggplot(KLOSA_w3_bereav, aes(x=factor(w03Bb001_08))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("8th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w3_bereav$w03Bb001_09
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w3_bereav$w03Bb001_01, missing_values = NA)
+ggplot(KLOSA_w3_bereav, aes(x=factor(w03Bb001_09))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("9th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w3_bereav$w03Bb001_10
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w3_bereav$w03Bb001_01, missing_values = NA)
+ggplot(KLOSA_w3_bereav, aes(x=factor(w03Bb001_10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("10th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w3_bereav$w03Bb001_11
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w3_bereav$w03Bb001_01, missing_values = NA)
+ggplot(KLOSA_w3_bereav, aes(x=factor(w03Bb001_11))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("11th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w3_bereav$w03Bb001_12
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w3_bereav$w03Bb001_01, missing_values = NA)
+ggplot(KLOSA_w3_bereav, aes(x=factor(w03Bb001_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("12th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w3_bereav$w03Bb001_13
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w3_bereav$w03Bb001_01, missing_values = NA)
+ggplot(KLOSA_w3_bereav, aes(x=factor(w03Bb001_13))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("13th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w3_bereav$w03Bb001_14
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w3_bereav$w03Bb001_01, missing_values = NA)
+ggplot(KLOSA_w3_bereav, aes(x=factor(w03Bb001_14))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("14th sibling existence") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To recode the harmonize variable from the study-specific variable it has to be recoded as follows:  
+
+* `w03marital=4 OR w03Bb010=5 OR w03Bb004=5 OR w03Ba005_01 !=NA OR w03Ba005_02 !=NA OR  `
+`  w03Ba005_03 !=NA OR w03Ba005_04 !=NA OR w03Bb001_01=5 OR w03Bb001_02=5 OR w03Bb001_03=5 OR w03Bb001_04=5 OR  ` 
+`  w03Bb001_05=5 OR w03Bb001_06=5 OR w03Bb001_07=5 OR w03Bb001_08=5 OR w03Bb001_09=5 OR w03Bb001_10=5 OR  `
+`  w03Bb001_11=5 OR w03Bb001_12=5 OR w03Bb001_13=5 OR w03Bb001_14=5 INTO 1`
+
+* `w03marital in (1,2,3,5) AND w03Bb010=1 AND w03Bb004=1 AND w03Ba005_01=NA OR w03Ba005_02=NA AND `
+`  w03Ba005_03=NA AND w03Ba005_04=NA AND w03Bb001_01=1 AND w03Bb001_02=1 AND w03Bb001_03=1 AND  ` 
+`  w03Bb001_04=1 AND w03Bb001_05=1 AND w03Bb001_06=1 AND w03Bb001_07=1 AND w03Bb001_08=1 AND   `
+`  w03Bb001_09=1 AND w03Bb001_10=1 AND w03Bb001_11=1 AND w03Bb001_12=1 AND w03Bb001_13=1 AND w03Bb001_14=1 INTO 0`
+
+* `w03Ba005_01 = -8 | w03Ba005_02 = -8 | w03Ba005_03 = -8 | w03Ba005_04 = -8 INTO 997`
+* `w03Ba005_01 = -9 | w03Ba005_02 = -9 | w03Ba005_03 = -9 | w03Ba005_04 = -9 INTO 998`
+
+* `NA into 999`
+
+ **R script:**
+
+```{r harmo3, echo=TRUE}
+KLOSA_ds_w3 <- tibble(id=KLOSA_w3_bereav$id)
+
+KLOSA_w3_bereav$w03marital <- car::recode(as.vector(KLOSA_w3_bereav$w03marital), "NA='-999'")
+KLOSA_w3_bereav$w03Bb010 <- car::recode(as.vector(KLOSA_w3_bereav$w03Bb010), "NA='-999'")
+KLOSA_w3_bereav$w03Ba005_01 <- car::recode(as.vector(KLOSA_w3_bereav$w03Ba005_01), "NA='-999'")
+KLOSA_w3_bereav$w03Ba005_02 <- car::recode(as.vector(KLOSA_w3_bereav$w03Ba005_02), "NA='-999'")
+KLOSA_w3_bereav$w03Ba005_03 <- car::recode(as.vector(KLOSA_w3_bereav$w03Ba005_03), "NA='-999'")
+KLOSA_w3_bereav$w03Ba005_04 <- car::recode(as.vector(KLOSA_w3_bereav$w03Ba005_04), "NA='-999'")
+KLOSA_w3_bereav$w03Bb004 <- car::recode(as.vector(KLOSA_w3_bereav$w03Bb004), "NA='-999'")
+KLOSA_w3_bereav$w03Bb001_01 <- car::recode(as.vector(KLOSA_w3_bereav$w03Bb001_01), "NA='-999'")
+KLOSA_w3_bereav$w03Bb001_02 <- car::recode(as.vector(KLOSA_w3_bereav$w03Bb001_02), "NA='-999'")
+KLOSA_w3_bereav$w03Bb001_03 <- car::recode(as.vector(KLOSA_w3_bereav$w03Bb001_03), "NA='-999'")
+KLOSA_w3_bereav$w03Bb001_04 <- car::recode(as.vector(KLOSA_w3_bereav$w03Bb001_04), "NA='-999'")
+KLOSA_w3_bereav$w03Bb001_05 <- car::recode(as.vector(KLOSA_w3_bereav$w03Bb001_05), "NA='-999'")
+KLOSA_w3_bereav$w03Bb001_06 <- car::recode(as.vector(KLOSA_w3_bereav$w03Bb001_06), "NA='-999'")
+KLOSA_w3_bereav$w03Bb001_07 <- car::recode(as.vector(KLOSA_w3_bereav$w03Bb001_07), "NA='-999'")
+KLOSA_w3_bereav$w03Bb001_08 <- car::recode(as.vector(KLOSA_w3_bereav$w03Bb001_08), "NA='-999'")
+KLOSA_w3_bereav$w03Bb001_09 <- car::recode(as.vector(KLOSA_w3_bereav$w03Bb001_09), "NA='-999'")
+KLOSA_w3_bereav$w03Bb001_10 <- car::recode(as.vector(KLOSA_w3_bereav$w03Bb001_10), "NA='-999'")
+KLOSA_w3_bereav$w03Bb001_11 <- car::recode(as.vector(KLOSA_w3_bereav$w03Bb001_11), "NA='-999'")
+KLOSA_w3_bereav$w03Bb001_12 <- car::recode(as.vector(KLOSA_w3_bereav$w03Bb001_12), "NA='-999'")
+KLOSA_w3_bereav$w03Bb001_13 <- car::recode(as.vector(KLOSA_w3_bereav$w03Bb001_13), "NA='-999'")
+KLOSA_w3_bereav$w03Bb001_14 <- car::recode(as.vector(KLOSA_w3_bereav$w03Bb001_14), "NA='-999'")
+
+KLOSA_ds_w3$bereav <- c(NA)  
+
+for(i in 1:dim(KLOSA_w3_bereav)[1]){
+  if(KLOSA_w3_bereav$w03marital[i] == 4 | KLOSA_w3_bereav$w03Bb010[i] == 5 |
+   ( !(KLOSA_w3_bereav$w03Ba005_01[i] == -999) & !(KLOSA_w3_bereav$w03Ba005_01[i] == -9) ) |
+   ( !(KLOSA_w3_bereav$w03Ba005_02[i] == -999) & !(KLOSA_w3_bereav$w03Ba005_02[i] == -9) ) |
+   ( !(KLOSA_w3_bereav$w03Ba005_03[i] == -999) & !(KLOSA_w3_bereav$w03Ba005_03[i] == -9) ) |
+   ( !(KLOSA_w3_bereav$w03Ba005_04[i] == -999) & !(KLOSA_w3_bereav$w03Ba005_04[i] == -9) ) |
+   KLOSA_w3_bereav$w03Bb004[i] == 5 | KLOSA_w3_bereav$w03Bb001_01[i] == 5 | KLOSA_w3_bereav$w03Bb001_02[i] == 5 |       
+   KLOSA_w3_bereav$w03Bb001_03[i] == 5 | KLOSA_w3_bereav$w03Bb001_04[i] == 5 | KLOSA_w3_bereav$w03Bb001_05[i] == 5 |     
+   KLOSA_w3_bereav$w03Bb001_06[i] == 5 | KLOSA_w3_bereav$w03Bb001_07[i] == 5 | KLOSA_w3_bereav$w03Bb001_08[i] == 5 |   
+   KLOSA_w3_bereav$w03Bb001_09[i] == 5 | KLOSA_w3_bereav$w03Bb001_10[i] == 5 | KLOSA_w3_bereav$w03Bb001_11[i] == 5 |
+   KLOSA_w3_bereav$w03Bb001_12[i] == 5 | KLOSA_w3_bereav$w03Bb001_13[i] == 5 | KLOSA_w3_bereav$w03Bb001_14[i] == 5 ) { 
+  KLOSA_ds_w3$bereav[i] = 1 }
+  
+    
+  else if(KLOSA_w3_bereav$w03marital[i] %in% c(1,2,3,5) & 
+        KLOSA_w3_bereav$w03Ba005_01[i] == -999 & KLOSA_w3_bereav$w03Ba005_02[i] == -999 &
+        KLOSA_w3_bereav$w03Ba005_03[i] == -999 & KLOSA_w3_bereav$w03Ba005_04[i] == -999 &
+        KLOSA_w3_bereav$w03Bb010[i] == 1 & KLOSA_w3_bereav$w03Bb004[i] == 1 & KLOSA_w3_bereav$w03Bb001_01[i] == 1 &
+        KLOSA_w3_bereav$w03Bb001_02[i] %in% c(1,-999) & KLOSA_w3_bereav$w03Bb001_03[i] %in% c(1,-999) & KLOSA_w3_bereav$w03Bb001_04[i] %in% c(1,-999) & 
+        KLOSA_w3_bereav$w03Bb001_05[i] %in% c(1,-999) & KLOSA_w3_bereav$w03Bb001_06[i] %in% c(1,-999) & KLOSA_w3_bereav$w03Bb001_07[i] %in% c(1,-999) & 
+        KLOSA_w3_bereav$w03Bb001_08[i] %in% c(1,-999) & KLOSA_w3_bereav$w03Bb001_09[i] %in% c(1,-999) & KLOSA_w3_bereav$w03Bb001_10[i] %in% c(1,-999) & 
+        KLOSA_w3_bereav$w03Bb001_11[i] %in% c(1,-999) & KLOSA_w3_bereav$w03Bb001_12[i] %in% c(1,-999) & KLOSA_w3_bereav$w03Bb001_13[i] %in% c(1,-999) &
+        KLOSA_w3_bereav$w03Bb001_14[i] %in% c(1,-999) ) { 
+  KLOSA_ds_w3$bereav[i] = 0 }
+  
+  else if(KLOSA_w3_bereav$w03Ba005_01[i] == -8 | KLOSA_w3_bereav$w03Ba005_02[i] == -8 |
+        KLOSA_w3_bereav$w03Ba005_03[i] == -8 | KLOSA_w3_bereav$w03Ba005_04[i] == -8) { 
+  KLOSA_ds_w3$bereav[i] = 997 }
+  else if(KLOSA_w3_bereav$w03Ba005_01[i] == -9 | KLOSA_w3_bereav$w03Ba005_02[i] == -9 |
+        KLOSA_w3_bereav$w03Ba005_03[i] == -9 | KLOSA_w3_bereav$w03Ba005_04[i] == -9) { 
+    ## w03Bb001_02,..,w03Bb001_14 has got a lot of NAs so I recode into zeros with a commend "%in% c(1,-999)":
+  KLOSA_ds_w3$bereav[i] = 998 }
+}
+
+KLOSA_ds_w3$bereav <- car::recode(as.vector(KLOSA_ds_w3$bereav), "NA='999'")
+KLOSA_ds_w3$bereav <- labelled(KLOSA_ds_w3$bereav, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript3, echo=F}
+vari <- KLOSA_ds_w3$bereav
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_ds_w3$bereav, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w3, aes(x=factor(bereav))) + geom_bar(stat="count", width=0.4, fill="steelblue")+ xlab("Experience of a loss of any close person") + ylab("Frequency")
+```
+
+##### Validation
+```{r crosstabulation3, echo=F}
+
+```
+
+ 
+ 
+
+
+
+### Wave 4
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised are:
+
+* Name: `w04marital`
+* Label: `In 2012, the respondont's marital status`
+* Categories: 
+    + `1 = Currently married or living with a partner (i.e., common-law marriage)`
+    + `2 = Separated`
+    + `3 = Divorced`
+    + `4 = Widowed or missing (dispersed family)`
+    + `5 = Never been married`
+    
+    
+* Name: `w04Bb010`
+* Label: `Mother existence`
+* Categories:
+    + `1 = yes`
+    + `5 = no (passed away)`
+
+    
+* Name: `w04Bb004`
+* Label: `Father existence`
+* Categories:
+    + `1 = yes`
+    + `5 = no (passed away)`  
+
+
+* Name: `w04Ba005_01`
+* Label: `The time of death_children 1(yyyy/mm)`
+* Missings:
+    + `-9 = Don't know`
+    
+* Name: `w04Ba005_02`
+* Label: `The time of death_children 2(yyyy/mm)`
+* Missings:
+    + `-9 = Don't know`
+    
+* Name: `w04Ba005_03`
+* Label: `The time of death_children 3(yyyy/mm)`
+* Missings:
+    + `-9 = Don't know`
+
+
+* Name: `w04Bb001_01`
+* Label: `1st sibling existence`
+* Categories: 
+    + `1 = yes`
+    + `5 = no (passed away)`
+# up to w04Bb001_14 `14th sibling existence`
+  
+* Description: 
+```{r assign4, echo=F}
+opal.assign.table.tibble(o, 'KLOSA_w4_bereav','KLOSA.w04_main_e_spss',
+                         variables=list('w04marital','w04Bb004','w04Bb010','w04Ba005_01','w04Ba005_02','w04Ba005_03',
+                                       'w04Bb001_01','w04Bb001_02','w04Bb001_03','w04Bb001_04','w04Bb001_05',
+                                       'w04Bb001_06','w04Bb001_07','w04Bb001_08','w04Bb001_09','w04Bb001_10',
+                                       'w04Bb001_11','w04Bb001_12','w04Bb001_13','w04Bb001_14', missings = TRUE) )
+```
+
+```{r local4, echo=F}
+KLOSA_w4_bereav <- opal.execute(o,'KLOSA_w4_bereav')
+
+vari <- KLOSA_w4_bereav$w04marital
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w4_bereav$w04marital, missing_values = NA)
+ggplot(KLOSA_w4_bereav, aes(x=factor(w04marital))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("In 2008, currently the respondont's marital status") + ylab("Frequency")
+
+vari <- KLOSA_w4_bereav$w04Bb010
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w4_bereav$w04Bb010, missing_values = NA)
+ggplot(KLOSA_w4_bereav, aes(x=factor(w04Bb010))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Mother existence") + ylab("Frequency")
+
+vari <- KLOSA_w4_bereav$w04Bb004
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w4_bereav$w04Bb004, missing_values = NA)
+ggplot(KLOSA_w4_bereav, aes(x=factor(w04Bb004))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Father existence") + ylab("Frequency")
+
+# Date format yyyy/mm:
+vari <-KLOSA_w4_bereav$w04Ba005_01
+kable(Continuous_summary(vari, missing_values = c(-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Continuous_summary(vari, missing_values = c(-9))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values =c(-9))$summary, caption = "Summary")
+#Continuous_summary(var = KLOSA_w4_bereav$w04Ba005_01, missing_values = NA)
+ggplot(KLOSA_w4_bereav, aes(x=factor(w04Ba005_01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The time of death_1st child(yyyy/mm)") + ylab("Frequency") + theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1))
+
+
+
+# Date format yyyy/mm:
+vari <-KLOSA_w4_bereav$w04Ba005_02
+kable(Continuous_summary(vari, missing_values = c(-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Continuous_summary(vari, missing_values = c(-9))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values =c(-9))$summary, caption = "Summary")
+#Continuous_summary(var = KLOSA_w4_bereav$w04Ba005_02, missing_values = NA)
+ggplot(KLOSA_w4_bereav, aes(x=factor(w04Ba005_02))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The time of death_2nd child(yyyy/mm)") + ylab("Frequency") + theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1))
+
+# Date format yyyy/mm:
+vari <-KLOSA_w4_bereav$w04Ba005_03
+kable(Continuous_summary(vari, missing_values = c(-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Continuous_summary(vari, missing_values = c(-9))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values =c(-9))$summary, caption = "Summary")
+#Continuous_summary(var = KLOSA_w4_bereav$w04Ba005_02, missing_values = NA)
+ggplot(KLOSA_w4_bereav, aes(x=factor(w04Ba005_03))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("The time of death_3rd child(yyyy/mm)") + ylab("Frequency") + theme(axis.text.x = element_text(angle = 45, hjust=1, vjust=1))
+
+vari <- KLOSA_w4_bereav$w04Bb001_01
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w4_bereav$w04Bb001_01, missing_values = NA)
+ggplot(KLOSA_w4_bereav, aes(x=factor(w04Bb001_01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("1st sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w4_bereav$w04Bb001_02
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w4_bereav$w04Bb001_01, missing_values = NA)
+ggplot(KLOSA_w4_bereav, aes(x=factor(w04Bb001_02))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("2nd sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w4_bereav$w04Bb001_03
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w4_bereav$w04Bb001_01, missing_values = NA)
+ggplot(KLOSA_w4_bereav, aes(x=factor(w04Bb001_03))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("3rd sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w4_bereav$w04Bb001_04
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w4_bereav$w04Bb001_01, missing_values = NA)
+ggplot(KLOSA_w4_bereav, aes(x=factor(w04Bb001_04))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("4th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w4_bereav$w04Bb001_05
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w4_bereav$w04Bb001_01, missing_values = NA)
+ggplot(KLOSA_w4_bereav, aes(x=factor(w04Bb001_05))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("5th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w4_bereav$w04Bb001_06
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w4_bereav$w04Bb001_01, missing_values = NA)
+ggplot(KLOSA_w4_bereav, aes(x=factor(w04Bb001_06))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("6th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w4_bereav$w04Bb001_07
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w4_bereav$w04Bb001_01, missing_values = NA)
+ggplot(KLOSA_w4_bereav, aes(x=factor(w04Bb001_07))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("7th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w4_bereav$w04Bb001_08
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w4_bereav$w04Bb001_01, missing_values = NA)
+ggplot(KLOSA_w4_bereav, aes(x=factor(w04Bb001_08))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("8th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w4_bereav$w04Bb001_09
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w4_bereav$w04Bb001_01, missing_values = NA)
+ggplot(KLOSA_w4_bereav, aes(x=factor(w04Bb001_09))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("9th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w4_bereav$w04Bb001_10
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w4_bereav$w04Bb001_01, missing_values = NA)
+ggplot(KLOSA_w4_bereav, aes(x=factor(w04Bb001_10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("10th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w4_bereav$w04Bb001_11
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w4_bereav$w04Bb001_01, missing_values = NA)
+ggplot(KLOSA_w4_bereav, aes(x=factor(w04Bb001_11))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("11th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w4_bereav$w04Bb001_12
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w4_bereav$w04Bb001_01, missing_values = NA)
+ggplot(KLOSA_w4_bereav, aes(x=factor(w04Bb001_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("12th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w4_bereav$w04Bb001_13
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w4_bereav$w04Bb001_01, missing_values = NA)
+ggplot(KLOSA_w4_bereav, aes(x=factor(w04Bb001_13))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("13th sibling existence") + ylab("Frequency")
+
+vari <- KLOSA_w4_bereav$w04Bb001_14
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = KLOSA_w4_bereav$w04Bb001_01, missing_values = NA)
+ggplot(KLOSA_w4_bereav, aes(x=factor(w04Bb001_14))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("14th sibling existence") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To recode the harmonize variable from the study-specific variable it has to be recoded as follows:  
+
+* `w04marital=4 OR w04Bb010=5 OR w04Bb004=5 OR w04Ba005_01 !=NA OR w04Ba005_02 !=NA OR  `
+`  w04Ba005_03 !=NA OR w04Bb001_01=5 OR w04Bb001_02=5 OR w04Bb001_03=5 OR w04Bb001_04=5 OR  ` 
+`  w04Bb001_05=5 OR w04Bb001_06=5 OR w04Bb001_07=5 OR w04Bb001_08=5 OR w04Bb001_09=5 OR w04Bb001_10=5 OR  `
+`  w04Bb001_11=5 OR w04Bb001_12=5 OR w04Bb001_13=5 OR w04Bb001_14=5 INTO 1`
+
+* `w04marital in (1,2,3,5) AND w04Bb010=1 AND w04Bb004=1 AND w04Ba005_01=NA OR w04Ba005_02=NA AND `
+`  w04Ba005_03=NA AND w04Bb001_01=1 AND w04Bb001_02=1 AND w04Bb001_03=1 AND  ` 
+`  w04Bb001_04=1 AND w04Bb001_05=1 AND w04Bb001_06=1 AND w04Bb001_07=1 AND w04Bb001_08=1 AND   `
+`  w04Bb001_09=1 AND w04Bb001_10=1 AND w04Bb001_11=1 AND w04Bb001_12=1 AND w04Bb001_13=1 AND w04Bb001_14=1 INTO 0`
+
+* `w04Ba005_01 = -8 | w04Ba005_02 = -8 | w04Ba005_03 = -8 | w04Ba005_04 = -8 INTO 997`
+* `w04Ba005_01 = -9 | w04Ba005_02 = -9 | w04Ba005_03 = -9 | w04Ba005_04 = -9 INTO 998`
+
+* `NA into 999`
+
+ **R script:**
+
+```{r harmo4, echo=TRUE}
+KLOSA_ds_w4 <- tibble(id=KLOSA_w4_bereav$id)
+
+KLOSA_w4_bereav$w04marital <- car::recode(as.vector(KLOSA_w4_bereav$w04marital), "NA='-999'")
+KLOSA_w4_bereav$w04Bb004 <- car::recode(as.vector(KLOSA_w4_bereav$w04Bb004), "NA='-999'")
+KLOSA_w4_bereav$w04Bb010 <- car::recode(as.vector(KLOSA_w4_bereav$w04Bb010), "NA='-999'")
+KLOSA_w4_bereav$w04Ba005_01 <- car::recode(as.vector(KLOSA_w4_bereav$w04Ba005_01), "NA='-999'")
+KLOSA_w4_bereav$w04Ba005_02 <- car::recode(as.vector(KLOSA_w4_bereav$w04Ba005_02), "NA='-999'")
+KLOSA_w4_bereav$w04Ba005_03 <- car::recode(as.vector(KLOSA_w4_bereav$w04Ba005_03), "NA='-999'")
+KLOSA_w4_bereav$w04Bb001_01 <- car::recode(as.vector(KLOSA_w4_bereav$w04Bb001_01), "NA='-999'")
+KLOSA_w4_bereav$w04Bb001_02 <- car::recode(as.vector(KLOSA_w4_bereav$w04Bb001_02), "NA='-999'")
+KLOSA_w4_bereav$w04Bb001_03 <- car::recode(as.vector(KLOSA_w4_bereav$w04Bb001_03), "NA='-999'")
+KLOSA_w4_bereav$w04Bb001_04 <- car::recode(as.vector(KLOSA_w4_bereav$w04Bb001_04), "NA='-999'")
+KLOSA_w4_bereav$w04Bb001_05 <- car::recode(as.vector(KLOSA_w4_bereav$w04Bb001_05), "NA='-999'")
+KLOSA_w4_bereav$w04Bb001_06 <- car::recode(as.vector(KLOSA_w4_bereav$w04Bb001_06), "NA='-999'")
+KLOSA_w4_bereav$w04Bb001_07 <- car::recode(as.vector(KLOSA_w4_bereav$w04Bb001_07), "NA='-999'")
+KLOSA_w4_bereav$w04Bb001_08 <- car::recode(as.vector(KLOSA_w4_bereav$w04Bb001_08), "NA='-999'")
+KLOSA_w4_bereav$w04Bb001_09 <- car::recode(as.vector(KLOSA_w4_bereav$w04Bb001_09), "NA='-999'")
+KLOSA_w4_bereav$w04Bb001_10 <- car::recode(as.vector(KLOSA_w4_bereav$w04Bb001_10), "NA='-999'")
+KLOSA_w4_bereav$w04Bb001_11 <- car::recode(as.vector(KLOSA_w4_bereav$w04Bb001_11), "NA='-999'")
+KLOSA_w4_bereav$w04Bb001_12 <- car::recode(as.vector(KLOSA_w4_bereav$w04Bb001_12), "NA='-999'")
+KLOSA_w4_bereav$w04Bb001_13 <- car::recode(as.vector(KLOSA_w4_bereav$w04Bb001_13), "NA='-999'")
+KLOSA_w4_bereav$w04Bb001_14 <- car::recode(as.vector(KLOSA_w4_bereav$w04Bb001_14), "NA='-999'")
+
+KLOSA_ds_w4$bereav <- c(NA)  
+
+for(i in 1:dim(KLOSA_w4_bereav)[1]){
+  if(KLOSA_w4_bereav$w04marital[i] == 4 | KLOSA_w4_bereav$w04Bb010[i] == 5 |
+   ( !(KLOSA_w4_bereav$w04Ba005_01[i] == -999) & !(KLOSA_w4_bereav$w04Ba005_01[i] == -9) ) |
+   ( !(KLOSA_w4_bereav$w04Ba005_02[i] == -999) & !(KLOSA_w4_bereav$w04Ba005_02[i] == -9) ) |
+   ( !(KLOSA_w4_bereav$w04Ba005_03[i] == -999) & !(KLOSA_w4_bereav$w04Ba005_03[i] == -9) ) |
+   KLOSA_w4_bereav$w04Bb004[i] == 5 | KLOSA_w4_bereav$w04Bb001_01[i] == 5 | KLOSA_w4_bereav$w04Bb001_02[i] == 5 |       
+   KLOSA_w4_bereav$w04Bb001_03[i] == 5 | KLOSA_w4_bereav$w04Bb001_04[i] == 5 | KLOSA_w4_bereav$w04Bb001_05[i] == 5 |     
+   KLOSA_w4_bereav$w04Bb001_06[i] == 5 | KLOSA_w4_bereav$w04Bb001_07[i] == 5 | KLOSA_w4_bereav$w04Bb001_08[i] == 5 |   
+   KLOSA_w4_bereav$w04Bb001_09[i] == 5 | KLOSA_w4_bereav$w04Bb001_10[i] == 5 | KLOSA_w4_bereav$w04Bb001_11[i] == 5 |
+   KLOSA_w4_bereav$w04Bb001_12[i] == 5 | KLOSA_w4_bereav$w04Bb001_13[i] == 5 | KLOSA_w4_bereav$w04Bb001_14[i] == 5 ) { 
+  KLOSA_ds_w4$bereav[i] = 1 }
+  
+  
+  else if(KLOSA_w4_bereav$w04marital[i] %in% c(1,2,3,5) & 
+        KLOSA_w4_bereav$w04Ba005_01[i] == -999 & KLOSA_w4_bereav$w04Ba005_02[i] == -999 &
+        KLOSA_w4_bereav$w04Ba005_03[i] == -999 &
+        KLOSA_w4_bereav$w04Bb010[i] == 1 & KLOSA_w4_bereav$w04Bb004[i] == 1 & KLOSA_w4_bereav$w04Bb001_01[i] == 1 &
+        KLOSA_w4_bereav$w04Bb001_02[i] %in% c(1,-999) & KLOSA_w4_bereav$w04Bb001_03[i] %in% c(1,-999) & KLOSA_w4_bereav$w04Bb001_04[i] %in% c(1,-999) &
+        KLOSA_w4_bereav$w04Bb001_05[i] %in% c(1,-999) & KLOSA_w4_bereav$w04Bb001_06[i] %in% c(1,-999) & KLOSA_w4_bereav$w04Bb001_07[i] %in% c(1,-999) & 
+        KLOSA_w4_bereav$w04Bb001_08[i] %in% c(1,-999) & KLOSA_w4_bereav$w04Bb001_09[i] %in% c(1,-999) & KLOSA_w4_bereav$w04Bb001_10[i] %in% c(1,-999) & 
+        KLOSA_w4_bereav$w04Bb001_11[i] %in% c(1,-999) & KLOSA_w4_bereav$w04Bb001_12[i] %in% c(1,-999) & KLOSA_w4_bereav$w04Bb001_13[i] %in% c(1,-999) & 
+        KLOSA_w4_bereav$w04Bb001_14[i] %in% c(1,-999) ) { 
+    ## w04Bb001_02,..,w04Bb001_14 has got a lot of NAs so I recode into zeros with a commend "%in% c(1,-999)":
+  KLOSA_ds_w4$bereav[i] = 0 }
+  
+  else if(KLOSA_w4_bereav$w04Ba005_01[i] == -8 | KLOSA_w4_bereav$w04Ba005_02[i] == -8 |
+        KLOSA_w4_bereav$w04Ba005_03[i] == -8 ) { 
+  KLOSA_ds_w4$bereav[i] = 997 }
+  else if(KLOSA_w4_bereav$w04Ba005_01[i] == -9 | KLOSA_w4_bereav$w04Ba005_02[i] == -9 |
+        KLOSA_w4_bereav$w04Ba005_03[i] == -9 ) { 
+  KLOSA_ds_w4$bereav[i] = 998 }
+}
+
+KLOSA_ds_w4$bereav <- car::recode(as.vector(KLOSA_ds_w4$bereav), "NA='999'")
+KLOSA_ds_w4$bereav <- labelled(KLOSA_ds_w4$bereav, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript4, echo=F}
+vari <- KLOSA_ds_w4$bereav
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = KLOSA_ds_w4$bereav, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(KLOSA_ds_w4, aes(x=factor(bereav))) + geom_bar(stat="count", width=0.4, fill="steelblue")+ xlab("Experience of a loss of any close person") + ylab("Frequency")
+```
+
+##### Validation
+```{r crosstabulation4, echo=F}
+
+```
+
+ 
+ 
+```{r save, echo=FALSE}
+bereav <- KLOSA_ds_w1
+save(bereav, file = "../RData/w1/bereav.RData")
+rm(bereav)
+
+bereav <- KLOSA_ds_w2
+save(bereav, file = "../RData/w2/bereav.RData")
+rm(bereav)
+
+bereav <- KLOSA_ds_w3
+save(bereav, file = "../RData/w3/bereav.RData")
+rm(bereav)
+
+
+bereav <- KLOSA_ds_w4
+save(bereav, file = "../RData/w4/bereav.RData")
+rm(bereav)
+
+
+```
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+
+
+
+
+

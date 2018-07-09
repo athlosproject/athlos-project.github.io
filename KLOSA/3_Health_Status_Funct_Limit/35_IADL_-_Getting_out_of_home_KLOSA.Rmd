@@ -1,0 +1,386 @@
+---
+title: "IADL - Getting out of home"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("../../setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `iadl_outhome`
+* Variable label: `IADL - Difficulties for getting out of home`
+* Variable description: `IADL - Difficulties for getting out of home`
+* Domain: `Health status and functional limitations`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | Yes
+1        | No
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "IADL - Difficulties for getting out of home"
+```
+
+
+# Data process
+
+## Korea
+
+### Wave 1 
+
+#### Study-specific variable description
+
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `w01Cb13`
+* Label: ` Going out that use transportation`
+* Categories:
+   + `1 = No, I Do not need any help.`
+   + `3 = Yes, I need help to some extent.`
+   + `5 = Yes, I need help in every respect.`
+* Missings
+   + `-8 = Refuse to answer`
+   
+```{r assign w1, echo=FALSE}
+opal.assign.table.tibble(o, 'KLOSA_w1_iadl_outhome','KLOSA.w01_main_e', variables=list('w01Cb13'), missings = TRUE)
+KLOSA_w1_iadl_outhome <- opal.execute(o,'KLOSA_w1_iadl_outhome')
+```
+
+```{r local w1, echo=FALSE}
+vari <- KLOSA_w1_iadl_outhome$w01Cb13
+kable(Categorical_summary(vari, missing_values = c(-8))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(-8))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-8))[2], caption = "Type of missing")
+ggplot(KLOSA_w1_iadl_outhome, aes(x=factor(w01Cb13))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Getting out of home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `3 into 0`
+* `5 into 0`
+* `-8 into 997`
+
+**R script:**
+
+```{r harmo w1}
+KLOSA_ds_w1 <- tibble(id=KLOSA_w1_iadl_outhome$id)
+KLOSA_ds_w1$iadl_outhome <- car::recode(KLOSA_w1_iadl_outhome$w01Cb13, "1 = '1';3 = '0';5 = '0';-8 = '997' ")
+KLOSA_ds_w1$iadl_outhome <- labelled(KLOSA_ds_w1$iadl_outhome, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=FALSE}
+vari <- KLOSA_ds_w1$iadl_outhome
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w1, aes(x=factor(iadl_outhome))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Getting out of home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1, echo=FALSE}
+AfterH <- table(KLOSA_ds_w1$iadl_outhome)
+X<-table(KLOSA_w1_iadl_outhome$w01Cb13)
+BeforeH <- c(sum(X[c(3,4)]),X[c(2,1)])
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("3,5->0","1->1","-8->997") 
+kable(C)
+```
+
+```{r importOPAL w1, echo=FALSE}
+label(KLOSA_ds_w1$iadl_outhome) <- ds_label
+iadl_outhome <- KLOSA_ds_w1
+save(iadl_outhome, file = "../RData/w1/iadl_outhome.RData")
+#opal.assign.data(o, 'KLOSA_ds_w1', KLOSA_ds_w1)
+#opal.symbol_import(o,'KLOSA_ds_w1', project='_Athlos_Harm_Dataset')
+
+KLOSA_m_ds_w1 <- KLOSA_ds_w1
+KLOSA_m_ds_w1$iadl_outhome <- car::recode(KLOSA_m_ds_w1$iadl_outhome, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'KLOSA_m_ds_w1', KLOSA_m_ds_w1)
+#opal.symbol_import(o,'KLOSA_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 2 	
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `w02C213`
+* Label: ` IADL(Necessity of aid for daily life)_going out using transportation`
+* Categories:
+   + `1 = No, I don't need any help.`
+   + `3 = Yes, I need help to some extent.`
+   + `5 = Yes, I need help in every respect.`
+* Missings
+
+
+```{r assign w2, echo=FALSE}
+opal.assign.table.tibble(o, 'KLOSA_w2_iadl_outhome','KLOSA.w02_main_e_spss', variables=list('w02C213'), missings = TRUE)
+KLOSA_w2_iadl_outhome <- opal.execute(o,'KLOSA_w2_iadl_outhome')
+```
+
+```{r local w2, echo=FALSE}
+vari <- KLOSA_w2_iadl_outhome$w02C213
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_w2_iadl_outhome, aes(x=factor(w02C213))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Getting out of home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `3 into 0`
+* `5 into 0`
+
+**R script:**
+
+```{r harmo w2}
+KLOSA_ds_w2 <- tibble(id=KLOSA_w2_iadl_outhome$id)
+KLOSA_ds_w2$iadl_outhome <- car::recode(KLOSA_w2_iadl_outhome$w02C213, "1 = '1';3 = '0';5 = '0' ")
+KLOSA_ds_w2$iadl_outhome <- labelled(KLOSA_ds_w2$iadl_outhome, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w2, echo=FALSE}
+vari <- KLOSA_ds_w2$iadl_outhome
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w2, aes(x=factor(iadl_outhome))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Getting out of home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w2, echo=FALSE}
+AfterH <- table(KLOSA_ds_w2$iadl_outhome)
+X<-table(KLOSA_w2_iadl_outhome$w02C213)
+BeforeH <- c(sum(X[c(2,3)]),X[1])
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("3,5->0","1->1") 
+kable(C)
+```
+
+```{r importOPAL w2, echo=FALSE}
+label(KLOSA_ds_w2$iadl_outhome) <- ds_label
+iadl_outhome <- KLOSA_ds_w2
+save(iadl_outhome, file = "../RData/w2/iadl_outhome.RData")
+#opal.assign.data(o, 'KLOSA_ds_w2', KLOSA_ds_w2)
+#opal.symbol_import(o,'KLOSA_ds_w2', project='_Athlos_Harm_Dataset')
+
+KLOSA_m_ds_w2 <- KLOSA_ds_w2
+KLOSA_m_ds_w2$iadl_outhome <- car::recode(KLOSA_m_ds_w2$iadl_outhome, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'KLOSA_m_ds_w2', KLOSA_m_ds_w2)
+#opal.symbol_import(o,'KLOSA_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 3 	
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `w03C213`
+* Label: ` Going out that use transportation`
+* Categories:
+   + `1 = No, I don't need any help.`
+   + `3 = yese extent.`
+   + `5 = yesry respect.`
+* Missings
+
+
+```{r assign w3, echo=FALSE}
+opal.assign.table.tibble(o, 'KLOSA_w3_iadl_outhome','KLOSA.w03_main_e_spss_albert', variables=list('w03C213'), missings = TRUE)
+KLOSA_w3_iadl_outhome <- opal.execute(o,'KLOSA_w3_iadl_outhome')
+# The id's in the third wave add a '.0' at the end of the id's at the previous waves. We correct this. Note that gregexpr("\\.0",ids) == nchar(ids)-1
+KLOSA_w3_iadl_outhome$id <- substr(KLOSA_w3_iadl_outhome$id,1,nchar(KLOSA_w3_iadl_outhome$id)-2)
+```
+
+```{r local w3, echo=FALSE}
+Categorical_summary(KLOSA_w3_iadl_outhome$w03C213)
+ggplot(KLOSA_w3_iadl_outhome, aes(x=factor(w03C213))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Getting out of home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `3 into 0`
+* `5 into 0`
+
+**R script:**
+
+```{r harmo w3}
+KLOSA_ds_w3 <- tibble(id=KLOSA_w3_iadl_outhome$id)
+KLOSA_ds_w3$iadl_outhome <- car::recode(KLOSA_w3_iadl_outhome$w03C213, "1 = '1';3 = '0';5 = '0' ")
+KLOSA_ds_w3$iadl_outhome <- labelled(KLOSA_ds_w3$iadl_outhome, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w3, echo=FALSE}
+vari <- KLOSA_ds_w3$iadl_outhome
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w3, aes(x=factor(iadl_outhome))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Getting out of home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w3, echo=FALSE}
+AfterH <- table(KLOSA_ds_w3$iadl_outhome)
+X<-table(KLOSA_w3_iadl_outhome$w03C213)
+BeforeH <- c(sum(X[c(2,3)]),X[1])
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("3,5->0","1->1") 
+kable(C)
+```
+
+```{r importOPAL w3, echo=FALSE}
+label(KLOSA_ds_w3$iadl_outhome) <- ds_label
+iadl_outhome <- KLOSA_ds_w3
+save(iadl_outhome, file = "../RData/w3/iadl_outhome.RData")
+#opal.assign.data(o, 'KLOSA_ds_w3', KLOSA_ds_w3)
+#opal.symbol_import(o,'KLOSA_ds_w3', project='_Athlos_Harm_Dataset')
+
+KLOSA_m_ds_w3 <- KLOSA_ds_w3
+KLOSA_m_ds_w3$iadl_outhome <- car::recode(KLOSA_m_ds_w3$iadl_outhome, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'KLOSA_m_ds_w3', KLOSA_m_ds_w3)
+#opal.symbol_import(o,'KLOSA_m_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 4 	
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `w04C213`
+* Label: ` Going out that use transportation`
+* Categories:
+   + `1 = No, I don't need any help.`
+   + `3 = Yes, I need help to some extent.`
+   + `5 = Yes, I need help in every respect.`
+* Missings
+
+
+```{r assign w4, echo=FALSE}
+opal.assign.table.tibble(o, 'KLOSA_w4_iadl_outhome','KLOSA.w04_main_e_spss', variables=list('w04C213'), missings = TRUE)
+KLOSA_w4_iadl_outhome <- opal.execute(o,'KLOSA_w4_iadl_outhome')
+```
+
+```{r local w4, echo=FALSE}
+vari <- KLOSA_w4_iadl_outhome$w04C213
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_w4_iadl_outhome, aes(x=factor(w04C213))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Getting out of home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `3 into 0`
+* `5 into 0`
+
+**R script:**
+
+```{r harmo w4}
+KLOSA_ds_w4 <- tibble(id=KLOSA_w4_iadl_outhome$id)
+KLOSA_ds_w4$iadl_outhome <- car::recode(KLOSA_w4_iadl_outhome$w04C213, "1 = '1';3 = '0';5 = '0' ")
+KLOSA_ds_w4$iadl_outhome <- labelled(KLOSA_ds_w4$iadl_outhome, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w4, echo=FALSE}
+vari <- KLOSA_ds_w4$iadl_outhome
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w4, aes(x=factor(iadl_outhome))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Getting out of home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w4, echo=FALSE}
+AfterH <- table(KLOSA_ds_w4$iadl_outhome)
+X<-table(KLOSA_w4_iadl_outhome$w04C213)
+BeforeH <- c(sum(X[c(2,3)]),X[1])
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("3,5->0","1->1") 
+kable(C)
+```
+
+```{r importOPAL w4, echo=FALSE}
+label(KLOSA_ds_w4$iadl_outhome) <- ds_label
+iadl_outhome <- KLOSA_ds_w4
+save(iadl_outhome, file = "../RData/w4/iadl_outhome.RData")
+#opal.assign.data(o, 'KLOSA_ds_w4', KLOSA_ds_w4)
+#opal.symbol_import(o,'KLOSA_ds_w4', project='_Athlos_Harm_Dataset')
+
+KLOSA_m_ds_w4 <- KLOSA_ds_w4
+KLOSA_m_ds_w4$iadl_outhome <- car::recode(KLOSA_m_ds_w4$iadl_outhome, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'KLOSA_m_ds_w4', KLOSA_m_ds_w4)
+#opal.symbol_import(o,'KLOSA_m_ds_w4', project='_Athlos_Harm_Dataset')
+```
+
+# Quality estimation
+
+No comments
+
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

@@ -1,0 +1,437 @@
+---
+title: "Non paid work"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/nonpaid_workDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/nonpaid_workDS.R')
+```
+
+
+
+# Data process
+
+
+
+## Korea
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `w01D002` | `w01D007` | `w01D010` |
+|-|-|-|-|
+| **Label** | `Main job`|`The reason that do not work in spite of having found a job`|`The current retirement state of a respondent (if currently we do not make application activity)`|
+| **Table name**  | `w01_main_e`| `w01_main_e`| `w01_main_e`|
+| **Categories** | `1 = Wage workers`<br/>`2 = Self employed`<br/>`3 = Non wage family worker(for 18 hours or more per week)`<br/>`4 = Non wage family worker(for less than 18 hours)` | `1 = Health problems`<br/>`2 = Childrearing or housework`<br/>`3 = Studentship`<br/>`4 = Wanted to take a break`<br/>`5 = Not enough work to do`<br/>`6 = Other` | `1 = Worked before but currently retired`<br/>`3 = Worked before and intend to work in the future`<br/>`5 = Never had a job before` |
+| **Missings** | `NA` | `NA` | `NA` |
+| **Description** |  |  |  |
+
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'KLOSA_w1','KLOSA.w01_main_e',variables=list('w01D002','w01D007','w01D010'), missings = T)
+KLOSA_w1 <- opal.execute(o,'KLOSA_w1')
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- KLOSA_w1$w01D002
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(KLOSA_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_w1, aes(x=factor(w01D002))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w1$w01D007
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(KLOSA_w1)[3])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_w1, aes(x=factor(w01D007))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w1$w01D010
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(KLOSA_w1)[4])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_w1, aes(x=factor(w01D010))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `nonpaid_work` from the study-specific variable it has to be recoded as follows:
+
+* `w01D002 == 1 or w01D007 == 1 or w01D010 == 1 into 996`
+* `w01D002 == 3,4 into 2`
+* `otherwise: w01D007 == 2 into 1`
+
+**R script:**
+
+```{r harmo w1}
+
+# Categorical variable harmonization
+KLOSA_ds_w1 <- tibble(id=KLOSA_w1$id)
+KLOSA_ds_w1$nonpaid_work <- rep(999,length(KLOSA_w1$id))
+KLOSA_ds_w1$nonpaid_work[which(rowSums(KLOSA_w1[,c(2:4)]==1,na.rm = T)>0)] <- 996
+KLOSA_ds_w1$nonpaid_work[which(KLOSA_w1$w01D007 %in% c(2))] <- 1
+KLOSA_ds_w1$nonpaid_work[which(KLOSA_w1$w01D002 %in% c(3,4))] <- 2
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- KLOSA_ds_w1$nonpaid_work
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w1, aes(x=factor(nonpaid_work))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+
+| **Name** |`w02D002`| `w02D405` |
+|-|-|-|
+| **Label** |`Main job`| `The reason why do not have a job, even though a suitable job is existed(a job seeker/an unemployed person)`|
+| **Table name**  | `w02_main_e_spss`| `w02_main_e_spss`|
+| **Categories** |`1 = I am employed by another person or a company and receive wages`<br/>`2 = I am self-employed??`<br/>`3 = I help my family / relative's business without pay for 18 hours or more per week`<br/>`4 = I help my family / relative's business without pay for less than 18 hours a week`| `1 = Need to care for a family member`<br/>`2 = Housework`<br/>`3 = No financial need`<br/>`4 = Old age`<br/>`5 = Poor health`<br/>`6 = Wish to take a break`<br/>`7 = (After retirement) Do not want to work`<br/>`8 = Others` |
+| **Missings** | `NA` | `NA` |
+| **Description** |  |  |
+
+```{r assign w2, echo=F}
+
+opal.assign.table.tibble(o, 'KLOSA_w2','KLOSA.w02_main_e_spss',variables=list('w02D002','w02D405'), missings = T)
+KLOSA_w2 <- opal.execute(o,'KLOSA_w2')
+
+```
+
+```{r local w2, echo=F}
+
+vbl <- KLOSA_w2$w02D002
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(KLOSA_w2)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_w2, aes(x=factor(w02D002))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w2$w02D405
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(KLOSA_w2)[3])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_w2, aes(x=factor(w02D405))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `nonpaid_work` from the study-specific variable it has to be recoded as follows:
+
+* `w02D002 == 1 or w02D405 == 3,4,5 or 7 into 996`
+* `w02D002 == 3,4 into 2`
+* `otherwise: w02D405 == 1,2 into 1`
+
+**R script:**
+
+```{r harmo w2}
+
+# Categorical variable harmonization
+KLOSA_ds_w2 <- tibble(id=KLOSA_w2$id)
+KLOSA_ds_w2$nonpaid_work <- car::recode(KLOSA_w2$w02D405,"c(1,2) = 1; c(3,4,5,7) = 996; c(6,8) = 999; NA = 999")
+KLOSA_ds_w2$nonpaid_work[which(KLOSA_w2$w02D002 %in% c(1))] <- 996
+KLOSA_ds_w2$nonpaid_work[which(KLOSA_w2$w02D002 %in% c(3,4))] <- 2
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w2, echo=F}
+
+vbl <- KLOSA_ds_w2$nonpaid_work
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w2, aes(x=factor(nonpaid_work))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w2, echo=F}
+
+```
+
+
+
+### Wave 3
+
+
+#### Study-specific variable description
+
+| **Name** |`w03D002`| `w03D405` |
+|-|-|-|
+| **Label** |`Main job`| `The reason why do not have a job, even though a suitable job is existed(a job seeker/an unemployed person)`|
+| **Table name**  | `w03_main_e_spss_albert`| `w03_main_e_spss_albert`|
+| **Categories** |`1 = I am employed by another person or a company and receive wages`<br/>`2 = I am self-employed??`<br/>`3 = I help my family / relative's business without pay for 18 hours or more per week`<br/>`4 = I help my family / relative's business without pay for less than 18 hours a week`| `1 = Need to care for a family member`<br/>`2 = Housework`<br/>`3 = No financial need`<br/>`4 = Old age`<br/>`5 = Poor health`<br/>`6 = Wish to take a break`<br/>`7 = (After retirement) Do not want to work`<br/>`8 = Others` |
+| **Missings** | `NA` | `NA` |
+| **Description** |  |  |
+
+```{r assign w3, echo=F}
+
+opal.assign.table.tibble(o, 'KLOSA_w3','KLOSA.w03_main_e_spss_albert',variables=list('w03D002','w03D405'), missings = T)
+KLOSA_w3 <- opal.execute(o,'KLOSA_w3')
+# The id's in the third wave add a '.0' at the end of the id's at the previous waves. We correct this. Note that gregexpr("\\.0",ids) == nchar(ids)-1
+KLOSA_w3$id <- substr(KLOSA_w3$id,1,nchar(KLOSA_w3$id)-2)
+
+```
+
+```{r local w3, echo=F}
+
+vbl <- KLOSA_w3$w03D002
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(KLOSA_w3)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_w3, aes(x=factor(w03D002))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w3$w03D405
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(KLOSA_w3)[3])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_w3, aes(x=factor(w03D405))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `nonpaid_work` from the study-specific variable it has to be recoded as follows:
+
+* `w03D002 == 1 or w03D405 == 3,4,5 or 7 into 996`
+* `w03D002 == 3,4 into 2`
+* `otherwise: w03D405 == 1,2 into 1`
+
+**R script:**
+
+```{r harmo w3}
+
+# Categorical variable harmonization
+KLOSA_ds_w3 <- tibble(id=KLOSA_w3$id)
+KLOSA_ds_w3$nonpaid_work <- car::recode(KLOSA_w3$w03D405,"c(1,2) = 1; c(3,4,5,7) = 996; c(6,8) = 999; NA = 999")
+KLOSA_ds_w3$nonpaid_work[which(KLOSA_w3$w03D002 %in% c(1))] <- 996
+KLOSA_ds_w3$nonpaid_work[which(KLOSA_w3$w03D002 %in% c(3,4))] <- 2
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w3, echo=F}
+
+vbl <- KLOSA_ds_w3$nonpaid_work
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w3, aes(x=factor(nonpaid_work))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w3, echo=F, results='asis'}
+
+```
+
+
+
+### Wave 4
+
+
+#### Study-specific variable description
+
+| **Name** |`w04D002`| `w04D405` |
+|-|-|-|
+| **Label** |`Main job`| `The reason why do not have a job, even though a suitable job is existed(a job seeker/an unemployed person)`|
+| **Table name**  | `w04_main_e_spss`| `w04_main_e_spss`|
+| **Categories** |`1 = I am employed by another person or a company and receive wages`<br/>`2 = I am self-employed??`<br/>`3 = I help my family / relative's business without pay for 18 hours or more per week`<br/>`4 = I help my family / relative's business without pay for less than 18 hours a week`| `1 = Need to care for a family member`<br/>`2 = Housework`<br/>`3 = No financial need`<br/>`4 = Old age`<br/>`5 = Poor health`<br/>`6 = Wish to take a break`<br/>`7 = (After retirement) Do not want to work`<br/>`8 = Others` |
+| **Missings** | `NA` | `NA` |
+| **Description** |  |  |
+
+```{r assign w4, echo=F}
+
+opal.assign.table.tibble(o, 'KLOSA_w4','KLOSA.w04_main_e_spss',variables=list('w04D002','w04D405'), missings = T)
+KLOSA_w4 <- opal.execute(o,'KLOSA_w4')
+
+```
+
+```{r local w4, echo=F}
+
+vbl <- KLOSA_w4$w04D002
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(KLOSA_w4)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_w4, aes(x=factor(w04D002))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w4$w04D405
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(KLOSA_w4)[3])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_w4, aes(x=factor(w04D405))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `nonpaid_work` from the study-specific variable it has to be recoded as follows:
+
+* `w04D002 == 1 or w04D405 == 3,4,5 or 7 into 996`
+* `w04D002 == 3,4 into 2`
+* `otherwise: w04D405 == 1,2 into 1`
+
+**R script:**
+
+```{r harmo w4}
+
+# Categorical variable harmonization
+KLOSA_ds_w4 <- tibble(id=KLOSA_w4$id)
+KLOSA_ds_w4$nonpaid_work <- car::recode(KLOSA_w4$w04D405,"c(1,2) = 1; c(3,4,5,7) = 996; c(6,8) = 999; NA = 999")
+KLOSA_ds_w4$nonpaid_work[which(KLOSA_w4$w04D002 %in% c(1))] <- 996
+KLOSA_ds_w4$nonpaid_work[which(KLOSA_w4$w04D002 %in% c(3,4))] <- 2
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w4, echo=F}
+
+vbl <- KLOSA_ds_w4$nonpaid_work
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w4, aes(x=factor(nonpaid_work))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w4, echo=F, results='asis'}
+
+
+```
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
+
+**R script:**
+
+```{r summ}
+KLOSA_ds_w1$nonpaid_work <- labelled(KLOSA_ds_w1$nonpaid_work, labels = cat_label)
+label(KLOSA_ds_w1$nonpaid_work) <- ds_label
+KLOSA_ds_w2$nonpaid_work <- labelled(KLOSA_ds_w2$nonpaid_work, labels = cat_label)
+label(KLOSA_ds_w2$nonpaid_work) <- ds_label
+KLOSA_ds_w3$nonpaid_work <- labelled(KLOSA_ds_w3$nonpaid_work, labels = cat_label)
+label(KLOSA_ds_w3$nonpaid_work) <- ds_label
+KLOSA_ds_w4$nonpaid_work <- labelled(KLOSA_ds_w4$nonpaid_work, labels = cat_label)
+label(KLOSA_ds_w4$nonpaid_work) <- ds_label
+
+KLOSA_m_ds_w1 <- KLOSA_ds_w1
+KLOSA_m_ds_w1$nonpaid_work <- car::recode(KLOSA_m_ds_w1$nonpaid_work, "miss_values_vector=NA")
+KLOSA_m_ds_w2 <- KLOSA_ds_w2
+KLOSA_m_ds_w2$nonpaid_work <- car::recode(KLOSA_m_ds_w2$nonpaid_work, "miss_values_vector=NA")
+KLOSA_m_ds_w3 <- KLOSA_ds_w3
+KLOSA_m_ds_w3$nonpaid_work <- car::recode(KLOSA_m_ds_w3$nonpaid_work, "miss_values_vector=NA")
+KLOSA_m_ds_w4 <- KLOSA_ds_w4
+KLOSA_m_ds_w4$nonpaid_work <- car::recode(KLOSA_m_ds_w4$nonpaid_work, "miss_values_vector=NA")
+
+
+tt <-    frq(KLOSA_ds_w1$nonpaid_work)[[1]][,c(1:2,4)]
+tt[4] <- frq(KLOSA_ds_w2$nonpaid_work)[[1]][,c(4)]
+tt[5] <- frq(KLOSA_ds_w3$nonpaid_work)[[1]][,c(4)]
+tt[6] <- frq(KLOSA_ds_w4$nonpaid_work)[[1]][,c(4)]
+tt[14,] <- c("n", "sample size", 
+             length(KLOSA_ds_w1$nonpaid_work), length(KLOSA_ds_w2$nonpaid_work), length(KLOSA_ds_w3$nonpaid_work), length(KLOSA_ds_w4$nonpaid_work)
+             )
+names(tt)<-c("val", "label", "w1", "w2", "w3", "w4")
+kable(tt)
+
+dbb <- merge(KLOSA_m_ds_w1[,c("id","nonpaid_work")], KLOSA_m_ds_w2[,c("id","nonpaid_work")], by="id", suffixes = c(".w1",".w2"), all=T)
+dbb <- merge(dbb, KLOSA_m_ds_w3[,c("id","nonpaid_work")], by="id", all=T)
+dbb <- merge(dbb, KLOSA_m_ds_w4[,c("id","nonpaid_work")], by="id", suffixes = c(".w3",".w4"), all=T)
+names(dbb) <- c("id", "w1", "w2", "w3", "w4")
+v.dbb <- paste(dbb[,2],dbb[,3],dbb[,4],dbb[,5],sep="")
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb[f.dbb[,3]>=0.3,])
+```
+
+
+
+# Quality estimation
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+l.KLOSA <- list(w1 = KLOSA_ds_w1, w2 = KLOSA_ds_w2, w3 = KLOSA_ds_w3, w4 = KLOSA_ds_w4)
+
+for(index in seq_along(l.KLOSA)){
+  nonpaid_work <- l.KLOSA[[index]]
+  save(nonpaid_work, file = paste0(datafolder,names(l.KLOSA)[index],"/nonpaid_work.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

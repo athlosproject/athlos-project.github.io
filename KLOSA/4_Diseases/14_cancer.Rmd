@@ -1,0 +1,622 @@
+---
+title: "Cancer"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `cancer`
+* Variable label: `Any malignancy (C00-D48) / information about past or current neoplasm (benign, in situ, malignant)`
+* Variable description: `cancer diagnosis since the last interview`
+* Domain: `Diseases`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | no cancer
+1        | cancer
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+* Short name: `cancer_age`
+* Variable label: `Age of cancer diagnosis`
+* Variable description: `Age of each episode of cancer`
+* Domain: `Diseases`
+* Value type: `Continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+<!-- # Global variables -->
+```{r global, include=FALSE, echo=F}
+miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
+ds_label <- "Any malignancy (C00-D48) / information about past or current neoplasm (benign, in situ, malignant)"
+ds_label_age <- "Age of cancer diagnosis"
+cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
+cont_label <- cat_label[3:11]
+datafolder <- "../RData/"
+#sing_idlist <- c()
+```
+<!-- ########################################################## --> 
+
+
+
+# Data process
+
+
+
+## Korea
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `w01C013` |`w01C014y`|`ybirth`|
+|-|-|-|-|
+| **Label** | `Whether or not cancer or malignant tumor diagnostic`|`Time that is diagnosed by first(unit : Year)`|`year of birth`|
+| **Table name**  | `w01_main_e`| `w01_main_e`|`ybirth`|
+| **Categories** | `1 = Yes; 5 = no` |`continuous`|`continuous`|
+| **Missings** |  | `NA` |  |
+| **Description** |  |  |  |
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'KLOSA_w1','KLOSA.w01_main_e',variables=list('w01C013','w01C014y'), missings = T)
+KLOSA_w1 <- opal.execute(o,'KLOSA_w1')
+load(paste0(datafolder,"w1/ybirth.RData"))
+KLOSA_w1 <- left_join(KLOSA_w1,ybirth,by="id")
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- KLOSA_w1$w01C013
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(KLOSA_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_w1, aes(x=factor(w01C013))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w1$w01C014y
+kable(Continuous_summary(var = vbl, missing_values = NA)[3], caption = names(KLOSA_w1)[3])
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(KLOSA_w1, aes(w01C014y)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1975,2010)
+
+vbl <- KLOSA_w1$ybirth
+kable(Continuous_summary(var = vbl, missing_values = NA)[3], caption = names(KLOSA_w1)[3])
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(KLOSA_w1, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1900,1965)
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cancer` from the study-specific variable it has to be recoded as follows:
+
+* `change 5 into 0`
+* `keep up 1 into 1`
+
+To compute `cancer_age` from the study-specific variable it has to be recoded as follows:
+
+* `if cancer == 1, cancer_age = w01C014y-ybirth`
+* `if cancer == 0, cancer_age = 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w1}
+
+# Categorical variable harmonization
+KLOSA_ds_w1 <- tibble(id=KLOSA_w1$id)
+KLOSA_ds_w1$cancer <- car::recode(KLOSA_w1$w01C013,"5=0")
+
+# Continuous variable harmonization
+KLOSA_ds_w1$cancer_age <- rep(999,length(KLOSA_ds_w1$id))
+KLOSA_ds_w1$cancer_age[KLOSA_ds_w1$cancer==1] <- KLOSA_w1$w01C014y[KLOSA_ds_w1$cancer==1] - KLOSA_w1$ybirth[KLOSA_ds_w1$cancer==1]
+KLOSA_ds_w1$cancer_age[KLOSA_ds_w1$cancer==1 & KLOSA_w1$w01C014y == -9] <- 998
+KLOSA_ds_w1$cancer_age[KLOSA_ds_w1$cancer==0] <- 996
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- KLOSA_ds_w1$cancer
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w1, aes(x=factor(cancer))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- KLOSA_ds_w1$cancer_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(KLOSA_ds_w1, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(25,85)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+
+AfterH <- table(KLOSA_ds_w1$cancer)
+X <- table(KLOSA_w1$w01C013, useNA = "ifany")
+BeforeH <- c(X[2:1])
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("5->0","1,3->1")
+kable(C)
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+
+| **Name** | `w02C016` |`w02C017y`|`ybirth`|
+|-|-|-|-|
+| **Label** | `Whether or not cancer or malignant tumor diagnostic since previous interview`|`The time when is diagnosed by first(yyyy)`|`year of birth`|
+| **Table name**  | `w02_main_e_spss`| `w02_main_e_spss`|`ybirth`|
+| **Categories** | `1 = yes; 5 = no` |`continuous`|`continuous`|
+| **Missings** | `NA` | `NA` |  |
+| **Description** |  |  |  |
+
+```{r assign w2, echo=F}
+
+opal.assign.table.tibble(o, 'KLOSA_w2','KLOSA.w02_main_e_spss',variables=list('w02C016','w02C017y'), missings = T)
+KLOSA_w2 <- opal.execute(o,'KLOSA_w2')
+load(paste0(datafolder,"w2/ybirth.RData"))
+KLOSA_w2 <- left_join(KLOSA_w2,ybirth,by="id")
+
+```
+
+```{r local w2, echo=F}
+
+vbl <- KLOSA_w2$w02C016
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(KLOSA_w2)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_w2, aes(x=factor(w02C016))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w2$w02C017y
+kable(Continuous_summary(var = vbl, missing_values = NA)[3], caption = names(KLOSA_w2)[3])
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(KLOSA_w2, aes(x=factor(w02C017y))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w2$ybirth
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(KLOSA_w2)[4])
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(KLOSA_w2, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1900,1965)
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cancer` from the study-specific variable it has to be recoded as follows:
+
+* `change 5 into 0`
+* `keep up 1 into 1`
+* `NA into 999`
+
+To compute `cancer_age` from the study-specific variable it has to be recoded as follows:
+
+* `if cancer == 1, cancer_age = w02C017y-ybirth`
+* `if cancer == 0, cancer_age = 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w2}
+
+# Categorical variable harmonization
+KLOSA_ds_w2 <- tibble(id=KLOSA_w2$id)
+KLOSA_ds_w2$cancer <- car::recode(KLOSA_w2$w02C016,"5=0; NA=999")
+
+# Continuous variable harmonization
+KLOSA_ds_w2$cancer_age <- rep(999,length(KLOSA_ds_w2$id))
+KLOSA_ds_w2$cancer_age[KLOSA_ds_w2$cancer==1] <- KLOSA_w2$w02C017y[KLOSA_ds_w2$cancer==1] - KLOSA_w2$ybirth[KLOSA_ds_w2$cancer==1]
+KLOSA_ds_w2$cancer_age[KLOSA_ds_w2$cancer==0] <- 996
+KLOSA_ds_w2$cancer_age <- car::recode(KLOSA_ds_w2$cancer_age, "NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w2, echo=F}
+
+vbl <- KLOSA_ds_w2$cancer
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w2, aes(x=factor(cancer))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- KLOSA_ds_w2$cancer_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(KLOSA_ds_w2, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(45,90)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w2, echo=F}
+
+AfterH <- table(KLOSA_ds_w2$cancer)
+X <- table(KLOSA_w2$w02C016, useNA = "ifany")
+BeforeH <- c(X[c(2,1,3)])
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("5->0","1->1","NA->999")
+kable(C)
+
+```
+
+
+
+### Wave 3
+
+
+#### Study-specific variable description
+
+| **Name** | `w03C016` |`w03C017y`|`ybirth`|
+|-|-|-|-|
+| **Label** | `Whether or not cancer or malignant tumor diagnostic since previous interview`|`The time when is diagnosed by first(yyyy)`|`year of birth`|
+| **Table name**  | `w03_main_e_spss_albert`| `w03_main_e_spss_albert`|`ybirth`|
+| **Categories** | `1 = yes; 5 = no` |`continuous`|`continuous`|
+| **Missings** | `NA` | `NA` |  |
+| **Description** |  |  |  |
+
+```{r assign w3, echo=F}
+
+opal.assign.table.tibble(o, 'KLOSA_w3','KLOSA.w03_main_e_spss_albert',variables=list('w03C016','w03C017y'), missings = T)
+KLOSA_w3 <- opal.execute(o,'KLOSA_w3')
+# The id's in the third wave add a '.0' at the end of the id's at the previous waves. We correct this. Note that gregexpr("\\.0",ids) == nchar(ids)-1
+KLOSA_w3$id <- substr(KLOSA_w3$id,1,nchar(KLOSA_w3$id)-2)
+load(paste0(datafolder,"w3/ybirth.RData"))
+KLOSA_w3 <- left_join(KLOSA_w3,ybirth,by="id")
+
+```
+
+```{r local w3, echo=F}
+
+vbl <- KLOSA_w3$w03C016
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(KLOSA_w3)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(KLOSA_w3, aes(x=factor(w03C016))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w3$w03C017y
+kable(Continuous_summary(var = vbl, missing_values = NA)[3], caption = names(KLOSA_w3)[3])
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(KLOSA_w3, aes(factor(w03C017y))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w3$ybirth
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(KLOSA_w3)[4])
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(KLOSA_w3, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1905,1965)
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cancer` from the study-specific variable it has to be recoded as follows:
+
+* `change 5 into 0`
+* `keep up 1 into 1`
+* `NA into 999`
+
+To compute `cancer_age` from the study-specific variable it has to be recoded as follows:
+
+* `if cancer == 1, cancer_age = w03C017y-ybirth`
+* `if cancer == 0, cancer_age = 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w3}
+
+# Categorical variable harmonization
+KLOSA_ds_w3 <- tibble(id=KLOSA_w3$id)
+KLOSA_ds_w3$cancer <- car::recode(KLOSA_w3$w03C016,"5=0; NA=999")
+
+# Continuous variable harmonization
+KLOSA_ds_w3$cancer_age <- rep(999,length(KLOSA_w3$id))
+KLOSA_ds_w3$cancer_age[KLOSA_ds_w3$cancer == 0] <- 996
+KLOSA_ds_w3$cancer_age[KLOSA_ds_w3$cancer == 1] <- KLOSA_w3$w03C017y[KLOSA_ds_w3$cancer == 1]-KLOSA_w3$ybirth[KLOSA_ds_w3$cancer == 1]
+KLOSA_ds_w3$cancer_age <- car::recode(KLOSA_ds_w3$cancer_age, "NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w3, echo=F}
+
+vbl <- KLOSA_ds_w3$cancer
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w3, aes(x=factor(cancer))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- KLOSA_ds_w3$cancer_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(KLOSA_ds_w3, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(45,90)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w3, echo=F, results='asis'}
+
+AfterH <- table(KLOSA_ds_w3$cancer)
+X <- table(KLOSA_w3$w03C016, useNA = "ifany")
+BeforeH <- c(X[c(2,1,3)])
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("5->0","1,3->1","NA->999")
+kable(C)
+
+```
+
+
+
+### Wave 4
+
+
+#### Study-specific variable description
+
+| **Name** | `w04C016` |`w04C017y`|`ybirth`|
+|-|-|-|-|
+| **Label** | `Whether or not cancer or malignant tumor diagnostic since previous interview`|`The time when is diagnosed by first(yyyy)`|`year of birth`|
+| **Table name**  | `w04_main_e_spss`| `w04_main_e_spss`|`ybirth`|
+| **Categories** | `1 = yes; 5 = no` |`continuous`|`continuous`|
+| **Missings** | `NA; -9 = Don't know` | `NA` |  |
+| **Description** |  |  |  |
+
+```{r assign w4, echo=F}
+
+opal.assign.table.tibble(o, 'KLOSA_w4','KLOSA.w04_main_e_spss',variables=list('w04C016','w04C017y'), missings = T)
+KLOSA_w4 <- opal.execute(o,'KLOSA_w4')
+load(paste0(datafolder,"w4/ybirth.RData"))
+KLOSA_w4 <- left_join(KLOSA_w4,ybirth,by="id")
+
+```
+
+```{r local w4, echo=F}
+
+vbl <- KLOSA_w4$w04C016
+kable(Categorical_summary(vbl, missing_values = c(-8))[3], caption = names(KLOSA_w4)[2])
+kable(Categorical_summary(vbl, missing_values = c(-8))[1], caption = "Category")
+ggplot(KLOSA_w4, aes(x=factor(w04C016))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w4$w04C017y
+kable(Continuous_summary(var = vbl, missing_values = NA)[3], caption = names(KLOSA_w4)[3])
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(KLOSA_w4, aes(factor(w04C017y))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w4$ybirth
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(KLOSA_w4)[4])
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(KLOSA_w4, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1905,1965)
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cancer` from the study-specific variable it has to be recoded as follows:
+
+* `change 5 into 0`
+* `keep up 1 into 1`
+* `NA into 999`
+* `-9 into 998`
+
+To compute `cancer_age` from the study-specific variable it has to be recoded as follows:
+
+* `if cancer == 1, cancer_age = w04C017y-ybirth`
+* `if cancer == 0, cancer_age = 996`
+* `NA into 999`
+* `cancer == missing into 999`
+
+**R script:**
+
+```{r harmo w4}
+
+# Categorical variable harmonization
+KLOSA_ds_w4 <- tibble(id=KLOSA_w4$id)
+KLOSA_ds_w4$cancer <- car::recode(KLOSA_w4$w04C016,"3=1; 5=0; -9=997; NA=998")
+
+# Continuous variable harmonization
+KLOSA_ds_w4$cancer_age <- rep(999,length(KLOSA_w4$id))
+KLOSA_ds_w4$cancer_age[KLOSA_ds_w4$cancer == 0] <- 996
+KLOSA_ds_w4$cancer_age[KLOSA_ds_w4$cancer == 1] <- KLOSA_w4$w04C017y[KLOSA_ds_w4$cancer == 1]-KLOSA_w4$ybirth[KLOSA_ds_w4$cancer == 1]
+KLOSA_ds_w4$cancer_age <- car::recode(KLOSA_ds_w4$cancer_age, "NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w4, echo=F}
+
+vbl <- KLOSA_ds_w4$cancer
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(KLOSA_ds_w4, aes(x=factor(cancer))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- KLOSA_ds_w4$cancer_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(KLOSA_ds_w4, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(50,85)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w4, echo=F, results='asis'}
+
+AfterH <- table(KLOSA_ds_w4$cancer)
+X <- table(KLOSA_w4$w04C016, useNA = "ifany")
+BeforeH <- c(X[c(3,2,1,4)])
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("5->0","1->1","-9->998","NA->999")
+kable(C)
+
+
+```
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
+
+**R script:**
+
+```{r summ}
+KLOSA_ds_w1$cancer <- labelled(KLOSA_ds_w1$cancer, labels = cat_label)
+label(KLOSA_ds_w1$cancer) <- ds_label
+KLOSA_ds_w1$cancer_age <- labelled(KLOSA_ds_w1$cancer_age, labels = cont_label)
+label(KLOSA_ds_w1$cancer_age) <- ds_label_age
+KLOSA_ds_w2$cancer <- labelled(KLOSA_ds_w2$cancer, labels = cat_label)
+label(KLOSA_ds_w2$cancer) <- ds_label
+KLOSA_ds_w2$cancer_age <- labelled(KLOSA_ds_w2$cancer_age, labels = cont_label)
+label(KLOSA_ds_w2$cancer_age) <- ds_label_age
+KLOSA_ds_w3$cancer <- labelled(KLOSA_ds_w3$cancer, labels = cat_label)
+label(KLOSA_ds_w3$cancer) <- ds_label
+KLOSA_ds_w3$cancer_age <- labelled(KLOSA_ds_w3$cancer_age, labels = cont_label)
+label(KLOSA_ds_w3$cancer_age) <- ds_label_age
+KLOSA_ds_w4$cancer <- labelled(KLOSA_ds_w4$cancer, labels = cat_label)
+label(KLOSA_ds_w4$cancer) <- ds_label
+KLOSA_ds_w4$cancer_age <- labelled(KLOSA_ds_w4$cancer_age, labels = cont_label)
+label(KLOSA_ds_w4$cancer_age) <- ds_label_age
+
+KLOSA_m_ds_w1 <- KLOSA_ds_w1
+KLOSA_m_ds_w1$cancer <- car::recode(KLOSA_m_ds_w1$cancer, "miss_values_vector=NA")
+KLOSA_m_ds_w2 <- KLOSA_ds_w2
+KLOSA_m_ds_w2$cancer <- car::recode(KLOSA_m_ds_w2$cancer, "miss_values_vector=NA")
+KLOSA_m_ds_w3 <- KLOSA_ds_w3
+KLOSA_m_ds_w3$cancer <- car::recode(KLOSA_m_ds_w3$cancer, "miss_values_vector=NA")
+KLOSA_m_ds_w4 <- KLOSA_ds_w4
+KLOSA_m_ds_w4$cancer <- car::recode(KLOSA_m_ds_w4$cancer, "miss_values_vector=NA")
+
+
+tt <-    frq(KLOSA_ds_w1$cancer)[[1]][,c(1:2,4)]
+tt[4] <- frq(KLOSA_ds_w2$cancer)[[1]][,c(4)]
+tt[5] <- frq(KLOSA_ds_w3$cancer)[[1]][,c(4)]
+tt[6] <- frq(KLOSA_ds_w4$cancer)[[1]][,c(4)]
+tt[13,] <- c("n", "sample size", 
+             length(KLOSA_ds_w1$cancer), length(KLOSA_ds_w2$cancer), length(KLOSA_ds_w3$cancer), length(KLOSA_ds_w4$cancer)
+             )
+names(tt)<-c("val", "label", "w1", "w2", "w3", "w4")
+kable(tt)
+
+dbb <- merge(KLOSA_m_ds_w1[,c("id","cancer")], KLOSA_m_ds_w2[,c("id","cancer")], by="id", suffixes = c(".w1",".w2"), all=T)
+dbb <- merge(dbb, KLOSA_m_ds_w3[,c("id","cancer")], by="id", all=T)
+dbb <- merge(dbb, KLOSA_m_ds_w4[,c("id","cancer")], by="id", suffixes = c(".w3",".w4"), all=T)
+names(dbb) <- c("id", "w1", "w2", "w3", "w4")
+v.dbb <- paste(dbb[,2],dbb[,3],dbb[,4],dbb[,5],sep="")
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb[f.dbb[,3]>=0.3,])
+```
+
+
+
+# Quality estimation
+
+* Probably (I have not checked for this variable but for stroke and other), the diagnostic cancer data for individuals which tell in a wave that they have cancer is missing in all the next waves, so the age of diagnostic too. This fact is preserved in the harmonized variable.
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+l.KLOSA <- list(w1 = KLOSA_ds_w1, w2 = KLOSA_ds_w2, w3 = KLOSA_ds_w3, w4 = KLOSA_ds_w4)
+
+for(index in seq_along(l.KLOSA)){
+  cancer <- l.KLOSA[[index]]
+  save(cancer, file = paste0(datafolder,names(l.KLOSA)[index],"/cancer.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+
