@@ -1,0 +1,187 @@
+---
+title: "Sample weights"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+source("../CHARLS_ids.R")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/weightsDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/weightsDS.R')
+```
+
+
+
+# Data process
+
+## Wave 1 
+
+### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `ind_weight`
+* Label: `Individual Weight without Non-response Adjustment`
+
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'charls_w1_w2','CHARLS.weight_wave1', variables=list('ind_weight'), missings = TRUE)
+charls_w1_w2 <- opal.execute(o,'charls_w1_w2')
+
+charls_w1_w2$id[which(charls_w1_w2$id==151156201)] <- "15115620101"
+
+opal.assign.table.tibble(o, 'CHARLS_w1_id','CHARLS.CHARLS_w1_ids',
+                         variables=list('var'), missings = TRUE)
+CHARLS_w1_id <- opal.execute(o,'CHARLS_w1_id')
+
+
+charls_w1_w2$oldid <- charls_w1_w2$id
+charls_w1_w2$id <- CHARLS_ids(ids = charls_w1_w2$oldid)
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA,NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], oldid=as.numeric(new_2[,3]), ind_weight=as.numeric(new_2[,2]))
+  new_22
+}
+
+charls_w1_w <- Add_indiv(old = charls_w1_w2, new = CHARLS_w1_id)
+```
+
+```{r local1, echo=F}
+Continuous_summary(var = charls_w1_w$ind_weight, missing_values = NA)
+```
+
+### Harmonization algorithm
+
+**R script:**
+
+```{r harmo1}
+CHARLS_ds_w1   <- tibble(id=charls_w1_w$id)
+sn <- length(charls_w1_w$ind_weight[!is.na(charls_w1_w$ind_weight)]) # (s)ample (n)umber: Nº individuals with non-missing weight
+pn <- sum(charls_w1_w$ind_weight, na.rm=T) # (p)opulation (n)umber: Nº of individuals in the population
+CHARLS_ds_w1$w <- charls_w1_w$ind_weight * sn / pn
+CHARLS_ds_w1$w <- car::recode(CHARLS_ds_w1$w, "NA=996")
+CHARLS_ds_w1$w <- labelled(CHARLS_ds_w1$w, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+names(CHARLS_ds_w1) <- c("id","w")
+label(CHARLS_ds_w1$w) <- "Weights for sample representativeness"
+```
+
+### Statistics of the new harmonised variable
+```{r descript1, echo=F}
+Continuous_summary(var = CHARLS_ds_w1$w, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+```
+
+
+
+## Wave 2
+
+### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `INDV_weight`
+* Label: `Cross-section Individual Weight without Nonresponse Adjustment`
+
+```{r assign2, echo=F}
+opal.assign.table.tibble(o, 'charls_w2_w2','CHARLS.Weights_modif_albert_wave2', variables=list('INDV_weight'), missings = TRUE)
+charls_w2_w2 <- opal.execute(o,'charls_w2_w2')
+
+opal.assign.table.tibble(o, 'CHARLS_w2_id','CHARLS.CHARLS_w2_ids',
+                         variables=list('var'), missings = TRUE)
+CHARLS_w2_id <- opal.execute(o,'CHARLS_w2_id')
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], INDV_weight=as.numeric(new_2[,2]))
+  new_22
+}
+
+charls_w2_w <- Add_indiv(old = charls_w2_w2, new = CHARLS_w2_id)
+```
+
+```{r local2, echo=F}
+Continuous_summary(var = charls_w2_w$INDV_weight, missing_values = NA)
+```
+
+### Harmonization algorithm
+
+**R script:**
+
+```{r harmo2}
+CHARLS_ds_w2   <- tibble(id=charls_w2_w$id)
+sn <- length(charls_w2_w$INDV_weight[!is.na(charls_w2_w$INDV_weight)]) # (s)ample (n)umber: Nº individuals with non-missing weight
+pn <- sum(charls_w2_w$INDV_weight, na.rm=T) # (p)opulation (n)umber: Nº of individuals in the population
+CHARLS_ds_w2$w <- charls_w2_w$INDV_weight * sn / pn
+CHARLS_ds_w2$w <- car::recode(CHARLS_ds_w2$w, "NA=996")
+CHARLS_ds_w2$w <- labelled(CHARLS_ds_w2$w, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+names(CHARLS_ds_w2) <- c("id","w")
+label(CHARLS_ds_w2$w) <- "Weights for sample representativeness"
+```
+
+### Statistics of the new harmonised variable
+```{r descript2, echo=F}
+Continuous_summary(var = CHARLS_ds_w2$w, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+```
+
+
+# Quality estimation
+
+The date was the same as the study specific variable taking into account the wave time lapse information.
+We do not know the status of the participants missing in wave 2.
+(Need to check living status variable if they are deaths or dropouts).
+
+
+
+
+```{r save, echo=FALSE}
+w <- CHARLS_ds_w1
+save(w, file = "../RData/w1/w.RData")
+rm(w)
+
+w <- CHARLS_ds_w2
+save(w, file = "../RData/w2/w.RData")
+rm(w)
+```
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+
+

@@ -1,0 +1,155 @@
+---
+title: "Month of death"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+  
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/Rmds/setup_albert.r")
+source("M:/WPs/WP1/Maelstrom/data_process/Rmds/CHARLS/CHARLS_ids.R")
+```
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable
+
+
+The description of harmonised variable is the following:
+  
+* Name: `mdeath`
+* Label: `year of death`
+* Categories: 
+    + `1 = january`
+    + `2 = february`
+    + `3 = march`
+    + `4 = april`
+    + `5 = may`
+    + `6 = june`
+    + `7 = july`
+    + `8 = august`
+    + `9 = september`
+    + `10 = october`
+    + `11 = november`
+    + `12 = december`
+* Missings: 
+    + `991 = CAPI/interviewer error`
+    + `992 = Impute`
+    + `993 = Disable to measure`
+    + `994 = Not attempt/not done`
+    + `995 = Does not answer`
+    + `996 = Not applicable`
+    + `997 = Refuse`
+    + `998 = Do not know`
+    + `999 = Missing`
+
+
+
+### CHARLS - Wave 1 
+
+
+There is no variable.
+
+
+
+
+### CHARLS - Wave 2 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `exb001_2`
+* Label: `The Date on Which R Died (Month)`
+* Type of variable: `countinous`
+
+```{r assign2}
+opal.assign.table.tibble(o, 'CHARLS_w2_Mdeath2','CHARLS.Exit_Interview_wave2',
+                         variables=list('exb001_2'), missings = TRUE)
+opal.assign.table.tibble(o, 'CHARLS_w2_id','CHARLS.CHARLS_w2_ids',
+                         variables=list('var'), missings = TRUE)
+```
+
+```{r local2}
+CHARLS_w2_Mdeath2 <- opal.execute(o,'CHARLS_w2_Mdeath2')
+CHARLS_w2_id <- opal.execute(o,'CHARLS_w2_id')
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], exb001_2=as.numeric(new_2[,2]))
+  new_22
+}
+
+CHARLS_w2_Mdeath <- Add_indiv(old = CHARLS_w2_Mdeath2, new = CHARLS_w2_id)
+
+Categorical_summary(var = CHARLS_w2_Mdeath$exb001_2, missing_values = NA)
+ggplot(CHARLS_w2_Mdeath, aes(exb001_2)) + geom_histogram(stat="count", fill="steelblue") + xlab("Month of death") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+
+R code of the ALGORITHM:
+
+```{r harmo2}
+CHARLS_ds_w2 <- tibble(id=CHARLS_w2_Mdeath$id)
+CHARLS_ds_w2$mdeath <- car::recode(CHARLS_w2_Mdeath$exb001_2, "NA=999")
+CHARLS_ds_w2$mdeath <- labelled(CHARLS_ds_w2$mdeath, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2}
+Categorical_summary(var = CHARLS_ds_w2$mdeath, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(CHARLS_ds_w2, aes(mdeath)) + geom_histogram(stat="count", fill="steelblue") + xlab("Month of death") + ylab("Frequency") + xlim(1, 12)
+```
+
+#### Validation
+```{r crosstabulation2}
+BeforeH <- table(CHARLS_w2_Mdeath$exb001_2, useNA = "ifany")
+AfterH <- table(CHARLS_ds_w2$mdeath)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:(length(AfterH)-1)], "NA->999")
+C
+```
+
+
+# Quality control
+
+
+No comments
+
+
+```{r save, echo=FALSE}
+mdeath <- CHARLS_ds_w2
+save(mdeath, file = "../RData/w2/mdeath.RData")
+rm(mdeath)
+```
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```

@@ -1,0 +1,322 @@
+---
+title: "BMI"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE, echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_albert.r")
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/CHARLS/CHARLS_ids.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+The description of harmonised variable is the following:
+  
+* Name: `bmi`
+* Label: `Body Mass Index calculated as weight (kg)/height(m)^2`
+* Type of variable: `countinous`
+* Missings: 
+    + `991 = CAPI/interviewer error`
+    + `992 = Impute`
+    + `993 = Disable to measure`
+    + `994 = Not attempt/not done`
+    + `995 = Does not answer`
+    + `996 = Not applicable`
+    + `997 = Refuse`
+    + `998 = Do not know`
+    + `999 = Missing`
+* Comments: `the BMI variable should be created by dividing weight and heigh variables with the following equation= weight (kg)/height(m)^2.`
+
+```{r lab, echo=FALSE}
+ds_label <- "bmi"
+ds_label_all <- "Body Mass Index calculated as weight (kg)/height(m)^2"
+```
+
+# Data process
+
+## CHARLS
+
+### Wave 1 
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `ql002`
+* Label: `Weight Measurement`
+* Type of variable: `countinous`
+* Name: `qi002`
+* Label: `Height`
+* Type of variable: `countinous`
+* Missings: 
+    + `993 = Disable to measure`
+
+
+```{r assign1, echo=FALSE}
+opal.assign.table.tibble(o, 'CHARLS_w1_bmi2','CHARLS.biomarkers_wave1',
+                         variables=list('ql002', 'qi002'), missings = TRUE)
+opal.assign.table.tibble(o, 'CHARLS_w1_id','CHARLS.CHARLS_w1_ids',
+                         variables=list('var'), missings = TRUE)
+```
+
+```{r local1, echo=FALSE}
+CHARLS_w1_bmi2 <- opal.execute(o,'CHARLS_w1_bmi2')
+CHARLS_w1_id <- opal.execute(o,'CHARLS_w1_id')
+CHARLS_w1_bmi2$oldid <- CHARLS_w1_bmi2$id
+CHARLS_w1_bmi2$id <- CHARLS_ids(ids = CHARLS_w1_bmi2$oldid)
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA, NA, NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], oldid=as.numeric(new_2[,4]), qi002=as.numeric(new_2[,2]), ql002=as.numeric(new_2[,3]))
+  new_22
+}
+
+CHARLS_w1_bmi <- Add_indiv(old = CHARLS_w1_bmi2, new = CHARLS_w1_id)
+
+vari <- CHARLS_w1_bmi$ql002
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = "Weight") 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(CHARLS_w1_bmi, aes(ql002)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency")
+
+vari <- CHARLS_w1_bmi$qi002
+kable(Continuous_summary(var = vari, missing_values = c(993))[3], caption = "Height")
+kable(Continuous_summary(vari, missing_values = c(993))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(993))$summary, caption = "Summary")
+ggplot(CHARLS_w1_bmi, aes(qi002)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable will be calculate from the study-specific variables using this formula
+
+bmi=weight/height^2
+
+The missing values have to be recoded as follows:
+
+* `keep 993 into 993`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1}
+compute_bmi <- function(Heigth, Weigth, miss, heigth_m = TRUE){
+  Heigth <- car::recode(Heigth, "NA=999")
+  Weigth <- car::recode(Weigth, "NA=999")
+  
+  if(heigth_m){
+    bmi <- Weigth/(Heigth^2)
+    
+    bmi[Heigth==999] <- 999
+    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
+    
+    bmi[Weigth==999] <- 999
+    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
+  } else {
+    bmi <- Weigth/((Heigth/100)^2)
+    
+    bmi[Heigth==999] <- 999
+    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
+    
+    bmi[Weigth==999] <- 999
+    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
+  }
+  bmi
+}
+
+CHARLS_w1_bmi$bmi <- compute_bmi(Heigth = CHARLS_w1_bmi$qi002, 
+                        Weigth = CHARLS_w1_bmi$ql002, miss = c(993), 
+                        heigth_m = FALSE)
+
+CHARLS_ds_w1 <- tibble(id=CHARLS_w1_bmi$id)
+CHARLS_ds_w1$bmi <- car::recode(CHARLS_w1_bmi$bmi, "NA=999")
+CHARLS_ds_w1$bmi <- labelled(CHARLS_ds_w1$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=FALSE}
+vari <- CHARLS_ds_w1$bmi
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(CHARLS_ds_w1, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,100)
+```
+
+#### Validation
+There are some unusual values:
+```{r crosstabulation1, echo=FALSE}
+tt <- CHARLS_w1_bmi[which(CHARLS_w1_bmi$bmi<13 | CHARLS_w1_bmi$bmi>75 & CHARLS_w1_bmi$bmi<900 | CHARLS_w1_bmi$bmi>999),]
+names(tt) <- c("id", "old_id", "Height", "Weight", "bmi")
+kable(tt)
+```
+
+
+
+
+
+
+### CHARLS - Wave 2 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `ql002`
+* Label: `Weight Measuremen`
+* Type of variable: `countinous`
+* Name: `qi002`
+* Label: `Height`
+* Type of variable: `countinous`
+
+
+```{r assign2, echo=FALSE}
+opal.assign.table.tibble(o, 'CHARLS_w2_bmi2','CHARLS.Biomarker_wave2',
+                         variables=list('ql002', 'qi002'), missings = TRUE)
+opal.assign.table.tibble(o, 'CHARLS_w2_id','CHARLS.CHARLS_w2_ids',
+                         variables=list('var'), missings = TRUE)
+```
+
+```{r local2, echo=FALSE}
+CHARLS_w2_bmi2 <- opal.execute(o,'CHARLS_w2_bmi2')
+CHARLS_w2_id <- opal.execute(o,'CHARLS_w2_id')
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, ncol = dim(old)[2] , nrow = dim(new)[1])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA, NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], qi002=as.numeric(new_2[,2]), ql002=as.numeric(new_2[,3]))
+  new_22
+}
+
+CHARLS_w2_bmi <- Add_indiv(old = CHARLS_w2_bmi2, new = CHARLS_w2_id)
+
+
+vari <- CHARLS_w2_bmi$ql002
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(CHARLS_w2_bmi, aes(ql002)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vari <- CHARLS_w2_bmi$qi002
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(CHARLS_w2_bmi, aes(qi002)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable will be calculate from the study-specific variables using this formula
+
+bmi=weight/height^2
+
+The missing values have to be recoded as follows:
+
+* `keep 993 into 993`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2}
+compute_bmi <- function(Heigth, Weigth, miss, heigth_m = TRUE){
+  Heigth <- car::recode(Heigth, "NA=999")
+  Weigth <- car::recode(Weigth, "NA=999")
+  
+  if(heigth_m){
+    bmi <- Weigth/(Heigth^2)
+    
+    bmi[Heigth==999] <- 999
+    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
+    
+    bmi[Weigth==999] <- 999
+    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
+  } else {
+    bmi <- Weigth/((Heigth/100)^2)
+    
+    bmi[Heigth==999] <- 999
+    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
+    
+    bmi[Weigth==999] <- 999
+    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
+  }
+  bmi
+}
+
+CHARLS_w2_bmi$bmi <- compute_bmi(Heigth = CHARLS_w2_bmi$qi002, 
+                        Weigth = CHARLS_w2_bmi$ql002, miss = c(993), 
+                        heigth_m = FALSE)
+
+CHARLS_ds_w2 <- tibble(id=CHARLS_w2_bmi$id)
+CHARLS_ds_w2$bmi <- car::recode(CHARLS_w2_bmi$bmi, "NA=999")
+CHARLS_ds_w2$bmi <- labelled(CHARLS_ds_w2$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2, echo=FALSE}
+vari <- CHARLS_ds_w2$bmi
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(CHARLS_ds_w2, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,100)
+```
+
+#### Validation
+There are unusual values:
+```{r crosstabulation2, echo=FALSE}
+tt <- CHARLS_w2_bmi[which(CHARLS_w2_bmi$bmi<13 | CHARLS_w2_bmi$bmi>75 & CHARLS_w2_bmi$bmi<900 | CHARLS_w2_bmi$bmi>999),]
+names(tt) <- c("id", "Height", "Weight", "bmi")
+kable(tt)
+
+```
+
+# Quality control
+No comments.
+
+
+```{r save, echo=FALSE}
+bmi <- CHARLS_ds_w1
+save(bmi, file = "../RData/w1/bmi.RData")
+rm(bmi)
+
+bmi <- CHARLS_ds_w2
+save(bmi, file = "../RData/w2/bmi.RData")
+rm(bmi)
+```
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+
+
+

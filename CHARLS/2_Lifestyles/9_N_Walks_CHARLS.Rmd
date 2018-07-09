@@ -1,0 +1,232 @@
+---
+title: "Number of walks"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+source("../../CHARLS/CHARLS_ids.R")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/n_walksDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/n_walksDS.R')
+```
+
+
+
+# Data process
+
+
+## China
+
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `da052_3_` |
+|-|-|
+| **Label** | `Days Walking At Least 10 Minutes Continuously (question was asked per usual week)` |
+| **Table name** | `health_status_and_functioning_wave1` |
+| **Categories:**| `continuous`|
+| **Missings:**| `NA` |
+| **Description** |  | 
+
+
+```{r assign w1, echo=F}
+opal.assign.table.tibble(o, 'CHARLS_w1_2','CHARLS.health_status_and_functioning_wave1', variables=list('da052_3_'), missings = TRUE)
+CHARLS_w1_2 <- opal.execute(o,'CHARLS_w1_2')
+
+
+
+opal.assign.table.tibble(o, 'CHARLS_w1_id','CHARLS.CHARLS_w1_ids', variables=list('var'), missings = TRUE)
+CHARLS_w1_id <- opal.execute(o,'CHARLS_w1_id')
+
+CHARLS_w1_2$oldid <- CHARLS_w1_2$id
+CHARLS_w1_2$id <- CHARLS_ids(ids = CHARLS_w1_2$oldid)
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA,NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], oldid=as.numeric(new_2[,3]), da052_3_=as.numeric(new_2[,2]))
+  new_22
+}
+
+CHARLS_w1 <- Add_indiv(old = CHARLS_w1_2, new = CHARLS_w1_id)
+
+```
+
+```{r local w1, echo=F}
+vbl <- CHARLS_w1$da052_3_
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = label(vbl)) 
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(CHARLS_w1, aes(da052_3_)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency") + xlim(0,7.5)
+```
+
+#### Harmonisation algorithm
+
+To compute `n_walks` from the study-specific variable it has to be recoded as follows:
+
+* `da052_3_*4` 
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w1}
+CHARLS_ds_w1 <- tibble(id=CHARLS_w1$id)
+CHARLS_ds_w1$n_walks <- car::recode(CHARLS_w1$da052_3_*4, "NA = 999 ")
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=F}
+vbl <- CHARLS_ds_w1$n_walks
+kable(Continuous_summary(var = vbl, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(CHARLS_ds_w1, aes(n_walks)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,30) 
+```
+
+#### Validation
+```{r crosstabulation w1, echo=F}
+```
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `da052_3_` |
+|-|-|
+| **Label** | `Days Walking At Least 10 Minutes Continuously` |
+| **Table name** | `Health_Status_and_Functioning_wave2` |
+| **Categories:**| `continuous`|
+| **Missings:**| `NA` |
+| **Description** |  |
+
+   
+```{r assign w2, echo=F}
+opal.assign.table.tibble(o, 'CHARLS_w2_2','CHARLS.Health_Status_and_Functioning_wave2', variables=list('da052_3_'), missings = TRUE)
+CHARLS_w2_2 <- opal.execute(o,'CHARLS_w2_2')
+
+opal.assign.table.tibble(o, 'CHARLS_w2_id','CHARLS.CHARLS_w2_ids', variables=list('var'), missings = TRUE)
+CHARLS_w2_id <- opal.execute(o,'CHARLS_w2_id')
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], da052_3_=as.numeric(new_2[,2]))
+  new_22
+}
+
+CHARLS_w2 <- Add_indiv(old = CHARLS_w2_2, new = CHARLS_w2_id)
+
+
+```
+
+```{r local w2, echo=F}
+vbl <- CHARLS_w2$da052_3_
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = label(vbl)) 
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(CHARLS_w2, aes(da052_3_)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency") + xlim(0,7.5)
+```
+
+#### Harmonisation algorithm
+
+To compute `n_walks` from the study-specific variable it has to be recoded as follows:
+
+* `da052_3_*4`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w2}
+CHARLS_ds_w2 <- tibble(id=CHARLS_w2$id)
+CHARLS_ds_w2$n_walks <- car::recode(CHARLS_w2$da052_3_*4, "NA = 999 ")
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w2, echo=F}
+vbl <- CHARLS_ds_w2$n_walks
+kable(Continuous_summary(var = vbl, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(CHARLS_ds_w2, aes(n_walks)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,30)
+```
+
+#### Validation
+```{r crosstabulation w2, echo=F}
+```
+
+
+
+```{r final, echo=F}
+
+l.hds <- list(w1 = CHARLS_ds_w1, w2 = CHARLS_ds_w2)
+
+for(name in names(l.hds)) {
+  label(l.hds[[name]][[2]]) <- ds_label # Text value assigned at the DS description, at the top
+  l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
+}
+
+```
+
+
+# Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+
+for(index in seq_along(l.hds)){
+  n_walks <- l.hds[[index]]
+  save(n_walks, file = paste0(datafolder,names(l.hds)[index],"/n_walks.RData"))
+}
+
+```
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

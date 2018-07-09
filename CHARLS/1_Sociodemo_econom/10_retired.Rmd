@@ -1,0 +1,726 @@
+---
+title: "Retired"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+source("../../CHARLS/CHARLS_ids.R")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/retiredDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/retiredDS.R')
+```
+
+
+
+# Data process
+
+
+## China
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'CHARLS_w1_2','CHARLS.work_retirement_and_pension_wave1',variables=list('fb011','fb012','fm011','fm005_2','fm014_2','fm025_2','fm030_2','fm005_1','fm014_1','fm025_1','fm030_1'), missings = T)
+CHARLS_w1_2 <- opal.execute(o,'CHARLS_w1_2')
+opal.assign.table.tibble(o, 'CHARLS_w1_id','CHARLS.CHARLS_w1_ids',variables=list('var'), missings = TRUE)
+CHARLS_w1_id <- opal.execute(o,'CHARLS_w1_id')
+
+# adding a zero to the old id's in CHARLS_w1 with CHARLS_ids
+CHARLS_w1_2$oldid <- CHARLS_w1_2$id
+CHARLS_w1_2$id <- CHARLS_ids(ids = CHARLS_w1_2$oldid)
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], rep(NA,12))
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], oldid=as.numeric(new_2[,13]), fb011=as.numeric(new_2[,2]), fb012=as.numeric(new_2[,3]), fm005_1=as.numeric(new_2[,4]), fm005_2=as.numeric(new_2[,5]), fm011=as.numeric(new_2[,6]), fm014_1=as.numeric(new_2[,7]), fm014_2=as.numeric(new_2[,8]), fm025_1=as.numeric(new_2[,9]), fm025_2=as.numeric(new_2[,10]), fm030_1=as.numeric(new_2[,11]), fm030_2=as.numeric(new_2[,12]))
+  new_22
+}
+CHARLS_w1 <- Add_indiv(old = CHARLS_w1_2, new = CHARLS_w1_id)
+label(CHARLS_w1)=lapply(names(CHARLS_w1),function(x) label(CHARLS_w1[,x]) = label(CHARLS_w1_2[x]))
+
+# The same function for only two study-specific variables: CHARLS_w11 <- left_join(CHARLS_w1_id,CHARLS_w1_2)[c(1,5,3,4)]
+
+load(paste0(datafolder,"w1/ybirth.RData"))
+load(paste0(datafolder,"w1/mbirth.RData"))
+CHARLS_w1 <- left_join(CHARLS_w1,ybirth, by="id")
+CHARLS_w1 <- left_join(CHARLS_w1,mbirth, by="id")
+rm(ybirth)
+rm(mbirth)
+
+```
+
+
+
+| **Name** | `fb011` |`fb012`|`fm011`|
+|-|-|-|-|
+| **Label** | `Processed Retirement`|`Completed Receding Position Procedures`|`Type of Retirement`|
+| **Table name**  | `work_retirement_and_pension_wave1`|  `work_retirement_and_pension_wave1`|  `work_retirement_and_pension_wave1`|
+| **Categories** |`1 = Ye`<br/>`2 = No` |`1 = Yes`<br/>`2 = No` |`1 = Normal retirement`<br/>`2 = Early retirement`<br/>`3 = Internal retirement first then regular retirement`<br/>`4 = Internal retirement and not yet regular retirement`|
+| **Missings** | `NA` | `NA` | `NA` |
+| **Description** |  |  |  |
+
+```{r local w1, echo=F}
+
+vbl <- CHARLS_w1$fb011
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'fb011')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w1, aes(x=factor(fb011))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- CHARLS_w1$fb012
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'fb012')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w1, aes(x=factor(fb012))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- CHARLS_w1$fm011
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'fm011')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w1, aes(x=factor(fm011))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+
+| **Name** | `fm005_2`|`fm014_2`|`fm025_2`|`fm030_2`|`mbirth`|
+|-|-|-|-|-|-|
+| **Label** |`In what month did you recede from your position?`|`In what month did you take [preload: normal/early] retirement?`|`In what month did you take internal retirement?`|`In what month did you process formal retirement?`|`month of birth`|
+| **Table name**  |  `work_retirement_and_pension_wave1`|  `work_retirement_and_pension_wave1`|  `work_retirement_and_pension_wave1`| `work_retirement_and_pension_wave1`| `mbirth`|
+| **Categories** |`continuous`|`continuous`|`continuous`|`continuous`|`continuous`|
+| **Missings** | `0 = do not remember`<br/>`NA`|`0 = do not remember`<br/>`NA`|`0 = do not remember`<br/>`NA`|`0 = do not remember`<br/>`NA`|`999 = Missing`|
+| **Description** |  |  |  |  |  |
+
+
+```{r localm w1, echo=F}
+
+vbl <- CHARLS_w1$fm005_2
+vbl_miss <- c(0)
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'fm005_2')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(CHARLS_w1,!vbl %in% vbl_miss), aes(fm005_2)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+scale_x_continuous(breaks=c(3,6,9,12))
+
+vbl <- CHARLS_w1$fm014_2
+vbl_miss <- c(0)
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'fm014_2')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(CHARLS_w1,!vbl %in% vbl_miss), aes(fm014_2)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+scale_x_continuous(breaks=c(3,6,9,12))
+
+vbl <- CHARLS_w1$fm025_2
+vbl_miss <- c(0)
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'fm025_2')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(CHARLS_w1,!vbl %in% vbl_miss), aes(fm025_2)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+scale_x_continuous(breaks=c(3,6,9,12))
+
+vbl <- CHARLS_w1$fm030_2
+vbl_miss <- c(0)
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'fm030_2')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(CHARLS_w1,!vbl %in% vbl_miss), aes(fm030_2)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+scale_x_continuous(breaks=c(3,6,9,12))
+
+vbl <- CHARLS_w1$mbirth
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'mbirth')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(CHARLS_w1,!vbl %in% vbl_miss), aes(mbirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+scale_x_continuous(breaks=c(3,6,9,12))
+
+```
+
+
+| **Name** | `fm005_1`|`fm014_1`|`fm025_1`|`fm030_1`|`ybirth`|
+|-|-|-|-|-|-|
+| **Label** |`In what year did you recede from your position?`|`In what year did you take [preload: normal/early] retirement?`|`In what year did you take internal retirement?`|`In what year did you process formal retirement?`|`year of birth`|
+| **Table name**  |  `work_retirement_and_pension_wave1`|  `work_retirement_and_pension_wave1`|  `work_retirement_and_pension_wave1`| `work_retirement_and_pension_wave1`| `ybirth`|
+| **Categories** |`continuous`|`continuous`|`continuous`|`continuous`|`continuous`|
+| **Missings** |`NA`|`NA`|`NA`|`NA`|`999 = Missing`|
+| **Description** |  |  |  |  |  |
+
+
+```{r localy w1, echo=F}
+
+vbl <- CHARLS_w1$fm005_1
+vbl_miss <- NA
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'fm005_1')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(CHARLS_w1,!vbl %in% vbl_miss), aes(fm005_1)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- CHARLS_w1$fm014_1
+vbl_miss <- NA
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'fm014_1')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(CHARLS_w1,!vbl %in% vbl_miss), aes(fm014_1)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- CHARLS_w1$fm025_1
+vbl_miss <- NA
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'fm025_1')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(CHARLS_w1,!vbl %in% vbl_miss), aes(fm025_1)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- CHARLS_w1$fm030_1
+vbl_miss <- NA
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'fm030_1')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(CHARLS_w1,!vbl %in% vbl_miss), aes(fm030_1)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- CHARLS_w1$ybirth
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'ybirth')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(CHARLS_w1,!vbl %in% vbl_miss), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+To compute `retired` from the study-specific variable it has to be recoded as follows:
+
+* `all 2 into 0`
+* `some 1 into 1`
+* `NA into 999`
+
+To compute `age_retired` from the study-specific variable it has to be recoded as follows:
+
+* `some answered month not remembered into 998`
+* `retired == 0 into 996`
+* `if Receding Position, fm005_2, fm005_1 into month, year`
+* `if Processed normal or early Retirement, fm014_2, fm014_1 into month, year`
+* `if Processed internal Retirement, fm025_2, fm025_1 into month, year`
+* `if Processed regular Retirement, fm030_2, fm030_1 into month, year`
+* `age_retired = date of retirement - date of birth`
+
+**R script:**
+
+```{r harmo w1}
+
+# Categorical variable harmonization
+CHARLS_ds_w1 <- tibble(id=CHARLS_w1$id)
+CHARLS_ds_w1$retired <- rep(999,length(CHARLS_w1$id))
+CHARLS_ds_w1$retired[which(CHARLS_w1$fb011==2 & CHARLS_w1$fb012==2)] <- 0
+CHARLS_ds_w1$retired[which(CHARLS_w1$fb011==1 | CHARLS_w1$fb012==1)] <- 1
+
+# Continuous variable harmonization
+
+# Month harmonization
+CHARLS_ds_w1$month <- rep(999,length(CHARLS_ds_w1$id))
+CHARLS_ds_w1$month[which(CHARLS_w1$fm005_2==0 | CHARLS_w1$fm014_2==0 | CHARLS_w1$fm025_2==0 | CHARLS_w1$fm030_2==0)] <- 998
+CHARLS_ds_w1$month[which(CHARLS_ds_w1$retired==0)] <- 996
+CHARLS_ds_w1$month[which(CHARLS_w1$fm005_2!=0 & CHARLS_w1$fb012==1)] <- CHARLS_w1$fm005_2[which(CHARLS_w1$fm005_2!=0 & CHARLS_w1$fb012==1)]
+CHARLS_ds_w1$month[which(CHARLS_w1$fm014_2!=0 & CHARLS_w1$fb011==1 & CHARLS_w1$fm011 %in% c(1,2))] <- CHARLS_w1$fm014_2[which(CHARLS_w1$fm014_2!=0 & CHARLS_w1$fb011==1 & CHARLS_w1$fm011 %in% c(1,2))]
+CHARLS_ds_w1$month[which(CHARLS_w1$fm025_2!=0 & CHARLS_w1$fb011==1 & CHARLS_w1$fm011 %in% c(3,4))] <- CHARLS_w1$fm025_2[which(CHARLS_w1$fm025_2!=0 & CHARLS_w1$fb011==1 & CHARLS_w1$fm011 %in% c(3,4))]
+CHARLS_ds_w1$month[which(CHARLS_w1$fm030_2!=0 & CHARLS_w1$fb011==1 & CHARLS_w1$fm011==3)] <- CHARLS_w1$fm030_2[which(CHARLS_w1$fm030_2!=0 & CHARLS_w1$fb011==1 & CHARLS_w1$fm011==3)]
+
+# Year harmonization
+CHARLS_ds_w1$year <- rep(999,length(CHARLS_ds_w1$id))
+CHARLS_ds_w1$year[which(CHARLS_w1$fm014_1>=2013 | CHARLS_w1$fm030_1>=2013)] <- 991
+CHARLS_ds_w1$year[which(CHARLS_ds_w1$retired==0)] <- 996
+CHARLS_ds_w1$year[which(CHARLS_w1$fm005_1<2012 & CHARLS_w1$fm005_1>=1900 & CHARLS_w1$fb012==1)] <- CHARLS_w1$fm005_1[which(CHARLS_w1$fm005_1<2012 & CHARLS_w1$fm005_1>=1900 & CHARLS_w1$fb012==1)]
+CHARLS_ds_w1$year[which(CHARLS_w1$fm014_1<2012 & CHARLS_w1$fm014_1>=1900 & CHARLS_w1$fb011==1 & CHARLS_w1$fm011 %in% c(1,2))] <- CHARLS_w1$fm014_1[which(CHARLS_w1$fm014_1<2012 & CHARLS_w1$fm014_1>=1900 & CHARLS_w1$fb011==1 & CHARLS_w1$fm011 %in% c(1,2))]
+CHARLS_ds_w1$year[which(CHARLS_w1$fm025_1<2012 & CHARLS_w1$fm025_1>=1900 & CHARLS_w1$fb011==1 & CHARLS_w1$fm011 %in% c(3,4))] <- CHARLS_w1$fm025_1[which(CHARLS_w1$fm025_1<2012 & CHARLS_w1$fm025_1>=1900 & CHARLS_w1$fb011==1 & CHARLS_w1$fm011 %in% c(3,4))]
+CHARLS_ds_w1$year[which(CHARLS_w1$fm030_1<2012 & CHARLS_w1$fm030_1>=1900 & CHARLS_w1$fb011==1 & CHARLS_w1$fm011==3)] <- CHARLS_w1$fm030_1[which(CHARLS_w1$fm030_1<2012 & CHARLS_w1$fm030_1>=1900 & CHARLS_w1$fb011==1 & CHARLS_w1$fm011==3)]
+
+
+# Age harmonization
+#CHARLS_ds_w1$age_retired <- rep(999,length(CHARLS_ds_w1$id))
+#CHARLS_w1$ybirth <- car::recode(CHARLS_w1$ybirth, "miss_values_vector=NA")
+
+#function to compute the age
+comp_age <- function(y_birth, m_birth, a_year, a_month, miss){
+  N <- length(y_birth)
+  #first, it's computed the age of all
+  age <- rep(NA,N)
+  age[which(a_month<m_birth)] <- (a_year[which(a_month<m_birth)]-y_birth[which(a_month<m_birth)])-1
+  age[which(a_month>=m_birth)] <- a_year[which(a_month>=m_birth)]-y_birth[which(a_month>=m_birth)]
+  age[which(m_birth>900)] <- a_year[which(m_birth>900)]-y_birth[which(m_birth>900)]
+  
+  #It's emphasized the individues having missing
+  
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(y_birth==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(a_year==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+  
+  
+  age
+
+}
+
+CHARLS_ds_w1$age_retired <- comp_age(y_birth=CHARLS_w1$ybirth, m_birth=CHARLS_w1$mbirth , a_year=CHARLS_ds_w1$year, a_month=CHARLS_ds_w1$month, miss=miss_values_vector)
+
+# Correction. There is an individual for which the algorithm computes the age from fm030_1, giving as a result a negative age. We take here another year answered by that individual.
+CHARLS_ds_w1$age_retired[which(CHARLS_ds_w1$age_retired<0)] <- CHARLS_w1$fm025_1[which(CHARLS_ds_w1$age_retired<0)] - CHARLS_w1$ybirth[which(CHARLS_ds_w1$age_retired<0)]
+
+CHARLS_ds_w1 <- CHARLS_ds_w1[,c("id","retired","age_retired")]
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- CHARLS_ds_w1$retired
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(CHARLS_ds_w1, aes(x=factor(retired))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- CHARLS_ds_w1$age_retired
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(filter(CHARLS_ds_w1,!vbl %in% miss_values_vector), aes(age_retired)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+
+continuous <- c(sum(CHARLS_ds_w1$age_retired==996),sum(CHARLS_ds_w1$age_retired!=996))
+X <- table(CHARLS_ds_w1$retired, useNA = "ifany")
+dichotomous <- c(X[1],sum(X[2:3]))
+C <- rbind(continuous,dichotomous)
+colnames(C) <- c("0<-->996","1<-->(possibly missing) age of diagnostic")
+kable(C,caption = "Continuous vs Dichotomous")
+
+```
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+
+```{r assign w2, echo=F}
+
+opal.assign.table.tibble(o, 'CHARLS_w2_2','CHARLS.Work_Retirement_and_Pension_wave2',variables=list('zf15','zf16','zf25_8','zf26','fb011','fb012','fm011','fm005_2','fm014_2','fm025_2','fm030_2','fm005_1','fm014_1','fm025_1','fm030_1'), missings = T)
+CHARLS_w2_2 <- opal.execute(o,'CHARLS_w2_2')
+opal.assign.table.tibble(o, 'CHARLS_w2_exit','CHARLS.Exit_Interview_wave2',variables=list('zf15'), missings = T)
+CHARLS_w2_exit <- opal.execute(o,'CHARLS_w2_exit')
+opal.assign.table.tibble(o, 'CHARLS_w2_id','CHARLS.CHARLS_w2_ids',variables=list('var'), missings = TRUE)
+CHARLS_w2_id <- opal.execute(o,'CHARLS_w2_id')
+
+Add_indiv <- function(old, new){
+
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], rep(NA,15))
+    }
+  }
+
+  new_22 <- data.frame(id=new_2[,1], zf15=as.numeric(new_2[,2]), zf16=as.numeric(new_2[,3]), zf25_8=as.numeric(new_2[,4]), zf26=as.numeric(new_2[,5]), fb011=as.numeric(new_2[,6]), fb012=as.numeric(new_2[,7]), fm005_1=as.numeric(new_2[,8]), fm005_2=as.numeric(new_2[,9]), fm011=as.numeric(new_2[,10]), fm014_1=as.numeric(new_2[,11]), fm014_2=as.numeric(new_2[,12]), fm025_1=as.numeric(new_2[,13]), fm025_2=as.numeric(new_2[,14]), fm030_1=as.numeric(new_2[,15]), fm030_2=as.numeric(new_2[,16]))
+  new_22
+}
+CHARLS_w2 <- Add_indiv(old = CHARLS_w2_2, new = CHARLS_w2_id)
+label(CHARLS_w2)=lapply(names(CHARLS_w2),function(x) label(CHARLS_w2[,x]) = label(CHARLS_w2_2[x]))
+
+CHARLS_w2 <- left_join(CHARLS_w2, CHARLS_w2_exit, by="id",suffix=c("",".e"))
+
+load(paste0(datafolder,"w2/ybirth.RData"))
+load(paste0(datafolder,"w2/mbirth.RData"))
+CHARLS_w2 <- left_join(CHARLS_w2,ybirth, by="id")
+CHARLS_w2 <- left_join(CHARLS_w2,mbirth, by="id")
+rm(ybirth)
+rm(mbirth)
+
+```
+
+
+
+| **Name** |`zf15` (renamed below `zf15.e`)|`zf15`|`zf16`|`zf25_8`|`zf26`| `fb011` |`fb012`|`fm011`|
+|-|-|-|-|-|-|-|-|-|
+| **Label** |`Complete Retirement in Last Interview`|`Preload LastIW Retirement Status`|`Preload LastIW Receding position Status`|`Preload LastIW Retiremnet Information`|`Completed Formal Retiremnet in LastIW`| `Completed Retirement Procedures or Internal Retirement`|`Completed Receding Position Procedures`|`Type of Retirement`|
+| **Table name**  |`Exit_Interview_wave2`| `Work_Retirement_and_Pension_wave2`|  `Work_Retirement_and_Pension_wave2`|  `Work_Retirement_and_Pension_wave2`|  `Work_Retirement_and_Pension_wave2`| `Work_Retirement_and_Pension_wave2`| `Work_Retirement_and_Pension_wave2`|  `Work_Retirement_and_Pension_wave2`|
+| **Categories** |`1 = Yes`<br/>`2 = No` |`1 = Compeleted Retirement Procedure`|`1 = Compeleted Receding Position Procedure`|`1 = Completed Internal Retirement`|`1 = Yes`|`1 = Yes`<br/>`2 = No` |`1 = Yes`<br/>`2 = No` |`1 = Normal Retirement`<br/>`2 = Early Retirement`<br/>`3 = Internal Retirement First then Regular Retirement`<br/>`4 = Internal Retirement But Not yet Regular Retirement`|
+| **Missings** | `NA` | `NA` | `NA` | `NA` | `NA` | `NA` | `NA` | `NA` |
+| **Description** |  |  |  |  |  |  |  |  |
+
+
+```{r local w2, echo=F}
+
+vbl <- CHARLS_w2$zf15.e
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'zf15.e')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w2, aes(x=factor(zf15.e))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- CHARLS_w2$zf15
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'zf15')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w2, aes(x=factor(zf15))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- CHARLS_w2$zf16
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'zf16')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w2, aes(x=factor(zf16))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- CHARLS_w2$zf25_8
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'zf25_8')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w2, aes(x=factor(zf25_8))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- CHARLS_w2$zf26
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'zf26')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w2, aes(x=factor(zf26))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- CHARLS_w2$fb011
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'fb011')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w2, aes(x=factor(fb011))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- CHARLS_w2$fb012
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'fb012')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w2, aes(x=factor(fb012))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- CHARLS_w2$fm011
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'fm011')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w2, aes(x=factor(fm011))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+| **Name** | `fm005_2`|`fm014_2`|`fm025_2`|`fm030_2`|`mbirth`|
+|-|-|-|-|-|-|
+| **Label** |`When Did You Recede from Position(Month)`|`When Did You Process Retirement(Month)`|`When Did You Take Internal Retirement(Month)`|`When Did You Process Formal Retirement(Month)`|`month of birth`|
+| **Table name**  |  `Work_Retirement_and_Pension_wave2`|  `Work_Retirement_and_Pension_wave2`|  `Work_Retirement_and_Pension_wave2`| `Work_Retirement_and_Pension_wave2`| `mbirth`|
+| **Categories** |`continuous`|`continuous`|`continuous`|`continuous`|`continuous`|
+| **Missings** | `0 = do not remember`<br/>`NA`|`0 = do not remember`<br/>`NA`|`0 = do not remember`<br/>`NA`|`0 = do not remember`<br/>`NA`|`999 = Missing`|
+| **Description** |  |  |  |  |  |
+
+
+```{r localm w2, echo=F}
+
+vbl <- CHARLS_w2$fm005_2
+vbl_miss <- c(0)
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'fm005_2')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(CHARLS_w2,!vbl %in% vbl_miss), aes(fm005_2)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+scale_x_continuous(breaks=c(3,6,9,12))
+
+vbl <- CHARLS_w2$fm014_2
+vbl_miss <- c(0)
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'fm014_2')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(CHARLS_w2,!vbl %in% vbl_miss), aes(fm014_2)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+scale_x_continuous(breaks=c(3,6,9,12))
+
+vbl <- CHARLS_w2$fm025_2
+vbl_miss <- c(0)
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'fm025_2')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(CHARLS_w2,!vbl %in% vbl_miss), aes(fm025_2)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+scale_x_continuous(breaks=c(3,6,9,12))
+
+vbl <- CHARLS_w2$fm030_2
+vbl_miss <- c(0)
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'fm030_2')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(CHARLS_w2,!vbl %in% vbl_miss), aes(fm030_2)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+scale_x_continuous(breaks=c(3,6,9,12))
+
+vbl <- CHARLS_w2$mbirth
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'mbirth')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(CHARLS_w2,!vbl %in% vbl_miss), aes(mbirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+scale_x_continuous(breaks=c(3,6,9,12))
+
+```
+
+| **Name** | `fm005_1`|`fm014_1`|`fm025_1`|`fm030_1`|`ybirth`|
+|-|-|-|-|-|-|
+| **Label** |`When Did You Recede from Position(Year)`|`When Did You Process Retirement(Year)`|`When Did You Take Internal Retirement(Year)`|`When Did You Process Formal Retirement(Year)`|`year of birth`|
+| **Table name**  |  `Work_Retirement_and_Pension_wave2`|  `Work_Retirement_and_Pension_wave2`|  `Work_Retirement_and_Pension_wave2`| `Work_Retirement_and_Pension_wave2`| `ybirth`|
+| **Categories** |`continuous`|`continuous`|`continuous`|`continuous`|`continuous`|
+| **Missings** |`NA`|`NA`|`NA`|`NA`|`999 = Missing`|
+| **Description** |  |  |  |  |  |
+
+```{r localy w2, echo=F}
+
+vbl <- CHARLS_w2$fm005_1
+vbl_miss <- NA
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'fm005_1')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(CHARLS_w2,!vbl %in% vbl_miss), aes(fm005_1)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- CHARLS_w2$fm014_1
+vbl_miss <- NA
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'fm014_1')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(CHARLS_w2,!vbl %in% vbl_miss), aes(fm014_1)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- CHARLS_w2$fm025_1
+vbl_miss <- NA
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'fm025_1')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(CHARLS_w2,!vbl %in% vbl_miss), aes(fm025_1)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- CHARLS_w2$fm030_1
+vbl_miss <- NA
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'fm030_1')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(CHARLS_w2,!vbl %in% vbl_miss), aes(fm030_1)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- CHARLS_w2$ybirth
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'ybirth')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(CHARLS_w2,!vbl %in% vbl_miss), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `retired` from the study-specific variable it has to be recoded as follows:
+
+* `some 1 and none 2 into 1`
+* `all 2 into 0`
+* `NA into 999`
+
+To compute `age_retired` from the study-specific variable it has to be recoded as follows:
+
+* `some answered month not remembered into 998`
+* `retired == 0 into 996`
+* `if Receding Position, fm005_2, fm005_1 into month, year`
+* `if Processed normal or early Retirement, fm014_2, fm014_1 into month, year`
+* `if Processed internal Retirement, fm025_2, fm025_1 into month, year`
+* `if Processed regular Retirement, fm030_2, fm030_1 into month, year`
+* `age_retired = date of retirement - date of birth, or age obtained in wave 1`
+
+**R script:**
+
+```{r harmo w2}
+
+CHARLS_w2 <- left_join(CHARLS_w2,CHARLS_ds_w1, by="id")
+
+# Categorical variable harmonization
+CHARLS_ds_w2 <- tibble(id=CHARLS_w2$id)
+CHARLS_ds_w2$retired <- rep(999,length(CHARLS_w2$id))
+CHARLS_ds_w2$retired[which(CHARLS_w2$fb011==1 | CHARLS_w2$fb012==1 | CHARLS_w2$zf15.e==1 | CHARLS_w2$zf15==1 | CHARLS_w2$zf16==1 | CHARLS_w2$zf25_8==1 | CHARLS_w2$zf26==1)] <- 1
+CHARLS_ds_w2$retired[which(CHARLS_w2$fb011==2 & CHARLS_w2$fb012==2)] <- 0
+
+
+# Continuous variable harmonization
+
+# Month harmonization
+CHARLS_ds_w2$month <- rep(999,length(CHARLS_ds_w2$id))
+CHARLS_ds_w2$month[which(CHARLS_w2$fm005_2==0 | CHARLS_w2$fm014_2==0 | CHARLS_w2$fm025_2==0 | CHARLS_w2$fm030_2==0)] <- 998
+CHARLS_ds_w2$month[which(CHARLS_ds_w2$retired==0)] <- 996
+CHARLS_ds_w2$month[which(CHARLS_w2$fm005_2!=0 & CHARLS_w2$fb012==1)] <- CHARLS_w2$fm005_2[which(CHARLS_w2$fm005_2!=0 & CHARLS_w2$fb012==1)]
+CHARLS_ds_w2$month[which(CHARLS_w2$fm014_2!=0 & CHARLS_w2$fb011==1 & CHARLS_w2$fm011 %in% c(1,2))] <- CHARLS_w2$fm014_2[which(CHARLS_w2$fm014_2!=0 & CHARLS_w2$fb011==1 & CHARLS_w2$fm011 %in% c(1,2))]
+CHARLS_ds_w2$month[which(CHARLS_w2$fm025_2!=0 & CHARLS_w2$fb011==1 & CHARLS_w2$fm011 %in% c(3,4))] <- CHARLS_w2$fm025_2[which(CHARLS_w2$fm025_2!=0 & CHARLS_w2$fb011==1 & CHARLS_w2$fm011 %in% c(3,4))]
+CHARLS_ds_w2$month[which(CHARLS_w2$fm030_2!=0 & CHARLS_w2$fb011==1 & CHARLS_w2$fm011==3)] <- CHARLS_w2$fm030_2[which(CHARLS_w2$fm030_2!=0 & CHARLS_w2$fb011==1 & CHARLS_w2$fm011==3)]
+
+# Year harmonization
+CHARLS_ds_w2$year <- rep(999,length(CHARLS_ds_w2$id))
+CHARLS_ds_w2$year[which(CHARLS_ds_w2$retired==0)] <- 996
+CHARLS_ds_w2$year[which(CHARLS_w2$fm005_1<2012 & CHARLS_w2$fm005_1>=1900 & CHARLS_w2$fb012==1)] <- CHARLS_w2$fm005_1[which(CHARLS_w2$fm005_1<2012 & CHARLS_w2$fm005_1>=1900 & CHARLS_w2$fb012==1)]
+CHARLS_ds_w2$year[which(CHARLS_w2$fm014_1<2012 & CHARLS_w2$fm014_1>=1900 & CHARLS_w2$fb011==1 & CHARLS_w2$fm011 %in% c(1,2))] <- CHARLS_w2$fm014_1[which(CHARLS_w2$fm014_1<2012 & CHARLS_w2$fm014_1>=1900 & CHARLS_w2$fb011==1 & CHARLS_w2$fm011 %in% c(1,2))]
+CHARLS_ds_w2$year[which(CHARLS_w2$fm025_1<2012 & CHARLS_w2$fm025_1>=1900 & CHARLS_w2$fb011==1 & CHARLS_w2$fm011 %in% c(3,4))] <- CHARLS_w2$fm025_1[which(CHARLS_w2$fm025_1<2012 & CHARLS_w2$fm025_1>=1900 & CHARLS_w2$fb011==1 & CHARLS_w2$fm011 %in% c(3,4))]
+CHARLS_ds_w2$year[which(CHARLS_w2$fm030_1<2012 & CHARLS_w2$fm030_1>=1900 & CHARLS_w2$fb011==1 & CHARLS_w2$fm011==3)] <- CHARLS_w2$fm030_1[which(CHARLS_w2$fm030_1<2012 & CHARLS_w2$fm030_1>=1900 & CHARLS_w2$fb011==1 & CHARLS_w2$fm011==3)]
+
+
+# Age harmonization
+
+#function to compute the age
+comp_age <- function(y_birth, m_birth, a_year, a_month, miss){
+  N <- length(y_birth)
+  #first, it's computed the age of all
+  age <- rep(NA,N)
+  age[which(a_month<m_birth)] <- (a_year[which(a_month<m_birth)]-y_birth[which(a_month<m_birth)])-1
+  age[which(a_month>=m_birth)] <- a_year[which(a_month>=m_birth)]-y_birth[which(a_month>=m_birth)]
+  age[which(m_birth>900)] <- a_year[which(m_birth>900)]-y_birth[which(m_birth>900)]
+  
+  #It's emphasized the individues having missing
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(y_birth==miss[i])] <- miss[i]
+  }
+  
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+  
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(a_year==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+  
+  age
+
+}
+
+CHARLS_ds_w2$age_retired <- comp_age(y_birth=CHARLS_w2$ybirth, m_birth=CHARLS_w2$mbirth , a_year=CHARLS_ds_w2$year, a_month=CHARLS_ds_w2$month, miss=miss_values_vector)
+
+CHARLS_ds_w2$age_retired[which(CHARLS_ds_w2$retired==1 & !is.na(CHARLS_w2$age_retired) & !CHARLS_w2$age_retired %in% miss_values_vector)] <- CHARLS_w2$age_retired[which(CHARLS_ds_w2$retired==1 & !is.na(CHARLS_w2$age_retired) & !CHARLS_w2$age_retired %in% miss_values_vector)]
+
+CHARLS_ds_w2 <- CHARLS_ds_w2[,c("id","retired","age_retired")]
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w2, echo=F}
+
+vbl <- CHARLS_ds_w2$retired
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(CHARLS_ds_w2, aes(x=factor(retired))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- CHARLS_ds_w2$age_retired
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(filter(CHARLS_ds_w2,!vbl %in% miss_values_vector), aes(age_retired)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w2, echo=F}
+
+
+continuous <- c(sum(CHARLS_ds_w2$age_retired==996),sum(CHARLS_ds_w2$age_retired!=996))
+X <- table(CHARLS_ds_w2$retired, useNA = "ifany")
+dichotomous <- c(X[1],sum(X[2:3]))
+C <- rbind(continuous,dichotomous)
+colnames(C) <- c("0<-->996","1<-->(possibly missing) age of diagnostic")
+kable(C,caption = "Continuous vs Dichotomous")
+
+```
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
+
+**R script:**
+
+```{r summ}
+CHARLS_ds_w1$retired <- labelled(CHARLS_ds_w1$retired, labels = cat_label)
+label(CHARLS_ds_w1$retired) <- ds_label
+CHARLS_ds_w2$retired <- labelled(CHARLS_ds_w2$retired, labels = cat_label)
+label(CHARLS_ds_w2$retired) <- ds_label
+CHARLS_ds_w1$age_retired <- labelled(CHARLS_ds_w1$age_retired, labels = cont_label)
+label(CHARLS_ds_w1$age_retired) <- ds_label_age
+CHARLS_ds_w2$age_retired <- labelled(CHARLS_ds_w2$age_retired, labels = cont_label)
+label(CHARLS_ds_w2$age_retired) <- ds_label_age
+
+
+CHARLS_m_ds_w1 <- CHARLS_ds_w1
+CHARLS_m_ds_w1$retired <- car::recode(CHARLS_m_ds_w1$retired, "miss_values_vector=NA")
+CHARLS_m_ds_w2 <- CHARLS_ds_w2
+CHARLS_m_ds_w2$retired <- car::recode(CHARLS_m_ds_w2$retired, "miss_values_vector=NA")
+
+
+tt <-    frq(CHARLS_ds_w1$retired)[[1]][,c(1:2,4)]
+tt[4] <- frq(CHARLS_ds_w2$retired)[[1]][,c(4)]
+tt[13,] <- c("n", "sample size", 
+             length(CHARLS_ds_w1$retired), length(CHARLS_ds_w2$retired)
+             )
+names(tt)<-c("val", "label", "w1", "w2")
+kable(tt)
+
+dbb <- merge(CHARLS_m_ds_w1[,c("id","retired")], CHARLS_m_ds_w2[,c("id","retired")], by="id", suffixes = c(".w1",".w2"), all=T)
+names(dbb) <- c("id", "w1", "w2")
+v.dbb <- paste(dbb[,2],dbb[,3],sep="")
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb)
+```
+
+The 57 individuals which in the first wave are harmonized as retired and in the second wave not, claim in the first wave they have completing receding position procedures while in the second wave they deny that claim.
+
+```{r aside, echo=F}
+
+CHARLS_ds <- inner_join(CHARLS_ds_w1,CHARLS_ds_w2,by="id", suffix=c(".w1",".w2"))
+
+kable(CHARLS_w1[which(CHARLS_w1$id %in% CHARLS_ds$id[which(CHARLS_ds$retired.w1==1 & CHARLS_ds$retired.w2==0)]),c("id","fb011","fb012")],col.names = c(paste("id",label(CHARLS_w1$id)),paste("fb011;",label(CHARLS_w1$fb011)),paste("fb012;",label(CHARLS_w1$fb012))),align = 'c',caption = 'The answers of these individuals in wave 1')
+kable(CHARLS_w2[which(CHARLS_w2$id %in% CHARLS_ds$id[which(CHARLS_ds$retired.w1==1 & CHARLS_ds$retired.w2==0)]),c("id","fb011","fb012","zf16")],col.names = c(paste("id",label(CHARLS_w2$id)),paste("fb011;",label(CHARLS_w2$fb011)),paste("fb012;",label(CHARLS_w2$fb012)),paste("zf16;",label(CHARLS_w2$zf16))),align = 'c',caption = 'The answers of these individuals in wave 2')
+
+```
+
+# Quality estimation
+
+* We harmonize formal retirement which does not imply the individuals cannot do an informal work (housework, agricultural or other).
+* In the second wave, we use the study-specific variable `zf25_8` instead of `zf23`, since it includes all individuals with completed internal retirement status. We also avoid the use of variables `zf27` and `zf25_4`, since all the significative data in them is available in `zf15`, `zf16` or `zf26`.
+* In the second wave we prioritise the variables for the questions then to the preload variables with data from wave 1. Thus, there are 57 individuals -specified above- which are harmonized as retired in the first wave and as non-retired in the second wave.
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+l.CHARLS <- list(w1 = CHARLS_ds_w1, w2 = CHARLS_ds_w2)
+
+for(index in seq_along(l.CHARLS)){
+  retired <- l.CHARLS[[index]]
+  save(retired, file = paste0(datafolder,names(l.CHARLS)[index],"/retired.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

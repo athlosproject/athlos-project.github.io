@@ -1,0 +1,332 @@
+---
+title: "Diastolic blood pressure"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE, echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_albert.r")
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/CHARLS/CHARLS_ids.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+The description of harmonised variable is the following:
+  
+* Name: `dbp`
+* Label: `Diastolic blood pressure of participantat at each wave`
+* Type of variable: `countinous`
+* Missings: 
+    + `991 = CAPI/interviewer error`
+    + `992 = Impute`
+    + `993 = Disable to measure`
+    + `994 = Not attempt/not done`
+    + `995 = Does not answer`
+    + `996 = Not applicable`
+    + `997 = Refuse`
+    + `998 = Do not know`
+    + `999 = Missing`
+* Comments: `Means of all diastolic blood pressure measures.`
+
+```{r lab, echo=FALSE}
+ds_label <- "Diastolic blood pressure"
+ds_label_all <- "Diastolic blood pressure of participant at each wave"
+```
+
+# Data process
+
+## CHARLS
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `qa004`
+* Label: `Diastolic Reading`
+* Type of variable: `countinous`
+
+* Name: `qa008`
+* Label: `Diastolic Reading`
+* Type of variable: `countinous`
+
+* Name: `qa012`
+* Label: `Diastolic Reading`
+* Type of variable: `countinous`
+
+```{r assign1, echo=FALSE}
+opal.assign.table.tibble(o, 'CHARLS_w1_dbp2','CHARLS.biomarkers_wave1',
+                         variables=list('qa004', 'qa008', 'qa012'), missings = TRUE)
+CHARLS_w1_dbp2 <- opal.execute(o,'CHARLS_w1_dbp2')
+opal.assign.table.tibble(o, 'CHARLS_w1_id','CHARLS.CHARLS_w1_ids',
+                         variables=list('var'), missings = TRUE)
+CHARLS_w1_id <- opal.execute(o,'CHARLS_w1_id')
+
+CHARLS_w1_dbp2$oldid <- CHARLS_w1_dbp2$id
+CHARLS_w1_dbp2$id <- CHARLS_ids(ids = CHARLS_w1_dbp2$oldid)
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA,NA, NA, NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], oldid=as.numeric(new_2[,5]), qa004=as.numeric(new_2[,2]), qa008=as.numeric(new_2[,3]), qa012=as.numeric(new_2[,4]))
+  new_22
+}
+
+CHARLS_w1_dbp <- Add_indiv(old = CHARLS_w1_dbp2, new = CHARLS_w1_id)
+```
+
+```{r local1, echo=FALSE}
+vari <- CHARLS_w1_dbp$qa004
+kable(Continuous_summary(var = vari, missing_values = c(993,999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(993,999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(993,999))$summary, caption = "Summary")
+ggplot(CHARLS_w1_dbp, aes(qa004)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+
+vari <- CHARLS_w1_dbp$qa008
+kable(Continuous_summary(var = vari, missing_values = c(993,999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(993,999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(993,999))$summary, caption = "Summary")
+ggplot(CHARLS_w1_dbp, aes(qa008)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+
+vari <- CHARLS_w1_dbp$qa012
+kable(Continuous_summary(var = vari, missing_values = c(993,999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(993,999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(993,999))$summary, caption = "Summary")
+ggplot(CHARLS_w1_dbp, aes(qa012)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the mean value between the first and second measurement of the study-specific variables, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script**
+
+```{r harmo1}
+CHARLS_w1_dbp$mean_dbp <- apply(X = CHARLS_w1_dbp[,c(3:5)], MARGIN = 1, FUN = mean)
+
+### NA only in the first one
+idNA_only01 <- which(is.na(CHARLS_w1_dbp$qa004) & !is.na(CHARLS_w1_dbp$qa008) & !is.na(CHARLS_w1_dbp$qa012))
+
+CHARLS_w1_dbp$mean_dbp[idNA_only01] <- apply(X = CHARLS_w1_dbp[idNA_only01,c(4,5)], MARGIN = 1, FUN = mean)
+
+### NA only in the second one
+idNA_only02 <- which(!is.na(CHARLS_w1_dbp$qa004) & is.na(CHARLS_w1_dbp$qa008) & !is.na(CHARLS_w1_dbp$qa012))
+
+CHARLS_w1_dbp$mean_dbp[idNA_only02] <- apply(X = CHARLS_w1_dbp[idNA_only02,c(3,5)], MARGIN = 1, FUN = mean)
+
+### NA only in the third one
+idNA_only03 <- which(!is.na(CHARLS_w1_dbp$qa004) & !is.na(CHARLS_w1_dbp$qa008) & is.na(CHARLS_w1_dbp$qa012))
+
+CHARLS_w1_dbp$mean_dbp[idNA_only03] <- apply(X = CHARLS_w1_dbp[idNA_only03,c(3,4)], MARGIN = 1, FUN = mean)
+
+### NA in the second and third one
+idNA_02_03 <- which(!is.na(CHARLS_w1_dbp$qa004) & is.na(CHARLS_w1_dbp$qa008) & is.na(CHARLS_w1_dbp$qa012))
+
+CHARLS_w1_dbp$mean_dbp[idNA_02_03] <- CHARLS_w1_dbp$qa004[idNA_02_03]
+
+
+CHARLS_ds_w1 <- tibble(id=CHARLS_w1_dbp$id)
+CHARLS_ds_w1$dbp <- car::recode(CHARLS_w1_dbp$mean_dbp, "NA=999")
+CHARLS_ds_w1$dbp <- labelled(CHARLS_ds_w1$dbp, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=FALSE}
+vari <- CHARLS_ds_w1$dbp
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(CHARLS_ds_w1, aes(dbp)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency") + xlim(20,160) 
+```
+
+#### Validation
+```{r crosstabulation1, echo=FALSE}
+```
+
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `qa004`
+* Label: `Diastolic Reading`
+* Type of variable: `countinous`
+
+* Name: `qa008`
+* Label: `Diastolic Reading`
+* Type of variable: `countinous`
+
+* Name: `qa012`
+* Label: `Diastolic Reading`
+* Type of variable: `countinous`
+
+```{r assign2, echo=FALSE}
+opal.assign.table.tibble(o, 'CHARLS_w2_dbp2','CHARLS.Biomarker_wave2',
+                         variables=list('qa004', 'qa008', 'qa012'), missings = TRUE)
+CHARLS_w2_dbp2 <- opal.execute(o,'CHARLS_w2_dbp2')
+opal.assign.table.tibble(o, 'CHARLS_w2_id','CHARLS.CHARLS_w2_ids',
+                         variables=list('var'), missings = TRUE)
+CHARLS_w2_id <- opal.execute(o,'CHARLS_w2_id')
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA, NA, NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], qa004=as.numeric(new_2[,2]),  qa008=as.numeric(new_2[,3]),  qa012=as.numeric(new_2[,4]))
+  new_22
+}
+
+CHARLS_w2_dbp <- Add_indiv(old = CHARLS_w2_dbp2, new = CHARLS_w2_id)
+
+```
+
+```{r local2, echo=FALSE}
+vari <- CHARLS_w2_dbp$qa004
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(CHARLS_w2_dbp, aes(qa004)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+
+vari <- CHARLS_w2_dbp$qa008
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(CHARLS_w2_dbp, aes(qa008)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+
+vari <- CHARLS_w2_dbp$qa012
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(CHARLS_w2_dbp, aes(qa012)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+```
+
+
+#### Harmonisation algorithm
+The harmonized variable is the mean value between the first, second and third measurement of the study-specific variables, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+
+**R script**
+
+```{r harmo2}
+CHARLS_w2_dbp$mean_dbp <- apply(X = CHARLS_w2_dbp[,c(2,3,4)], MARGIN = 1, FUN = mean)
+
+### NA only in the first one
+idNA_only01 <- which(is.na(CHARLS_w2_dbp$qa004) & !is.na(CHARLS_w2_dbp$qa008) & !is.na(CHARLS_w2_dbp$qa012))
+
+CHARLS_w2_dbp$mean_dbp[idNA_only01] <- apply(X = CHARLS_w2_dbp[idNA_only01,c(3,4)], MARGIN = 1, FUN = mean)
+
+### NA only in the second one
+idNA_only02 <- which(!is.na(CHARLS_w2_dbp$qa004) & is.na(CHARLS_w2_dbp$qa008) & !is.na(CHARLS_w2_dbp$qa012))
+
+CHARLS_w2_dbp$mean_dbp[idNA_only02] <- apply(X = CHARLS_w2_dbp[idNA_only02,c(2,4)], MARGIN = 1, FUN = mean)
+
+### NA only in the third one
+idNA_only03 <- which(!is.na(CHARLS_w2_dbp$qa004) & !is.na(CHARLS_w2_dbp$qa008) & is.na(CHARLS_w2_dbp$qa012))
+
+CHARLS_w2_dbp$mean_dbp[idNA_only03] <- apply(X = CHARLS_w2_dbp[idNA_only03,c(2,3)], MARGIN = 1, FUN = mean)
+
+
+### NA in the first and second one
+idNA_01_02 <- which(is.na(CHARLS_w2_dbp$qa004) & is.na(CHARLS_w2_dbp$qa008) & !is.na(CHARLS_w2_dbp$qa012))
+
+CHARLS_w2_dbp$mean_dbp[idNA_01_02] <- CHARLS_w2_dbp$qa012[idNA_01_02]
+
+### NA in the first and third one
+idNA_01_03 <- which(is.na(CHARLS_w2_dbp$qa004) & !is.na(CHARLS_w2_dbp$qa008) & is.na(CHARLS_w2_dbp$qa012))
+
+CHARLS_w2_dbp$mean_dbp[idNA_01_03] <- CHARLS_w2_dbp$qa008[idNA_01_03]
+
+### NA in the second and third one
+idNA_02_03 <- which(!is.na(CHARLS_w2_dbp$qa004) & is.na(CHARLS_w2_dbp$qa008) & is.na(CHARLS_w2_dbp$qa012))
+
+CHARLS_w2_dbp$mean_dbp[idNA_02_03] <- CHARLS_w2_dbp$qa004[idNA_02_03]
+
+
+
+CHARLS_ds_w2 <- tibble(id=CHARLS_w2_dbp$id)
+CHARLS_ds_w2$dbp <- car::recode(CHARLS_w2_dbp$mean_dbp, "NA=999")
+CHARLS_ds_w2$dbp <- labelled(CHARLS_ds_w2$dbp, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2, echo=FALSE}
+vari <- CHARLS_ds_w2$dbp
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(CHARLS_ds_w2, aes(dbp)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency") + xlim(20,160) 
+```
+
+#### Validation
+```{r crosstabulation2, echo=FALSE}
+```
+
+
+# Quality estimation
+
+####  Quality estimation
+Diastolic  bp was calculated as the mean from the 3 available variables.
+
+
+
+```{r save, echo=FALSE}
+dbp <- CHARLS_ds_w1
+save(dbp, file = "../RData/w1/dbp.RData")
+rm(dbp)
+
+dbp <- CHARLS_ds_w2
+save(dbp, file = "../RData/w2/dbp.RData")
+rm(dbp)
+```
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+
+
+
+
+

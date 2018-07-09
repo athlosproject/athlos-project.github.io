@@ -1,0 +1,229 @@
+---
+title: "Weight"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE, echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/CHARLS/CHARLS_ids.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+The description of harmonised variable is the following:
+  
+* Name: `weight`
+* Label: `weight of the participant in kg`
+* Type of variable: `countinous`
+* Missings: 
+    + `991 = CAPI/interviewer error`
+    + `992 = Impute`
+    + `993 = Disable to measure`
+    + `994 = Not attempt/not done`
+    + `995 = Does not answer`
+    + `996 = Not applicable`
+    + `997 = Refuse`
+    + `998 = Do not know`
+    + `999 = Missing`
+    
+* Comments: `Weight should be collected in kilograms. It should be determined wheather the  variable was collected through a self reported measure or an athropometric test.`
+
+
+```{r lab, echo=FALSE}
+ds_label <- "weight"
+ds_label_all <- "weight of the participant in kg"
+```
+
+
+# Data process
+
+## CHARLS
+
+### Wave 1 
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `ql002`
+* Label: `Weight Measurement`
+* Type of variable: `countinous`
+
+```{r assign1, echo=FALSE}
+opal.assign.table.tibble(o, 'CHARLS_w1_weig2','CHARLS.biomarkers_wave1',
+                         variables=list('ql002'), missings = TRUE)
+CHARLS_w1_weig2 <- opal.execute(o,'CHARLS_w1_weig2')
+opal.assign.table.tibble(o, 'CHARLS_w1_id','CHARLS.CHARLS_w1_ids',
+                         variables=list('var'), missings = TRUE)
+CHARLS_w1_id <- opal.execute(o,'CHARLS_w1_id')
+
+
+CHARLS_w1_weig2$oldid <- CHARLS_w1_weig2$id
+CHARLS_w1_weig2$id <- CHARLS_ids(ids = CHARLS_w1_weig2$oldid)
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA,NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], oldid=as.numeric(new_2[,3]), ql002=as.numeric(new_2[,2]))
+  new_22
+}
+
+CHARLS_w1_weig <- Add_indiv(old = CHARLS_w1_weig2, new = CHARLS_w1_id)
+```
+
+```{r local1, echo=FALSE}
+vari <- CHARLS_w1_weig$ql002
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w1_weig, aes(ql002)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo1}
+CHARLS_ds_w1 <- tibble(id=CHARLS_w1_weig$id)
+CHARLS_ds_w1$weight <- car::recode(CHARLS_w1_weig$ql002, "NA=999")
+CHARLS_ds_w1$weight <- labelled(CHARLS_ds_w1$weight, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=FALSE}
+vari <- CHARLS_ds_w1$weight
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(CHARLS_ds_w1, aes(weight)) + geom_histogram(stat="count", fill="steelblue") + xlab("weight") + ylab("Frequency") + xlim(0,162)
+```
+
+#### Validation
+There are some unusual values that are lower than 30kg:
+```{r crosstabulation1, echo=FALSE}
+kable(CHARLS_ds_w1[which(CHARLS_ds_w1$weight<30),])
+```
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `ql002`
+* Label: `Weight Measuremen`
+* Type of variable: `countinous`
+
+```{r assign2, echo=FALSE}
+opal.assign.table.tibble(o, 'CHARLS_w2_weig2','CHARLS.Biomarker_wave2',
+                         variables=list('ql002'), missings = TRUE)
+CHARLS_w2_weig2 <- opal.execute(o,'CHARLS_w2_weig2')
+opal.assign.table.tibble(o, 'CHARLS_w2_id','CHARLS.CHARLS_w2_ids',
+                         variables=list('var'), missings = TRUE)
+CHARLS_w2_id <- opal.execute(o,'CHARLS_w2_id')
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], ql002=as.numeric(new_2[,2]))
+  new_22
+}
+
+CHARLS_w2_weig <- Add_indiv(old = CHARLS_w2_weig2, new = CHARLS_w2_id)
+```
+
+```{r local2, echo=FALSE}
+vari <- CHARLS_w2_weig$ql002
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(CHARLS_w2_weig, aes(ql002)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo2}
+CHARLS_ds_w2 <- tibble(id=CHARLS_w2_weig$id)
+CHARLS_ds_w2$weight <- car::recode(CHARLS_w2_weig$ql002, "NA=999")
+CHARLS_ds_w2$weight <- labelled(CHARLS_ds_w2$weight, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2, echo=FALSE}
+vari <- CHARLS_ds_w2$weight
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(CHARLS_ds_w2, aes(weight)) + geom_histogram(stat="count", fill="steelblue") + xlab("weight") + ylab("Frequency") + xlim(23, 173)
+```
+
+#### Validation
+There are some unusual values that are lower than 30kg:
+```{r crosstabulation2, echo=FALSE}
+kable(CHARLS_ds_w2[which(CHARLS_ds_w2$weight<30),])
+```
+
+
+# Quality control
+Anthropometric measure.
+
+
+```{r save, echo=FALSE}
+weight <- CHARLS_ds_w1
+save(weight, file = "../RData/w1/weight.RData")
+rm(weight)
+
+weight <- CHARLS_ds_w2
+save(weight, file = "../RData/w2/weight.RData")
+rm(weight)
+```
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+

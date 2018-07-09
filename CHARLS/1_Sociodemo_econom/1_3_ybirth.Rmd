@@ -1,0 +1,306 @@
+---
+title: "Year of Birth"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+  
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/CHARLS/CHARLS_ids.R")
+```
+<!-- ########################################################## --> 
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `ybirth`
+* Variable label: `year of birth`
+* Variable description: `Year of birth`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+# Data process
+
+## CHARLS
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `ba002_1` | `ba002_1` |
+|----------|------------|-|
+| **Label** | `When were You Born:Year` |  `Birth Year` |
+| **Table name** | `Demographic_Background_wave2` |`demographic_background_wave1`|
+| **Description** |  |  |
+
+
+
+
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'CHARLS_w2_ybirth2','CHARLS.Demographic_Background_wave2',
+                         variables=list('ba002_1'), missings = TRUE)
+opal.assign.table.tibble(o, 'CHARLS_w1_ybirth2','CHARLS.demographic_background_wave1',
+                         variables=list('ba002_1'), missings = TRUE)
+opal.assign.table.tibble(o, 'CHARLS_w1_id','CHARLS.CHARLS_w1_ids',
+                         variables=list('var'), missings = TRUE)
+```
+
+```{r local1, echo=F}
+CHARLS_w2_ybirth2 <- opal.execute(o,'CHARLS_w2_ybirth2')
+CHARLS_w1_ybirth2 <- opal.execute(o,'CHARLS_w1_ybirth2')
+CHARLS_w1_id <- opal.execute(o,'CHARLS_w1_id')
+
+CHARLS_w1_ybirth2$oldid <- CHARLS_w1_ybirth2$id
+CHARLS_w1_ybirth2$id <- CHARLS_ids(ids = CHARLS_w1_ybirth2$oldid)
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA, NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], oldid=as.numeric(new_2[,3]), ba002_1=as.numeric(new_2[,2]))
+  new_22
+}
+
+CHARLS_w1_ybirth <- Add_indiv(old = CHARLS_w1_ybirth2, new = CHARLS_w1_id)
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], ba002_1=as.numeric(new_2[,2]))
+  new_22
+}
+
+CHARLS_w2_ybirth22 <- Add_indiv(old = CHARLS_w2_ybirth2, new = CHARLS_w1_id)
+
+CHARLS_w1_ybirth$ba002_1_w2 <- CHARLS_w2_ybirth22$ba002_1
+CHARLS_w1_ybirth$ba002_1_w1w2 <- CHARLS_w1_ybirth$ba002_1_w2
+CHARLS_w1_ybirth$ba002_1_w1w2[is.na(CHARLS_w1_ybirth$ba002_1_w1w2)] <- CHARLS_w1_ybirth$ba002_1[is.na(CHARLS_w1_ybirth$ba002_1_w1w2)]
+
+vari <-CHARLS_w1_ybirth$ba002_1_w1w2
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = "Year of birth") 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(CHARLS_w1_ybirth, aes(ba002_1_w1w2)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable from wave 2, but the missing values have to be recoded from the study-specific variable from wave 1 and all other missing data have to be recoded as follows:
+
+* `NA into 999`
+
+Since the year of birth study-specific variable in wave 2 have 77.21% of missing data because is a confirmatory variable of year of birth from wave 1. It means that in wave 2 they ask "BA001_W2_1 We record your birth time is [Birth Time], is it right?" if the answer is yes they don't ask for date of birth and age again, but if their answer is No they ask for the date of birth and age again, in other to correct the mistakes of the study-specific variable from wave 1.
+
+**R script:**
+
+```{r harmo1}
+CHARLS_ds_w1 <- tibble(id=CHARLS_w1_ybirth$id)
+CHARLS_ds_w1$ybirth <- car::recode(CHARLS_w1_ybirth$ba002_1_w1w2, "NA=999")
+CHARLS_ds_w1$ybirth <- labelled(CHARLS_ds_w1$ybirth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=F}
+vari <- CHARLS_ds_w1$ybirth
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Year of birth")
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(CHARLS_ds_w1, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") + xlim(1910, 1989)
+```
+
+#### Validation
+```{r crosstabulation1, echo=F}
+```
+
+
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `ba002_1` |  `ba002_1` |
+|----------|------------|-|
+| **Label** | `Birth Year` | `When were You Born:Year` |
+| **Table name** | `demographic_background_wave1` |`Demographic_Background_wave2`|
+| **Description** |  |  |
+
+
+
+```{r assign2, echo=F}
+opal.assign.table.tibble(o, 'CHARLS_w1_ybirth2','CHARLS.demographic_background_wave1',
+                         variables=list('ba002_1'), missings = TRUE)
+opal.assign.table.tibble(o, 'CHARLS_w2_ybirth2','CHARLS.Demographic_Background_wave2',
+                         variables=list('ba002_1'), missings = TRUE)
+opal.assign.table.tibble(o, 'CHARLS_w2_id','CHARLS.CHARLS_w2_ids',
+                         variables=list('var'), missings = TRUE)
+```
+
+```{r local2, echo=F}
+CHARLS_w1_ybirth2 <- opal.execute(o,'CHARLS_w1_ybirth2')
+CHARLS_w2_ybirth2 <- opal.execute(o,'CHARLS_w2_ybirth2')
+CHARLS_w2_id <- opal.execute(o,'CHARLS_w2_id')
+
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], ba002_1=as.numeric(new_2[,2]))
+  new_22
+}
+
+CHARLS_w2_ybirth <- Add_indiv(old = CHARLS_w2_ybirth2, new = CHARLS_w2_id)
+
+
+CHARLS_w1_ybirth2$oldid <- CHARLS_w1_ybirth2$id
+CHARLS_w1_ybirth2$id <- CHARLS_ids(ids = CHARLS_w1_ybirth2$oldid)
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA, NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], oldid=as.numeric(new_2[,3]), ba002_1=as.numeric(new_2[,2]))
+  new_22
+}
+
+CHARLS_w1_ybirth22 <- Add_indiv(old = CHARLS_w1_ybirth2, new = CHARLS_w2_id)
+
+CHARLS_w2_ybirth$ba002_1_w1 <- CHARLS_w1_ybirth22$ba002_1
+
+
+vari <- CHARLS_w2_ybirth$ba002_1_w1
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = "Year of birth from w1") 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(CHARLS_w2_ybirth, aes(ba002_1_w1)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency")
+
+vari <- CHARLS_w2_ybirth$ba002_1
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = "Year of birth from w2") 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(CHARLS_w2_ybirth, aes(ba002_1_w1)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency")
+```
+
+The year of birth study-specific variable in wave 2 have 77.21% of missing data, because is a confirmatory variable of year of birth from wave 1. It means that in wave 2 they ask "BA001_W2_1 We record your birth time is [Birth Time], is it right?" if the answer is yes they don't ask for date of birth and age again, but if their answer is No they ask for the date of birth and age again, in other to correct the mistakes of the study-specific variable from wave 1.
+
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable from wave 2, but the missing values have to be recoded from the study-specific variable from wave 1 and all other missing data have to be recoded as follows:
+
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo2}
+CHARLS_w2_ybirth$ybirth <- CHARLS_w2_ybirth$ba002_1
+
+#It is completed the missing data with the study-specific variable from wave 1
+CHARLS_w2_ybirth$ybirth[is.na(CHARLS_w2_ybirth$ybirth)] <- CHARLS_w2_ybirth$ba002_1_w1[is.na(CHARLS_w2_ybirth$ybirth)]
+
+CHARLS_ds_w2 <- tibble(id=CHARLS_w2_ybirth$id)
+CHARLS_ds_w2$ybirth <- car::recode(CHARLS_w2_ybirth$ybirth, "NA=999")
+CHARLS_ds_w2$ybirth <- labelled(CHARLS_ds_w2$ybirth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2, echo=F}
+vari <- CHARLS_ds_w2$ybirth
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Year of birth")
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(CHARLS_ds_w2, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") + xlim(1910, 1989)
+```
+
+#### Validation
+```{r crosstabulation2, echo=F}
+```
+
+
+
+
+
+# Quality estimation
+No comments.
+
+
+```{r save, echo=FALSE}
+ybirth <- CHARLS_ds_w1
+save(ybirth, file = "../RData/w1/ybirth.RData")
+rm(ybirth)
+
+ybirth <- CHARLS_ds_w2
+save(ybirth, file = "../RData/w2/ybirth.RData")
+rm(ybirth)
+```
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

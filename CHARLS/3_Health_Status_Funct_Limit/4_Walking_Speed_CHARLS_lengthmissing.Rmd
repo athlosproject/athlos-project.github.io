@@ -1,0 +1,358 @@
+---
+title: "Walking speed"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/CHARLS/CHARLS_ids.R")
+```
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `walking_speed_c`
+* Variable label: `Walking speed - Continuous`
+* Variable description: `Walking speed - Continuous. It is measured assessing the time that is taken to walk a distance.`
+* Value type: `continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+* Short name: `walking_speed`
+* Variable label: `Walking speed`
+* Variable description: `Walking speed. It is measured assessing the time that is taken to walk a distance.Discrete variable: value 0 = <=25%; value 1 = >25%.`
+* Value type: `Categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | <=25%
+1        | >25%
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Walking speed"
+ds_label_walking_speed_c <- "Walking speed - Continuous. It is measured assessing the time that is taken to walk a distance"
+ds_label_walking_speed <- "Walking speed. It is measured assessing the time that is taken to walk a distance.Discrete variable: value 0 = <=25%; value 1 = >25%."
+```
+
+# Data process
+
+## China
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised are:
+
+* Name: `qg002`
+* Label: `1st Measurement - Walking Speed Time`
+* Categories:
+   + `Continuous` 
+* Missings
+   + `NA`
+   
+* Name: `qg003`
+* Label: `2st Measurement - Walking Speed Time`
+* Categories:
+   + `Continuous` 
+* Missings
+   + `NA`
+
+   
+
+```{r assign w1, echo=FALSE}
+opal.assign.table.tibble(o, 'CHARLS_w1_walking2','CHARLS.biomarkers_wave1', variables=list('qg002','qg003'), missings = TRUE)
+CHARLS_w1_walking2 <- opal.execute(o,'CHARLS_w1_walking2')
+
+opal.assign.table.tibble(o, 'CHARLS_w1_id','CHARLS.CHARLS_w1_ids',
+                         variables=list('var'), missings = TRUE)
+CHARLS_w1_id <- opal.execute(o,'CHARLS_w1_id')
+
+CHARLS_w1_walking2$oldid <- CHARLS_w1_walking2$id
+CHARLS_w1_walking2$id <- CHARLS_ids(ids = CHARLS_w1_walking2$oldid)
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], rep(NA,3))
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], oldid=as.numeric(new_2[,4]), qg002=as.numeric(new_2[,2]), qg003=as.numeric(new_2[,3]))
+  new_22
+}
+
+CHARLS_w1_walking <- Add_indiv(old = CHARLS_w1_walking2, new = CHARLS_w1_id)
+
+```
+
+```{r local w1, echo=FALSE, warning=FALSE}
+vari <- CHARLS_w1_walking$qg002
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = "Walking speed") 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(CHARLS_w1_walking, aes(qg002)) + geom_bar(stat="count", width=0.1, fill="steelblue") + xlab("walking time") + ylab("Frequency") + xlim(0,50)
+
+vari <- CHARLS_w1_walking$qg003
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = "Walking speed") 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(CHARLS_w1_walking, aes(qg003)) + geom_bar(stat="count", width=0.1, fill="steelblue") + xlab("Walking time") + ylab("Frequency") + xlim(0,50)
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonized variable `walking_speed_c` from the study-specific variables it has to compute the average, if it is possible, beetwen the two measurements and dividing by 2.5 since the study-specific variables are the time (seconds) that the individual takes to walk 2.5 meters. The missing has to be recoded as follows:
+
+* `NA into 999` 
+
+To compute the harmonized variable `walking_speed` from `walking_speed_c` it has to be recoded as follows:
+
+* `walking_speed_c <=25% into 0`
+* `walking_speed_c >25% into 1`
+
+**R script:**
+
+
+```{r harmo w1}
+#walking_speed_c
+CHARLS_w1_walking$mean_wt <- apply(CHARLS_w1_walking[,-c(1,2)], MARGIN = 1, FUN = function(x) mean(na.omit(x)))
+
+CHARLS_ds_w1 <- tibble(id=CHARLS_w1_walking$id)
+CHARLS_ds_w1$walking_speed_c <- car::recode(2.5/CHARLS_w1_walking$mean_wt, "NA=999")
+CHARLS_ds_w1$walking_speed_c <- labelled(CHARLS_ds_w1$walking_speed_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#walking_speed
+Q <- quantile(car::recode(CHARLS_ds_w1$walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+CHARLS_ds_w1$walking_speed <- car::recode(CHARLS_ds_w1[[2]], "0:Q=0; (Q+0.0000000000001):900=1")
+CHARLS_ds_w1$walking_speed <- labelled(CHARLS_ds_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=FALSE, warning=FALSE}
+vari <- CHARLS_ds_w1$walking_speed_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(CHARLS_ds_w1, aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,5)
+
+vari <- CHARLS_ds_w1$walking_speed
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(CHARLS_ds_w1, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+ 
+
+```{r crosstabulation w1, echo=FALSE}
+Continous <- c(sum(na.omit(CHARLS_ds_w1[[2]])<=Q), sum(na.omit(CHARLS_ds_w1[[2]])>Q & na.omit(CHARLS_ds_w1[[2]])<900), sum(na.omit(CHARLS_ds_w1[[2]])==999))
+Dicotomic <- table(CHARLS_ds_w1[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:Q->0","Q:900->1", "NA->999") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+
+
+```{r importOPAL w1, echo=FALSE}
+#opal.assign.data(o, 'CHARLS_ds_w1', CHARLS_ds_w1)
+#opal.symbol_import(o,'CHARLS_ds_w1', project='_Athlos_Harm_Dataset')
+label(CHARLS_ds_w1$walking_speed_c) <- ds_label_walking_speed_c
+label(CHARLS_ds_w1$walking_speed) <- ds_label_walking_speed
+walking_speed <- CHARLS_ds_w1
+save(walking_speed, file = "../RData/w1/walking_speed.RData")
+
+CHARLS_m_ds_w1 <- CHARLS_ds_w1
+CHARLS_m_ds_w1$walking_speed <- car::recode(CHARLS_m_ds_w1$walking_speed, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'CHARLS_m_ds_w1', CHARLS_m_ds_w1)
+#opal.symbol_import(o,'CHARLS_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `qg002`
+* Label: `1st Measurement - Walking Speed Time`
+* Categories:
+   + `Continuous` 
+* Missings
+   + `NA`
+   
+* Name: `qg003`
+* Label: `2st Measurement - Walking Speed Time`
+* Categories:
+   + `Continuous` 
+* Missings
+   + `NA`
+  
+
+```{r assign w2, echo=F}
+opal.assign.table.tibble(o, 'CHARLS_w2_walking2','CHARLS.Biomarker_wave2', variables=list('qg002','qg003'), missings = TRUE)
+CHARLS_w2_walking2 <- opal.execute(o,'CHARLS_w2_walking2')
+
+opal.assign.table.tibble(o, 'CHARLS_w2_id','CHARLS.CHARLS_w2_ids',
+                         variables=list('var'), missings = TRUE)
+CHARLS_w2_id <- opal.execute(o,'CHARLS_w2_id')
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA, NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], qg002=as.numeric(new_2[,2]), qg003=as.numeric(new_2[,3]))
+  new_22
+}
+
+CHARLS_w2_walking <- Add_indiv(old = CHARLS_w2_walking2, new = CHARLS_w2_id)
+```
+
+```{r local w2, echo=F, warning=FALSE}
+vari <- CHARLS_w2_walking$qg002
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = "walking speed") 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(CHARLS_w2_walking, aes(qg002)) + geom_bar(stat="count", width=0.1, fill="steelblue") + xlab("walking time") + ylab("Frequency") + xlim(0,50)
+
+vari <- CHARLS_w2_walking$qg003
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = "walking speed") 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(CHARLS_w2_walking, aes(qg003)) + geom_bar(stat="count", width=0.1, fill="steelblue") + xlab("walking time") + ylab("Frequency") + xlim(0,50)
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonized variable from the study-specific variables it has to compute the average, if it is possible, beetwen the two measurements and dividing by 2.5 since the study-specific variables are the time (seconds) that the individual takes to walk 2.5 meters. The missing has to be recoded as follows:
+
+* `NA into 999` 
+
+To compute the harmonized variable `walking_speed` from `walking_speed_c` it has to be recoded as follows:
+
+* `walking_speed_c <=25% into 0`
+* `walking_speed_c >25% into 1`
+
+**R script:**
+
+```{r harmo w2}
+#walking_speed_c
+CHARLS_w2_walking$mean_wt <- apply(CHARLS_w2_walking[,-c(1)], MARGIN = 1, FUN = function(x) mean(na.omit(x)))
+
+CHARLS_ds_w2 <- tibble(id=CHARLS_w2_walking$id)
+CHARLS_ds_w2$walking_speed_c <- car::recode(2.5/CHARLS_w2_walking$mean_wt, "Inf=0; NA =999")
+CHARLS_ds_w2$walking_speed_c <- labelled(CHARLS_ds_w2$walking_speed_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#walking_speed
+Q <- quantile(car::recode(CHARLS_ds_w2$walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+CHARLS_ds_w2$walking_speed <- car::recode(CHARLS_ds_w2[[2]], "0:Q=0; (Q+0.0000000000001):900=1")
+CHARLS_ds_w2$walking_speed <- labelled(CHARLS_ds_w2[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w2, echo=F, warning=FALSE}
+vari <- CHARLS_ds_w2$walking_speed_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(CHARLS_ds_w2, aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,5)
+
+vari <- CHARLS_ds_w2$walking_speed
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(CHARLS_ds_w2, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+
+```{r crosstabulation w2, echo=F}
+Continous <- c(sum(na.omit(CHARLS_ds_w2[[2]])<=Q), sum(na.omit(CHARLS_ds_w2[[2]])>Q & na.omit(CHARLS_ds_w2[[2]])<900), sum(na.omit(CHARLS_ds_w2[[2]])==999))
+Dicotomic <- table(CHARLS_ds_w2[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:Q->0","Q:900->1", "NA->999") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+
+
+```{r importOPAL w2, echo=FALSE}
+#opal.assign.data(o, 'CHARLS_ds_w2', CHARLS_ds_w2)
+#opal.symbol_import(o,'CHARLS_ds_w2', project='_Athlos_Harm_Dataset')
+label(CHARLS_ds_w2$walking_speed_c) <- ds_label_walking_speed_c
+label(CHARLS_ds_w2$walking_speed) <- ds_label_walking_speed
+walking_speed <- CHARLS_ds_w2
+save(walking_speed, file = "../RData/w2/walking_speed.RData")
+
+CHARLS_m_ds_w2 <- CHARLS_ds_w2
+CHARLS_m_ds_w2$walking_speed <- car::recode(CHARLS_m_ds_w2$walking_speed, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'CHARLS_m_ds_w2', CHARLS_m_ds_w2)
+#opal.symbol_import(o,'CHARLS_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+# Quality estimation
+The measure is created averaging the times obtained in the one/two/three trials available.
+
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+

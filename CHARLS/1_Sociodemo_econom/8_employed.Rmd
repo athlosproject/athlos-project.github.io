@@ -1,0 +1,303 @@
+---
+title: "Employed"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+source("../../CHARLS/CHARLS_ids.R")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/employedDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/employedDS.R')
+```
+
+
+# Data process
+
+
+## China
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `fa002` |
+|-|-|
+| **Label** | `Work for at Least One Hour Last Week`|
+| **Table name**  | `work_retirement_and_pension_wave1`| 
+| **Categories** | `1 = Yes`<br/>`2 = No` |
+| **Missings** | `NA` |
+| **Description** |  |
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'CHARLS_w1_2','CHARLS.work_retirement_and_pension_wave1',variables=list('fa002'), missings = T)
+CHARLS_w1_2 <- opal.execute(o,'CHARLS_w1_2')
+opal.assign.table.tibble(o, 'CHARLS_w1_id','CHARLS.CHARLS_w1_ids',variables=list('var'), missings = TRUE)
+CHARLS_w1_id <- opal.execute(o,'CHARLS_w1_id')
+
+# adding a zero to the old id's in CHARLS_w1 with CHARLS_ids
+CHARLS_w1_2$oldid <- CHARLS_w1_2$id
+CHARLS_w1_2$id <- CHARLS_ids(ids = CHARLS_w1_2$oldid)
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA,NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], oldid=as.numeric(new_2[,3]), fa002=as.numeric(new_2[,2]))
+  new_22
+}
+CHARLS_w1 <- Add_indiv(old = CHARLS_w1_2, new = CHARLS_w1_id)
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- CHARLS_w1$fa002
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(CHARLS_w1)[3])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w1, aes(x=factor(fa002))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `employed` from the study-specific variable it has to be recoded as follows:
+
+* `2 into 0`
+* `1 into 1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w1}
+
+# Categorical variable harmonization
+CHARLS_ds_w1 <- tibble(id=CHARLS_w1$id)
+CHARLS_ds_w1$employed <- car::recode(CHARLS_w1$fa002,"2=0;NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- CHARLS_ds_w1$employed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(CHARLS_ds_w1, aes(x=factor(employed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+
+AfterH <- table(CHARLS_ds_w1$employed, useNA = "ifany")
+BeforeH <- table(CHARLS_w1$fa002, useNA = "ifany")[c(2,1,3)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","NA->999")
+kable(C)
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `fa002` |
+|-|-|
+| **Label** | `Work for at Least One Hour Last Month`|
+| **Table name**  | `Work_Retirement_and_Pension_wave2`|
+| **Categories** | `1 = Yes`<br/>`2 = No` |
+| **Missings** | `NA` |
+| **Description** |  |
+
+```{r assign w2, echo=F}
+
+opal.assign.table.tibble(o, 'CHARLS_w2_2','CHARLS.Work_Retirement_and_Pension_wave2',variables=list('fa002'), missings = T)
+CHARLS_w2_2 <- opal.execute(o,'CHARLS_w2_2')
+opal.assign.table.tibble(o, 'CHARLS_w2_id','CHARLS.CHARLS_w2_ids',variables=list('var'), missings = TRUE)
+CHARLS_w2_id <- opal.execute(o,'CHARLS_w2_id')
+
+Add_indiv <- function(old, new){
+
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+
+  new_22 <- data.frame(id=new_2[,1], fa002=as.numeric(new_2[,2]))
+  new_22
+}
+CHARLS_w2 <- Add_indiv(old = CHARLS_w2_2, new = CHARLS_w2_id)
+
+```
+
+```{r local w2, echo=F}
+
+vbl <- CHARLS_w2$fa002
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(CHARLS_w2)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w2, aes(x=factor(fa002))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `employed` from the study-specific variable it has to be recoded as follows:
+
+* `2 into 0`
+* `1 into 1`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo w2}
+
+CHARLS_ds_w2 <- tibble(id=CHARLS_w2$id)
+CHARLS_ds_w2$employed <- car::recode(CHARLS_w2$fa002,"2=0;NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w2, echo=F}
+
+vbl <- CHARLS_ds_w2$employed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(CHARLS_ds_w2, aes(x=factor(employed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w2, echo=F}
+
+AfterH <- table(CHARLS_ds_w2$employed, useNA = "ifany")
+BeforeH <- table(CHARLS_w2$fa002, useNA = "ifany")[c(2,1,3)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","NA->999")
+kable(C)
+
+```
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
+
+**R script:**
+
+```{r summ}
+CHARLS_ds_w1$employed <- labelled(CHARLS_ds_w1$employed, labels = cat_label)
+label(CHARLS_ds_w1$employed) <- ds_label
+CHARLS_ds_w2$employed <- labelled(CHARLS_ds_w2$employed, labels = cat_label)
+label(CHARLS_ds_w2$employed) <- ds_label
+
+
+CHARLS_m_ds_w1 <- CHARLS_ds_w1
+CHARLS_m_ds_w1$employed <- car::recode(CHARLS_m_ds_w1$employed, "miss_values_vector=NA")
+CHARLS_m_ds_w2 <- CHARLS_ds_w2
+CHARLS_m_ds_w2$employed <- car::recode(CHARLS_m_ds_w2$employed, "miss_values_vector=NA")
+
+
+tt <-    frq(CHARLS_ds_w1$employed)[[1]][,c(1:2,4)]
+tt[4] <- frq(CHARLS_ds_w2$employed)[[1]][,c(4)]
+tt[13,] <- c("n", "sample size", 
+             length(CHARLS_ds_w1$employed), length(CHARLS_ds_w2$employed)
+             )
+names(tt)<-c("val", "label", "w1", "w2")
+kable(tt)
+
+dbb <- merge(CHARLS_m_ds_w1[,c("id","employed")], CHARLS_m_ds_w2[,c("id","employed")], by="id", suffixes = c(".w1",".w2"), all=T)
+names(dbb) <- c("id", "w1", "w2")
+v.dbb <- paste(dbb[,2],dbb[,3],sep="")
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb)
+```
+
+
+
+# Quality estimation
+
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+l.CHARLS <- list(w1 = CHARLS_ds_w1, w2 = CHARLS_ds_w2)
+
+for(index in seq_along(l.CHARLS)){
+  employed <- l.CHARLS[[index]]
+  save(employed, file = paste0(datafolder,names(l.CHARLS)[index],"/employed.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

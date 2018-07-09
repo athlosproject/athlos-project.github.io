@@ -1,0 +1,251 @@
+---
+title: "Divorce/Separation"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_ania.r")
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/CHARLS/9_Social_env_life_events/CHARLS_ids.r")
+
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variables is the following:
+
+* Short name: `divorce`
+* Variable label: `Experience of divorce/separation`
+* Domain: `Social environment`
+* Value type: `cathegorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## China (All counties with the exception of Tibet)
+
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `be001`
+* Label: `Marital Status`
+* Categories: 
+    + `1.0 = Married with divorce present`
+    + `2.0 = Married but not living with divorce temporarily for reasons such as work`
+    + `3.0 = Separated`
+    + `4.0 = Divorced`
+    + `5.0 = Widowed`
+    + `6.0 = Never married`
+
+    
+
+* Description: 
+```{r assign1}
+opal.assign.table.tibble(o, 'CHARLS_w1_divorce','CHARLS.demographic_background_modif_Laia_baseline',variables=list('be001'), missings = TRUE)
+opal.assign.table.tibble(o, 'CHARLS_w1_id','CHARLS.CHARLS_w1_ids',
+                         variables=list('var'), missings = TRUE)
+
+```
+
+```{r local1}
+CHARLS_w1_divorce <- opal.execute(o,'CHARLS_w1_divorce')
+CHARLS_w1_id <- opal.execute(o,'CHARLS_w1_id')
+CHARLS_w1_divorce$oldid <- CHARLS_w1_divorce$id
+CHARLS_w1_divorce$id <- CHARLS_ids(ids = CHARLS_w1_divorce$oldid)
+CHARLS_w1_divorce <- left_join(CHARLS_w1_id, CHARLS_w1_divorce, by="id")[,-2]
+
+vari <- CHARLS_w1_divorce$be001
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = CHARLS_w1_divorce$be001, missing_values = NA)
+ggplot(CHARLS_w1_divorce, aes(x=factor(be001))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `3 or 4 into 1`
+* `1,2,5,6 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1, echo=TRUE}
+CHARLS_ds_w1 <- tibble(id=CHARLS_w1_divorce$id)
+CHARLS_ds_w1$divorce <- car::recode(as.vector(CHARLS_w1_divorce$be001), " 3:4='1'; 1:2='0'; 5:6='0'; NA='999'")
+CHARLS_ds_w1$divorce <- labelled(CHARLS_ds_w1$divorce, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1}
+vari <- CHARLS_ds_w1$divorce
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = CHARLS_ds_w1$divorce, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(CHARLS_ds_w1, aes(x=factor(divorce))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Experience of divorce/separation") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1}
+AfterH <- table(CHARLS_ds_w1$divorce)
+BeforeH <- table(CHARLS_w1_divorce$be001, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[2]] <- sum(BeforeH[c(3,4)])
+BeforeH1[[1]] <- sum(BeforeH[c(1,2,5,6)])
+BeforeH1[[3]] <- BeforeH[[7]]
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("1,2,5,6->0","3:4->1","NA->999")
+kable(C)
+```
+
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `be001`
+* Label: `Marital Status`
+* Categories: 
+    + `1.0 = Married with divorce present`
+    + `2.0 = Married but not living with divorce temporarily for reasons such as work`
+    + `3.0 = Separated`
+    + `4.0 = Divorced`
+    + `5.0 = Widowed`
+    + `6.0 = Never married`
+    + `7.0 = Cohabitated`
+    
+* Name: divorce *harmonized in Wave1*
+
+* Description: 
+```{r assign2}
+opal.assign.table.tibble(o, 'CHARLS_w2_divorce','CHARLS.Demographic_Background_wave2',variables=list('be001'), missings = TRUE)
+opal.assign.table.tibble(o, 'CHARLS_w2_id','CHARLS.CHARLS_w2_ids',
+                         variables=list('var'), missings = TRUE)
+
+```
+
+```{r local2}
+CHARLS_w2_divorce <- opal.execute(o,'CHARLS_w2_divorce')
+CHARLS_w2_id <- opal.execute(o,'CHARLS_w2_id')
+CHARLS_w2_divorce <- left_join(CHARLS_w2_id, CHARLS_w2_divorce, by="id")[,-2]
+
+vari <-  CHARLS_w2_divorce$be001
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = CHARLS_w2_divorce$be001, missing_values = NA)
+ggplot(CHARLS_w2_divorce, aes(x=factor(be001))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To recode the harmonize variable from the study-specific variable it has to be recoded as follows:  
+
+* `if divorce=1 then (no matter what is be001) OR be001 equals 3 or 4 then recode into 1`
+* `else if be001 in {1,2,5,6,7} then recode into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2, echo=TRUE}
+CHARLS_w2_divorce_2 <- left_join(CHARLS_w2_divorce,CHARLS_ds_w1, by="id")
+CHARLS_ds_w2 <- tibble(id=CHARLS_w2_divorce_2$id)
+
+CHARLS_w2_divorce_2$divorce <- car::recode(as.vector(CHARLS_w2_divorce_2$divorce), "NA='-999'")
+CHARLS_w2_divorce_2$be001 <- car::recode(as.vector(CHARLS_w2_divorce_2$be001), "NA='-999'")
+
+CHARLS_ds_w2$divorce <- c(NA)  
+for(i in 1:dim(CHARLS_w2_divorce_2[1])){
+  if( CHARLS_w2_divorce_2$divorce[i] == 1 | CHARLS_w2_divorce_2$be001[i] %in% c(3,4) ) { CHARLS_ds_w2$divorce[i] = 1 }
+  else if( CHARLS_w2_divorce_2$be001[i] %in% c(1,2,5,6,7) ) { CHARLS_ds_w2$divorce[i] = 0 }
+}
+
+
+CHARLS_ds_w2$divorce <- car::recode(as.vector(CHARLS_ds_w2$divorce), "NA='999'")
+CHARLS_ds_w2$divorce <- labelled(CHARLS_ds_w2$divorce, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2}
+vari <- CHARLS_ds_w2$divorce
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = CHARLS_ds_w2$divorce, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(CHARLS_ds_w2, aes(x=factor(divorce))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Experience of divorce/separation") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2}
+AfterH <- table(CHARLS_ds_w2$divorce)
+BeforeH <- table(CHARLS_w2_divorce_2$divorce, CHARLS_w2_divorce_2$be001, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[2]] <- sum(BeforeH[,c(4,5)])
+BeforeH1[[1]] <- sum(BeforeH[,c(2,3,6,7,8)])
+BeforeH1[[3]] <- BeforeH[1,1]
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("1,2,5,6,7->0","3:4->1","NA->999")
+kable(C)
+```
+
+```{r save, echo=FALSE}
+divorce <- CHARLS_ds_w1
+save(divorce, file = "../RData/w1/divorce.RData")
+rm(divorce)
+
+divorce <- CHARLS_ds_w2
+save(divorce, file = "../RData/w2/divorce.RData")
+rm(divorce)
+
+
+```
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```

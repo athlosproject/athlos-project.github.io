@@ -1,0 +1,375 @@
+---
+title: "Cardiovascular diseases"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/CHARLS/CHARLS_ids.R")
+```
+<!-- ########################################################## --> 
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `cvd_all`
+* Variable label: `History of all Cardiovascular diseases`
+* Variable description: `The participant has been diagnosed by one or more of the following conditions: angina, stroke, myocardial infarction, heart attack, coronary heart disease, congestive heart failure, heart murmur, valve disease, cerebral vascular disease`
+* Domain: `Diseases`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No, the participant has not been diagnosed of any of these conditions
+1        | Yes, the participant has been diagnosed by any of these conditions
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+<!-- ########################################################## --> 
+<!-- # Global variables -->
+```{r global, include=FALSE, echo=F}
+miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
+ds_label <- "History of all Cardiovascular diseases"
+cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
+datafolder <- "../RData/"
+#sing_idlist <- c()
+```
+<!-- ########################################################## --> 
+
+
+
+# Data process
+
+
+
+## China
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `da007_7_` |`stroke`|
+|-|-|-|
+| **Label** | `Heart Problems`|`Stroke`|
+| **Table name**  | `health_status_and_functioning_wave1`|`stroke`|
+| **Categories** | `1 = Yes`<br/>`2 = No` |`0 = No`<br/>`1 = Yes` |
+| **Missings** | `NA` |`999 = Missing`|
+| **Description** |  |  |
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'CHARLS_w1_2','CHARLS.health_status_and_functioning_wave1',variables=list('da007_7_'), missings = T)
+CHARLS_w1_2 <- opal.execute(o,'CHARLS_w1_2')
+opal.assign.table.tibble(o, 'CHARLS_w1_id','CHARLS.CHARLS_w1_ids',variables=list('var'), missings = TRUE)
+CHARLS_w1_id <- opal.execute(o,'CHARLS_w1_id')
+load(paste0(datafolder,"w1/stroke.RData"))
+
+
+# adding a zero to the old id's in CHARLS_w1 with CHARLS_ids
+CHARLS_w1_2$oldid <- CHARLS_w1_2$id
+CHARLS_w1_2$id <- CHARLS_ids(ids = CHARLS_w1_2$oldid)
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA,NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], oldid=as.numeric(new_2[,3]), da007_7_=as.numeric(new_2[,2]))
+  new_22
+}
+CHARLS_w1 <- Add_indiv(old = CHARLS_w1_2, new = CHARLS_w1_id)
+CHARLS_w1 <- left_join(CHARLS_w1,stroke, by="id")
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- CHARLS_w1$da007_7_
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(CHARLS_w1)[3])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w1, aes(x=factor(da007_7_))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- CHARLS_w1$stroke
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(CHARLS_w1)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(CHARLS_w1, aes(x=factor(stroke))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cvd_all` from the study-specific variable it has to be recoded as follows:
+
+* `none 1 into 0`
+* `some 1 into 1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w1}
+
+# Categorical variable harmonization
+CHARLS_ds_w1 <- tibble(id=CHARLS_w1$id)
+CHARLS_ds_w1$cvd_all <- rep(999,length(CHARLS_w1$id))
+CHARLS_ds_w1$cvd_all[which(CHARLS_w1$da007_7_==2 & CHARLS_w1$stroke==0)] <- 0
+CHARLS_ds_w1$cvd_all[which(CHARLS_w1$da007_7_==1 | CHARLS_w1$stroke==1)] <- 1
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- CHARLS_ds_w1$cvd_all
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(CHARLS_ds_w1, aes(x=factor(cvd_all))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+
+AfterH <- table(CHARLS_ds_w1$cvd_all, useNA = "ifany")
+X <- c(
+  sum(CHARLS_w1$da007_7_==2 & CHARLS_w1$stroke==0,na.rm=T),
+  sum(CHARLS_w1$da007_7_==1 | CHARLS_w1$stroke==1,na.rm=T)
+)
+BeforeH <- c(X[1:2],length(CHARLS_w1$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("none 1->0","some 1->1","NA->999")
+kable(C)
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `da007_7_` |`stroke`|
+|-|-|-|
+| **Label** | `Have Been Diagnosed of Disease`|`Stroke`|
+| **Table name**  | `Health_Status_and_Functioning_wave2`|`stroke`|
+| **Categories** | `1 = Yes`<br/>`2 = No` |`0 = No`<br/>`1 = Yes` |
+| **Missings** | `NA` |`999 = Missing`|
+| **Description** |  |  |
+
+```{r assign w2, echo=F}
+
+opal.assign.table.tibble(o, 'CHARLS_w2_2','CHARLS.Health_Status_and_Functioning_wave2',variables=list('da007_7_'), missings = T)
+CHARLS_w2_2 <- opal.execute(o,'CHARLS_w2_2')
+opal.assign.table.tibble(o, 'CHARLS_w2_id','CHARLS.CHARLS_w2_ids',variables=list('var'), missings = TRUE)
+CHARLS_w2_id <- opal.execute(o,'CHARLS_w2_id')
+load(paste0(datafolder,"w2/stroke.RData"))
+
+Add_indiv <- function(old, new){
+
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+
+  new_22 <- data.frame(id=new_2[,1], da007_7_=as.numeric(new_2[,2]))
+  new_22
+}
+CHARLS_w2 <- Add_indiv(old = CHARLS_w2_2, new = CHARLS_w2_id)
+CHARLS_w2 <- left_join(CHARLS_w2,stroke, by="id")
+
+```
+
+```{r local w2, echo=F}
+
+vbl <- CHARLS_w2$da007_7_
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(CHARLS_w2)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w2, aes(x=factor(da007_7_))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- CHARLS_w2$stroke
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(CHARLS_w2)[3])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(CHARLS_w2, aes(x=factor(stroke))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cvd_all` from the study-specific variable it has to be recoded as follows:
+
+* `none 1 into 0`
+* `some 1 into 1`
+* `NA into 999`
+
+
+
+**R script:**
+
+```{r harmo w2}
+
+# Categorical variable harmonization
+CHARLS_ds_w2 <- tibble(id=CHARLS_w2$id)
+CHARLS_ds_w2$cvd_all <- rep(999,length(CHARLS_w2$id))
+CHARLS_ds_w2$cvd_all[which(CHARLS_w2$da007_7_==2 & CHARLS_w2$stroke==0)] <- 0
+CHARLS_ds_w2$cvd_all[which(CHARLS_w2$da007_7_==1 | CHARLS_w2$stroke==1)] <- 1
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w2, echo=F}
+
+vbl <- CHARLS_ds_w2$cvd_all
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(CHARLS_ds_w2, aes(x=factor(cvd_all))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w2, echo=F}
+
+AfterH <- table(CHARLS_ds_w2$cvd_all, useNA = "ifany")
+X <- c(
+  sum(CHARLS_w2$da007_7_==2 & CHARLS_w2$stroke==0,na.rm=T),
+  sum(CHARLS_w2$da007_7_==1 | CHARLS_w2$stroke==1,na.rm=T)
+)
+BeforeH <- c(X[1:2],length(CHARLS_w2$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("none 1->0","some 1->1","NA->999")
+kable(C)
+
+```
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
+
+**R script:**
+
+```{r summ}
+CHARLS_ds_w1$cvd_all <- labelled(CHARLS_ds_w1$cvd_all, labels = cat_label)
+label(CHARLS_ds_w1$cvd_all) <- ds_label
+CHARLS_ds_w2$cvd_all <- labelled(CHARLS_ds_w2$cvd_all, labels = cat_label)
+label(CHARLS_ds_w2$cvd_all) <- ds_label
+
+
+CHARLS_m_ds_w1 <- CHARLS_ds_w1
+CHARLS_m_ds_w1$cvd_all <- car::recode(CHARLS_m_ds_w1$cvd_all, "miss_values_vector=NA")
+CHARLS_m_ds_w2 <- CHARLS_ds_w2
+CHARLS_m_ds_w2$cvd_all <- car::recode(CHARLS_m_ds_w2$cvd_all, "miss_values_vector=NA")
+
+
+tt <-    frq(CHARLS_ds_w1$cvd_all)[[1]][,c(1:2,4)]
+tt[4] <- frq(CHARLS_ds_w2$cvd_all)[[1]][,c(4)]
+tt[13,] <- c("n", "sample size", 
+             length(CHARLS_ds_w1$cvd_all), length(CHARLS_ds_w2$cvd_all)
+             )
+names(tt)<-c("val", "label", "w1", "w2")
+kable(tt)
+
+dbb <- merge(CHARLS_m_ds_w1[,c("id","cvd_all")], CHARLS_m_ds_w2[,c("id","cvd_all")], by="id", suffixes = c(".w1",".w2"), all=T)
+names(dbb) <- c("id", "w1", "w2")
+v.dbb <- paste(dbb[,2],dbb[,3],sep="")
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb[f.dbb[,3]>=0.3,])
+```
+
+
+
+# Quality estimation
+
+This harmonized variable contains information about: Heart problems is about heart attack disease, angina, congestive heart failure or other heart problems and stroke.
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+l.CHARLS <- list(w1 = CHARLS_ds_w1, w2 = CHARLS_ds_w2)
+
+for(index in seq_along(l.CHARLS)){
+  cvd_all <- l.CHARLS[[index]]
+  save(cvd_all, file = paste0(datafolder,names(l.CHARLS)[index],"/cvd_all.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

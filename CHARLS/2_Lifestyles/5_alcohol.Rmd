@@ -1,0 +1,443 @@
+---
+title: "Alcohol drinking"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+source("../../CHARLS/CHARLS_ids.R")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/alcoholDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/alcoholDS.R')
+```
+
+
+# Data process
+
+
+## China
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `da067` |`da069`|
+|-|-|-|
+| **Label** | `Did You Drink Any Alcoholic Beverages Last Year`|`Did You Drink Alcoholic Beverages Ever`|
+| **Table name**  | `health_status_and_functioning_wave1`|  `health_status_and_functioning_wave1`|
+| **Categories** | `1 = Drink more than once a month`<br/>`2 = Drink but less than once a month`<br/>`3 = None of these` | `1 = I never had a drink`<br/>`2 = I used to drink less than once a month`<br/>`3 = I used to drink more than once a month` |
+| **Missings** | `NA` | `NA` |
+| **Description** |  |  |
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'CHARLS_w1_2','CHARLS.health_status_and_functioning_wave1',variables=list('da067','da069'), missings = T)
+CHARLS_w1_2 <- opal.execute(o,'CHARLS_w1_2')
+opal.assign.table.tibble(o, 'CHARLS_w1_id','CHARLS.CHARLS_w1_ids',variables=list('var'), missings = TRUE)
+CHARLS_w1_id <- opal.execute(o,'CHARLS_w1_id')
+
+# adding a zero to the old id's in CHARLS_w1 with CHARLS_ids
+CHARLS_w1_2$oldid <- CHARLS_w1_2$id
+CHARLS_w1_2$id <- CHARLS_ids(ids = CHARLS_w1_2$oldid)
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA,NA, NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], oldid=as.numeric(new_2[,4]), da067=as.numeric(new_2[,2]), da069=as.numeric(new_2[,3]))
+  new_22
+}
+CHARLS_w1 <- Add_indiv(old = CHARLS_w1_2, new = CHARLS_w1_id)
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- CHARLS_w1$da067
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(CHARLS_w1)[3])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w1, aes(x=factor(da067))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- CHARLS_w1$da069
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(CHARLS_w1)[4])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w1, aes(x=factor(da069))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `current_oh` from the study-specific variable it has to be recoded as follows:
+
+* `if da067=1 then current_alcohol_drinker=1`
+* `if da067=2 then current_alcohol_drinker=1`
+* `if da067=3 then current_alcohol_drinker=0`
+* `NA into 999`
+
+To compute `freq_oh` from the study-specific variable it has to be recoded as follows:
+
+* `da067 == 1 into 2`
+* `da067 == 2 into 1`
+* `da067 == 3 into 0`
+* `NA into 999`
+
+To compute `past_oh` from the study-specific variable it has to be recoded as follows:
+
+* `da069 == 1 into 0`
+* `da069 == 2,3 into 1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w1}
+
+# Categorical variable harmonization
+CHARLS_ds_w1 <- tibble(id=CHARLS_w1$id)
+CHARLS_ds_w1$current_oh <- car::recode(CHARLS_w1$da067,"2=1; 3=0; NA=999")
+CHARLS_ds_w1$freq_oh <- car::recode(CHARLS_w1$da067,"2=1; 1=2; 3=0; NA=999")
+CHARLS_ds_w1$past_oh <- car::recode(CHARLS_w1$da069,"1=0; c(2,3)=1; NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- CHARLS_ds_w1$current_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_curr)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(CHARLS_ds_w1, aes(x=factor(current_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_curr) + ylab("Frequency")
+
+vbl <- CHARLS_ds_w1$freq_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_freq)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(CHARLS_ds_w1, aes(x=factor(freq_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_freq) + ylab("Frequency")
+
+vbl <- CHARLS_ds_w1$past_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_past)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(CHARLS_ds_w1, aes(x=factor(past_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_past) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `da067` |`da069`|
+|-|-|-|
+| **Label** | `Drink`|`Ever Drink Alcoholic Beverages`|
+| **Table name**  | `Health_Status_and_Functioning_wave2`|`Health_Status_and_Functioning_wave2`|
+| **Categories** | `1 = Drink More Than Once A Month`<br/>`2 = Drink but Less Than Once A Month`<br/>`3 = None of These` | `1 = I Never Had A Drink`<br/>`2 = I Used to Drink Less Than Once A Month`<br/>`3 = I Used to Drink More Than Once A Month` |
+| **Missings** | `NA` |
+| **Description** |  |
+
+```{r assign w2, echo=F}
+
+opal.assign.table.tibble(o, 'CHARLS_w2_2','CHARLS.Health_Status_and_Functioning_wave2',variables=list('da067','da069'), missings = T)
+CHARLS_w2_2 <- opal.execute(o,'CHARLS_w2_2')
+opal.assign.table.tibble(o, 'CHARLS_w2_id','CHARLS.CHARLS_w2_ids',variables=list('var'), missings = TRUE)
+CHARLS_w2_id <- opal.execute(o,'CHARLS_w2_id')
+
+Add_indiv <- function(old, new){
+
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA, NA)
+    }
+  }
+
+  new_22 <- data.frame(id=new_2[,1], da067=as.numeric(new_2[,2]), da069=as.numeric(new_2[,3]))
+  new_22
+}
+CHARLS_w2 <- Add_indiv(old = CHARLS_w2_2, new = CHARLS_w2_id)
+
+```
+
+```{r local w2, echo=F}
+
+vbl <- CHARLS_w2$da067
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(CHARLS_w2)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w2, aes(x=factor(da067))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- CHARLS_w2$da069
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(CHARLS_w2)[3])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w2, aes(x=factor(da069))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `current_oh` from the study-specific variable it has to be recoded as follows:
+
+* `if da067=1 then current_alcohol_drinker=1`
+* `if da067=2 then current_alcohol_drinker=1`
+* `if da067=3 then current_alcohol_drinker=0`
+* `NA into 999`
+
+To compute `freq_oh` from the study-specific variable it has to be recoded as follows:
+
+* `da067 == 1 into 2`
+* `da067 == 2 into 1`
+* `da067 == 3 into 0`
+* `NA into 999`
+
+To compute `past_oh` from the study-specific variable it has to be recoded as follows:
+
+* `da069 == 1 into 0`
+* `da069 == 2,3 into 1`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo w2}
+
+CHARLS_ds_w2 <- tibble(id=CHARLS_w2$id)
+CHARLS_ds_w2$current_oh <- car::recode(CHARLS_w2$da067,"2=1; 3=0; NA=999")
+CHARLS_ds_w2$freq_oh <- car::recode(CHARLS_w2$da067,"2=1; 1=2; 3=0; NA=999")
+CHARLS_ds_w2$past_oh <- car::recode(CHARLS_w2$da069,"1=0; c(2,3)=1; NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w2, echo=F}
+
+vbl <- CHARLS_ds_w2$current_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_curr)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(CHARLS_ds_w2, aes(x=factor(current_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_curr) + ylab("Frequency")
+
+vbl <- CHARLS_ds_w2$freq_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_freq)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(CHARLS_ds_w2, aes(x=factor(freq_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_freq) + ylab("Frequency")
+
+vbl <- CHARLS_ds_w2$past_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_past)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(CHARLS_ds_w2, aes(x=factor(past_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_past) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w2, echo=F}
+
+```
+
+
+
+## Summary of descriptive statistics of the harmonised variable `current_oh` accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories.
+
+
+**R script:**
+
+```{r summ current}
+CHARLS_ds_w1$current_oh <- labelled(CHARLS_ds_w1$current_oh, labels = cat_label)
+label(CHARLS_ds_w1$current_oh) <- ds_label_curr
+CHARLS_ds_w2$current_oh <- labelled(CHARLS_ds_w2$current_oh, labels = cat_label)
+label(CHARLS_ds_w2$current_oh) <- ds_label_curr
+
+
+CHARLS_m_ds_w1 <- CHARLS_ds_w1
+CHARLS_m_ds_w1$current_oh <- car::recode(CHARLS_m_ds_w1$current_oh, "miss_values_vector=NA")
+CHARLS_m_ds_w2 <- CHARLS_ds_w2
+CHARLS_m_ds_w2$current_oh <- car::recode(CHARLS_m_ds_w2$current_oh, "miss_values_vector=NA")
+
+
+tt <-    frq(CHARLS_ds_w1$current_oh)[[1]][,c(1:2,4)]
+tt[4] <- frq(CHARLS_ds_w2$current_oh)[[1]][,c(4)]
+tt[13,] <- c("n", "sample size", 
+             length(CHARLS_ds_w1$id), length(CHARLS_ds_w2$id)
+             )
+names(tt)<-c("val", "label", "w1", "w2")
+kable(tt)
+
+dbb <- merge(CHARLS_m_ds_w1[,c("id","current_oh")], CHARLS_m_ds_w2[,c("id","current_oh")], by="id", suffixes = c(".w1",".w2"), all=T)
+names(dbb) <- c("id", "w1", "w2")
+v.dbb <- paste(dbb[,2],dbb[,3],sep="")
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb)
+```
+
+
+## Summary of descriptive statistics of the harmonised variable `freq_oh` accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories.
+
+**R script:**
+
+```{r summ freq}
+CHARLS_ds_w1$freq_oh <- labelled(CHARLS_ds_w1$freq_oh, labels = freq_label)
+label(CHARLS_ds_w1$freq_oh) <- ds_label_freq
+CHARLS_ds_w2$freq_oh <- labelled(CHARLS_ds_w2$freq_oh, labels = freq_label)
+label(CHARLS_ds_w2$freq_oh) <- ds_label_freq
+
+
+CHARLS_m_ds_w1 <- CHARLS_ds_w1
+CHARLS_m_ds_w1$freq_oh <- car::recode(CHARLS_m_ds_w1$freq_oh, "miss_values_vector=NA")
+CHARLS_m_ds_w2 <- CHARLS_ds_w2
+CHARLS_m_ds_w2$freq_oh <- car::recode(CHARLS_m_ds_w2$freq_oh, "miss_values_vector=NA")
+
+
+tt <-    frq(CHARLS_ds_w1$freq_oh)[[1]][,c(1:2,4)]
+tt[4] <- frq(CHARLS_ds_w2$freq_oh)[[1]][,c(4)]
+tt[14,] <- c("n", "sample size", 
+             length(CHARLS_ds_w1$id), length(CHARLS_ds_w2$id)
+             )
+names(tt)<-c("val", "label", "w1", "w2")
+kable(tt)
+
+dbb <- merge(CHARLS_m_ds_w1[,c("id","freq_oh")], CHARLS_m_ds_w2[,c("id","freq_oh")], by="id", suffixes = c(".w1",".w2"), all=T)
+names(dbb) <- c("id", "w1", "w2")
+v.dbb <- paste(dbb[,2],dbb[,3],sep="")
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb)
+```
+
+
+
+## Summary of descriptive statistics of the harmonised variable `past_oh` accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories.
+
+
+**R script:**
+
+```{r summ past}
+CHARLS_ds_w1$past_oh <- labelled(CHARLS_ds_w1$past_oh, labels = cat_label)
+label(CHARLS_ds_w1$past_oh) <- ds_label_past
+CHARLS_ds_w2$past_oh <- labelled(CHARLS_ds_w2$past_oh, labels = cat_label)
+label(CHARLS_ds_w2$past_oh) <- ds_label_past
+
+
+CHARLS_m_ds_w1 <- CHARLS_ds_w1
+CHARLS_m_ds_w1$past_oh <- car::recode(CHARLS_m_ds_w1$past_oh, "miss_values_vector=NA")
+CHARLS_m_ds_w2 <- CHARLS_ds_w2
+CHARLS_m_ds_w2$past_oh <- car::recode(CHARLS_m_ds_w2$past_oh, "miss_values_vector=NA")
+
+
+tt <-    frq(CHARLS_ds_w1$past_oh)[[1]][,c(1:2,4)]
+tt[4] <- frq(CHARLS_ds_w2$past_oh)[[1]][,c(4)]
+tt[13,] <- c("n", "sample size", 
+             length(CHARLS_ds_w1$id), length(CHARLS_ds_w2$id)
+             )
+names(tt)<-c("val", "label", "w1", "w2")
+kable(tt)
+
+dbb <- merge(CHARLS_m_ds_w1[,c("id","past_oh")], CHARLS_m_ds_w2[,c("id","past_oh")], by="id", suffixes = c(".w1",".w2"), all=T)
+names(dbb) <- c("id", "w1", "w2")
+v.dbb <- paste(dbb[,2],dbb[,3],sep="")
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb)
+```
+
+
+# Quality estimation
+
+* The question `Did You Drink Any Alcoholic Beverages Last Year`  will entail a high risk of error if one understands the harmonized variable as a weekly equivalent.
+
+<!--
+cf. template
+-->
+
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+l.CHARLS <- list(w1 = CHARLS_ds_w1, w2 = CHARLS_ds_w2)
+
+for(index in seq_along(l.CHARLS)){
+  alcohol <- l.CHARLS[[index]]
+  save(alcohol, file = paste0(datafolder,names(l.CHARLS)[index],"/alcohol.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

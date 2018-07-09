@@ -1,0 +1,299 @@
+---
+title: "Education"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE, echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/Rmds/setup_albert.r")
+source("M:\\WPs\\WP1\\Maelstrom\\data_process\\Rmds\\CHARLS\\1_Sociodemo_econom\\CHARLS_ids.R")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `education`
+* Variable label: `Highest level of formal education achieved`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | less than primary education
+1        | primary education
+2        | secondary education
+3        | tertiary education
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## China (All counties with the exception of Tibet)
+
+
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `bd001`
+* Label: `Highest Level of Education Attained`
+* Categories: 
+    + `1 = No formal education illiterate`
+    + `2 = Did not finish primary school but capable of reading or writing`
+    + `3 = Sishu`
+    + `4 = Elementary school`
+    + `5 = Middle school`
+    + `6 = High school`
+    + `7 = Vocational school`
+    + `8 = Two/Three Year College / Associate degree`
+    + `9 = Four Year College / Bachelors degree`
+    + `10 = Post-graduate, Masters degree`
+    + `11 = Post-graduate, Ph.D.`
+* Description:
+```{r assign1, echo=FALSE}
+opal.assign.table.tibble(o, 'CHARLS_w1_educ2','CHARLS.demographic_background_wave1',
+                         variables=list('bd001'), missings = TRUE)
+opal.assign.table.tibble(o, 'CHARLS_w1_id','CHARLS.CHARLS_w1_ids',
+                         variables=list('var'), missings = TRUE)
+```
+
+```{r local1, echo=FALSE}
+CHARLS_w1_educ2 <- opal.execute(o,'CHARLS_w1_educ2')
+CHARLS_w1_id <- opal.execute(o,'CHARLS_w1_id')
+
+CHARLS_w1_educ2$oldid <- CHARLS_w1_educ2$id
+CHARLS_w1_educ2$id <- CHARLS_ids(ids = CHARLS_w1_educ2$oldid)
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA, NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], oldid=as.numeric(new_2[,3]), bd001=as.numeric(new_2[,2]))
+  new_22
+}
+
+CHARLS_w1_educ <- Add_indiv(old = CHARLS_w1_educ2, new = CHARLS_w1_id)
+vari <- CHARLS_w1_educ$bd001
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = CHARLS_w1_educ$bd001, missing_values = NA)
+ggplot(CHARLS_w1_educ, aes(x=factor(bd001))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "No formal education illiterate" into 0`
+* `recode 2 "Did not finish primary school but capable of reading or writing" into 0`
+* `recode 3 "Sishu" into 0`
+* `recode 4 "Elementary school" into 1`
+* `recode 5 "Middle school" into 2`
+* `recode 6 "High school" into 2`
+* `recode 7 "Vocational school" into 2`
+* `recode 8 "Two/Three Year College / Associate degree" into 3`
+* `recode 9 "Four Year College / Bachelors degree" into 3`
+* `recode 10 "Post-graduate, Masters degree" into 3`
+* `recode 11 "Post-graduate, Ph.D." into 3`
+* `recode NA into 999`
+
+
+**R script:**
+
+```{r harmo1, echo=TRUE}
+CHARLS_ds_w1 <- tibble(id=CHARLS_w1_educ$id)
+CHARLS_ds_w1$education <- car::recode(CHARLS_w1_educ$bd001, "1=0; 2=0; 3=0; 4=1; 5=2; 6=2; 7=2; 8=3; 9=3; 10=3; 11=3; NA=999")
+CHARLS_ds_w1$education <- labelled(CHARLS_ds_w1$education, labels = c("less than primary education"=0, "primary education"=1, "secondary education"=2, "tertiary education"=3, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1, echo=FALSE}
+vari <- CHARLS_ds_w1$education
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = CHARLS_ds_w1$education, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(CHARLS_ds_w1, aes(x=factor(education))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=FALSE}
+BeforeH <- table(CHARLS_w1_educ$bd001)
+BeforeH <- c(sum(BeforeH[1:3]), BeforeH[4],sum(BeforeH[5:7]), sum(BeforeH[8:10]), sum(is.na(CHARLS_w1_educ$bd001)))
+AfterH <- table(CHARLS_ds_w1$education)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("(1,2,3)->0", "4->1", "(5,6,7)->2", "(8,9,10,11)->3", "NA->999")
+kable(C)
+```
+
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `bd001`
+* Label: `The Highest level of Education Attained Now`
+* Categories: 
+    + `1 = No formal education illiterate`
+    + `2 = Did not finish primary school but capable of reading or writing`
+    + `3 = Sishu`
+    + `4 = Elementary school`
+    + `5 = Middle school`
+    + `6 = High school`
+    + `7 = Vocational school`
+    + `8 = Two/Three Year College / Associate degree`
+    + `9 = Four Year College / Bachelors degree`
+    + `10 = Post-graduate, Masters degree`
+    + `11 = Post-graduate, Ph.D.`
+* Description:
+```{r assign2, echo=FALSE}
+opal.assign.table.tibble(o, 'CHARLS_w2_educ2','CHARLS.Demographic_Background_wave2',
+                         variables=list('bd001'), missings = TRUE)
+opal.assign.table.tibble(o, 'CHARLS_w2_id','CHARLS.CHARLS_w2_ids',
+                         variables=list('var'), missings = TRUE)
+```
+
+```{r local2, echo=FALSE}
+CHARLS_w2_educ2 <- opal.execute(o,'CHARLS_w2_educ2')
+CHARLS_w2_id <- opal.execute(o,'CHARLS_w2_id')
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], bd001=as.numeric(new_2[,2]))
+  new_22
+}
+
+CHARLS_w2_educ <- Add_indiv(old = CHARLS_w2_educ2, new = CHARLS_w2_id)
+
+vari <- CHARLS_w2_educ$bd001
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = CHARLS_w2_educ$bd001, missing_values = NA)
+ggplot(CHARLS_w2_educ, aes(x=factor(bd001))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "No formal education illiterate" into 0`
+* `recode 2 "Did not finish primary school but capable of reading or writing" into 0`
+* `recode 3 "Sishu" into 0`
+* `recode 4 "Elementary school" into 1`
+* `recode 5 "Middle school" into 2`
+* `recode 6 "High school" into 2`
+* `recode 7 "Vocational school" into 2`
+* `recode 8 "Two/Three Year College / Associate degree" into 3`
+* `recode 9 "Four Year College / Bachelors degree" into 3`
+* `recode 10 "Post-graduate, Masters degree" into 3`
+* `recode 11 "Post-graduate, Ph.D." into 3`
+* `recode NA into 999`
+
+**R script:**
+
+```{r harmo2, echo=TRUE}
+CHARLS_ds_w2 <- tibble(id=CHARLS_w2_educ$id)
+CHARLS_ds_w2$education <- car::recode(CHARLS_w2_educ$bd001, "1=0; 2=0; 3=0; 4=1; 5=2; 6=2; 7=2; 8=3; 9=3; 10=3; 11=3; NA=999")
+CHARLS_ds_w2$education <- labelled(CHARLS_ds_w2$education, labels = c("less than primary education"=0, "primary education"=1, "secondary education"=2, "tertiary education"=3, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2, echo=FALSE}
+vari <- CHARLS_ds_w2$education
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = CHARLS_ds_w2$education, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(CHARLS_ds_w2, aes(x=factor(education))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2, echo=FALSE}
+BeforeH <- table(CHARLS_w2_educ$bd001)
+BeforeH <- c(sum(BeforeH[1:3]), BeforeH[4],sum(BeforeH[5:7]), sum(BeforeH[8:11]), sum(is.na(CHARLS_w2_educ$bd001)))
+AfterH <- table(CHARLS_ds_w2$education)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("(1,2,3)->0", "4->1", "(5,6,7)->2", "(8,9,10,11)->3", "NA->999")
+kable(C)
+```
+
+
+
+# Quality estimation
+
+'3=sishu' label was considered as 0=less than primary education after talking with Prof. Yaohui Zhao (CHARLS study contact) about its correspondence. 
+
+
+```{r save, echo=FALSE}
+education <- CHARLS_ds_w1
+save(education, file = "../RData/w1/education.RData")
+rm(education)
+
+education <- CHARLS_ds_w2
+save(education, file = "../RData/w2/education.RData")
+rm(education)
+```
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```

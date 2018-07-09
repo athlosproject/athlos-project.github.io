@@ -1,0 +1,280 @@
+---
+title: "Marital Status"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/Rmds/setup_ania.r")
+source("M:\\WPs\\WP1\\Maelstrom\\data_process\\Rmds\\CHARLS\\1_Sociodemo_econom\\CHARLS_ids.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `marital_status`
+* Variable label: `The current marital status of the participant`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+1        | single
+2        | married-cohabitating
+3        | divorced-separated
+4        | widow
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+## China (All counties with the exception of Tibet)
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `be001`
+* Label: `Marital status`
+* Categories: 
+    + `1 = Married with spouse present`
+    + `2 = Married but not living with spouse temporarily for reasons such as work`
+    + `3 = Separated`
+    + `4 = Divorced`
+    + `5 = Widowed`
+    + `6 = Never married`
+
+* Description: 
+```{r assign1,  echo=FALSE}
+opal.assign.table.tibble(o, 'CHARLS_w1_ms2','CHARLS.demographic_background_wave1',
+                         variables=list('be001'), missings = TRUE)
+opal.assign.table.tibble(o, 'CHARLS_w1_id','CHARLS.CHARLS_w1_ids',
+                         variables=list('var'), missings = TRUE)
+```
+
+```{r local1,  echo=FALSE}
+CHARLS_w1_ms2 <- opal.execute(o,'CHARLS_w1_ms2')
+CHARLS_w1_id <- opal.execute(o,'CHARLS_w1_id')
+CHARLS_w1_ms2$oldid <- CHARLS_w1_ms2$id
+CHARLS_w1_ms2$id <- CHARLS_ids(ids = CHARLS_w1_ms2$oldid)
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA, NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], oldid=as.numeric(new_2[,3]), be001=as.numeric(new_2[,2]))
+  new_22
+}
+
+CHARLS_w1_ms <- Add_indiv(old = CHARLS_w1_ms2, new = CHARLS_w1_id)
+vari <- CHARLS_w1_ms$be001
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = CHARLS_w1_ms$be001, missing_values = NA)
+ggplot(CHARLS_w1_ms, aes(x=factor(be001))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "Married with spouse present" into 2`
+* `keep "Married but not living with spouse temporarily for reasons such as work" into 2`
+* `keep "Separated" into 3`
+* `recode 4 "Divorced" into 3`
+* `recode 5 "Widowed" into 4`
+* `recode 6 "Never married" into 1`
+* `recode NA into 999`
+
+
+**R script:**
+
+```{r harmo1,   echo=TRUE}
+CHARLS_ds_w1 <- tibble(id=CHARLS_w1_ms$id)
+CHARLS_ds_w1$marital_status <- car::recode(CHARLS_w1_ms$be001, " 1=2; 4=3; 5=4; 6=1; NA=999")
+CHARLS_ds_w1$marital_status <- labelled(CHARLS_ds_w1$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1,  echo=FALSE}
+vari <- CHARLS_ds_w1$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = CHARLS_ds_w1$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(CHARLS_ds_w1, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1,  echo=FALSE}
+BeforeH <- table(CHARLS_w1_ms$be001)
+BeforeH <- c( BeforeH[6], sum(BeforeH[c(1,2)]), sum(BeforeH[c(3,4)]), BeforeH[5], sum(is.na(CHARLS_w1_ms$be001))) 
+AfterH <- table(CHARLS_ds_w1$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("6->1","(1,2)->2", "(3,4)->3", "5->4", "NA->999")
+kable(C)
+
+```
+
+ 
+ 
+
+ 
+
+### Wave 2 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `be001`
+* Label: `Marital status`
+* Categories: 
+    + `1 = Married with spouse present`
+    + `2 = Married but not living with spouse temporarily for reasons such as work`
+    + `3 = Separated`
+    + `4 = Divorced`
+    + `5 = Widowed`
+    + `6 = Never married`
+    + `7 = Cohabitated`
+
+* Description: 
+```{r assign2,  echo=FALSE}
+opal.assign.table.tibble(o, 'CHARLS_w2_ms2','CHARLS.Demographic_Background_wave2',
+                         variables=list('be001'), missings = TRUE)
+opal.assign.table.tibble(o, 'CHARLS_w2_id','CHARLS.CHARLS_w2_ids',
+                         variables=list('var'), missings = TRUE)
+```
+
+```{r local2,  echo=FALSE}
+CHARLS_w2_ms2 <- opal.execute(o,'CHARLS_w2_ms2')
+CHARLS_w2_id <- opal.execute(o,'CHARLS_w2_id')
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], be001=as.numeric(new_2[,2]))
+  new_22
+}
+
+CHARLS_w2_ms <- Add_indiv(old = CHARLS_w2_ms2, new = CHARLS_w2_id)
+vari <- CHARLS_w2_ms$be001
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = CHARLS_w2_ms$be001, missing_values = NA)
+ggplot(CHARLS_w2_ms, aes(x=factor(be001))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "Married with spouse present" into 2`
+* `keep "Married but not living with spouse temporarily for reasons such as work" into 2`
+* `keep "Separated" into 3`
+* `recode 4 "Divorced" into 3`
+* `recode 5 "Widowed" into 4`
+* `recode 6 "Never married" into 1`
+* `recode 7 "Cohabitated" into 2`
+* `recode NA into 999`
+
+
+**R script:**
+
+```{r harmo2,   echo=TRUE}
+CHARLS_ds_w2 <- tibble(id=CHARLS_w2_ms$id)
+CHARLS_ds_w2$marital_status <- car::recode(CHARLS_w2_ms$be001, " 1=2; 4=3; 5=4; 6=1;7=2; NA=999")
+CHARLS_ds_w2$marital_status <- labelled(CHARLS_ds_w2$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2,  echo=FALSE}
+vari <- CHARLS_ds_w2$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = CHARLS_ds_w2$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(CHARLS_ds_w2, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2,  echo=FALSE}
+BeforeH <- table(CHARLS_w2_ms$be001)
+BeforeH <- c( BeforeH[6], sum(BeforeH[c(1,2,7)]), sum(BeforeH[c(3,4)]), BeforeH[5], sum(is.na(CHARLS_w2_ms$be001))) 
+AfterH <- table(CHARLS_ds_w2$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("6->1","(1,2,7)->2", "(3,4)->3", "5->4", "NA->999")
+kable(C)
+```
+
+```{r save, echo=FALSE}
+marital_status <- CHARLS_ds_w1
+save(marital_status, file = "../RData/w1/marital_status.RData")
+rm(marital_status)
+
+marital_status <- CHARLS_ds_w2
+save(marital_status, file = "../RData/w2/marital_status.RData")
+rm(marital_status)
+```
+ 
+
+
+# Quality estimation
+
+The label '2=married but not living with spouse temporarily for reasons such as work' was considered as 'married-cohabitating' in the harmonized variable.It happens in both waves. 
+
+
+```{r closeRsession, echo=FALSE,  echo=FALSE} 
+opal.logout(o)
+```
