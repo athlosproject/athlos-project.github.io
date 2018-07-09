@@ -1,0 +1,309 @@
+---
+title: "Year of Birth"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+  
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `ybirth`
+* Variable label: `year of birth`
+* Variable description: `Year of birth`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+# Data process
+
+## Spain    
+    
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `y_birth` |
+|----------|------------|
+| **Label** | `año de nacimiento` |
+| **Table name** | `ENRICA_spss_wave1` |
+| **Missings** |`9999 = ns/nc`|
+| **Description** |  |
+
+
+
+
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'ENRICA_w1_ybirth','ENRICA.ENRICA_spss_wave1',
+                         variables=list('y_birth'), missings = TRUE)
+ENRICA_w1_ybirth <- opal.execute(o,'ENRICA_w1_ybirth')
+```
+
+```{r local1, echo=F}
+vari <- ENRICA_w1_ybirth$y_birth
+kable(Continuous_summary(var = vari, missing_values = c(9999))[3], caption = "Year of birth")
+kable(Continuous_summary(vari, missing_values = c(9999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(9999))$summary, caption = "Summary")
+ggplot(ENRICA_w1_ybirth, aes(y_birth)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1912, 2008)
+
+#The data set ENRICA_ds_w1 has the variables age, year_of_birth and year_of_interview:
+#ENRICA_ds_w1$compr_year_of_birth <- ENRICA_ds_w1$year_of_interview - ENRICA_ds_w1$age
+#ENRICA_ds_w1$compr <- ENRICA_ds_w1$compr_year_of_birth - ENRICA_ds_w1$ybirth
+#table(ENRICA_ds_w1$compr)
+#err <- c(which(ENRICA_ds_w1$compr==-63), which(ENRICA_ds_w1$compr==-55), which(ENRICA_ds_w1$compr==-50), 
+#         which(ENRICA_ds_w1$compr==-40), which(ENRICA_ds_w1$compr==-30), which(ENRICA_ds_w1$compr==-29), 
+#         which(ENRICA_ds_w1$compr==-28), which(ENRICA_ds_w1$compr==-15), #which(ENRICA_ds_w1$compr==-10), 
+#         which(ENRICA_ds_w1$compr==-9), which(ENRICA_ds_w1$compr==-8), #which(ENRICA_ds_w1$compr==-6), 
+#         which(ENRICA_ds_w1$compr==-5), which(ENRICA_ds_w1$compr==-4), which(ENRICA_ds_w1$compr==-3), 
+#         which(ENRICA_ds_w1$compr==-2), which(ENRICA_ds_w1$compr==2), which(ENRICA_ds_w1$compr==3), 
+#         which(ENRICA_ds_w1$compr==4), which(ENRICA_ds_w1$compr==5), which(ENRICA_ds_w1$compr==6), 
+#         which(ENRICA_ds_w1$compr==7), which(ENRICA_ds_w1$compr==8), which(ENRICA_ds_w1$compr==9), 
+#         which(ENRICA_ds_w1$compr==10), which(ENRICA_ds_w1$compr==929), which(ENRICA_ds_w1$compr==931), 
+#         which(ENRICA_ds_w1$compr==934), which(ENRICA_ds_w1$compr==941), which(ENRICA_ds_w1$compr==944), 
+#         which(ENRICA_ds_w1$compr==1946))
+#View(ENRICA_ds_w1[err,])
+#ENRICA_ds_w1_error <- ENRICA_ds_w1[err,]
+#table(ENRICA_ds_w1_error$ybirth)
+```
+
+The values 0 and higher than 1950 are considered as mistakes and recoded as 999. 
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `9999 'ns/nc' into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1}
+ENRICA_ds_w1 <- tibble(id=ENRICA_w1_ybirth$id)
+ENRICA_ds_w1$ybirth <- car::recode(ENRICA_w1_ybirth$y_birth, "NA=999; 1951:2008=999; 0=999; 9999=998")
+ENRICA_ds_w1$ybirth <- labelled(ENRICA_ds_w1$ybirth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript, echo=F}
+vari <- ENRICA_ds_w1$ybirth
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Year of birth")
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ENRICA_ds_w1, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1912, 1950)
+```
+
+#### Validation
+```{r crosstabulation1, echo=F}
+```
+
+
+
+
+
+```{r importOPAL1, echo=F}
+#opal.assign.data(o, 'ENRICA_ds_w1', ENRICA_ds_w1)
+#opal.symbol_import(o,'ENRICA_ds_w1', project='_Athlos_Harm_Dataset')
+ybirth <- ENRICA_ds_w1
+save(ybirth, file = "../RData/w1/ybirth.RData")
+rm(ybirth)
+
+ENRICA_m_ds_w1 <- ENRICA_ds_w1
+ENRICA_m_ds_w1$ybirth <- car::recode(ENRICA_m_ds_w1$ybirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ENRICA_m_ds_w1', ENRICA_m_ds_w1)
+#opal.symbol_import(o,'ENRICA_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `y_birth` |
+|----------|------------|
+| **Label** | `año de nacimiento` |
+| **Table name** | `ENRICA_spss_wave2` |
+| **Missings** |`9999 = ns/nc`|
+| **Description** |  |
+
+```{r assign2, echo=F}
+opal.assign.table.tibble(o, 'ENRICA_w2_ybirth','ENRICA.ENRICA_spss_wave2',
+                         variables=list('y_birth'), missings = TRUE)
+ENRICA_w2_ybirth <- opal.execute(o,'ENRICA_w2_ybirth')
+```
+
+```{r local2, echo=F}
+vari <-  ENRICA_w2_ybirth$y_birth
+kable(Continuous_summary(var = vari, missing_values = c(9999))[3], caption = "Year of birth")
+kable(Continuous_summary(vari, missing_values = c(9999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(9999))$summary, caption = "Summary")
+ggplot(ENRICA_w2_ybirth, aes(y_birth)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1912, 2008)
+```
+
+As it has been seen in baseline the values 0 and higher than 1950 are considered as mistakes and recoded as 999. 
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `9999 'ns/nc' into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2}
+ENRICA_ds_w2 <- tibble(id=ENRICA_w2_ybirth$id)
+ENRICA_ds_w2$ybirth <- car::recode(ENRICA_w2_ybirth$y_birth, "NA=999; 1951:2008=999; 0=999; 9999=998")
+ENRICA_ds_w2$ybirth <- labelled(ENRICA_ds_w2$ybirth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2, echo=F}
+vari <- ENRICA_ds_w2$ybirth
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Year of birth")
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ENRICA_ds_w2, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1912, 1950)
+```
+
+#### Validation
+```{r crosstabulation2, echo=F}
+```
+
+
+
+
+
+```{r importOPAL2, echo=F}
+
+#opal.assign.data(o, 'ENRICA_ds_w2', ENRICA_ds_w2)
+#opal.symbol_import(o,'ENRICA_ds_w2', project='_Athlos_Harm_Dataset')
+ybirth <- ENRICA_ds_w2
+save(ybirth, file = "../RData/w2/ybirth.RData")
+rm(ybirth)
+
+ENRICA_m_ds_w2 <- ENRICA_ds_w2
+ENRICA_m_ds_w2$ybirth <- car::recode(ENRICA_m_ds_w2$ybirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ENRICA_m_ds_w2', ENRICA_m_ds_w2)
+#opal.symbol_import(o,'ENRICA_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+### Wave 3 
+
+#### Study-specific variable description
+
+| **Name** | `y_birth` |
+|----------|------------|
+| **Label** | `año de nacimiento` |
+| **Table name** | `ENRICA_spss_wave3` |
+| **Missings** |`9999 = ns/nc`|
+| **Description** |  |
+
+```{r assign3, echo=F}
+opal.assign.table.tibble(o, 'ENRICA_w3_ybirth','ENRICA.ENRICA_spss_wave3',
+                         variables=list('y_birth'), missings = TRUE)
+ENRICA_w3_ybirth <- opal.execute(o,'ENRICA_w3_ybirth')
+```
+
+```{r local3, echo=F}
+vari <- ENRICA_w3_ybirth$y_birth
+kable(Continuous_summary(var = vari, missing_values = c(9999))[3], caption = "Year of birth")
+kable(Continuous_summary(vari, missing_values = c(9999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(9999))$summary, caption = "Summary")
+ggplot(ENRICA_w3_ybirth, aes(y_birth)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1912, 2008)
+```
+
+As it has been seen in baseline the values 0 and higher than 1950 are considered as mistakes and recoded as 999. 
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `9999 'ns/nc' into 998`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo3}
+ENRICA_ds_w3 <- tibble(id=ENRICA_w3_ybirth$id)
+ENRICA_ds_w3$ybirth <- car::recode(ENRICA_w3_ybirth$y_birth, "NA=999; 1951:2008=999; 0=999; 9999=998")
+ENRICA_ds_w3$ybirth <- labelled(ENRICA_ds_w3$ybirth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript3, echo=F}
+vari <- ENRICA_ds_w3$ybirth
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Year of birth")
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ENRICA_ds_w3, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1912, 1950)
+```
+
+#### Validation
+```{r crosstabulation3, echo=F}
+```
+
+
+
+
+
+```{r importOPAL3, echo=F}
+
+#opal.assign.data(o, 'ENRICA_ds_w3', ENRICA_ds_w3)
+#opal.symbol_import(o,'ENRICA_ds_w3', project='_Athlos_Harm_Dataset')
+ybirth <- ENRICA_ds_w3
+save(ybirth, file = "../RData/w3/ybirth.RData")
+rm(ybirth)
+
+ENRICA_m_ds_w3 <- ENRICA_ds_w3
+ENRICA_m_ds_w3$ybirth <- car::recode(ENRICA_m_ds_w3$ybirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ENRICA_m_ds_w3', ENRICA_m_ds_w3)
+#opal.symbol_import(o,'ENRICA_m_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+
+# Quality estimation
+No comments.
+
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

@@ -1,0 +1,341 @@
+---
+title: "Arterial hypertension"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `ah`
+* Variable label: `Arterial hypertension`
+* Variable description: `Arterial hypertension. Means of all diastolic blood pressure measures`
+* Domain: `Physical measures`
+* Value type: `Categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | no hypertension
+1        | hypertension
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done 
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Arterial hypertension"
+ds_label_all <- "Arterial hypertension. Means of all diastolic blood pressure measures."
+```
+
+# Data process
+
+## Spain
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `w1DBP`
+* Label: `pad media al menos 3 sobre 5 ultimas excluyendo aberrantes`
+* Type of variable: `countinous`
+
+* Name: `w1SBP`
+* Label: `pas media al menos 3 sobre 5 ultimas excluyendo aberrantes`
+* Type of variable: `countinous`
+
+```{r assign1, echo=FALSE}
+opal.assign.table.tibble(o, 'ENRICA_ah','ENRICA.ENRICA_spss_wave1',
+                         variables=list('w1DBP', 'w1SBP'), missings = TRUE)
+ENRICA_ah <- opal.execute(o,'ENRICA_ah')
+```
+
+```{r local1, echo=FALSE}
+vari <- ENRICA_ah$w1DBP
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Immediate recall continuous")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ENRICA_ah, aes(w1DBP)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+
+vari <- ENRICA_ah$w1SBP
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Immediate recall continuous")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ENRICA_ah, aes(w1SBP)) + geom_histogram(stat="count", fill="steelblue") + xlab("Systolic Blood Pressure") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable, first of all, it has to be created two categorical variables as follows:
+
+* dh:
+  + `w1DBP >= 90 into 1`
+  + `w1DBP < 90 into 0`
+
+* sh:
+  + `w1SBP >= 140 into 1`
+  + `w1SBP < 140 into 0`
+
+After that, to compute the harmonized variable from this two variables has to be recoded as follows:
+
+* `if dh = 0 and sh = 0 into 0`
+* `if dh = 1 and sh = 0 into 1`
+* `if dh = 0 and sh = 1 into 1`
+* `if dh = 1 and sh = 1 into 1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1}
+ENRICA_ah$dh <- car::recode(ENRICA_ah$w1DBP, "0:89=0; 90:hi=1")
+ENRICA_ah$sh <- car::recode(ENRICA_ah$w1SBP, "0:139=0; 140:hi=1")
+
+ENRICA_ds_w1 <- tibble(id=ENRICA_ah$id)
+ENRICA_ds_w1$ah <- NA
+ENRICA_ds_w1$ah[which(ENRICA_ah$dh==0 & ENRICA_ah$sh==0)] <- 0
+ENRICA_ds_w1$ah[which(ENRICA_ah$dh==1 & ENRICA_ah$sh==0)] <- 1
+ENRICA_ds_w1$ah[which(ENRICA_ah$dh==0 & ENRICA_ah$sh==1)] <- 1
+ENRICA_ds_w1$ah[which(ENRICA_ah$dh==1 & ENRICA_ah$sh==1)] <- 1
+ENRICA_ds_w1$ah <- labelled(ENRICA_ds_w1$ah, labels = c("no hypertension"=0, "hypertension"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=FALSE}
+vari <- ENRICA_ds_w1$ah
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ENRICA_ds_w1, aes(x=factor(ah))) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Validation
+```{r crosstabulation1}
+```
+
+```{r importOPAL1, echo=FALSE}
+#opal.assign.data(o, 'ENRICA_ds_w1', ENRICA_ds_w1)
+#opal.symbol_import(o,'ENRICA_ds_w1', project='_Athlos_Harm_Dataset')
+
+label(ENRICA_ds_w1) <- ds_label_all
+ah <- ENRICA_ds_w1
+save(ah, file = "../RData/w1/ah.RData")
+```
+
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `w2DBP`
+* Label: ``
+* Type of variable: `countinous`
+
+* Name: `w2SBP`
+* Label: ``
+* Type of variable: `countinous`
+
+```{r assign2, echo=FALSE}
+opal.assign.table.tibble(o, 'ENRICA_ah','ENRICA.ENRICA_spss_wave2',
+                         variables=list('w2DBP', 'w2SBP'), missings = TRUE)
+ENRICA_ah <- opal.execute(o,'ENRICA_ah')
+```
+
+```{r local2, echo=FALSE}
+vari <- ENRICA_ah$w2DBP
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Immediate recall continuous")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ENRICA_ah, aes(w2DBP)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+
+vari <- ENRICA_ah$w2SBP
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Immediate recall continuous")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ENRICA_ah, aes(w2SBP)) + geom_histogram(stat="count", fill="steelblue") + xlab("Systolic Blood Pressure") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable, first of all, it has to be created two categorical variables as follows:
+
+* dh:
+  + `w2DBP >= 90 into 1`
+  + `w2DBP < 90 into 0`
+
+* sh:
+  + `w2SBP >= 140 into 1`
+  + `w2SBP < 140 into 0`
+
+After that, to compute the harmonized variable from this two variables has to be recoded as follows
+
+* `if dh = 0 and sh = 0 into 0`
+* `if dh = 1 and sh = 0 into 1`
+* `if dh = 0 and sh = 1 into 1`
+* `if dh = 1 and sh = 1 into 1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2}
+ENRICA_ah$dh <- car::recode(ENRICA_ah$w2DBP, "0:89=0; 90:hi=1")
+ENRICA_ah$sh <- car::recode(ENRICA_ah$w2SBP, "0:139=0; 140:hi=1")
+
+ENRICA_ds_w2 <- tibble(id=ENRICA_ah$id)
+ENRICA_ds_w2$ah <- NA
+ENRICA_ds_w2$ah[which(ENRICA_ah$dh==0 & ENRICA_ah$sh==0)] <- 0
+ENRICA_ds_w2$ah[which(ENRICA_ah$dh==1 & ENRICA_ah$sh==0)] <- 1
+ENRICA_ds_w2$ah[which(ENRICA_ah$dh==0 & ENRICA_ah$sh==1)] <- 1
+ENRICA_ds_w2$ah[which(ENRICA_ah$dh==1 & ENRICA_ah$sh==1)] <- 1
+ENRICA_ds_w2$ah <- labelled(ENRICA_ds_w2$ah, labels = c("no hypertension"=0, "hypertension"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2, echo=FALSE}
+vari <- ENRICA_ds_w2$ah
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ENRICA_ds_w2, aes(x=factor(ah))) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Validation
+```{r crosstabulation2}
+```
+
+```{r importOPAL2, echo=FALSE}
+#val_labels(ENRICA_ds_w2) <- NULL
+#opal.assign.data(o, 'ENRICA_ds_w2', ENRICA_ds_w2)
+#opal.symbol_import(o,'ENRICA_ds_w2', project='_Athlos_Harm_Dataset')
+
+label(ENRICA_ds_w2) <- ds_label_all
+ah <- ENRICA_ds_w2
+save(ah, file = "../RData/w2/ah.RData")
+```
+
+
+### Wave 3 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `w3DBP`
+* Label: ``
+* Type of variable: `countinous`
+
+* Name: `w3SBP`
+* Label: ``
+* Type of variable: `countinous`
+
+```{r assign3, echo=FALSE}
+opal.assign.table.tibble(o, 'ENRICA_ah','ENRICA.ENRICA_spss_wave3',
+                         variables=list('w3DBP', 'w3SBP'), missings = TRUE)
+ENRICA_ah <- opal.execute(o,'ENRICA_ah')
+```
+
+```{r local3, echo=FALSE}
+vari <- ENRICA_ah$w3DBP
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Immediate recall continuous")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ENRICA_ah, aes(w3DBP)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+
+vari <- ENRICA_ah$w3SBP
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Immediate recall continuous")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ENRICA_ah, aes(w3SBP)) + geom_histogram(stat="count", fill="steelblue") + xlab("Systolic Blood Pressure") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonized variable, first of all, it has to be created two categorical variables as follows:
+
+* dh:
+  + `w3DBP >= 90 into 1`
+  + `w3DBP < 90 into 0`
+
+* sh:
+  + `w3SBP >= 140 into 1`
+  + `w3SBP < 140 into 0`
+
+After that, to compute the harmonized variable from this two variables has to be recoded as follows:
+
+* `if dh = 0 and sh = 0 into 0`
+* `if dh = 1 and sh = 0 into 1`
+* `if dh = 0 and sh = 1 into 1`
+* `if dh = 1 and sh = 1 into 1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo3}
+ENRICA_ah$dh <- car::recode(ENRICA_ah$w3DBP, "0:89=0; 90:hi=1")
+ENRICA_ah$sh <- car::recode(ENRICA_ah$w3SBP, "0:139=0; 140:hi=1")
+
+ENRICA_ds_w3 <- tibble(id=ENRICA_ah$id)
+ENRICA_ds_w3$ah <- NA
+ENRICA_ds_w3$ah[which(ENRICA_ah$dh==0 & ENRICA_ah$sh==0)] <- 0
+ENRICA_ds_w3$ah[which(ENRICA_ah$dh==1 & ENRICA_ah$sh==0)] <- 1
+ENRICA_ds_w3$ah[which(ENRICA_ah$dh==0 & ENRICA_ah$sh==1)] <- 1
+ENRICA_ds_w3$ah[which(ENRICA_ah$dh==1 & ENRICA_ah$sh==1)] <- 1
+ENRICA_ds_w3$ah <- labelled(ENRICA_ds_w3$ah, labels = c("no hypertension"=0, "hypertension"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript3, echo=FALSE}
+vari <- ENRICA_ds_w3$ah
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ENRICA_ds_w3, aes(x=factor(ah))) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Validation
+```{r crosstabulation3, echo=FALSE}
+```
+
+
+#### Quality estimation
+
+
+No comments.
+
+
+```{r importOPAL3, echo=FALSE}
+#opal.assign.data(o, 'ENRICA_ds_w3', ENRICA_ds_w3)
+#opal.symbol_import(o,'ENRICA_ds_w3', project='_Athlos_Harm_Dataset')
+
+label(ENRICA_ds_w3) <- ds_label_all
+ah <- ENRICA_ds_w3
+save(ah, file = "../RData/w3/ah.RData")
+```
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

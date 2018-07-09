@@ -1,0 +1,247 @@
+---
+title: "Cognition - Delayed recall"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `cog_del`
+* Variable label: `Cognition - delayed recall`
+* Variable description: `Delayed recall of a list of common nouns. Discrete variable: value 0 = <=25%; value 1 = >25%.`
+* Domain: `Health status and functional limitations`
+* Value type: `Categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | <=25%
+1        | >25%
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+# Data process
+
+
+## ENRICA
+
+
+### Wave 1
+
+Not found.
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `w2mec_cog_del1`|`w2mec_cog_del2`|`w2mec_cog_del3`|
+|-|-|-|-|
+| **Label** | `What are the 3 objects I asked you to remember afew moments ago?: peseta` |`What are the 3 objects I asked you to remember afew moments ago?: caballo`|`What are the 3 objects I asked you to remember afew moments ago?: manzana`|
+| **Table name** | `ENRICA_spss_wave2` |`ENRICA_spss_wave2` |`ENRICA_spss_wave2` |
+| **Categories** | `0 = fail; 1 = success` |`0 = fail; 1 = success` |`0 = fail; 1 = success` |
+| **Missings** | `NA` |`NA` |`NA` |
+| **Description** |  |  |  |
+
+
+```{r assign w2, echo=F}
+opal.assign.table.tibble(o, 'ENRICA_w2_cog_del','ENRICA.ENRICA_spss_wave2', variables=list('w2mec_cog_del1','w2mec_cog_del2','w2mec_cog_del3'), missings = TRUE)
+```
+
+```{r local w2, echo=F}
+ENRICA_w2_cog_del <- opal.execute(o,'ENRICA_w2_cog_del')
+Continuous_summary(ENRICA_w2_cog_del$w2mec_cog_del1)
+Continuous_summary(ENRICA_w2_cog_del$w2mec_cog_del2)
+Continuous_summary(ENRICA_w2_cog_del$w2mec_cog_del3)
+ggplot(ENRICA_w2_cog_del, aes(x=factor(w2mec_cog_del1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+ggplot(ENRICA_w2_cog_del, aes(x=factor(w2mec_cog_del2))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+ggplot(ENRICA_w2_cog_del, aes(x=factor(w2mec_cog_del3))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+No continuous variable can be generated.
+
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `all 1 into 1`
+* `some 0 into 0`
+* `NA into 999`
+
+**R script:**
+```{r harmo w2}
+ENRICA_ds_w2 <- tibble(id=ENRICA_w2_cog_del$id)
+ENRICA_ds_w2$cog_del <- rep(999,length(ENRICA_w2_cog_del$id))
+ENRICA_ds_w2$cog_del[which(ENRICA_w2_cog_del$w2mec_cog_del1==1&ENRICA_w2_cog_del$w2mec_cog_del2==1&ENRICA_w2_cog_del$w2mec_cog_del3==1)] <- 1
+ENRICA_ds_w2$cog_del[which((ENRICA_w2_cog_del$w2mec_cog_del1==0)|(ENRICA_w2_cog_del$w2mec_cog_del2==0)|(ENRICA_w2_cog_del$w2mec_cog_del3==0))] <- 0
+ENRICA_ds_w2$cog_del <- labelled(ENRICA_ds_w2$cog_del, labels = c(Yes=1, No=0, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w2, echo=F}
+Continuous_summary(var = ENRICA_ds_w2$cog_del, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ENRICA_ds_w2, aes(x=factor(cog_del))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w2, echo=F}
+AfterH <- table(ENRICA_ds_w2$cog_del)
+X<-c(sum((ENRICA_w2_cog_del$w2mec_cog_del1==0&is.na(ENRICA_w2_cog_del$w2mec_cog_del2)==FALSE&is.na(ENRICA_w2_cog_del$w2mec_cog_del3)==FALSE)|(ENRICA_w2_cog_del$w2mec_cog_del2==0&is.na(ENRICA_w2_cog_del$w2mec_cog_del3)==FALSE&is.na(ENRICA_w2_cog_del$w2mec_cog_del1)==FALSE)|(ENRICA_w2_cog_del$w2mec_cog_del3==0&is.na(ENRICA_w2_cog_del$w2mec_cog_del1)==FALSE&is.na(ENRICA_w2_cog_del$w2mec_cog_del2)==FALSE),na.rm=TRUE),sum(ENRICA_w2_cog_del$w2mec_cog_del1==1&ENRICA_w2_cog_del$w2mec_cog_del2==1&ENRICA_w2_cog_del$w2mec_cog_del3==1,na.rm=TRUE))
+BeforeH <- c(X[1:2],sum(is.na(ENRICA_w2_cog_del$w2mec_cog_del1)|is.na(ENRICA_w2_cog_del$w2mec_cog_del2)|is.na(ENRICA_w2_cog_del$w2mec_cog_del3)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("some 0->0","all 1->1","NA->999") 
+kable(C)
+```
+
+
+
+
+
+
+```{r importOPAL w2, echo=FALSE}
+
+label(ENRICA_ds_w2$cog_del) <- "Cognition- delayed recall"
+#opal.assign.data(o, 'ENRICA_ds_w2', ENRICA_ds_w2)
+#opal.symbol_import(o,'ENRICA_ds_w2', project='_Athlos_Harm_Dataset')
+cog_del <- ENRICA_ds_w2
+save(cog_del, file = "../RData/w2/cog_del.RData")
+rm(cog_del)
+
+ENRICA_m_ds_w2 <- ENRICA_ds_w2
+ENRICA_m_ds_w2$cog_del <- car::recode(ENRICA_m_ds_w2$cog_del, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ENRICA_m_ds_w2', ENRICA_m_ds_w2)
+#opal.symbol_import(o,'ENRICA_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 3
+
+#### Study-specific variable description
+
+
+| **Name** | `w3mec_cog_del1`|`w3mec_cog_del2`|`w3mec_cog_del3`|
+|-|-|-|-|
+| **Label** | `What are the 3 objects I asked you to remember afew moments ago?: peseta` |`What are the 3 objects I asked you to remember afew moments ago?: caballo`|`What are the 3 objects I asked you to remember afew moments ago?: manzana`|
+| **Table name** | `ENRICA_spss_wave3` |`ENRICA_spss_wave3` |`ENRICA_spss_wave3` |
+| **Categories** | `0 = fail; 1 = success` |`0 = fail; 1 = success` |`0 = fail; 1 = success` |
+| **Missings** | `NA` |`NA` |`NA` |
+| **Description** |  |  |  |
+
+```{r assign w3, echo=F}
+opal.assign.table.tibble(o, 'ENRICA_w3_cog_del','ENRICA.ENRICA_spss_wave3', variables=list('w3mec_cog_del1','w3mec_cog_del2','w3mec_cog_del3'), missings = TRUE)
+```
+
+```{r local w3, echo=F}
+ENRICA_w3_cog_del <- opal.execute(o,'ENRICA_w3_cog_del')
+Continuous_summary(ENRICA_w3_cog_del$w3mec_cog_del1)
+Continuous_summary(ENRICA_w3_cog_del$w3mec_cog_del2)
+Continuous_summary(ENRICA_w3_cog_del$w3mec_cog_del3)
+ggplot(ENRICA_w3_cog_del, aes(x=factor(w3mec_cog_del1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+ggplot(ENRICA_w3_cog_del, aes(x=factor(w3mec_cog_del2))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+ggplot(ENRICA_w3_cog_del, aes(x=factor(w3mec_cog_del3))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+No continuous variable can be generated.
+
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `all 1 into 1`
+* `some 0 into 0`
+* `NA into 999`
+
+**R script:**
+```{r harmo w3}
+ENRICA_ds_w3 <- tibble(id=ENRICA_w3_cog_del$id)
+ENRICA_ds_w3$cog_del <- rep(999,length(ENRICA_w3_cog_del$id))
+ENRICA_ds_w3$cog_del[which(ENRICA_w3_cog_del$w3mec_cog_del1==1&ENRICA_w3_cog_del$w3mec_cog_del2==1&ENRICA_w3_cog_del$w3mec_cog_del3==1)] <- 1
+ENRICA_ds_w3$cog_del[which((ENRICA_w3_cog_del$w3mec_cog_del1==0)|(ENRICA_w3_cog_del$w3mec_cog_del2==0)|(ENRICA_w3_cog_del$w3mec_cog_del3==0))] <- 0
+ENRICA_ds_w3$cog_del <- labelled(ENRICA_ds_w3$cog_del, labels = c(Yes=1, No=0, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w3, echo=F}
+Continuous_summary(var = ENRICA_ds_w3$cog_del, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ENRICA_ds_w3, aes(x=factor(cog_del))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w3, echo=F}
+AfterH <- table(ENRICA_ds_w3$cog_del)
+X<-c(sum((ENRICA_w3_cog_del$w3mec_cog_del1==0&is.na(ENRICA_w3_cog_del$w3mec_cog_del2)==FALSE&is.na(ENRICA_w3_cog_del$w3mec_cog_del3)==FALSE)|(ENRICA_w3_cog_del$w3mec_cog_del2==0&is.na(ENRICA_w3_cog_del$w3mec_cog_del3)==FALSE&is.na(ENRICA_w3_cog_del$w3mec_cog_del1)==FALSE)|(ENRICA_w3_cog_del$w3mec_cog_del3==0&is.na(ENRICA_w3_cog_del$w3mec_cog_del1)==FALSE&is.na(ENRICA_w3_cog_del$w3mec_cog_del2)==FALSE),na.rm=TRUE),sum(ENRICA_w3_cog_del$w3mec_cog_del1==1&ENRICA_w3_cog_del$w3mec_cog_del2==1&ENRICA_w3_cog_del$w3mec_cog_del3==1,na.rm=TRUE))
+BeforeH <- c(X[1:2],sum(is.na(ENRICA_w3_cog_del$w3mec_cog_del1)|is.na(ENRICA_w3_cog_del$w3mec_cog_del2)|is.na(ENRICA_w3_cog_del$w3mec_cog_del3)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("some 0->0","all 1->1","NA->999") 
+kable(C)
+```
+
+
+
+
+
+
+```{r importOPAL w3, echo=FALSE}
+
+label(ENRICA_ds_w3$cog_del) <- "Cognition- delayed recall"
+#opal.assign.data(o, 'ENRICA_ds_w3', ENRICA_ds_w3)
+#opal.symbol_import(o,'ENRICA_ds_w3', project='_Athlos_Harm_Dataset')
+cog_del <- ENRICA_ds_w3
+save(cog_del, file = "../RData/w3/cog_del.RData")
+rm(cog_del)
+
+ENRICA_m_ds_w3 <- ENRICA_ds_w3
+ENRICA_m_ds_w3$cog_del <- car::recode(ENRICA_m_ds_w3$cog_del, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ENRICA_m_ds_w3', ENRICA_m_ds_w3)
+#opal.symbol_import(o,'ENRICA_m_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+
+
+# Quality estimation
+[Comments on the quality of the new harmonised variable. This section can be done in a later stage, once all variables are harmonised.]
+
+Since we only have discrete variables from the study we construct just the categorical variable with a specific algorithm.
+
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

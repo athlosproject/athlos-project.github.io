@@ -1,0 +1,345 @@
+---
+title: "IADL - Using telephone"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/Rmds/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `iadl_phone`
+* Variable label: `IADL - Difficulties for using telephone`
+* Variable description: `IADL - Difficulties for using telephone`
+* Domain: `Health status and functional limitations`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | Yes
+1        | No
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+# Data process
+
+```{r, dataDirectory, echo=FALSE}
+datafolder <- "../RData"
+```
+
+## ENRICA
+
+
+
+
+### Wave 1
+
+#### Study-specific variable description
+
+
+
+
+| **Name** | `w1iadl_phone`|
+|-|-|
+| **Label** | `IADL - making telephone calls` |
+| **Table name** | `ENRICA_spss_wave1` |
+| **Categories** | `1 = Operates telephone on own initiative`|
+|                | `2 = Dials a few well-known numbers`|
+|                | `3 = Answers telephone but does not dial`|
+|                | `4 = Does not use telephone at all` |
+| **Missings** | `NA` |
+| **Description** |  |
+
+
+```{r assign w1, echo=F,  echo=FALSE}
+opal.assign.table.tibble(o, 'ENRICA_w1_iadl_phone','ENRICA.ENRICA_spss_wave1', variables=list('w1iadl_phone'), missings = TRUE)
+```
+
+```{r local w1, echo=F,  echo=FALSE}
+ENRICA_w1_iadl_phone <- opal.execute(o,'ENRICA_w1_iadl_phone')
+vari <- ENRICA_w1_iadl_phone$w1iadl_phone
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(ENRICA_w1_iadl_phone$w1iadl_phone)
+ggplot(ENRICA_w1_iadl_phone, aes(x=factor(w1iadl_phone))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Using telephone") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2,3,4 into 0`
+* `NA into 999`
+
+**R script:**
+```{r harmo w1,   echo=TRUE}
+ENRICA_ds_w1 <- tibble(id=ENRICA_w1_iadl_phone$id)
+ENRICA_ds_w1$iadl_phone <- car::recode(ENRICA_w1_iadl_phone$w1iadl_phone, "1 = '1';2 = '0';3 = '0';4 = '0'; NA = '999' ")
+ENRICA_ds_w1$iadl_phone <- labelled(ENRICA_ds_w1$iadl_phone, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=F,  echo=FALSE}
+vari <- ENRICA_ds_w1$iadl_phone # variable you want to descrive
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ENRICA_ds_w1$iadl_phone, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ENRICA_ds_w1, aes(x=factor(iadl_phone))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Using telephone") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1, echo=F,  echo=FALSE}
+AfterH <- table(ENRICA_ds_w1$iadl_phone)
+X<-table(ENRICA_w1_iadl_phone$w1iadl_phone)
+BeforeH <- c(sum(X[2:4]),X[1],sum(is.na(ENRICA_w1_iadl_phone$w1iadl_phone)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2,3,4->0","1->1","NA->999") 
+kable(C)
+```
+
+
+
+
+
+
+```{r importOPAL w1, echo=FALSE,  echo=FALSE}
+
+label(ENRICA_ds_w1$iadl_phone) <- "Difficulties for using telephone"
+#opal.assign.data(o, 'ENRICA_ds_w1', ENRICA_ds_w1)
+#opal.symbol_import(o,'ENRICA_ds_w1', project='_Athlos_Harm_Dataset')
+
+ENRICA_m_ds_w1 <- ENRICA_ds_w1
+ENRICA_m_ds_w1$iadl_phone <- car::recode(ENRICA_m_ds_w1$iadl_phone, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ENRICA_m_ds_w1', ENRICA_m_ds_w1)
+#opal.symbol_import(o,'ENRICA_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+```{r,  echo=FALSE}
+iadl_phone<- ENRICA_ds_w1
+save(iadl_phone, file = paste0(datafolder, "/w1/iadl_phone.RData"))
+```
+
+### Wave 2
+
+#### Study-specific variable description
+
+
+
+
+| **Name** | `w2iadl_phone`|
+|-|-|
+| **Label** | `IADL - making telephone calls` |
+| **Table name** | `ENRICA_spss_wave2` |
+| **Categories** | `1 = Operates telephone on own initiative`|
+|                | `2 = Dials a few well-known numbers`|
+|                | `3 = Answers telephone but does not dial`|
+|                | `4 = Does not use telephone at all` |
+| **Missings** | `NA` |
+| **Description** |  |
+
+
+```{r assign w2, echo=F,  echo=FALSE}
+opal.assign.table.tibble(o, 'ENRICA_w2_iadl_phone','ENRICA.ENRICA_spss_wave2', variables=list('w2iadl_phone'), missings = TRUE)
+```
+
+```{r local w2, echo=F,  echo=FALSE}
+ENRICA_w2_iadl_phone <- opal.execute(o,'ENRICA_w2_iadl_phone')
+vari <- ENRICA_w2_iadl_phone$w2iadl_phone
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(ENRICA_w2_iadl_phone$w2iadl_phone)
+ggplot(ENRICA_w2_iadl_phone, aes(x=factor(w2iadl_phone))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Using telephone") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2,3,4 into 0`
+* `NA into 999`
+
+**R script:**
+```{r harmo w2,   echo=TRUE}
+ENRICA_ds_w2 <- tibble(id=ENRICA_w2_iadl_phone$id)
+ENRICA_ds_w2$iadl_phone <- car::recode(ENRICA_w2_iadl_phone$w2iadl_phone, "1 = '1';2 = '0';3 = '0';4 = '0'; NA = '999' ")
+ENRICA_ds_w2$iadl_phone <- labelled(ENRICA_ds_w2$iadl_phone, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w2, echo=F,  echo=FALSE}
+vari <- ENRICA_ds_w2$iadl_phone # variable you want to descrive
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ENRICA_ds_w2$iadl_phone, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ENRICA_ds_w2, aes(x=factor(iadl_phone))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Using telephone") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w2, echo=F,  echo=FALSE}
+AfterH <- table(ENRICA_ds_w2$iadl_phone)
+X<-table(ENRICA_w2_iadl_phone$w2iadl_phone)
+BeforeH <- c(sum(X[2:4]),X[1],sum(is.na(ENRICA_w2_iadl_phone$w2iadl_phone)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2,3,4->0","1->1","NA->999") 
+kable(C)
+```
+
+
+
+
+
+
+```{r importOPAL w2, echo=FALSE,  echo=FALSE}
+
+label(ENRICA_ds_w2$iadl_phone) <- "Difficulties for using telephone"
+#opal.assign.data(o, 'ENRICA_ds_w2', ENRICA_ds_w2)
+#opal.symbol_import(o,'ENRICA_ds_w2', project='_Athlos_Harm_Dataset')
+
+ENRICA_m_ds_w2 <- ENRICA_ds_w2
+ENRICA_m_ds_w2$iadl_phone <- car::recode(ENRICA_m_ds_w2$iadl_phone, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ENRICA_m_ds_w2', ENRICA_m_ds_w2)
+#opal.symbol_import(o,'ENRICA_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+```{r,  echo=FALSE}
+iadl_phone<- ENRICA_ds_w2
+save(iadl_phone, file = paste0(datafolder, "/w2/iadl_phone.RData"))
+```
+
+### Wave 3
+
+#### Study-specific variable description
+
+
+
+
+| **Name** | `w3iadl_phone`|
+|-|-|
+| **Label** | `IADL - making telephone calls` |
+| **Table name** | `ENRICA_spss_wave3` |
+| **Categories** | `1 = Operates telephone on own initiative`|
+|                | `2 = Dials a few well-known numbers`|
+|                | `3 = Answers telephone but does not dial`|
+|                | `4 = Does not use telephone at all` |
+| **Missings** | `NA` |
+| **Description** |  |
+
+
+```{r assign w3, echo=F,  echo=FALSE}
+opal.assign.table.tibble(o, 'ENRICA_w3_iadl_phone','ENRICA.ENRICA_spss_wave3', variables=list('w3iadl_phone'), missings = TRUE)
+```
+
+```{r local w3, echo=F,  echo=FALSE}
+ENRICA_w3_iadl_phone <- opal.execute(o,'ENRICA_w3_iadl_phone')
+vari <- ENRICA_w3_iadl_phone$w3iadl_phone
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(ENRICA_w3_iadl_phone$w3iadl_phone)
+ggplot(ENRICA_w3_iadl_phone, aes(x=factor(w3iadl_phone))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Using telephone") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2,3,4 into 0`
+* `NA into 999`
+
+**R script:**
+```{r harmo w3,   echo=TRUE}
+ENRICA_ds_w3 <- tibble(id=ENRICA_w3_iadl_phone$id)
+ENRICA_ds_w3$iadl_phone <- car::recode(ENRICA_w3_iadl_phone$w3iadl_phone, "1 = '1';2 = '0';3 = '0';4 = '0'; NA = '999' ")
+ENRICA_ds_w3$iadl_phone <- labelled(ENRICA_ds_w3$iadl_phone, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w3, echo=F,  echo=FALSE}
+vari <- ENRICA_ds_w3$iadl_phone # variable you want to descrive
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ENRICA_ds_w3$iadl_phone, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ENRICA_ds_w3, aes(x=factor(iadl_phone))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Using telephone") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w3, echo=F,  echo=FALSE}
+AfterH <- table(ENRICA_ds_w3$iadl_phone)
+X<-table(ENRICA_w3_iadl_phone$w3iadl_phone)
+BeforeH <- c(sum(X[2:4]),X[1],sum(is.na(ENRICA_w3_iadl_phone$w3iadl_phone)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2,3,4->0","1->1","NA->999") 
+kable(C)
+```
+
+
+
+
+
+
+```{r importOPAL w3, echo=FALSE,  echo=FALSE}
+
+label(ENRICA_ds_w3$iadl_phone) <- "Difficulties for using telephone"
+#opal.assign.data(o, 'ENRICA_ds_w3', ENRICA_ds_w3)
+#opal.symbol_import(o,'ENRICA_ds_w3', project='_Athlos_Harm_Dataset')
+
+ENRICA_m_ds_w3 <- ENRICA_ds_w3
+ENRICA_m_ds_w3$iadl_phone <- car::recode(ENRICA_m_ds_w3$iadl_phone, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ENRICA_m_ds_w3', ENRICA_m_ds_w3)
+#opal.symbol_import(o,'ENRICA_m_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+
+```{r,  echo=FALSE}
+iadl_phone<- ENRICA_ds_w3
+save(iadl_phone, file = paste0(datafolder, "/w3/iadl_phone.RData"))
+```
+
+# Quality estimation
+
+'4. Does not use telephone at all ' was considered as 0 (difficulty)
+
+[Comments on the quality of the new harmonised variable. This section can be done in a later stage, once all variables are harmonised.]
+
+
+
+```{r closeRsession, echo=FALSE,  echo=FALSE}
+opal.logout(o)
+```

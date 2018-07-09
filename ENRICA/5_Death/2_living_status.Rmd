@@ -1,0 +1,291 @@
+---
+title: "Living status"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+  
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+<!-- ########################################################## --> 
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `living_status`
+* Variable label: `Living status`
+* Variable description: `The individual is dead or alive?`
+* Domain: `Death`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | alive
+1        | Dead
+2        | Dropout  
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Living status"
+ds_label_all <- "The individual is dead or alive?"
+```
+
+
+# Data process
+
+## Spain
+
+### Wave 1 
+
+
+```{r assign1, echo=FALSE}
+opal.assign.table.tibble(o, 'ENRICA_w1_id','ENRICA.ENRICA_spss_wave1',
+                         variables=list('w1d_interview'), missings = TRUE)
+ENRICA_w1_id <- opal.execute(o,'ENRICA_w1_id')
+```
+
+
+#### Harmonisation algorithm
+It's considered that at baseline all the individuals are alive. Therefore it is going to compute the variable with all the values as 0. 
+
+**R script:**
+
+```{r harmo1}
+ENRICA_ds_w1 <- tibble(id=ENRICA_w1_id$id)
+ENRICA_ds_w1$living_status <- 0
+ENRICA_ds_w1$living_status <- labelled(ENRICA_ds_w1$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=FALSE}
+vari <- ENRICA_ds_w1$living_status
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ENRICA_ds_w1, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Validation
+```{r crosstabulation1, echo=FALSE}
+```
+
+```{r importOPAL1, echo=FALSE}
+#val_labels(ENRICA_ds_w1) <- NULL
+#opal.assign.data(o, 'ENRICA_ds_w1', ENRICA_ds_w1)
+#opal.symbol_import(o,'ENRICA_ds_w1', project='_Athlos_Harm_Dataset')
+
+living_status <- ENRICA_ds_w1
+save(living_status, file = "../RData/w1/living_status.RData")
+rm(living_status)
+```
+
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `F_defuncion`| `w2d_interview`|
+|-|-|-|
+| **Label** | `F_defuncion`| |
+| **Table name** | `selfreported_fdefuncion` | `ENRICA_spss_wave2` |
+| **Description** |  | |
+
+
+```{r assign2, echo=FALSE}
+opal.assign.table.tibble(o, 'ENRICA_w2_id','ENRICA.ENRICA_spss_wave2',
+                         variables=list('w2d_interview'), missings = TRUE)
+ENRICA_w2_id <- opal.execute(o,'ENRICA_w2_id')
+
+opal.assign.table.tibble(o, 'ENRICA_dead','ENRICA.selfreported_fdefuncion',
+                         variables=list('F_defuncion'), missings = TRUE)
+ENRICA_dead <- opal.execute(o,'ENRICA_dead')
+
+ENRICA_dead$F_defuncion <- as.Date(ENRICA_dead$F_defuncion, "%m/%d/%Y")
+
+ENRICA_ls <- left_join(x = ENRICA_w2_id, y = ENRICA_dead, by = 'id')
+```
+
+```{r local2, echo=FALSE}
+vari <- ENRICA_w2_id$w2d_interview
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ENRICA_w2_id, aes(w2d_interview)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Date of interview") + ylab("Frequency")
+
+vari <- ENRICA_ls$F_defuncion
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ENRICA_ls, aes(F_defuncion)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Date of death") + ylab("Frequency")
+```
+
+
+#### Harmonisation algorithm
+The harmonize variable is going to be derived as follows: 
+
+* `individuals that has date of interview earlier than the date of death as 0`
+* `individuals without date of death and with date od interview as 0`
+* `individuals that has date of interview later than the date of death as 1`
+
+**R script:**
+
+
+```{r harmo2}
+ENRICA_ds_w2 <- tibble(id=ENRICA_ls$id)
+ENRICA_ds_w2$living_status <- NA
+ENRICA_ds_w2$living_status[which(ENRICA_ls$w2d_interview > ENRICA_ls$F_defuncion)] <- 1
+ENRICA_ds_w2$living_status[which(ENRICA_ls$w2d_interview < ENRICA_ls$F_defuncion)] <- 0
+ENRICA_ds_w2$living_status[which(!is.na(ENRICA_ls$w2d_interview) & is.na(ENRICA_ls$F_defuncion))] <- 0
+ENRICA_ds_w2$living_status[is.na(ENRICA_w2_id$w2d_interview)] <- 2
+ENRICA_ds_w2$living_status <- labelled(ENRICA_ds_w2$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2, echo=FALSE}
+vari <- ENRICA_ds_w2$living_status
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ENRICA_ds_w2, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Validation
+```{r crosstabulation2, echo=FALSE}
+```
+
+```{r importOPAL2, echo=FALSE}
+#val_labels(ENRICA_ds_w2) <- NULL
+#opal.assign.data(o, 'ENRICA_ds_w2', ENRICA_ds_w2)
+#opal.symbol_import(o,'ENRICA_ds_w2', project='_Athlos_Harm_Dataset')
+
+living_status <- ENRICA_ds_w2
+save(living_status, file = "../RData/w2/living_status.RData")
+rm(living_status)
+```
+
+
+
+
+### Wave 3 
+
+#### Study-specific variable description
+
+| **Name** | `F_defuncion`| `w3d_interview`|
+|-|-|-|
+| **Label** | `F_defuncion`| |
+| **Table name** | `selfreported_fdefuncion` | `ENRICA_spss_wave3` |
+| **Description** |  | |
+
+```{r assign3, echo=FALSE}
+opal.assign.table.tibble(o, 'ENRICA_w3_id','ENRICA.ENRICA_spss_wave3',
+                         variables=list('w3d_interview'), missings = TRUE)
+ENRICA_w3_id <- opal.execute(o,'ENRICA_w3_id')
+opal.assign.table.tibble(o, 'ENRICA_dead','ENRICA.selfreported_fdefuncion',
+                         variables=list('F_defuncion'), missings = TRUE)
+ENRICA_dead <- opal.execute(o,'ENRICA_dead')
+
+ENRICA_dead$F_defuncion <- as.Date(ENRICA_dead$F_defuncion, "%m/%d/%Y")
+
+ENRICA_ls <- left_join(x = ENRICA_w3_id, y = ENRICA_dead, by = 'id')
+```
+
+```{r local3, echo=FALSE}
+vari <- ENRICA_ls$w3d_interview
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ENRICA_ls, aes(w3d_interview)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Date of interview") + ylab("Frequency")
+
+vari <- ENRICA_ls$F_defuncion
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ENRICA_ls, aes(F_defuncion)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Date of death") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonize variable is going to be derived as follows: 
+
+* `individuals that has date of interview earlier than the date of death as 0`
+* `individuals without date of death and with date of interview as 0`
+* `individuals that has date of interview later than the date of death as 1`
+* `individuals neither date of interview nor date of death as 2`
+* `individuals without date of interview and date of death earlier than 19-06-2015 as 1`
+* `individuals without date of interview and date of death later than 19-06-2015 as 2`
+
+**R script:**
+
+
+```{r harmo3}
+ENRICA_ds_w3 <- tibble(id=ENRICA_ls$id)
+ENRICA_ds_w3$living_status <- NA
+ENRICA_ds_w3$living_status[which(ENRICA_ls$w3d_interview > ENRICA_ls$F_defuncion)] <- 1
+ENRICA_ds_w3$living_status[which(ENRICA_ls$w3d_interview < ENRICA_ls$F_defuncion)] <- 0
+ENRICA_ds_w3$living_status[which(!is.na(ENRICA_ls$w3d_interview) & is.na(ENRICA_ls$F_defuncion))] <- 0
+ENRICA_ds_w3$living_status[which(is.na(ENRICA_ls$w3d_interview) &  ENRICA_ls$F_defuncion<as.Date("19-06-2015", "%d-%m-%Y"))] <- 1
+ENRICA_ds_w3$living_status[which(is.na(ENRICA_ls$w3d_interview) &  ENRICA_ls$F_defuncion>as.Date("19-06-2015", "%d-%m-%Y"))] <- 2
+ENRICA_ds_w3$living_status[which(is.na(ENRICA_ls$w3d_interview) &  is.na(ENRICA_ls$F_defuncion))] <- 2
+ENRICA_ds_w3$living_status <- labelled(ENRICA_ds_w3$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript3, echo=FALSE}
+vari <- ENRICA_ds_w3$living_status
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ENRICA_ds_w3, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Validation
+```{r crosstabulation3, echo=FALSE}
+```
+
+```{r importOPAL3, echo=FALSE}
+#val_labels(ENRICA_ds_w3) <- NULL
+#opal.assign.data(o, 'ENRICA_ds_w3', ENRICA_ds_w3)
+#opal.symbol_import(o,'ENRICA_ds_w3', project='_Athlos_Harm_Dataset')
+
+living_status <- ENRICA_ds_w3
+save(living_status, file = "../RData/w3/living_status.RData")
+rm(living_status)
+```
+
+
+### Quality estimation
+At wave 3 the individuals without date of interview and date of death later than the last interview done 
+were considered as drop outs. 
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
