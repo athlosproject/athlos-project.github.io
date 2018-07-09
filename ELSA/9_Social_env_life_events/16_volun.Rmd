@@ -1,0 +1,881 @@
+---
+title: "Any voluntary/charitable activity"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variables is the following:
+
+* Short name: `volun`
+* Variable label: `Any voluntary/charitable activity`
+* Domain: `Social environment`
+* Value type: `categorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+
+
+## England
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised are:
+
+* Name: `scorg4`
+* Label: `Charitable associations`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings:
+    + `-9 = Not answered`
+    + `-1 = Item not applicable`
+    
+* Name: `wpvw`
+* Label: `How often -if at all- do you do any voluntary work?`
+* Categories: 
+    + `1 = twice a month or more`
+    + `2 = about once a month`
+    + `3 = every few months`
+    + `4 = about once or twice a year`
+    + `5 = less than once a year`
+    + `6 = never`
+* Missings:
+    + `-9 = Refusal`
+    + `-8 = Don't Know`
+    + `-1 = Not applicable`
+  
+* Description:
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w1_volun','ELSA.wave_1_core_data_v3', variables=list('scorg4','wpvw'), missings = TRUE)
+```
+
+```{r local1, echo=F}
+ELSA_w1_volun <- opal.execute(o,'ELSA_w1_volun')
+vari <- ELSA_w1_volun$scorg4
+kable(Categorical_summary(vari, missing_values = c(-1,-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-1,-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-1,-9))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_w1_volun$scorg4, missing_values = NA)
+ggplot(ELSA_w1_volun, aes(x=factor(scorg4))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are you a member of: Charitable associations?") + ylab("Frequency")
+vari <- ELSA_w1_volun$wpvw
+kable(Categorical_summary(vari, missing_values = c(-1,-8,-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-1,-8,-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-1,-8,-9))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_w1_volun$wpvw, missing_values = NA)
+ggplot(ELSA_w1_volun, aes(x=factor(wpvw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("How often -if at all- do you do any voluntary work?") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `into 1 if wpvw equals 1,2,3 or scorg4 is selected`
+* `into 0 if wpwv equals 4,5,6 and scorg4 is not selected.`
+* `-1 or scorg4=-9 into 996`
+* `wpvw=-9 into 997`
+* `wpvw=-8 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1, echo=TRUE}
+ELSA_ds_w1 <- tibble(id=ELSA_w1_volun$id)
+
+ELSA_w1_volun$scorg4 <- car::recode(as.vector(ELSA_w1_volun$scorg4), "NA='-999'")
+ELSA_w1_volun$wpvw <- car::recode(as.vector(ELSA_w1_volun$wpvw), "NA='-999'")
+
+ELSA_ds_w1$volun <- c(NA)
+for(i in 1:dim(ELSA_w1_volun)[1]){
+  if( ELSA_w1_volun$scorg4[i] == 1 | ELSA_w1_volun$wpvw[i] %in% c(1,2,3) ) { 
+    ELSA_ds_w1$volun[i] = 1 }
+  else if( ELSA_w1_volun$scorg4[i] == 0 & ELSA_w1_volun$wpvw[i] %in% c(4,5,6) ) { 
+    ELSA_ds_w1$volun[i] = 0 }
+  else if( ELSA_w1_volun$scorg4[i] == -1 | ELSA_w1_volun$wpvw[i] == -1 ) { 
+    ELSA_ds_w1$volun[i] = 996 }
+  else if( ELSA_w1_volun$scorg4[i] == -9 ) { 
+    ELSA_ds_w1$volun[i] = 995 }
+  else if( ELSA_w1_volun$wpvw[i] == -9 ) { 
+    ELSA_ds_w1$volun[i] = 997 }
+  else if( ELSA_w1_volun$wpvw[i] == -8 ) { 
+    ELSA_ds_w1$volun[i] = 998 }
+}
+
+ELSA_ds_w1$volun <- car::recode(as.vector(ELSA_ds_w1$volun), "NA='999'")
+ELSA_ds_w1$volun <- labelled(ELSA_ds_w1$volun, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995, "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1, echo=F}
+vari <- ELSA_ds_w1$volun
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_ds_w1$volun, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ELSA_ds_w1, aes(x=factor(volun))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Any voluntary/charitable activity") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=F}
+
+```
+
+ 
+ 
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `scorg04`
+* Label: `Organisational membership: member of a charitable association`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings:
+    + `-9 = Not answered`
+    + `-1 = Item not applicable`
+    
+* Name: `wpvw`
+* Label: `How often does voluntary work?`
+* Categories: 
+    + `1 = twice a month or more`
+    + `2 = about once a month`
+    + `3 = every few months`
+    + `4 = about once or twice a year`
+    + `5 = less than once a year`
+    + `6 = never`
+* Missings:
+    + `-9 = Refusal`
+    + `-8 = Don't Know`
+    + `-1 = Not applicable`
+  
+    
+* Description: 
+```{r assign2, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w2_volun','ELSA.wave_2_core_data_v4', variables=list('scorg04','wpvw'), missings = TRUE)
+```
+
+```{r local2, echo=F}
+ELSA_w2_volun <- opal.execute(o,'ELSA_w2_volun')
+vari <- ELSA_w2_volun$scorg04
+kable(Categorical_summary(vari, missing_values = c(-1,-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-1,-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-1,-9))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_w2_volun$scorg04, missing_values = NA)
+ggplot(ELSA_w2_volun, aes(x=factor(scorg04))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are you a member of: Charitable associations?") + ylab("Frequency")
+vari <- ELSA_w2_volun$wpvw
+kable(Categorical_summary(vari, missing_values = c(-1,-8,-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-1,-8,-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-1,-8,-9))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_w2_volun$wpvw, missing_values = NA)
+ggplot(ELSA_w2_volun, aes(x=factor(wpvw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("How often does voluntary work?") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `into 1 if wpvw equals 1,2,3 or scorg04 is selected`
+* `into 0 if wpwv equals 4,5,6 and scorg04 is not selected.`
+* `-1 or scorg04=-9 into 996`
+* `wpvw=-9 into 997`
+* `wpvw=-8 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2, echo=TRUE}
+ELSA_ds_w2 <- tibble(id=ELSA_w2_volun$id)
+
+ELSA_w2_volun$scorg04 <- car::recode(as.vector(ELSA_w2_volun$scorg04), "NA='-999'")
+ELSA_w2_volun$wpvw <- car::recode(as.vector(ELSA_w2_volun$wpvw), "NA='-999'")
+
+ELSA_ds_w2$volun <- c(NA)
+for(i in 1:dim(ELSA_w2_volun)[1]){
+  if( ELSA_w2_volun$scorg04[i] == 1 | ELSA_w2_volun$wpvw[i] %in% c(1,2,3) ) { 
+    ELSA_ds_w2$volun[i] = 1 }
+  else if( ELSA_w2_volun$scorg04[i] == 0 & ELSA_w2_volun$wpvw[i] %in% c(4,5,6) ) { 
+    ELSA_ds_w2$volun[i] = 0 }
+  else if( ELSA_w2_volun$scorg04[i] == -1 | ELSA_w2_volun$wpvw[i] == -1 ) { 
+    ELSA_ds_w2$volun[i] = 996 }
+  else if( ELSA_w2_volun$scorg04[i] == -9 ) { 
+    ELSA_ds_w2$volun[i] = 995 }
+  else if( ELSA_w2_volun$wpvw[i] == -9 ) { 
+    ELSA_ds_w2$volun[i] = 997 }
+  else if( ELSA_w2_volun$wpvw[i] == -8 ) { 
+    ELSA_ds_w2$volun[i] = 998 }
+}
+
+ELSA_ds_w2$volun <- car::recode(as.vector(ELSA_ds_w2$volun), "NA='999'")
+ELSA_ds_w2$volun <- labelled(ELSA_ds_w2$volun, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995, "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2, echo=F}
+vari <- ELSA_ds_w2$volun
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_ds_w2$volun, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ELSA_ds_w2, aes(x=factor(volun))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Any voluntary/charitable activity") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2, echo=F}
+
+```
+
+ 
+ 
+
+
+
+
+### Wave 3
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `scorg04`
+* Label: `Respondent is a member of charitable associations`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings:
+    + `-9 = Not answered`
+    + `-8 = Don't know`
+    + `-1 = Item not applicable`
+    
+* Name: `wpvw`
+* Label: `How often does voluntary work?`
+* Categories: 
+    + `1 = twice a month or more`
+    + `2 = about once a month`
+    + `3 = every few months`
+    + `4 = about once or twice a year`
+    + `5 = less than once a year`
+    + `6 = never`
+* Missings:
+    + `-9 = Refusal`
+    + `-8 = Don't Know`
+    + `-2 = Schedule not applicable`
+    + `-1 = Not applicable`
+  
+    
+* Description: 
+```{r assign3, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w3_volun','ELSA.wave_3_elsa_data_v4', variables=list('scorg04','wpvw'), missings = TRUE)
+```
+
+```{r local3, echo=F}
+ELSA_w3_volun <- opal.execute(o,'ELSA_w3_volun')
+vari <- ELSA_w3_volun$scorg04
+kable(Categorical_summary(vari, missing_values = c(-1,-8,-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-1,-8,-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-1,-8,-9))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_w3_volun$scorg04, missing_values = NA)
+ggplot(ELSA_w3_volun, aes(x=factor(scorg04))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Is respondent a member of charitable associations?") + ylab("Frequency")
+vari <- ELSA_w3_volun$wpvw
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_w3_volun$wpvw, missing_values = NA)
+ggplot(ELSA_w3_volun, aes(x=factor(wpvw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("How often does voluntary work?") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `into 1 if wpvw equals 1,2,3 or scorg04 is selected`
+* `into 0 if wpwv equals 4,5,6 and scorg04 is not selected.`
+* `-1 or -2 or scorg04=-9 into 996`
+* `wpvw=-9 into 997`
+* `-8 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo3, echo=TRUE}
+ELSA_ds_w3 <- tibble(id=ELSA_w3_volun$id)
+
+ELSA_w3_volun$scorg04 <- car::recode(as.vector(ELSA_w3_volun$scorg04), "NA='-999'")
+ELSA_w3_volun$wpvw <- car::recode(as.vector(ELSA_w3_volun$wpvw), "NA='-999'")
+
+ELSA_ds_w3$volun <- c(NA)
+for(i in 1:dim(ELSA_w3_volun)[1]){
+  if( ELSA_w3_volun$scorg04[i] == 1 | ELSA_w3_volun$wpvw[i] %in% c(1,2,3) ) { 
+    ELSA_ds_w3$volun[i] = 1 }
+  else if( ELSA_w3_volun$scorg04[i] == 0 & ELSA_w3_volun$wpvw[i] %in% c(4,5,6) ) { 
+    ELSA_ds_w3$volun[i] = 0 }
+  else if( ELSA_w3_volun$scorg04[i] == -1 | ELSA_w3_volun$wpvw[i] %in% c(-1,-2) ) { 
+    ELSA_ds_w3$volun[i] = 996 }
+  else if( ELSA_w3_volun$scorg04[i] == -9 ) { 
+    ELSA_ds_w3$volun[i] = 995 }
+  else if( ELSA_w3_volun$wpvw[i] == -9 ) { 
+    ELSA_ds_w3$volun[i] = 997 }
+  else if( ELSA_w3_volun$scorg04[i] == -8 | ELSA_w3_volun$wpvw[i] == -8 ) { 
+    ELSA_ds_w3$volun[i] = 998 }
+}
+
+ELSA_ds_w3$volun <- car::recode(as.vector(ELSA_ds_w3$volun), "NA='999'")
+ELSA_ds_w3$volun <- labelled(ELSA_ds_w3$volun, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995, "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript3, echo=F}
+vari <- ELSA_ds_w3$volun
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_ds_w3$volun, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ELSA_ds_w3, aes(x=factor(volun))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Any voluntary/charitable activity") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation3, echo=F}
+
+```
+
+ 
+ 
+
+
+
+
+### Wave 4
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `scorg04`
+* Label: `Respondent is a member of charitable associations`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings:
+    + `-9 = Not answered`
+    + `-8 = Don't know`
+    + `-1 = Item not applicable`
+    
+* Name: `wpvw`
+* Label: `How often does voluntary work?`
+* Categories: 
+    + `1 = twice a month or more`
+    + `2 = about once a month`
+    + `3 = every few months`
+    + `4 = about once or twice a year`
+    + `5 = less than once a year`
+    + `6 = never`
+* Missings:
+    + `-9 = Refusal`
+    + `-8 = Don't Know`
+    + `-2 = Schedule not applicable`
+    + `-1 = Not applicable`
+  
+    
+* Description: 
+```{r assign4, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w4_volun','ELSA.wave_4_elsa_data_v3', variables=list('scorg04','wpvw'), missings = TRUE)
+```
+
+```{r local4, echo=F}
+ELSA_w4_volun <- opal.execute(o,'ELSA_w4_volun')
+vari <- ELSA_w4_volun$scorg04
+kable(Categorical_summary(vari, missing_values = c(-1,-8,-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-1,-8,-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-1,-8,-9))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_w4_volun$scorg04, missing_values = NA)
+ggplot(ELSA_w4_volun, aes(x=factor(scorg04))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Is respondent a member of charitable associations?") + ylab("Frequency")
+vari <- ELSA_w4_volun$wpvw
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_w4_volun$wpvw, missing_values = NA)
+ggplot(ELSA_w4_volun, aes(x=factor(wpvw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("How often does voluntary work?") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `into 1 if wpvw equals 1,2,3 or scorg04 is selected`
+* `into 0 if wpwv equals 4,5,6 and scorg04 is not selected.`
+* `-1 or -2 or scorg04=-9 into 996`
+* `wpvw=-9 into 997`
+* `-8 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo4, echo=TRUE}
+ELSA_ds_w4 <- tibble(id=ELSA_w4_volun$id)
+
+ELSA_w4_volun$scorg04 <- car::recode(as.vector(ELSA_w4_volun$scorg04), "NA='-999'")
+ELSA_w4_volun$wpvw <- car::recode(as.vector(ELSA_w4_volun$wpvw), "NA='-999'")
+
+ELSA_ds_w4$volun <- c(NA)
+for(i in 1:dim(ELSA_w4_volun)[1]){
+  if( ELSA_w4_volun$scorg04[i] == 1 | ELSA_w4_volun$wpvw[i] %in% c(1,2,3) ) { 
+    ELSA_ds_w4$volun[i] = 1 }
+  else if( ELSA_w4_volun$scorg04[i] == 0 & ELSA_w4_volun$wpvw[i] %in% c(4,5,6) ) { 
+    ELSA_ds_w4$volun[i] = 0 }
+  else if( ELSA_w4_volun$scorg04[i] == -1 | ELSA_w4_volun$wpvw[i] %in% c(-1,-2) ) { 
+    ELSA_ds_w4$volun[i] = 996 }
+  else if( ELSA_w4_volun$scorg04[i] == -9 ) { 
+    ELSA_ds_w4$volun[i] = 995 }
+  else if( ELSA_w4_volun$wpvw[i] == -9 ) { 
+    ELSA_ds_w4$volun[i] = 997 }
+  else if( ELSA_w4_volun$scorg04[i] == -8 | ELSA_w4_volun$wpvw[i] == -8 ) { 
+    ELSA_ds_w4$volun[i] = 998 }
+}
+
+ELSA_ds_w4$volun <- car::recode(as.vector(ELSA_ds_w4$volun), "NA='999'")
+ELSA_ds_w4$volun <- labelled(ELSA_ds_w4$volun, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995, "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript4, echo=F}
+vari <- ELSA_ds_w4$volun
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_ds_w4$volun, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ELSA_ds_w4, aes(x=factor(volun))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Any voluntary/charitable activity") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation4, echo=F}
+
+```
+
+ 
+ 
+
+
+
+
+### Wave 5
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `scorg04`
+* Label: `Respondent is a member of charitable associations`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings:
+    + `-9 = Not answered`
+    + `-8 = Don't know`
+    + `-2 = Schedule not applicable`
+    + `-1 = Item not applicable`
+    
+* Name: `wpvw`
+* Label: `How often does voluntary work?`
+* Categories: 
+    + `1 = twice a month or more`
+    + `2 = about once a month`
+    + `3 = every few months`
+    + `4 = about once or twice a year`
+    + `5 = less than once a year`
+    + `6 = never`
+* Missings:
+    + `-9 = Refusal`
+    + `-8 = Don't Know`
+    + `-2 = Schedule not applicable`
+    + `-1 = Not applicable`
+  
+    
+* Description: 
+```{r assign5, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w5_volun','ELSA.wave_5_elsa_data_v4', variables=list('scorg04','wpvw'), missings = TRUE)
+```
+
+```{r local5, echo=F}
+ELSA_w5_volun <- opal.execute(o,'ELSA_w5_volun')
+vari <-  ELSA_w5_volun$scorg04
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_w5_volun$scorg04, missing_values = NA)
+ggplot(ELSA_w5_volun, aes(x=factor(scorg04))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Is respondent a member of charitable associations?") + ylab("Frequency")
+vari <- ELSA_w5_volun$wpvw
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_w5_volun$wpvw, missing_values = NA)
+ggplot(ELSA_w5_volun, aes(x=factor(wpvw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("How often does voluntary work?") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `into 1 if wpvw equals 1,2,3 or scorg04 is selected`
+* `into 0 if wpwv equals 4,5,6 and scorg04 is not selected.`
+* `-1 or -2 or scorg04=-9 into 996`
+* `wpvw=-9 into 997`
+* `-8 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo5, echo=TRUE}
+ELSA_ds_w5 <- tibble(id=ELSA_w5_volun$id)
+
+ELSA_w5_volun$scorg04 <- car::recode(as.vector(ELSA_w5_volun$scorg04), "NA='-999'")
+ELSA_w5_volun$wpvw <- car::recode(as.vector(ELSA_w5_volun$wpvw), "NA='-999'")
+
+ELSA_ds_w5$volun <- c(NA)
+for(i in 1:dim(ELSA_w5_volun)[1]){
+  if( ELSA_w5_volun$scorg04[i] == 1 | ELSA_w5_volun$wpvw[i] %in% c(1,2,3) ) { 
+    ELSA_ds_w5$volun[i] = 1 }
+  else if( ELSA_w5_volun$scorg04[i] == 0 & ELSA_w5_volun$wpvw[i] %in% c(4,5,6) ) { 
+    ELSA_ds_w5$volun[i] = 0 }
+  else if( ELSA_w5_volun$scorg04[i] %in% c(-1,-2) | ELSA_w5_volun$wpvw[i] %in% c(-1,-2) ) { 
+    ELSA_ds_w5$volun[i] = 996 }
+  else if( ELSA_w5_volun$scorg04[i] == -9 ) { 
+    ELSA_ds_w5$volun[i] = 995 }
+  else if( ELSA_w5_volun$wpvw[i] == -9 ) { 
+    ELSA_ds_w5$volun[i] = 997 }
+  else if( ELSA_w5_volun$scorg04[i] == -8 | ELSA_w5_volun$wpvw[i] == -8 ) { 
+    ELSA_ds_w5$volun[i] = 998 }
+}
+
+ELSA_ds_w5$volun <- car::recode(as.vector(ELSA_ds_w5$volun), "NA='999'")
+ELSA_ds_w5$volun <- labelled(ELSA_ds_w5$volun, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995, "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript5, echo=F}
+vari <- ELSA_ds_w5$volun
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_ds_w5$volun, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ELSA_ds_w5, aes(x=factor(volun))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Any voluntary/charitable activity") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation5, echo=F}
+
+```
+
+ 
+ 
+
+
+
+
+### Wave 6
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `scorg04`
+* Label: `Respondent is a member of charitable associations`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings:
+    + `-9 = Not answered`
+    + `-8 = Don't know`
+    + `-2 = Schedule not applicable`
+    + `-1 = Item not applicable`
+    
+* Name: `WpVW`
+* Label: `How often does voluntary work?`
+* Categories: 
+    + `1 = twice a month or more`
+    + `2 = about once a month`
+    + `3 = every few months`
+    + `4 = about once or twice a year`
+    + `5 = less than once a year`
+    + `6 = never`
+* Missings:
+    + `-9 = Refusal`
+    + `-8 = Don't Know`
+    + `-2 = Schedule not applicable`
+    + `-1 = Not applicable`
+  
+    
+* Description: 
+```{r assign6, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w6_volun','ELSA.wave_6_elsa_data_v2', variables=list('scorg04','WpVW'), missings = TRUE)
+```
+
+```{r local6, echo=F}
+ELSA_w6_volun <- opal.execute(o,'ELSA_w6_volun')
+vari <- ELSA_w6_volun$scorg04
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_w6_volun$scorg04, missing_values = NA)
+ggplot(ELSA_w6_volun, aes(x=factor(scorg04))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Is respondent a member of charitable associations?") + ylab("Frequency")
+vari <- ELSA_w6_volun$WpVW
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_w6_volun$WpVW, missing_values = NA)
+ggplot(ELSA_w6_volun, aes(x=factor(WpVW))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("How often does voluntary work?") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `into 1 if WpVW equals 1,2,3 or scorg04 is selected`
+* `into 0 if wpwv equals 4,5,6 and scorg04 is not selected.`
+* `-1 or -2 or scorg04=-9 into 996`
+* `WpVW=-9 into 997`
+* `-8 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo6, echo=TRUE}
+ELSA_ds_w6 <- tibble(id=ELSA_w6_volun$id)
+
+ELSA_w6_volun$scorg04 <- car::recode(as.vector(ELSA_w6_volun$scorg04), "NA='-999'")
+ELSA_w6_volun$WpVW <- car::recode(as.vector(ELSA_w6_volun$WpVW), "NA='-999'")
+
+ELSA_ds_w6$volun <- c(NA)
+for(i in 1:dim(ELSA_w6_volun)[1]){
+  if( ELSA_w6_volun$scorg04[i] == 1 | ELSA_w6_volun$WpVW[i] %in% c(1,2,3) ) { 
+    ELSA_ds_w6$volun[i] = 1 }
+  else if( ELSA_w6_volun$scorg04[i] == 0 & ELSA_w6_volun$WpVW[i] %in% c(4,5,6) ) { 
+    ELSA_ds_w6$volun[i] = 0 }
+  else if( ELSA_w6_volun$scorg04[i] %in% c(-1,-2) | ELSA_w6_volun$WpVW[i] %in% c(-1,-2) ) { 
+    ELSA_ds_w6$volun[i] = 996 }
+  else if( ELSA_w6_volun$scorg04[i] == -9 ) { 
+    ELSA_ds_w6$volun[i] = 995 }
+  else if( ELSA_w6_volun$WpVW[i] == -9 ) { 
+    ELSA_ds_w6$volun[i] = 997 }
+  else if( ELSA_w6_volun$scorg04[i] == -8 | ELSA_w6_volun$WpVW[i] == -8 ) { 
+    ELSA_ds_w6$volun[i] = 998 }
+}
+
+ELSA_ds_w6$volun <- car::recode(as.vector(ELSA_ds_w6$volun), "NA='999'")
+ELSA_ds_w6$volun <- labelled(ELSA_ds_w6$volun, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995, "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript6, echo=F}
+vari <- ELSA_ds_w6$volun
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_ds_w6$volun, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ELSA_ds_w6, aes(x=factor(volun))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Any voluntary/charitable activity") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation6, echo=F}
+
+```
+
+ 
+ 
+
+
+
+### Wave 7
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `scorg04`
+* Label: `Respondent is a member of charitable associations`
+* Categories: 
+    + `0 = No`
+    + `1 = Yes`
+* Missings:
+    + `-9 = Not answered`
+    + `-8 = Don't know`
+    + `-2 = Schedule not applicable`
+    + `-1 = Item not applicable`
+    
+* Name: `WpVW`
+* Label: `How often does voluntary work?`
+* Categories: 
+    + `1 = twice a month or more`
+    + `2 = about once a month`
+    + `3 = every few months`
+    + `4 = about once or twice a year`
+    + `5 = less than once a year`
+    + `6 = never`
+* Missings:
+    + `-9 = Refusal`
+    + `-8 = Don't Know`
+    + `-2 = Schedule not applicable`
+    + `-1 = Not applicable`
+  
+    
+* Description: 
+```{r assign7, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w7_volun','ELSA.wave_7_elsa_data', variables=list('scorg04','WpVW'), missings = TRUE)
+```
+
+```{r local7, echo=F}
+ELSA_w7_volun <- opal.execute(o,'ELSA_w7_volun')
+vari <- ELSA_w7_volun$scorg04 
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_w7_volun$scorg04, missing_values = NA)
+ggplot(ELSA_w7_volun, aes(x=factor(scorg04))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Is respondent a member of charitable associations?") + ylab("Frequency")
+vari <- ELSA_w7_volun$WpVW
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-1,-2,-8,-9))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_w7_volun$WpVW, missing_values = NA)
+ggplot(ELSA_w7_volun, aes(x=factor(WpVW))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("How often does voluntary work?") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `into 1 if WpVW equals 1,2,3 or scorg04 is selected`
+* `into 0 if wpwv equals 4,5,6 and scorg04 is not selected.`
+* `-1 or -2 or scorg04=-9 into 996`
+* `WpVW=-9 into 997`
+* `-8 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo7, echo=TRUE}
+ELSA_ds_w7 <- tibble(id=ELSA_w7_volun$id)
+
+ELSA_w7_volun$scorg04 <- car::recode(as.vector(ELSA_w7_volun$scorg04), "NA='-999'")
+ELSA_w7_volun$WpVW <- car::recode(as.vector(ELSA_w7_volun$WpVW), "NA='-999'")
+
+ELSA_ds_w7$volun <- c(NA)
+for(i in 1:dim(ELSA_w7_volun)[1]){
+  if( ELSA_w7_volun$scorg04[i] == 1 | ELSA_w7_volun$WpVW[i] %in% c(1,2,3) ) { 
+    ELSA_ds_w7$volun[i] = 1 }
+  else if( ELSA_w7_volun$scorg04[i] == 0 & ELSA_w7_volun$WpVW[i] %in% c(4,5,6) ) { 
+    ELSA_ds_w7$volun[i] = 0 }
+  else if( ELSA_w7_volun$scorg04[i] %in% c(-1,-2) | ELSA_w7_volun$WpVW[i] %in% c(-1,-2) ) { 
+    ELSA_ds_w7$volun[i] = 996 }
+  else if( ELSA_w7_volun$scorg04[i] == -9 ) { 
+    ELSA_ds_w7$volun[i] = 995 }
+  else if( ELSA_w7_volun$WpVW[i] == -9 ) { 
+    ELSA_ds_w7$volun[i] = 997 }
+  else if( ELSA_w7_volun$scorg04[i] == -8 | ELSA_w7_volun$WpVW[i] == -8 ) { 
+    ELSA_ds_w7$volun[i] = 998 }
+}
+
+ELSA_ds_w7$volun <- car::recode(as.vector(ELSA_ds_w7$volun), "NA='999'")
+ELSA_ds_w7$volun <- labelled(ELSA_ds_w7$volun, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995, "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript7, echo=F}
+vari <- ELSA_ds_w7$volun
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_ds_w7$volun, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ELSA_ds_w7, aes(x=factor(volun))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Any voluntary/charitable activity") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation7, echo=F}
+
+```
+
+
+```{r save, echo=FALSE}
+volun <- ELSA_ds_w1
+save(volun, file = "../RData/w1/volun.RData")
+rm(volun)
+
+volun <- ELSA_ds_w2
+save(volun, file = "../RData/w2/volun.RData")
+rm(volun)
+
+volun <- ELSA_ds_w3
+save(volun, file = "../RData/w3/volun.RData")
+rm(volun)
+
+volun <- ELSA_ds_w4
+save(volun, file = "../RData/w4/volun.RData")
+rm(volun)
+
+volun <- ELSA_ds_w5
+save(volun, file = "../RData/w5/volun.RData")
+rm(volun)
+
+volun <- ELSA_ds_w6
+save(volun, file = "../RData/w6/volun.RData")
+rm(volun)
+
+volun <- ELSA_ds_w7
+save(volun, file = "../RData/w7/volun.RData")
+rm(volun)
+
+
+```
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+
+ 
+ 

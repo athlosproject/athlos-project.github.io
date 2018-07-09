@@ -1,0 +1,855 @@
+---
+title: "ELSA"
+author: "Katarzyna Jablonska"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true 
+    depth: 6
+    number_sections: true  
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r prepare, message=FALSE, include=FALSE}
+library(bitops)
+library(RCurl)
+library(rjson)
+library(mime)
+library(opal)
+library(tibble)
+library(car)
+library(labelled)
+library(Hmisc)
+source("Continuous_summary.R")
+source("Categorical_summary.R")
+
+# authenticate within opal server 
+o <- opal.login('','...','http://...')
+```
+
+# Socio-demographic and economic characteristics 
+
+## `Living with relatives`
+
+### Description of DataSchema variable `Are living in home with family members/relatives (= daily contact with family member)?`
+
+The description of harmonised variable is the following:
+  
+* Name: `home_rel`
+* Label: `Are living in home with family members/relatives (= daily contact with family member)?`
+* Type: categorical
+* Categories: 
+    + `0 = no`
+    + `1 = yes`
+* Missings: 
+    + `991 = CAPI/interviewer error`
+    + `992 = Impute`
+    + `993 = Disable to measure`
+    + `994 = Not attempt/not done/not yet recorded`
+    + `995 = Don't answer`
+    + `996 = Not applicable`
+    + `997 = Refuse`
+    + `998 = Do not know`
+    + `999 = Missing`
+
+
+
+### ELSA - Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `dhr2` UP TO `dhr13`
+* Label: `What is [your/member of household~s] relationship to [person 2]`
+* Categories:
+    + `1 = Husband/Wife`
+    + `2 = Partner/cohabitee`
+    + `3 = Natural son/daughter`
+    + `4 = Adopted son/daughter`
+    + `5 = Foster son/daughter`
+    + `6 = Step son/daughter/child of partner`
+    + `7 = Son/daughter-in-law`
+    + `8 = Natural parent`
+    + `9 = Adoptive parent`
+    + `10 = Foster parent`
+    + `11 = Stepparent/parent s partner`
+    + `12 = Parent-in-law`
+    + `13 = Natural brother/sister`
+    + `14 = Half-brother/sister`
+    + `15 = Step-brother/sister`
+    + `16 = Adopted brother/sister`
+    + `17 = Foster brother/sister`
+    + `18 = Brother/sister-in-law`
+    + `19 = Grandchild`
+    + `20 = Grandparent`
+    + `21 = Other relative`
+    + `22 = Other non-relative`
+    + `96 = (THIS CODE NOT USED)`
+* Missings:
+    + `-9 = Refusal`
+    + `-8 = Don't Know`
+    + `-1 = Not applicable`
+    
+
+
+```{r assign1}
+opal.assign.table.tibble(o, 'ELSA_w1_home_rel','ELSA.wave_1_core_data_v3', 
+                        variables=list('dhr2','dhr3','dhr4','dhr5','dhr6','dhr7','dhr8','dhr9',
+                                       'dhr10','dhr11','dhr12','dhr13'), missings = TRUE)
+```
+
+```{r local1}
+ELSA_w1_home_rel <- opal.execute(o,'ELSA_w1_home_rel')
+Categorical_summary(var = ELSA_w1_home_rel$dhr11, missing_values = NA)
+ggplot(ELSA_w1_home_rel, aes(x=factor(dhr11))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Relationship to person11") + ylab("Frequency")
+Categorical_summary(var = ELSA_w1_home_rel$dhr2, missing_values = NA)
+ggplot(ELSA_w1_home_rel, aes(x=factor(dhr2))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Relationship to person2") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any of dhr2,..,dhr13 in 1:21 - into 1`
+* `if all not in 1:21 - into 0`
+* `-9 into 995`
+* `-8 into 998`
+* `-1 into 996`
+* `96 or NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo1}
+ELSA_ds_w1 <- tibble(id=ELSA_w1_home_rel$id)
+
+ELSA_w1_home_rel$dhr2 <- car::recode(as.vector(ELSA_w1_home_rel$dhr2), "NA='-999'")
+ELSA_w1_home_rel$dhr3 <- car::recode(as.vector(ELSA_w1_home_rel$dhr3), "NA='-999'")
+ELSA_w1_home_rel$dhr4 <- car::recode(as.vector(ELSA_w1_home_rel$dhr4), "NA='-999'")
+ELSA_w1_home_rel$dhr5 <- car::recode(as.vector(ELSA_w1_home_rel$dhr5), "NA='-999'")
+ELSA_w1_home_rel$dhr6 <- car::recode(as.vector(ELSA_w1_home_rel$dhr6), "NA='-999'")
+ELSA_w1_home_rel$dhr7 <- car::recode(as.vector(ELSA_w1_home_rel$dhr7), "NA='-999'")
+ELSA_w1_home_rel$dhr8 <- car::recode(as.vector(ELSA_w1_home_rel$dhr8), "NA='-999'")
+ELSA_w1_home_rel$dhr9 <- car::recode(as.vector(ELSA_w1_home_rel$dhr9), "NA='-999'")
+ELSA_w1_home_rel$dhr10 <- car::recode(as.vector(ELSA_w1_home_rel$dhr10), "NA='-999'")
+ELSA_w1_home_rel$dhr11 <- car::recode(as.vector(ELSA_w1_home_rel$dhr11), "NA='-999'")
+ELSA_w1_home_rel$dhr12 <- car::recode(as.vector(ELSA_w1_home_rel$dhr12), "NA='-999'")
+ELSA_w1_home_rel$dhr13 <- car::recode(as.vector(ELSA_w1_home_rel$dhr13), "NA='-999'")
+
+ELSA_ds_w1$home_rel <- c(NA) # I think it is required
+for(i in 1:dim(ELSA_w1_home_rel)[1]){
+  if( ELSA_w1_home_rel$dhr2[i] %in% c(1:21) | ELSA_w1_home_rel$dhr3[i] %in% c(1:21) | 
+      ELSA_w1_home_rel$dhr4[i] %in% c(1:21) | ELSA_w1_home_rel$dhr5[i] %in% c(1:21) | ELSA_w1_home_rel$dhr6[i] %in% c(1:21) | 
+      ELSA_w1_home_rel$dhr7[i] %in% c(1:21) | ELSA_w1_home_rel$dhr8[i] %in% c(1:21) | ELSA_w1_home_rel$dhr9[i] %in% c(1:21) | 
+      ELSA_w1_home_rel$dhr10[i] %in% c(1:21) | ELSA_w1_home_rel$dhr11[i] %in% c(1:21) | ELSA_w1_home_rel$dhr12[i] %in% c(1:21) | 
+      ELSA_w1_home_rel$dhr13[i] %in% c(1:21) ) { ELSA_ds_w1$home_rel[i] = 1 }
+  else if( ELSA_w1_home_rel$dhr2[i] %in% c(96, -999) & ELSA_w1_home_rel$dhr3[i] %in% c(96, -999) & 
+      ELSA_w1_home_rel$dhr4[i] %in% c(96, -999) & ELSA_w1_home_rel$dhr5[i] %in% c(96, -999) & ELSA_w1_home_rel$dhr6[i] %in% c(96, -999) & 
+      ELSA_w1_home_rel$dhr7[i] %in% c(96, -999) & ELSA_w1_home_rel$dhr8[i] %in% c(96, -999) & ELSA_w1_home_rel$dhr9[i] %in% c(96, -999) & 
+      ELSA_w1_home_rel$dhr10[i] %in% c(96, -999) & ELSA_w1_home_rel$dhr11[i] %in% c(96, -999) & ELSA_w1_home_rel$dhr12[i] %in% c(96, -999) & 
+      ELSA_w1_home_rel$dhr13[i] %in% c(96, -999) ) { ELSA_ds_w1$home_rel[i] = 999 }
+  else if( ELSA_w1_home_rel$dhr2[i] == -9 & ELSA_w1_home_rel$dhr3[i] == -9 & 
+      ELSA_w1_home_rel$dhr4[i] == -9 & ELSA_w1_home_rel$dhr5[i] == -9 & ELSA_w1_home_rel$dhr6[i] == -9 & 
+      ELSA_w1_home_rel$dhr7[i] == -9 & ELSA_w1_home_rel$dhr8[i] == -9 & ELSA_w1_home_rel$dhr9[i] == -9 & 
+      ELSA_w1_home_rel$dhr10[i] == -9 & ELSA_w1_home_rel$dhr11[i] == -9 & ELSA_w1_home_rel$dhr12[i] == -9 & 
+      ELSA_w1_home_rel$dhr13[i] == -9 ) { ELSA_ds_w1$home_rel[i] = 995 }
+  else if( ELSA_w1_home_rel$dhr2[i] == -8 & ELSA_w1_home_rel$dhr3[i] == -8 & 
+      ELSA_w1_home_rel$dhr4[i] == -8 & ELSA_w1_home_rel$dhr5[i] == -8 & ELSA_w1_home_rel$dhr6[i] == -8 & 
+      ELSA_w1_home_rel$dhr7[i] == -8 & ELSA_w1_home_rel$dhr8[i] == -8 & ELSA_w1_home_rel$dhr9[i] == -8 & 
+      ELSA_w1_home_rel$dhr10[i] == -8 & ELSA_w1_home_rel$dhr11[i] == -8 & ELSA_w1_home_rel$dhr12[i] == -8 & 
+      ELSA_w1_home_rel$dhr13[i] == -8 ) { ELSA_ds_w1$home_rel[i] = 998 }
+  else if( ELSA_w1_home_rel$dhr2[i] == -1 & ELSA_w1_home_rel$dhr3[i] == -1 & 
+      ELSA_w1_home_rel$dhr4[i] == -1 & ELSA_w1_home_rel$dhr5[i] == -1 & ELSA_w1_home_rel$dhr6[i] == -1 & 
+      ELSA_w1_home_rel$dhr7[i] == -1 & ELSA_w1_home_rel$dhr8[i] == -1 & ELSA_w1_home_rel$dhr9[i] == -1 & 
+      ELSA_w1_home_rel$dhr10[i] == -1 & ELSA_w1_home_rel$dhr11[i] == -1 & ELSA_w1_home_rel$dhr12[i] == -1 & 
+      ELSA_w1_home_rel$dhr13[i] == -1 ) { ELSA_ds_w1$home_rel[i] = 996 }
+  else if( !( ELSA_w1_home_rel$dhr2[i] %in% c(1:21) | ELSA_w1_home_rel$dhr3[i] %in% c(1:21) | 
+      ELSA_w1_home_rel$dhr4[i] %in% c(1:21) | ELSA_w1_home_rel$dhr5[i] %in% c(1:21) | ELSA_w1_home_rel$dhr6[i] %in% c(1:21) | 
+      ELSA_w1_home_rel$dhr7[i] %in% c(1:21) | ELSA_w1_home_rel$dhr8[i] %in% c(1:21) | ELSA_w1_home_rel$dhr9[i] %in% c(1:21) | 
+      ELSA_w1_home_rel$dhr10[i] %in% c(1:21) | ELSA_w1_home_rel$dhr11[i] %in% c(1:21) | ELSA_w1_home_rel$dhr12[i] %in% c(1:21) | 
+      ELSA_w1_home_rel$dhr13[i] %in% c(1:21) ) ) { ELSA_ds_w1$home_rel[i] = 0 }
+}
+
+ELSA_ds_w1$home_rel <- car::recode(as.vector(ELSA_ds_w1$home_rel), "NA='999'")
+ELSA_ds_w1$home_rel <- labelled(ELSA_ds_w1$home_rel, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1}
+Categorical_summary(var = ELSA_ds_w1$home_rel, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ELSA_ds_w1, aes(x=factor(home_rel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are living in home with family members/relatives (= daily contact with family member)?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1}
+
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+### ELSA - Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `DhR12` UP TO `DhR12`
+* Label: `Relationship of this person to Person 2 in the household`
+* Categories:
+    + `1 = Husband/Wife`
+    + `2 = Partner/cohabitee`
+    + `3 = Natural son/daughter`
+    + `4 = Adopted son/daughter`
+    + `5 = Foster son/daughter`
+    + `6 = Step son/daughter/child of partner`
+    + `7 = Son/daughter-in-law`
+    + `8 = Natural parent`
+    + `9 = Adoptive parent`
+    + `10 = Foster parent`
+    + `11 = Stepparent/parent s partner`
+    + `12 = Parent-in-law`
+    + `13 = Natural brother/sister`
+    + `14 = Half-brother/sister`
+    + `15 = Step-brother/sister`
+    + `16 = Adopted brother/sister`
+    + `17 = Foster brother/sister`
+    + `18 = Brother/sister-in-law`
+    + `19 = Grandchild`
+    + `20 = Grandparent`
+    + `21 = Other relative`
+    + `22 = Other non-relative`
+    + `96 = (THIS CODE NOT USED)`
+* Missings:
+    + `-9 = Refusal`
+    + `-8 = Don't Know`
+    + `-1 = Not applicable`
+    
+
+
+
+```{r assign2}
+opal.assign.table.tibble(o, 'ELSA_w2_home_rel','ELSA.wave_2_core_data_v4', 
+                        variables=list('DhR2','DhR3','DhR4','DhR5','DhR6','DhR7','DhR8','DhR9',
+                                       'DhR10','DhR11','DhR12'), missings = TRUE)
+```
+
+```{r local2}
+ELSA_w2_home_rel <- opal.execute(o,'ELSA_w2_home_rel')
+Categorical_summary(var = ELSA_w2_home_rel$DhR2, missing_values = NA)
+ggplot(ELSA_w2_home_rel, aes(x=factor(DhR2))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Relationship of this person to Person 2 in the household") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any of DhR1,..,DhR12 in 1:21 - into 1`
+* `if all not in 1:21 - into 0`
+* `-9 into 995`
+* `-8 into 998`
+* `-1 into 996`
+* `96 or NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo2}
+ELSA_ds_w2 <- tibble(id=ELSA_w2_home_rel$id)
+
+ELSA_w2_home_rel$DhR2 <- car::recode(as.vector(ELSA_w2_home_rel$DhR2), "NA='-999'")
+ELSA_w2_home_rel$DhR3 <- car::recode(as.vector(ELSA_w2_home_rel$DhR3), "NA='-999'")
+ELSA_w2_home_rel$DhR4 <- car::recode(as.vector(ELSA_w2_home_rel$DhR4), "NA='-999'")
+ELSA_w2_home_rel$DhR5 <- car::recode(as.vector(ELSA_w2_home_rel$DhR5), "NA='-999'")
+ELSA_w2_home_rel$DhR6 <- car::recode(as.vector(ELSA_w2_home_rel$DhR6), "NA='-999'")
+ELSA_w2_home_rel$DhR7 <- car::recode(as.vector(ELSA_w2_home_rel$DhR7), "NA='-999'")
+ELSA_w2_home_rel$DhR8 <- car::recode(as.vector(ELSA_w2_home_rel$DhR8), "NA='-999'")
+ELSA_w2_home_rel$DhR9 <- car::recode(as.vector(ELSA_w2_home_rel$DhR9), "NA='-999'")
+ELSA_w2_home_rel$DhR10 <- car::recode(as.vector(ELSA_w2_home_rel$DhR10), "NA='-999'")
+ELSA_w2_home_rel$DhR11 <- car::recode(as.vector(ELSA_w2_home_rel$DhR11), "NA='-999'")
+ELSA_w2_home_rel$DhR12 <- car::recode(as.vector(ELSA_w2_home_rel$DhR12), "NA='-999'")
+
+ELSA_ds_w2$home_rel <- c(NA) # I think it is required
+for(i in 1:dim(ELSA_w2_home_rel)[1]){
+  if( ELSA_w2_home_rel$DhR2[i] %in% c(1:21) | ELSA_w2_home_rel$DhR3[i] %in% c(1:21) | 
+      ELSA_w2_home_rel$DhR4[i] %in% c(1:21) | ELSA_w2_home_rel$DhR5[i] %in% c(1:21) | ELSA_w2_home_rel$DhR6[i] %in% c(1:21) | 
+      ELSA_w2_home_rel$DhR7[i] %in% c(1:21) | ELSA_w2_home_rel$DhR8[i] %in% c(1:21) | ELSA_w2_home_rel$DhR9[i] %in% c(1:21) | 
+      ELSA_w2_home_rel$DhR10[i] %in% c(1:21) | ELSA_w2_home_rel$DhR11[i] %in% c(1:21) | ELSA_w2_home_rel$DhR12[i] %in% c(1:21)
+      ) { ELSA_ds_w2$home_rel[i] = 1 }
+  else if( ELSA_w2_home_rel$DhR2[i] %in% c(96, -999) & ELSA_w2_home_rel$DhR3[i] %in% c(96, -999) & 
+      ELSA_w2_home_rel$DhR4[i] %in% c(96, -999) & ELSA_w2_home_rel$DhR5[i] %in% c(96, -999) & ELSA_w2_home_rel$DhR6[i] %in% c(96, -999) & 
+      ELSA_w2_home_rel$DhR7[i] %in% c(96, -999) & ELSA_w2_home_rel$DhR8[i] %in% c(96, -999) & ELSA_w2_home_rel$DhR9[i] %in% c(96, -999) & 
+      ELSA_w2_home_rel$DhR10[i] %in% c(96, -999) & ELSA_w2_home_rel$DhR11[i] %in% c(96, -999) & ELSA_w2_home_rel$DhR12[i] %in% c(96, -999) 
+      ) { ELSA_ds_w2$home_rel[i] = 999 }
+  else if( ELSA_w2_home_rel$DhR2[i] == -9 & ELSA_w2_home_rel$DhR3[i] == -9 & 
+      ELSA_w2_home_rel$DhR4[i] == -9 & ELSA_w2_home_rel$DhR5[i] == -9 & ELSA_w2_home_rel$DhR6[i] == -9 & 
+      ELSA_w2_home_rel$DhR7[i] == -9 & ELSA_w2_home_rel$DhR8[i] == -9 & ELSA_w2_home_rel$DhR9[i] == -9 & 
+      ELSA_w2_home_rel$DhR10[i] == -9 & ELSA_w2_home_rel$DhR11[i] == -9 & ELSA_w2_home_rel$DhR12[i] == -9 
+      ) { ELSA_ds_w2$home_rel[i] = 995 }
+  else if( ELSA_w2_home_rel$DhR2[i] == -8 & ELSA_w2_home_rel$DhR3[i] == -8 & 
+      ELSA_w2_home_rel$DhR4[i] == -8 & ELSA_w2_home_rel$DhR5[i] == -8 & ELSA_w2_home_rel$DhR6[i] == -8 & 
+      ELSA_w2_home_rel$DhR7[i] == -8 & ELSA_w2_home_rel$DhR8[i] == -8 & ELSA_w2_home_rel$DhR9[i] == -8 & 
+      ELSA_w2_home_rel$DhR10[i] == -8 & ELSA_w2_home_rel$DhR11[i] == -8 & ELSA_w2_home_rel$DhR12[i] == -8 
+      ) { ELSA_ds_w2$home_rel[i] = 998 }
+  else if( ELSA_w2_home_rel$DhR2[i] == -1 & ELSA_w2_home_rel$DhR3[i] == -1 & 
+      ELSA_w2_home_rel$DhR4[i] == -1 & ELSA_w2_home_rel$DhR5[i] == -1 & ELSA_w2_home_rel$DhR6[i] == -1 & 
+      ELSA_w2_home_rel$DhR7[i] == -1 & ELSA_w2_home_rel$DhR8[i] == -1 & ELSA_w2_home_rel$DhR9[i] == -1 & 
+      ELSA_w2_home_rel$DhR10[i] == -1 & ELSA_w2_home_rel$DhR11[i] == -1 & ELSA_w2_home_rel$DhR12[i] == -1 
+      ) { ELSA_ds_w2$home_rel[i] = 996 }
+  else if( !( ELSA_w2_home_rel$DhR2[i] %in% c(1:21) | ELSA_w2_home_rel$DhR3[i] %in% c(1:21) | 
+      ELSA_w2_home_rel$DhR4[i] %in% c(1:21) | ELSA_w2_home_rel$DhR5[i] %in% c(1:21) | ELSA_w2_home_rel$DhR6[i] %in% c(1:21) | 
+      ELSA_w2_home_rel$DhR7[i] %in% c(1:21) | ELSA_w2_home_rel$DhR8[i] %in% c(1:21) | ELSA_w2_home_rel$DhR9[i] %in% c(1:21) | 
+      ELSA_w2_home_rel$DhR10[i] %in% c(1:21) | ELSA_w2_home_rel$DhR11[i] %in% c(1:21) | ELSA_w2_home_rel$DhR12[i] %in% c(1:21) 
+      ) ) { ELSA_ds_w2$home_rel[i] = 0 }
+}
+
+ELSA_ds_w2$home_rel <- car::recode(as.vector(ELSA_ds_w2$home_rel), "NA='999'")
+ELSA_ds_w2$home_rel <- labelled(ELSA_ds_w2$home_rel, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2}
+Categorical_summary(var = ELSA_ds_w2$home_rel, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ELSA_ds_w2, aes(x=factor(home_rel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are living in home with family members/relatives (= daily contact with family member)?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2}
+
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+
+### ELSA - Wave 3
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `dhr1` UP TO `dhr12`
+* Label: `Relationship of this person to Person 2 in the household`
+* Categories:
+    + `1 = Husband/Wife`
+    + `2 = Partner/cohabitee`
+    + `3 = Natural son/daughter`
+    + `4 = Adopted son/daughter`
+    + `5 = Foster son/daughter`
+    + `6 = Step son/daughter/child of partner`
+    + `7 = Son/daughter-in-law`
+    + `8 = Natural parent`
+    + `9 = Adoptive parent`
+    + `10 = Foster parent`
+    + `11 = Stepparent/parent s partner`
+    + `12 = Parent-in-law`
+    + `13 = Natural brother/sister`
+    + `14 = Half-brother/sister`
+    + `15 = Step-brother/sister`
+    + `16 = Adopted brother/sister`
+    + `17 = Foster brother/sister`
+    + `18 = Brother/sister-in-law`
+    + `19 = Grandchild`
+    + `20 = Grandparent`
+    + `21 = Other relative`
+    + `22 = Other non-relative`
+    + `96 = (THIS CODE NOT USED)`
+* Missings:
+    + `-9 = Refusal`
+    + `-8 = Don't Know`
+    + `-2 = Schedule not applicable`
+    + `-1 = Not applicable`
+
+
+```{r assign3}
+opal.assign.table.tibble(o, 'ELSA_w3_home_rel','ELSA.wave_3_elsa_data_v4', 
+                        variables=list('dhr2','dhr3','dhr4','dhr5','dhr6','dhr7','dhr8','dhr9',
+                                       'dhr10','dhr11','dhr12'), missings = TRUE)
+```
+
+```{r local3}
+ELSA_w3_home_rel <- opal.execute(o,'ELSA_w3_home_rel')
+Categorical_summary(var = ELSA_w3_home_rel$dhr2, missing_values = NA)
+ggplot(ELSA_w3_home_rel, aes(x=factor(dhr2))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Relationship of this person to Person 2 in the household") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any of dhr1,..,dhr12 in 1:21 - into 1`
+* `if all not in 1:21 - into 0`
+* `-9 into 995`
+* `-8 into 998`
+* `-1 or -2 into 996`
+* `96 or NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo3}
+ELSA_ds_w3 <- tibble(id=ELSA_w3_home_rel$id)
+
+ELSA_w3_home_rel$dhr2 <- car::recode(as.vector(ELSA_w3_home_rel$dhr2), "NA='-999'")
+ELSA_w3_home_rel$dhr3 <- car::recode(as.vector(ELSA_w3_home_rel$dhr3), "NA='-999'")
+ELSA_w3_home_rel$dhr4 <- car::recode(as.vector(ELSA_w3_home_rel$dhr4), "NA='-999'")
+ELSA_w3_home_rel$dhr5 <- car::recode(as.vector(ELSA_w3_home_rel$dhr5), "NA='-999'")
+ELSA_w3_home_rel$dhr6 <- car::recode(as.vector(ELSA_w3_home_rel$dhr6), "NA='-999'")
+ELSA_w3_home_rel$dhr7 <- car::recode(as.vector(ELSA_w3_home_rel$dhr7), "NA='-999'")
+ELSA_w3_home_rel$dhr8 <- car::recode(as.vector(ELSA_w3_home_rel$dhr8), "NA='-999'")
+ELSA_w3_home_rel$dhr9 <- car::recode(as.vector(ELSA_w3_home_rel$dhr9), "NA='-999'")
+ELSA_w3_home_rel$dhr10 <- car::recode(as.vector(ELSA_w3_home_rel$dhr10), "NA='-999'")
+ELSA_w3_home_rel$dhr11 <- car::recode(as.vector(ELSA_w3_home_rel$dhr11), "NA='-999'")
+ELSA_w3_home_rel$dhr12 <- car::recode(as.vector(ELSA_w3_home_rel$dhr12), "NA='-999'")
+
+ELSA_ds_w3$home_rel <- c(NA) # I think it is required
+for(i in 1:dim(ELSA_w3_home_rel)[1]){
+  if( ELSA_w3_home_rel$dhr2[i] %in% c(1:21) | ELSA_w3_home_rel$dhr3[i] %in% c(1:21) | 
+      ELSA_w3_home_rel$dhr4[i] %in% c(1:21) | ELSA_w3_home_rel$dhr5[i] %in% c(1:21) | ELSA_w3_home_rel$dhr6[i] %in% c(1:21) | 
+      ELSA_w3_home_rel$dhr7[i] %in% c(1:21) | ELSA_w3_home_rel$dhr8[i] %in% c(1:21) | ELSA_w3_home_rel$dhr9[i] %in% c(1:21) | 
+      ELSA_w3_home_rel$dhr10[i] %in% c(1:21) | ELSA_w3_home_rel$dhr11[i] %in% c(1:21) | ELSA_w3_home_rel$dhr12[i] %in% c(1:21)
+      ) { ELSA_ds_w3$home_rel[i] = 1 }
+  else if( ELSA_w3_home_rel$dhr2[i] %in% c(96, -999) & ELSA_w3_home_rel$dhr3[i] %in% c(96, -999) & 
+      ELSA_w3_home_rel$dhr4[i] %in% c(96, -999) & ELSA_w3_home_rel$dhr5[i] %in% c(96, -999) & ELSA_w3_home_rel$dhr6[i] %in% c(96, -999) & 
+      ELSA_w3_home_rel$dhr7[i] %in% c(96, -999) & ELSA_w3_home_rel$dhr8[i] %in% c(96, -999) & ELSA_w3_home_rel$dhr9[i] %in% c(96, -999) & 
+      ELSA_w3_home_rel$dhr10[i] %in% c(96, -999) & ELSA_w3_home_rel$dhr11[i] %in% c(96, -999) & ELSA_w3_home_rel$dhr12[i] %in% c(96, -999) 
+      ) { ELSA_ds_w3$home_rel[i] = 999 }
+  else if( ELSA_w3_home_rel$dhr2[i] == -9 & ELSA_w3_home_rel$dhr3[i] == -9 & 
+      ELSA_w3_home_rel$dhr4[i] == -9 & ELSA_w3_home_rel$dhr5[i] == -9 & ELSA_w3_home_rel$dhr6[i] == -9 & 
+      ELSA_w3_home_rel$dhr7[i] == -9 & ELSA_w3_home_rel$dhr8[i] == -9 & ELSA_w3_home_rel$dhr9[i] == -9 & 
+      ELSA_w3_home_rel$dhr10[i] == -9 & ELSA_w3_home_rel$dhr11[i] == -9 & ELSA_w3_home_rel$dhr12[i] == -9 
+      ) { ELSA_ds_w3$home_rel[i] = 995 }
+  else if( ELSA_w3_home_rel$dhr2[i] == -8 & ELSA_w3_home_rel$dhr3[i] == -8 & 
+      ELSA_w3_home_rel$dhr4[i] == -8 & ELSA_w3_home_rel$dhr5[i] == -8 & ELSA_w3_home_rel$dhr6[i] == -8 & 
+      ELSA_w3_home_rel$dhr7[i] == -8 & ELSA_w3_home_rel$dhr8[i] == -8 & ELSA_w3_home_rel$dhr9[i] == -8 & 
+      ELSA_w3_home_rel$dhr10[i] == -8 & ELSA_w3_home_rel$dhr11[i] == -8 & ELSA_w3_home_rel$dhr12[i] == -8 
+      ) { ELSA_ds_w3$home_rel[i] = 998 }
+  else if( ELSA_w3_home_rel$dhr2[i] == -1 & ELSA_w3_home_rel$dhr3[i] == -1 & 
+      ELSA_w3_home_rel$dhr4[i] == -1 & ELSA_w3_home_rel$dhr5[i] == -1 & ELSA_w3_home_rel$dhr6[i] == -1 & 
+      ELSA_w3_home_rel$dhr7[i] == -1 & ELSA_w3_home_rel$dhr8[i] == -1 & ELSA_w3_home_rel$dhr9[i] == -1 & 
+      ELSA_w3_home_rel$dhr10[i] == -1 & ELSA_w3_home_rel$dhr11[i] == -1 & ELSA_w3_home_rel$dhr12[i] == -1 
+      ) { ELSA_ds_w3$home_rel[i] = 996 }
+  else if( !( ELSA_w3_home_rel$dhr2[i] %in% c(1:21) | ELSA_w3_home_rel$dhr3[i] %in% c(1:21) | 
+      ELSA_w3_home_rel$dhr4[i] %in% c(1:21) | ELSA_w3_home_rel$dhr5[i] %in% c(1:21) | ELSA_w3_home_rel$dhr6[i] %in% c(1:21) | 
+      ELSA_w3_home_rel$dhr7[i] %in% c(1:21) | ELSA_w3_home_rel$dhr8[i] %in% c(1:21) | ELSA_w3_home_rel$dhr9[i] %in% c(1:21) | 
+      ELSA_w3_home_rel$dhr10[i] %in% c(1:21) | ELSA_w3_home_rel$dhr11[i] %in% c(1:21) | ELSA_w3_home_rel$dhr12[i] %in% c(1:21) 
+      ) ) { ELSA_ds_w3$home_rel[i] = 0 }
+}
+
+ELSA_ds_w3$home_rel <- car::recode(as.vector(ELSA_ds_w3$home_rel), "NA='999'")
+ELSA_ds_w3$home_rel <- labelled(ELSA_ds_w3$home_rel, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript3}
+Categorical_summary(var = ELSA_ds_w3$home_rel, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ELSA_ds_w3, aes(x=factor(home_rel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are living in home with family members/relatives (= daily contact with family member)?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation3}
+
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+### ELSA - Wave 4
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `dhr2` UP TO `dhr12` (dhr13 to dhr16 have NA or -1 only)
+* Label: `Relationship of this person to Person 1 in the household`
+* Categories:
+    + `1 = Husband/Wife`
+    + `2 = Partner/cohabitee`
+    + `3 = Natural son/daughter`
+    + `4 = Adopted son/daughter`
+    + `5 = Foster son/daughter`
+    + `6 = Step son/daughter/child of partner`
+    + `7 = Son/daughter-in-law`
+    + `8 = Natural parent`
+    + `9 = Adoptive parent`
+    + `10 = Foster parent`
+    + `11 = Stepparent/parent s partner`
+    + `12 = Parent-in-law`
+    + `13 = Natural brother/sister`
+    + `14 = Half-brother/sister`
+    + `15 = Step-brother/sister`
+    + `16 = Adopted brother/sister`
+    + `17 = Foster brother/sister`
+    + `18 = Brother/sister-in-law`
+    + `19 = Grandchild`
+    + `20 = Grandparent`
+    + `21 = Other relative`
+    + `22 = Other non-relative`
+    + `96 = (THIS CODE NOT USED)`
+* Missings:
+    + `-9 = Refusal`
+    + `-8 = Don't Know`
+    + `-2 = Schedule not applicable`
+    + `-1 = Not applicable`
+
+
+
+```{r assign4}
+opal.assign.table.tibble(o, 'ELSA_w4_home_rel','ELSA.wave_4_elsa_data_v3', 
+                        variables=list('dhr2','dhr3','dhr4','dhr5','dhr6','dhr7','dhr8','dhr9','dhr10','dhr11','dhr12'), missings = TRUE)
+```
+
+```{r local4}
+ELSA_w4_home_rel <- opal.execute(o,'ELSA_w4_home_rel')
+Categorical_summary(var = ELSA_w4_home_rel$dhr2, missing_values = NA)
+ggplot(ELSA_w4_home_rel, aes(x=factor(dhr2))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Relationship of this person to Person 2 in the household") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any of dhr2,..,dhr12 in 1:21 - into 1`
+* `if all not in 1:21 - into 0`
+* `-9 into 995`
+* `-8 into 998`
+* `-1 or -2 into 996`
+* `96 or NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo4}
+ELSA_ds_w4 <- tibble(id=ELSA_w4_home_rel$id)
+
+ELSA_w4_home_rel$dhr2 <- car::recode(as.vector(ELSA_w4_home_rel$dhr2), "NA='-999'")
+ELSA_w4_home_rel$dhr3 <- car::recode(as.vector(ELSA_w4_home_rel$dhr3), "NA='-999'")
+ELSA_w4_home_rel$dhr4 <- car::recode(as.vector(ELSA_w4_home_rel$dhr4), "NA='-999'")
+ELSA_w4_home_rel$dhr5 <- car::recode(as.vector(ELSA_w4_home_rel$dhr5), "NA='-999'")
+ELSA_w4_home_rel$dhr6 <- car::recode(as.vector(ELSA_w4_home_rel$dhr6), "NA='-999'")
+ELSA_w4_home_rel$dhr7 <- car::recode(as.vector(ELSA_w4_home_rel$dhr7), "NA='-999'")
+ELSA_w4_home_rel$dhr8 <- car::recode(as.vector(ELSA_w4_home_rel$dhr8), "NA='-999'")
+ELSA_w4_home_rel$dhr9 <- car::recode(as.vector(ELSA_w4_home_rel$dhr9), "NA='-999'")
+ELSA_w4_home_rel$dhr10 <- car::recode(as.vector(ELSA_w4_home_rel$dhr10), "NA='-999'")
+ELSA_w4_home_rel$dhr11 <- car::recode(as.vector(ELSA_w4_home_rel$dhr11), "NA='-999'")
+ELSA_w4_home_rel$dhr12 <- car::recode(as.vector(ELSA_w4_home_rel$dhr12), "NA='-999'")
+
+ELSA_ds_w4$home_rel <- c(NA) # I think it is required
+for(i in 1:dim(ELSA_w4_home_rel)[1]){
+  if( ELSA_w4_home_rel$dhr2[i] %in% c(1:21) | ELSA_w4_home_rel$dhr3[i] %in% c(1:21) | 
+      ELSA_w4_home_rel$dhr4[i] %in% c(1:21) | ELSA_w4_home_rel$dhr5[i] %in% c(1:21) | ELSA_w4_home_rel$dhr6[i] %in% c(1:21) | 
+      ELSA_w4_home_rel$dhr7[i] %in% c(1:21) | ELSA_w4_home_rel$dhr8[i] %in% c(1:21) | ELSA_w4_home_rel$dhr9[i] %in% c(1:21) | 
+      ELSA_w4_home_rel$dhr10[i] %in% c(1:21) | ELSA_w4_home_rel$dhr11[i] %in% c(1:21) | ELSA_w4_home_rel$dhr12[i] %in% c(1:21)
+      ) { ELSA_ds_w4$home_rel[i] = 1 }
+  else if( ELSA_w4_home_rel$dhr2[i] %in% c(96, -999) & ELSA_w4_home_rel$dhr3[i] %in% c(96, -999) & 
+      ELSA_w4_home_rel$dhr4[i] %in% c(96, -999) & ELSA_w4_home_rel$dhr5[i] %in% c(96, -999) & ELSA_w4_home_rel$dhr6[i] %in% c(96, -999) & 
+      ELSA_w4_home_rel$dhr7[i] %in% c(96, -999) & ELSA_w4_home_rel$dhr8[i] %in% c(96, -999) & ELSA_w4_home_rel$dhr9[i] %in% c(96, -999) & 
+      ELSA_w4_home_rel$dhr10[i] %in% c(96, -999) & ELSA_w4_home_rel$dhr11[i] %in% c(96, -999) & ELSA_w4_home_rel$dhr12[i] %in% c(96, -999) 
+      ) { ELSA_ds_w4$home_rel[i] = 999 }
+  else if( ELSA_w4_home_rel$dhr2[i] == -9 & ELSA_w4_home_rel$dhr3[i] == -9 & 
+      ELSA_w4_home_rel$dhr4[i] == -9 & ELSA_w4_home_rel$dhr5[i] == -9 & ELSA_w4_home_rel$dhr6[i] == -9 & 
+      ELSA_w4_home_rel$dhr7[i] == -9 & ELSA_w4_home_rel$dhr8[i] == -9 & ELSA_w4_home_rel$dhr9[i] == -9 & 
+      ELSA_w4_home_rel$dhr10[i] == -9 & ELSA_w4_home_rel$dhr11[i] == -9 & ELSA_w4_home_rel$dhr12[i] == -9 
+      ) { ELSA_ds_w4$home_rel[i] = 995 }
+  else if( ELSA_w4_home_rel$dhr2[i] == -8 & ELSA_w4_home_rel$dhr3[i] == -8 & 
+      ELSA_w4_home_rel$dhr4[i] == -8 & ELSA_w4_home_rel$dhr5[i] == -8 & ELSA_w4_home_rel$dhr6[i] == -8 & 
+      ELSA_w4_home_rel$dhr7[i] == -8 & ELSA_w4_home_rel$dhr8[i] == -8 & ELSA_w4_home_rel$dhr9[i] == -8 & 
+      ELSA_w4_home_rel$dhr10[i] == -8 & ELSA_w4_home_rel$dhr11[i] == -8 & ELSA_w4_home_rel$dhr12[i] == -8 
+      ) { ELSA_ds_w4$home_rel[i] = 998 }
+  else if( ELSA_w4_home_rel$dhr2[i] == -1 & ELSA_w4_home_rel$dhr3[i] == -1 & 
+      ELSA_w4_home_rel$dhr4[i] == -1 & ELSA_w4_home_rel$dhr5[i] == -1 & ELSA_w4_home_rel$dhr6[i] == -1 & 
+      ELSA_w4_home_rel$dhr7[i] == -1 & ELSA_w4_home_rel$dhr8[i] == -1 & ELSA_w4_home_rel$dhr9[i] == -1 & 
+      ELSA_w4_home_rel$dhr10[i] == -1 & ELSA_w4_home_rel$dhr11[i] == -1 & ELSA_w4_home_rel$dhr12[i] == -1 
+      ) { ELSA_ds_w4$home_rel[i] = 996 }
+  else if( !( ELSA_w4_home_rel$dhr2[i] %in% c(1:21) | ELSA_w4_home_rel$dhr3[i] %in% c(1:21) | 
+      ELSA_w4_home_rel$dhr4[i] %in% c(1:21) | ELSA_w4_home_rel$dhr5[i] %in% c(1:21) | ELSA_w4_home_rel$dhr6[i] %in% c(1:21) | 
+      ELSA_w4_home_rel$dhr7[i] %in% c(1:21) | ELSA_w4_home_rel$dhr8[i] %in% c(1:21) | ELSA_w4_home_rel$dhr9[i] %in% c(1:21) | 
+      ELSA_w4_home_rel$dhr10[i] %in% c(1:21) | ELSA_w4_home_rel$dhr11[i] %in% c(1:21) | ELSA_w4_home_rel$dhr12[i] %in% c(1:21) 
+      ) ) { ELSA_ds_w4$home_rel[i] = 0 }
+}
+
+ELSA_ds_w4$home_rel <- car::recode(as.vector(ELSA_ds_w4$home_rel), "NA='999'")
+ELSA_ds_w4$home_rel <- labelled(ELSA_ds_w4$home_rel, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript4}
+Categorical_summary(var = ELSA_ds_w4$home_rel, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ELSA_ds_w4, aes(x=factor(home_rel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are living in home with family members/relatives (= daily contact with family member)?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation4}
+
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+### ELSA - Wave 5
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `dhr1` UP TO `dhr16` (dhr13 to dhr16 have NA or -1 only)
+* Label: `Relationship of this person to Person 1 in the household`
+* Categories:
+    + `1 = Husband/Wife`
+    + `2 = Partner/cohabitee`
+    + `3 = Natural son/daughter`
+    + `4 = Adopted son/daughter`
+    + `5 = Foster son/daughter`
+    + `6 = Step son/daughter/child of partner`
+    + `7 = Son/daughter-in-law`
+    + `8 = Natural parent`
+    + `9 = Adoptive parent`
+    + `10 = Foster parent`
+    + `11 = Stepparent/parent s partner`
+    + `12 = Parent-in-law`
+    + `13 = Natural brother/sister`
+    + `14 = Half-brother/sister`
+    + `15 = Step-brother/sister`
+    + `16 = Adopted brother/sister`
+    + `17 = Foster brother/sister`
+    + `18 = Brother/sister-in-law`
+    + `19 = Grandchild`
+    + `20 = Grandparent`
+    + `21 = Other relative`
+    + `22 = Other non-relative`
+    + `96 = (THIS CODE NOT USED)`
+* Missings:
+    + `-9 = Refusal`
+    + `-8 = Don't Know`
+    + `-2 = Schedule not applicable`
+    + `-1 = Not applicable`
+
+
+
+```{r assign5}
+opal.assign.table.tibble(o, 'ELSA_w5_home_rel','ELSA.wave_5_elsa_data_v4', 
+                        variables=list('dhr2','dhr3','dhr4','dhr5','dhr6','dhr7','dhr8','dhr9',
+                                       'dhr10','dhr11','dhr12','dhr13','dhr14','dhr15','dhr16'), missings = TRUE)
+```
+
+```{r local5}
+ELSA_w5_home_rel <- opal.execute(o,'ELSA_w5_home_rel')
+Categorical_summary(var = ELSA_w5_home_rel$dhr12, missing_values = NA)
+ggplot(ELSA_w5_home_rel, aes(x=factor(dhr12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Relationship of this person to Person 12 in the household") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any of dhr1,..,dhr12 in 1:21 - into 1`
+* `if all not in 1:21 - into 0`
+* `-9 into 995`
+* `-8 into 998`
+* `-1 or -2 into 996`
+* `96 or NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo5}
+ELSA_ds_w5 <- tibble(id=ELSA_w5_home_rel$id)
+
+ELSA_w5_home_rel$dhr2 <- car::recode(as.vector(ELSA_w5_home_rel$dhr2), "NA='-999'")
+ELSA_w5_home_rel$dhr3 <- car::recode(as.vector(ELSA_w5_home_rel$dhr3), "NA='-999'")
+ELSA_w5_home_rel$dhr4 <- car::recode(as.vector(ELSA_w5_home_rel$dhr4), "NA='-999'")
+ELSA_w5_home_rel$dhr5 <- car::recode(as.vector(ELSA_w5_home_rel$dhr5), "NA='-999'")
+ELSA_w5_home_rel$dhr6 <- car::recode(as.vector(ELSA_w5_home_rel$dhr6), "NA='-999'")
+ELSA_w5_home_rel$dhr7 <- car::recode(as.vector(ELSA_w5_home_rel$dhr7), "NA='-999'")
+ELSA_w5_home_rel$dhr8 <- car::recode(as.vector(ELSA_w5_home_rel$dhr8), "NA='-999'")
+ELSA_w5_home_rel$dhr9 <- car::recode(as.vector(ELSA_w5_home_rel$dhr9), "NA='-999'")
+ELSA_w5_home_rel$dhr10 <- car::recode(as.vector(ELSA_w5_home_rel$dhr10), "NA='-999'")
+ELSA_w5_home_rel$dhr11 <- car::recode(as.vector(ELSA_w5_home_rel$dhr11), "NA='-999'")
+ELSA_w5_home_rel$dhr12 <- car::recode(as.vector(ELSA_w5_home_rel$dhr12), "NA='-999'")
+
+ELSA_ds_w5$home_rel <- c(NA) # I think it is required
+for(i in 1:dim(ELSA_w5_home_rel)[1]){
+  if( ELSA_w5_home_rel$dhr2[i] %in% c(1:21) | ELSA_w5_home_rel$dhr3[i] %in% c(1:21) | 
+      ELSA_w5_home_rel$dhr4[i] %in% c(1:21) | ELSA_w5_home_rel$dhr5[i] %in% c(1:21) | ELSA_w5_home_rel$dhr6[i] %in% c(1:21) | 
+      ELSA_w5_home_rel$dhr7[i] %in% c(1:21) | ELSA_w5_home_rel$dhr8[i] %in% c(1:21) | ELSA_w5_home_rel$dhr9[i] %in% c(1:21) | 
+      ELSA_w5_home_rel$dhr10[i] %in% c(1:21) | ELSA_w5_home_rel$dhr11[i] %in% c(1:21) | ELSA_w5_home_rel$dhr12[i] %in% c(1:21)
+      ) { ELSA_ds_w5$home_rel[i] = 1 }
+  else if( ELSA_w5_home_rel$dhr2[i] %in% c(96, -999) & ELSA_w5_home_rel$dhr3[i] %in% c(96, -999) & 
+      ELSA_w5_home_rel$dhr4[i] %in% c(96, -999) & ELSA_w5_home_rel$dhr5[i] %in% c(96, -999) & ELSA_w5_home_rel$dhr6[i] %in% c(96, -999) & 
+      ELSA_w5_home_rel$dhr7[i] %in% c(96, -999) & ELSA_w5_home_rel$dhr8[i] %in% c(96, -999) & ELSA_w5_home_rel$dhr9[i] %in% c(96, -999) & 
+      ELSA_w5_home_rel$dhr10[i] %in% c(96, -999) & ELSA_w5_home_rel$dhr11[i] %in% c(96, -999) & ELSA_w5_home_rel$dhr12[i] %in% c(96, -999) 
+      ) { ELSA_ds_w5$home_rel[i] = 999 }
+  else if( ELSA_w5_home_rel$dhr2[i] == -9 & ELSA_w5_home_rel$dhr3[i] == -9 & 
+      ELSA_w5_home_rel$dhr4[i] == -9 & ELSA_w5_home_rel$dhr5[i] == -9 & ELSA_w5_home_rel$dhr6[i] == -9 & 
+      ELSA_w5_home_rel$dhr7[i] == -9 & ELSA_w5_home_rel$dhr8[i] == -9 & ELSA_w5_home_rel$dhr9[i] == -9 & 
+      ELSA_w5_home_rel$dhr10[i] == -9 & ELSA_w5_home_rel$dhr11[i] == -9 & ELSA_w5_home_rel$dhr12[i] == -9 
+      ) { ELSA_ds_w5$home_rel[i] = 995 }
+  else if( ELSA_w5_home_rel$dhr2[i] == -8 & ELSA_w5_home_rel$dhr3[i] == -8 & 
+      ELSA_w5_home_rel$dhr4[i] == -8 & ELSA_w5_home_rel$dhr5[i] == -8 & ELSA_w5_home_rel$dhr6[i] == -8 & 
+      ELSA_w5_home_rel$dhr7[i] == -8 & ELSA_w5_home_rel$dhr8[i] == -8 & ELSA_w5_home_rel$dhr9[i] == -8 & 
+      ELSA_w5_home_rel$dhr10[i] == -8 & ELSA_w5_home_rel$dhr11[i] == -8 & ELSA_w5_home_rel$dhr12[i] == -8 
+      ) { ELSA_ds_w5$home_rel[i] = 998 }
+  else if( ELSA_w5_home_rel$dhr2[i] == -1 & ELSA_w5_home_rel$dhr3[i] == -1 & 
+      ELSA_w5_home_rel$dhr4[i] == -1 & ELSA_w5_home_rel$dhr5[i] == -1 & ELSA_w5_home_rel$dhr6[i] == -1 & 
+      ELSA_w5_home_rel$dhr7[i] == -1 & ELSA_w5_home_rel$dhr8[i] == -1 & ELSA_w5_home_rel$dhr9[i] == -1 & 
+      ELSA_w5_home_rel$dhr10[i] == -1 & ELSA_w5_home_rel$dhr11[i] == -1 & ELSA_w5_home_rel$dhr12[i] == -1 
+      ) { ELSA_ds_w5$home_rel[i] = 996 }
+  else if( !( ELSA_w5_home_rel$dhr2[i] %in% c(1:21) | ELSA_w5_home_rel$dhr3[i] %in% c(1:21) | 
+      ELSA_w5_home_rel$dhr4[i] %in% c(1:21) | ELSA_w5_home_rel$dhr5[i] %in% c(1:21) | ELSA_w5_home_rel$dhr6[i] %in% c(1:21) | 
+      ELSA_w5_home_rel$dhr7[i] %in% c(1:21) | ELSA_w5_home_rel$dhr8[i] %in% c(1:21) | ELSA_w5_home_rel$dhr9[i] %in% c(1:21) | 
+      ELSA_w5_home_rel$dhr10[i] %in% c(1:21) | ELSA_w5_home_rel$dhr11[i] %in% c(1:21) | ELSA_w5_home_rel$dhr12[i] %in% c(1:21) 
+      ) ) { ELSA_ds_w5$home_rel[i] = 0 }
+}
+
+
+ELSA_ds_w5$home_rel <- car::recode(as.vector(ELSA_ds_w5$home_rel), "NA='999'")
+ELSA_ds_w5$home_rel <- labelled(ELSA_ds_w5$home_rel, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript5}
+Categorical_summary(var = ELSA_ds_w5$home_rel, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ELSA_ds_w5, aes(x=factor(home_rel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are living in home with family members/relatives (= daily contact with family member)?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation5}
+
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+### ELSA - Wave 6
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `dhr1` UP TO `dhr16` (dhr13 to dhr16 have NA or -1 only)
+* Label: `Relationship of this person to Person 1 in the household`
+* Categories:
+    + `1 = Husband/Wife`
+    + `2 = Partner/cohabitee`
+    + `3 = Natural son/daughter`
+    + `4 = Adopted son/daughter`
+    + `5 = Foster son/daughter`
+    + `6 = Step son/daughter/child of partner`
+    + `7 = Son/daughter-in-law`
+    + `8 = Natural parent`
+    + `9 = Adoptive parent`
+    + `10 = Foster parent`
+    + `11 = Stepparent/parent s partner`
+    + `12 = Parent-in-law`
+    + `13 = Natural brother/sister`
+    + `14 = Half-brother/sister`
+    + `15 = Step-brother/sister`
+    + `16 = Adopted brother/sister`
+    + `17 = Foster brother/sister`
+    + `18 = Brother/sister-in-law`
+    + `19 = Grandchild`
+    + `20 = Grandparent`
+    + `21 = Other relative`
+    + `22 = Other non-relative`
+    + `96 = (THIS CODE NOT USED)`
+* Missings:
+    + `-9 = Refusal`
+    + `-8 = Don't Know`
+    + `-2 = Schedule not applicable`
+    + `-1 = Not applicable`
+
+
+
+```{r assign6}
+opal.assign.table.tibble(o, 'ELSA_w6_home_rel','ELSA.wave_6_elsa_data_v2', 
+                        variables=list('DhR2','DhR3','DhR4','DhR5','DhR6','DhR7','DhR8','DhR9',
+                                       'DhR10','DhR11','DhR12','DhR13','DhR14','DhR15','DhR16'), missings = TRUE)
+```
+
+```{r local6}
+ELSA_w6_home_rel <- opal.execute(o,'ELSA_w6_home_rel')
+Categorical_summary(var = ELSA_w6_home_rel$DhR2, missing_values = NA)
+ggplot(ELSA_w6_home_rel, aes(x=factor(DhR2))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Relationship of this person to Person 2 in the household") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any of DhR1,..,DhR16 in 1:21 - into 1`
+* `if all not in 1:21 - into 0`
+* `-9 into 995`
+* `-8 into 998`
+* `-1 or -2 into 996`
+* `96 or NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo6}
+ELSA_ds_w6 <- tibble(id=ELSA_w6_home_rel$id)
+
+ELSA_w6_home_rel$DhR2 <- car::recode(as.vector(ELSA_w6_home_rel$DhR2), "NA='-999'")
+ELSA_w6_home_rel$DhR3 <- car::recode(as.vector(ELSA_w6_home_rel$DhR3), "NA='-999'")
+ELSA_w6_home_rel$DhR4 <- car::recode(as.vector(ELSA_w6_home_rel$DhR4), "NA='-999'")
+ELSA_w6_home_rel$DhR5 <- car::recode(as.vector(ELSA_w6_home_rel$DhR5), "NA='-999'")
+ELSA_w6_home_rel$DhR6 <- car::recode(as.vector(ELSA_w6_home_rel$DhR6), "NA='-999'")
+ELSA_w6_home_rel$DhR7 <- car::recode(as.vector(ELSA_w6_home_rel$DhR7), "NA='-999'")
+ELSA_w6_home_rel$DhR8 <- car::recode(as.vector(ELSA_w6_home_rel$DhR8), "NA='-999'")
+ELSA_w6_home_rel$DhR9 <- car::recode(as.vector(ELSA_w6_home_rel$DhR9), "NA='-999'")
+ELSA_w6_home_rel$DhR10 <- car::recode(as.vector(ELSA_w6_home_rel$DhR10), "NA='-999'")
+ELSA_w6_home_rel$DhR11 <- car::recode(as.vector(ELSA_w6_home_rel$DhR11), "NA='-999'")
+ELSA_w6_home_rel$DhR12 <- car::recode(as.vector(ELSA_w6_home_rel$DhR12), "NA='-999'")
+ELSA_w6_home_rel$DhR13 <- car::recode(as.vector(ELSA_w6_home_rel$DhR13), "NA='-999'")
+ELSA_w6_home_rel$DhR14 <- car::recode(as.vector(ELSA_w6_home_rel$DhR14), "NA='-999'")
+ELSA_w6_home_rel$DhR15 <- car::recode(as.vector(ELSA_w6_home_rel$DhR15), "NA='-999'")
+ELSA_w6_home_rel$DhR16 <- car::recode(as.vector(ELSA_w6_home_rel$DhR16), "NA='-999'")
+
+ELSA_ds_w6$home_rel <- c(NA) # I think it is required
+for(i in 1:dim(ELSA_w6_home_rel)[1]){
+  if( ELSA_w6_home_rel$DhR2[i] %in% c(1:21) | ELSA_w6_home_rel$DhR3[i] %in% c(1:21) | 
+      ELSA_w6_home_rel$DhR4[i] %in% c(1:21) | ELSA_w6_home_rel$DhR5[i] %in% c(1:21) | ELSA_w6_home_rel$DhR6[i] %in% c(1:21) | 
+      ELSA_w6_home_rel$DhR7[i] %in% c(1:21) | ELSA_w6_home_rel$DhR8[i] %in% c(1:21) | ELSA_w6_home_rel$DhR9[i] %in% c(1:21) | 
+      ELSA_w6_home_rel$DhR10[i] %in% c(1:21) | ELSA_w6_home_rel$DhR11[i] %in% c(1:21) | ELSA_w6_home_rel$DhR12[i] %in% c(1:21)
+      ) { ELSA_ds_w6$home_rel[i] = 1 }
+  else if( ELSA_w6_home_rel$DhR2[i] %in% c(96, -999) & ELSA_w6_home_rel$DhR3[i] %in% c(96, -999) & 
+      ELSA_w6_home_rel$DhR4[i] %in% c(96, -999) & ELSA_w6_home_rel$DhR5[i] %in% c(96, -999) & ELSA_w6_home_rel$DhR6[i] %in% c(96, -999) & 
+      ELSA_w6_home_rel$DhR7[i] %in% c(96, -999) & ELSA_w6_home_rel$DhR8[i] %in% c(96, -999) & ELSA_w6_home_rel$DhR9[i] %in% c(96, -999) & 
+      ELSA_w6_home_rel$DhR10[i] %in% c(96, -999) & ELSA_w6_home_rel$DhR11[i] %in% c(96, -999) & ELSA_w6_home_rel$DhR12[i] %in% c(96, -999) 
+      ) { ELSA_ds_w6$home_rel[i] = 999 }
+  else if( ELSA_w6_home_rel$DhR2[i] == -9 & ELSA_w6_home_rel$DhR3[i] == -9 & 
+      ELSA_w6_home_rel$DhR4[i] == -9 & ELSA_w6_home_rel$DhR5[i] == -9 & ELSA_w6_home_rel$DhR6[i] == -9 & 
+      ELSA_w6_home_rel$DhR7[i] == -9 & ELSA_w6_home_rel$DhR8[i] == -9 & ELSA_w6_home_rel$DhR9[i] == -9 & 
+      ELSA_w6_home_rel$DhR10[i] == -9 & ELSA_w6_home_rel$DhR11[i] == -9 & ELSA_w6_home_rel$DhR12[i] == -9 
+      ) { ELSA_ds_w6$home_rel[i] = 995 }
+  else if( ELSA_w6_home_rel$DhR2[i] == -8 & ELSA_w6_home_rel$DhR3[i] == -8 & 
+      ELSA_w6_home_rel$DhR4[i] == -8 & ELSA_w6_home_rel$DhR5[i] == -8 & ELSA_w6_home_rel$DhR6[i] == -8 & 
+      ELSA_w6_home_rel$DhR7[i] == -8 & ELSA_w6_home_rel$DhR8[i] == -8 & ELSA_w6_home_rel$DhR9[i] == -8 & 
+      ELSA_w6_home_rel$DhR10[i] == -8 & ELSA_w6_home_rel$DhR11[i] == -8 & ELSA_w6_home_rel$DhR12[i] == -8 
+      ) { ELSA_ds_w6$home_rel[i] = 998 }
+  else if( ELSA_w6_home_rel$DhR2[i] == -1 & ELSA_w6_home_rel$DhR3[i] == -1 & 
+      ELSA_w6_home_rel$DhR4[i] == -1 & ELSA_w6_home_rel$DhR5[i] == -1 & ELSA_w6_home_rel$DhR6[i] == -1 & 
+      ELSA_w6_home_rel$DhR7[i] == -1 & ELSA_w6_home_rel$DhR8[i] == -1 & ELSA_w6_home_rel$DhR9[i] == -1 & 
+      ELSA_w6_home_rel$DhR10[i] == -1 & ELSA_w6_home_rel$DhR11[i] == -1 & ELSA_w6_home_rel$DhR12[i] == -1 
+      ) { ELSA_ds_w6$home_rel[i] = 996 }
+  else if( !( ELSA_w6_home_rel$DhR2[i] %in% c(1:21) | ELSA_w6_home_rel$DhR3[i] %in% c(1:21) | 
+      ELSA_w6_home_rel$DhR4[i] %in% c(1:21) | ELSA_w6_home_rel$DhR5[i] %in% c(1:21) | ELSA_w6_home_rel$DhR6[i] %in% c(1:21) | 
+      ELSA_w6_home_rel$DhR7[i] %in% c(1:21) | ELSA_w6_home_rel$DhR8[i] %in% c(1:21) | ELSA_w6_home_rel$DhR9[i] %in% c(1:21) | 
+      ELSA_w6_home_rel$DhR10[i] %in% c(1:21) | ELSA_w6_home_rel$DhR11[i] %in% c(1:21) | ELSA_w6_home_rel$DhR12[i] %in% c(1:21) 
+      ) ) { ELSA_ds_w6$home_rel[i] = 0 }
+}
+
+ELSA_ds_w6$home_rel <- car::recode(as.vector(ELSA_ds_w6$home_rel), "NA='999'")
+ELSA_ds_w6$home_rel <- labelled(ELSA_ds_w6$home_rel, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript6}
+Categorical_summary(var = ELSA_ds_w6$home_rel, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ELSA_ds_w6, aes(x=factor(home_rel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are living in home with family members/relatives (= daily contact with family member)?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation6}
+
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]

@@ -1,0 +1,553 @@
+---
+title: "Processing speed"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+
+# Loading local datasets of ELSA and domain health status:
+load("ELSA_w1.rdata")
+load("ELSA_w2.rdata")
+load("ELSA_w3.rdata")
+load("ELSA_w4.rdata")
+load("ELSA_w5.rdata")
+load("ELSA_w6.rdata")
+load("ELSA_w7.rdata")
+```
+
+# Description of DataSchema variable 
+
+* Short name: `cog_proc_c`
+* Variable label: `Cognition - processing speed - Continuous. Test which assesses processing speed`
+* Domain: `Health status and functional limitations`
+* Value type: `Continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+* Short name: `cog_proc`
+* Variable label: `Cognition - processing speed. Test which assesses processing speed. Discrete variable: value 0 = <=25%; value 1 = >25%.`
+* Domain: `Health status and functional limitations`
+* Value type: `Categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | <=25%
+1        | >25%
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Cognition - processing speed"
+ds_label_cog_proc_c <- "Cognition - processing speed - Continuous. Test which assesses processing speed"
+ds_label_cog_proc <- "Cognition - processing speed. Test which assesses processing speed. Discrete variable: value 0 = <=25%; value 1 = >25%"
+```
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## England
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `ncorrec`
+* Label: `Letter cancellation task: number correct`
+* Categories:
+    + `Continuous Variable 0-65`
+* Missings
+   + `-1 = Not applicable` 
+
+```{r local w1, echo=FALSE}
+ELSA_w1_cog_proc <- ELSA_w1
+vari <- ELSA_w1_cog_proc$ncorrec
+kable(Continuous_summary(var = vari, missing_values = c(-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = -1)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = -1)$summary, caption = "Summary")
+ggplot(ELSA_w1_cog_proc, aes(ncorrec)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Processing speed") + ylab("Frequency")+xlim(0,65)
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_proc_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `-1 Not applicable into 996`
+* `NA into 999`
+
+To compute the harmonized variable `cog_proc` from `cog_proc_c` it has to be recoded as follows:
+
+* `cog_proc_c <=25% into 0`
+* `cog_proc_c >25% into 1`
+
+**R script:**
+
+```{r harmo w1}
+#cog_proc_c
+ELSA_ds_w1 <- tibble(id=ELSA_w1_cog_proc$id)
+ELSA_ds_w1$cog_proc_c <- car::recode(ELSA_w1_cog_proc$ncorrec, "-1=996; NA=999")
+ELSA_ds_w1$cog_proc_c <- labelled(ELSA_ds_w1$cog_proc_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(ELSA_ds_w1$cog_proc_c, "999=NA; 996=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+ELSA_ds_w1$cog_proc <- car::recode(ELSA_ds_w1[[2]], "0:Q=0; (Q+1):65=1")
+ELSA_ds_w1$cog_proc <- labelled(ELSA_ds_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=FALSE}
+vari <- ELSA_ds_w1$cog_proc_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w1, aes(cog_proc_c)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,65)
+
+vari <- ELSA_ds_w1$cog_proc
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w1, aes(x=factor(cog_proc))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Processing speed") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1, echo=FALSE}
+Continous <- c(sum(na.omit(ELSA_ds_w1[[2]])<=Q), sum(na.omit(ELSA_ds_w1[[2]])>Q & na.omit(ELSA_ds_w1[[2]])<900), sum(na.omit(ELSA_ds_w1[[2]])==996))
+Dicotomic <- table(ELSA_ds_w1[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:15->0","16:65->1", "-1->996") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL_w1, echo=FALSE}
+#opal.assign.data(o, 'ELSA_ds_w1', ELSA_ds_w1)
+#opal.symbol_import(o,'ELSA_ds_w1', project='_Athlos_Harm_Dataset')
+
+label(ELSA_ds_w1$cog_proc_c) <- ds_label_cog_proc_c
+label(ELSA_ds_w1$cog_proc) <- ds_label_cog_proc
+cog_proc <- ELSA_ds_w1
+save(cog_proc, file = "../RData/w1/cog_proc.RData")
+```
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `nncorre`
+* Label: `Letter cancellation task: number correct`
+* Categories:
+    + `Continuous Variable 0-65`
+* Missings
+   + `-1 = Not applicable` 
+
+```{r local w2, echo=FALSE}
+ELSA_w2_cog_proc <- ELSA_w2
+vari <- ELSA_w2_cog_proc$nncorre
+kable(Continuous_summary(var = vari, missing_values = c(-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = -1)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = -1)$summary, caption = "Summary")
+ggplot(ELSA_w2_cog_proc, aes(x=(nncorre))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Processing speed") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_proc_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `-1 Not applicable into 996`
+* `NA into 999`
+
+To compute the harmonized variable `cog_proc` from `cog_proc_c` it has to be recoded as follows:
+
+* `cog_proc_c <=25% into 0`
+* `cog_proc_c >25% into 1`
+
+**R script:**
+
+```{r harmo w2}
+#cog_proc_c
+ELSA_ds_w2 <- tibble(id=ELSA_w2_cog_proc$id)
+ELSA_ds_w2$cog_proc_c <- car::recode(ELSA_w2_cog_proc$nncorre, "-1=996; NA=999")
+ELSA_ds_w2$cog_proc_c <- labelled(ELSA_ds_w2$cog_proc_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(ELSA_ds_w2$cog_proc_c, "999=NA; 996=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+ELSA_ds_w2$cog_proc <- car::recode(ELSA_ds_w2[[2]], "0:Q=0; (Q+1):65=1")
+ELSA_ds_w2$cog_proc <- labelled(ELSA_ds_w2[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w2, echo=FALSE}
+vari <- ELSA_ds_w2$cog_proc_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w2, aes(x=(cog_proc_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Processing speed") + ylab("Frequency") + xlim(0,60)
+
+vari <- ELSA_ds_w2$cog_proc
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w2, aes(x=factor(cog_proc))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Processing speed") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w2, echo=FALSE}
+Continous <- c(sum(na.omit(ELSA_ds_w2[[2]])<=Q), sum(na.omit(ELSA_ds_w2[[2]])>Q & na.omit(ELSA_ds_w2[[2]])<900), sum(na.omit(ELSA_ds_w2[[2]])==996))
+Dicotomic <- table(ELSA_ds_w2[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:15->0","16:65->1", "-1->996") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+<!--- #### Import to OPAL -->
+```{r importOPAL_w2, echo=FALSE}
+#opal.assign.data(o, 'ELSA_ds_w2', ELSA_ds_w2)
+#opal.symbol_import(o,'ELSA_ds_w2', project='_Athlos_Harm_Dataset')
+
+label(ELSA_ds_w2$cog_proc_c) <- ds_label_cog_proc_c
+label(ELSA_ds_w2$cog_proc) <- ds_label_cog_proc
+cog_proc <- ELSA_ds_w2
+save(cog_proc, file = "../RData/w2/cog_proc.RData")
+```
+
+
+
+### Wave 3 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `ncorrect`
+* Label: `Number of words recalled immediately`
+* Categories:
+    + `Continuous Variable 0-65`
+* Missings
+   + `-2 = Letter cancellation tasks done but booklet not received` 
+   + `-1 = Not applicable` 
+
+
+```{r local w3, echo=FALSE}
+ELSA_w3_cog_proc <- ELSA_w3
+vari <- ELSA_w3_cog_proc$ncorrect
+kable(Continuous_summary(var = vari, missing_values = c(-1, -2))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-1, -2))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-1, -2))$summary, caption = "Summary")
+ggplot(ELSA_w3_cog_proc, aes(x=(ncorrect))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Processing speed") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_proc_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `-1 Not applicable into 996`
+* `-2 Letter cancellation tasks done but booklet not received into 996` 
+* `NA into 999`
+
+To compute the harmonized variable `cog_proc` from `cog_proc_c` it has to be recoded as follows:
+
+* `cog_proc_c <=25% into 0`
+* `cog_proc_c >25% into 1`
+
+**R script:**
+
+```{r harmo w3}
+#cog_proc_c
+ELSA_ds_w3 <- tibble(id=ELSA_w3_cog_proc$id)
+ELSA_ds_w3$cog_proc_c <- car::recode(ELSA_w3_cog_proc$ncorrect, "-1=996; -2=996; NA=999")
+ELSA_ds_w3$cog_proc_c <- labelled(ELSA_ds_w3$cog_proc_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(ELSA_ds_w3$cog_proc_c, "999=NA; 996=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+ELSA_ds_w3$cog_proc <- car::recode(ELSA_ds_w3[[2]], "0:Q=0; (Q+1):65=1")
+ELSA_ds_w3$cog_proc <- labelled(ELSA_ds_w3[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w3, echo=FALSE}
+vari <- ELSA_ds_w3$cog_proc_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w3, aes(x=(cog_proc_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Processing speed") + ylab("Frequency") + xlim(0,60)
+
+vari <- ELSA_ds_w3$cog_proc
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w3, aes(x=factor(cog_proc))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Processing speed") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w3, echo=FALSE}
+Continous <- c(sum(na.omit(ELSA_ds_w3[[2]])<=Q), sum(na.omit(ELSA_ds_w3[[2]])>Q & na.omit(ELSA_ds_w3[[2]])<900), sum(na.omit(ELSA_ds_w3[[2]])==996))
+Dicotomic <- table(ELSA_ds_w3[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:15->0","16:65->1", "-1->996") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+
+<!--- #### Import to OPAL -->
+```{r importOPAL_w3, echo=FALSE}
+#opal.assign.data(o, 'ELSA_ds_w3', ELSA_ds_w3)
+#opal.symbol_import(o,'ELSA_ds_w3', project='_Athlos_Harm_Dataset')
+
+label(ELSA_ds_w3$cog_proc_c) <- ds_label_cog_proc_c
+label(ELSA_ds_w3$cog_proc) <- ds_label_cog_proc
+cog_proc <- ELSA_ds_w3
+save(cog_proc, file = "../RData/w3/cog_proc.RData")
+```
+
+
+### Wave 4 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `ncorrect`
+* Label: `Number of words recalled immediately`
+* Categories:
+    + `Continuous Variable 0-65`
+* Missings
+   + `-1 = Not applicable` 
+
+
+```{r local w4, echo=FALSE}
+ELSA_w4_cog_proc <- ELSA_w4
+vari <- ELSA_w4_cog_proc$ncorrect
+kable(Continuous_summary(var = vari, missing_values = c(-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = -1)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = -1)$summary, caption = "Summary")
+ggplot(ELSA_w4_cog_proc, aes(x=(ncorrect))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Processing speed") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_proc_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `-1 Not applicable into 996`
+* `NA into 999`
+
+To compute the harmonized variable `cog_proc` from `cog_proc_c` it has to be recoded as follows:
+
+* `cog_proc_c <=25% into 0`
+* `cog_proc_c >25% into 1`
+
+**R script:**
+
+```{r harmo w4}
+#cog_proc_c
+ELSA_ds_w4 <- tibble(id=ELSA_w4_cog_proc$id)
+ELSA_ds_w4$cog_proc_c <- car::recode(ELSA_w4_cog_proc$ncorrect, "-1=996; NA=999")
+ELSA_ds_w4$cog_proc_c <- labelled(ELSA_ds_w4$cog_proc_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(ELSA_ds_w4$cog_proc_c, "999=NA; 996=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+ELSA_ds_w4$cog_proc <- car::recode(ELSA_ds_w4[[2]], "0:Q=0; (Q+1):65=1")
+ELSA_ds_w4$cog_proc <- labelled(ELSA_ds_w4[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w4, echo=FALSE}
+vari <- ELSA_ds_w4$cog_proc_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w4, aes(x=(cog_proc_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Processing speed") + ylab("Frequency") + xlim(0,60)
+
+vari <- ELSA_ds_w4$cog_proc
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w4, aes(x=factor(cog_proc))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Processing speed") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w4, echo=FALSE}
+Continous <- c(sum(na.omit(ELSA_ds_w4[[2]])<=Q), sum(na.omit(ELSA_ds_w4[[2]])>Q & na.omit(ELSA_ds_w4[[2]])<900), sum(na.omit(ELSA_ds_w4[[2]])==996))
+Dicotomic <- table(ELSA_ds_w4[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:16->0","17:65->1", "-1->996") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+
+<!--- #### Import to OPAL -->
+```{r importOPAL_w4, echo=FALSE}
+#opal.assign.data(o, 'ELSA_ds_w4', ELSA_ds_w4)
+#opal.symbol_import(o,'ELSA_ds_w4', project='_Athlos_Harm_Dataset')
+
+label(ELSA_ds_w4$cog_proc_c) <- ds_label_cog_proc_c
+label(ELSA_ds_w4$cog_proc) <- ds_label_cog_proc
+cog_proc <- ELSA_ds_w4
+save(cog_proc, file = "../RData/w4/cog_proc.RData")
+```
+
+
+### Wave 5 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `Ncorrect`
+* Label: `Number of words recalled immediately`
+* Categories:
+    + `Continuous Variable 0-65`
+* Missings
+   + `-3 = Interview/data error` 
+   + `-1 = Not applicable` 
+
+
+```{r local w5, echo=FALSE}
+ELSA_w5_cog_proc <- ELSA_w5
+vari <- ELSA_w5_cog_proc$Ncorrect
+kable(Continuous_summary(var = vari, missing_values = c(-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = -1)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = -1)$summary, caption = "Summary")
+ggplot(ELSA_w5_cog_proc, aes(x=factor(NCorrect))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Processing speed") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_proc_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `-1 Not applicable into 996`
+* `-3 Interview/data error into 991`
+* `NA into 999`
+
+To compute the harmonized variable `cog_proc` from `cog_proc_c` it has to be recoded as follows:
+
+* `cog_proc_c <=25% into 0`
+* `cog_proc_c >25% into 1`
+
+**R script:**
+
+```{r harmo w5}
+#cog_proc_c
+ELSA_ds_w5 <- tibble(id=ELSA_w5_cog_proc$id)
+ELSA_ds_w5$cog_proc_c <- car::recode(ELSA_w5_cog_proc$NCorrect, "-1=996; -3=991; NA=999")
+ELSA_ds_w5$cog_proc_c <- labelled(ELSA_ds_w5$cog_proc_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(ELSA_ds_w5$cog_proc_c, "999=NA; 996=NA; 991=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+ELSA_ds_w5$cog_proc <- car::recode(ELSA_ds_w5[[2]], "0:Q=0; (Q+1):65=1")
+ELSA_ds_w5$cog_proc <- labelled(ELSA_ds_w5[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w5, echo=FALSE}
+vari <- ELSA_ds_w5$cog_proc_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w5, aes(x=(cog_proc_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Processing speed") + ylab("Frequency") + xlim(0,60)
+
+vari <- ELSA_ds_w5$cog_proc
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w5, aes(x=factor(cog_proc))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Processing speed") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w5, echo=FALSE}
+Continous <- c(sum(na.omit(ELSA_ds_w5[[2]])<=Q), sum(na.omit(ELSA_ds_w5[[2]])>Q & na.omit(ELSA_ds_w5[[2]])<900), sum(na.omit(ELSA_ds_w5[[2]])==991),  sum(na.omit(ELSA_ds_w5[[2]])==996))
+Dicotomic <- table(ELSA_ds_w5[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:15->0","16:65->1","-3->991", "-1->996") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+
+<!--- #### Import to OPAL -->
+```{r importOPAL_w5, echo=FALSE}
+#opal.assign.data(o, 'ELSA_ds_w5', ELSA_ds_w5)
+#opal.symbol_import(o,'ELSA_ds_w5', project='_Athlos_Harm_Dataset')
+
+label(ELSA_ds_w5$cog_proc_c) <- ds_label_cog_proc_c
+label(ELSA_ds_w5$cog_proc) <- ds_label_cog_proc
+cog_proc <- ELSA_ds_w5
+save(cog_proc, file = "../RData/w5/cog_proc.RData")
+```
+
+
+
+### Wave 6
+
+Not collected at wave 6. 
+
+
+
+### Wave 7 
+
+Not collected at wave 7. 
+
+
+# Quality estimation
+
+No comments
+
+[Comments on the quality of the new harmonised variable. This section can be done in a later stage, once all variables are harmonised.]
+
+
+<!--- #### Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

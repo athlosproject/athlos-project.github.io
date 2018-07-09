@@ -1,0 +1,815 @@
+---
+title: "Delayed recall"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+
+# Loading local datasets of ELSA and domain health status:
+load("ELSA_w1.rdata")
+load("ELSA_w2.rdata")
+load("ELSA_w3.rdata")
+load("ELSA_w4.rdata")
+load("ELSA_w5.rdata")
+load("ELSA_w6.rdata")
+load("ELSA_w7.rdata")
+```
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `cog_del_c`
+* Variable label: `Cognition - delayed recall - Continuous`
+* Variable description: `Delayed recall of a list previously employed for measuring Immediate recall. The number of words is exactly the same as in the study-specific variable`
+* Domain: `Health status and functional limitations`
+* Value type: `Continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+* Short name: `cog_del`
+* Variable label: `Cognition - delayed recall`
+* Variable description: `Delayed recall of a list of common nouns. Discrete variable: value 0 = <=25%; value 1 = >25%.`
+* Domain: `Health status and functional limitations`
+* Value type: `Categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | <=25%
+1        | >25%
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Delayed recall"
+ds_label_cog_del_c <- "Delayed recall of a list previously employed for measuring Immediate recall. The number of words is exactly the same as in the study-specific variable"
+ds_label_cog_del <- "Delayed recall of a list of common nouns. Discrete variable: value 0 = <=25%; value 1 = >25%"
+```
+
+# Data process
+
+## England
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `cflisd`
+* Label: `Record number of words correctly remembered after delay here.`
+* Categories:
+    + `Continuous Variable 0-10`
+* Missings
+   + `-9 = Refusal` 
+   + `-8 = Don't know` 
+   + `-1 = Not applicable` 
+
+```{r local w1, echo=FALSE}
+ELSA_w1_cog_del <- ELSA_w1
+
+vari <- ELSA_w1_cog_del$cflisd
+kable(Continuous_summary(var = vari, missing_values = c(-1,-8,-9))[3], caption = "Delayed recall continuous")
+kable(Continuous_summary(vari, missing_values = c(-1,-8,-9))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-1,-8,-9))$summary, caption = "Summary")
+ggplot(ELSA_w1_cog_del, aes(x=factor(cflisd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Delayed recall") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonized variable `cog_del_c` from the study-specific variables you have to sum the total of words and the missing values have to be recoded as follows:
+
+* `-9 Refusal into 997` 
+* `-8 Don't know into 998`
+* `-1 Not applicable into 996`
+* `NA into 999`
+
+To compute the harmonized variable `cog_del` from `cog_del_c` it has to be recoded as follows:
+
+* `cog_del_c <=25% into 0`
+* `cog_del_c >25% into 1`
+
+**R script**
+
+```{r harmo w1}
+##cog_del_c
+ELSA_ds_w1 <- tibble(id=ELSA_w1_cog_del$id)
+ELSA_ds_w1$cog_del_c <- car::recode(ELSA_w1_cog_del$cflisd, "-9 = '997';-8 = '998';-1 = '996' ")
+ELSA_ds_w1$cog_del_c <- labelled(ELSA_ds_w1$cog_del_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+
+##cog_del
+Q <- quantile(car::recode(ELSA_ds_w1$cog_del_c, "999=NA;996=NA;997=NA;998=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+ELSA_ds_w1$cog_del <- car::recode(ELSA_ds_w1[[2]], "0:Q=0; (Q+1):10=1")
+ELSA_ds_w1$cog_del <- labelled(ELSA_ds_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=FALSE}
+vari <- ELSA_ds_w1$cog_del_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Delayed recall continuous")
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w1, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("cog_del") + ylab("Frequency")
+
+vari <- ELSA_ds_w1$cog_del
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Delayed recall categorical") 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w1, aes(x=factor(cog_del))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Delayed recall") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1, echo=FALSE}
+Continous <- c(sum(na.omit(ELSA_ds_w1[[2]])<=Q), sum(na.omit(ELSA_ds_w1[[2]])>Q & na.omit(ELSA_ds_w1[[2]])<900), sum(na.omit(ELSA_ds_w1[[2]])==996), sum(na.omit(ELSA_ds_w1[[2]])==997), sum(na.omit(ELSA_ds_w1[[2]])==998))
+Dicotomic <- table(ELSA_ds_w1[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:3->0","4:10->1","-1->996", "-9->997", "-8->998") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+
+<!--- #### Import to OPAL -->
+```{r importOPAL_w1, echo=FALSE}
+label(ELSA_ds_w1$cog_del_c) <- ds_label_cog_del_c
+label(ELSA_ds_w1$cog_del) <- ds_label_cog_del
+#opal.assign.data(o, 'ELSA_ds_w1', ELSA_ds_w1)
+#opal.symbol_import(o,'ELSA_ds_w1', project='_Athlos_Harm_Dataset')
+cog_del <- ELSA_ds_w1
+save(cog_del, file = "../RData/w1/cog_del.RData")
+rm(cog_del)
+
+ELSA_m_ds_w1 <- ELSA_ds_w1
+ELSA_m_ds_w1$cog_del <- car::recode(ELSA_m_ds_w1$cog_del, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ELSA_m_ds_w1', ELSA_m_ds_w1)
+ELSA_m_ds_w1$cog_del_c <- car::recode(ELSA_m_ds_w1$cog_del_c, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ELSA_m_ds_w1', ELSA_m_ds_w1)
+#opal.symbol_import(o,'ELSA_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `CfLisD`
+* Label: `Number of words recalled after a delay`
+* Categories:
+    + `Continuous Variable 0-10`
+* Missings
+   + `-9 = Refusal` 
+   + `-8 = Don't know` 
+   + `-1 = Not applicable` 
+
+
+```{r local w2, echo=FALSE}
+ELSA_w2_cog_del <- ELSA_w2
+
+vari <- ELSA_w2_cog_del$CfLisD
+kable(Continuous_summary(var = vari, missing_values = c(-9,-8,-1))[3], caption = "Immediate recall continuous")
+kable(Continuous_summary(vari, missing_values = c(-9,-8,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-9,-8,-1))$summary, caption = "Summary")
+ggplot(ELSA_w2_cog_del, aes(x=factor(CfLisD))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Delayed recall") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonized variable `cog_del_c` from the study-specific variables you have to sum the total of words and the missing values have to be recoded as follows:
+
+* `-9 Refusal into 997` 
+* `-8 Don't know into 998`
+* `-1 Not applicable into 996`
+* `NA into 999`
+
+To compute the harmonized variable `cog_del` from `cog_del_c` it has to be recoded as follows:
+
+* `cog_del_c <=25% into 0`
+* `cog_del_c >25% into 1`
+
+**R script**
+
+```{r harmo w2}
+##cog_del_c
+ELSA_ds_w2 <- tibble(id=ELSA_w2_cog_del$id)
+ELSA_ds_w2$cog_del_c <- car::recode(ELSA_w2_cog_del$CfLisD, "-9 = 997; -8 = 998; -1 = 996")
+ELSA_ds_w2$cog_del_c <- labelled(ELSA_ds_w2$cog_del_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+
+##cog_del
+Q <- quantile(car::recode(ELSA_ds_w2$cog_del_c, "999=NA;997=NA;996=NA;998=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+ELSA_ds_w2$cog_del <- car::recode(ELSA_ds_w2[[2]], "0:Q=0; (Q+1):10=1")
+ELSA_ds_w2$cog_del <- labelled(ELSA_ds_w2[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w2, echo=FALSE}
+vari <- ELSA_ds_w2$cog_del_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Immediate recall continuous")
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w2, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- ELSA_ds_w2$cog_del
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Cognition - Immediate recall")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w2, aes(x=factor(cog_del))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Delayed recall") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w2, echo=FALSE}
+Continous <- c(sum(na.omit(ELSA_ds_w2[[2]])<=Q), sum(na.omit(ELSA_ds_w2[[2]])>Q & na.omit(ELSA_ds_w2[[2]])<900), sum(na.omit(ELSA_ds_w2[[2]])==996), sum(na.omit(ELSA_ds_w2[[2]])==997), sum(na.omit(ELSA_ds_w2[[2]])==998))
+Dicotomic <- table(ELSA_ds_w2[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:3->0","4:10->1","-1->996", "-9->997", "-8->998") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+
+<!--- #### Import to OPAL -->
+```{r importOPAL_w2, echo=FALSE}
+label(ELSA_ds_w2$cog_del_c) <- ds_label_cog_del_c
+label(ELSA_ds_w2$cog_del) <- ds_label_cog_del
+#opal.assign.data(o, 'ELSA_ds_w2', ELSA_ds_w2)
+#opal.symbol_import(o,'ELSA_ds_w2', project='_Athlos_Harm_Dataset')
+cog_del <- ELSA_ds_w2
+save(cog_del, file = "../RData/w2/cog_del.RData")
+rm(cog_del)
+
+ELSA_m_ds_w2 <- ELSA_ds_w2
+ELSA_m_ds_w2$cog_del_c <- car::recode(ELSA_m_ds_w2$cog_del, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+ELSA_m_ds_w2$cog_del_c <- car::recode(ELSA_m_ds_w2$cog_del, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ELSA_m_ds_w2', ELSA_m_ds_w2)
+#opal.symbol_import(o,'ELSA_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `cflisd`
+* Label: `Number of words recalled after a delay`
+* Categories:
+    + `Continuous Variable 0-10`
+* Missings
+   + `-9 = Refusal` 
+   + `-1 = Not applicable` 
+
+
+```{r local w3, echo=FALSE}
+ELSA_w3_cog_del <- ELSA_w3
+
+vari <- ELSA_w3_cog_del$cflisd
+kable(Continuous_summary(var = vari, missing_values = c(-9,-1))[3], caption = "Immediate recall continuous")
+kable(Continuous_summary(vari, missing_values = c(-9,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-9,-1))$summary, caption = "Summary")
+ggplot(ELSA_w3_cog_del, aes(x=factor(cflisd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Delayed recall") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonized variable `cog_del_c` from the study-specific variables you have to sum the total of words and the missing values have to be recoded as follows:
+
+* `-9 Refusal into 997` 
+* `-1 Not applicable into 996`
+* `NA into 999`
+
+To compute the harmonized variable `cog_del` from `cog_del_c` it has to be recoded as follows:
+
+* `cog_del_c <=25% into 0`
+* `cog_del_c >25% into 1`
+
+**R script**
+
+```{r harmo w3}
+##cog_del_c
+ELSA_ds_w3 <- tibble(id=ELSA_w3_cog_del$id)
+ELSA_ds_w3$cog_del_c <- car::recode(ELSA_w3_cog_del$cflisd, "-9 = 997; -1 = 996")
+ELSA_ds_w3$cog_del_c <- labelled(ELSA_ds_w3$cog_del_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+
+##cog_del
+Q <- quantile(car::recode(ELSA_ds_w3$cog_del_c, "999=NA;997=NA;996=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+ELSA_ds_w3$cog_del <- car::recode(ELSA_ds_w3[[2]], "0:Q=0; (Q+1):10=1")
+ELSA_ds_w3$cog_del <- labelled(ELSA_ds_w3[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w3, echo=FALSE}
+vari <- ELSA_ds_w3$cog_del_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Immediate recall continuous")
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w3, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- ELSA_ds_w3$cog_del
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Cognition - Immediate recall")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w3, aes(x=factor(cog_del))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Delayed recall") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w3, echo=FALSE}
+Continous <- c(sum(na.omit(ELSA_ds_w3[[2]])<=Q), sum(na.omit(ELSA_ds_w3[[2]])>Q & na.omit(ELSA_ds_w3[[2]])<900), sum(na.omit(ELSA_ds_w3[[2]])==996), sum(na.omit(ELSA_ds_w3[[2]])==997))
+Dicotomic <- table(ELSA_ds_w3[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:3->0","4:10->1","-1->996", "-9->997") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+
+<!--- #### Import to OPAL -->
+```{r importOPAL_w3, echo=FALSE}
+label(ELSA_ds_w3$cog_del_c) <- ds_label_cog_del_c
+label(ELSA_ds_w3$cog_del) <- ds_label_cog_del
+#opal.assign.data(o, 'ELSA_ds_w3', ELSA_ds_w3)
+#opal.symbol_import(o,'ELSA_ds_w3', project='_Athlos_Harm_Dataset')
+cog_del <- ELSA_ds_w3
+save(cog_del, file = "../RData/w3/cog_del.RData")
+rm(cog_del)
+
+ELSA_m_ds_w3 <- ELSA_ds_w3
+ELSA_m_ds_w3$cog_del <- car::recode(ELSA_m_ds_w3$cog_del, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+ELSA_m_ds_w3$cog_del_c <- car::recode(ELSA_m_ds_w3$cog_del_c, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ELSA_m_ds_w3', ELSA_m_ds_w3)
+#opal.symbol_import(o,'ELSA_m_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `cflisd`
+* Label: `Number of words recalled after a delay`
+* Categories:
+    + `Continuous Variable 0-10`
+* Missings
+   + `-9 = Refusal` 
+   + `-1 = Not applicable` 
+
+```{r local w4, echo=FALSE}
+ELSA_w4_cog_del <- ELSA_w4
+
+vari <- ELSA_w4_cog_del$cflisd
+kable(Continuous_summary(var = vari, missing_values = c(-9,-1))[3], caption = "Immediate recall continuous")
+kable(Continuous_summary(vari, missing_values = c(-9,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-9,-1))$summary, caption = "Summary")
+ggplot(ELSA_w4_cog_del, aes(x=factor(cflisd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Delayed recall") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonized variable `cog_del_c` from the study-specific variables you have to sum the total of words and the missing values have to be recoded as follows:
+
+* `-9 Refusal into 997` 
+* `-1 Not applicable into 996`
+* `NA into 999`
+
+To compute the harmonized variable `cog_del` from `cog_del_c` it has to be recoded as follows:
+
+* `cog_del_c <=25% into 0`
+* `cog_del_c >25% into 1`
+
+**R script**
+
+```{r harmo w4}
+##cog_del_c
+ELSA_ds_w4 <- tibble(id=ELSA_w4_cog_del$id)
+ELSA_ds_w4$cog_del_c <- car::recode(ELSA_w4_cog_del$cflisd, "-9 = 997; -1 = 996")
+ELSA_ds_w4$cog_del_c <- labelled(ELSA_ds_w4$cog_del_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+
+##cog_del
+Q <- quantile(car::recode(ELSA_ds_w4$cog_del_c, "999=NA;997=NA;996=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+ELSA_ds_w4$cog_del <- car::recode(ELSA_ds_w4[[2]], "0:Q=0; (Q+1):10=1")
+ELSA_ds_w4$cog_del <- labelled(ELSA_ds_w4[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w4, echo=FALSE}
+vari <- ELSA_ds_w4$cog_del_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Immediate recall continuous")
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w4, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- ELSA_ds_w4$cog_del
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Cognition - Immediate recall")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w4, aes(x=factor(cog_del))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Delayed recall") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w4, echo=FALSE}
+Continous <- c(sum(na.omit(ELSA_ds_w4[[2]])<=Q), sum(na.omit(ELSA_ds_w4[[2]])>Q & na.omit(ELSA_ds_w4[[2]])<900), sum(na.omit(ELSA_ds_w4[[2]])==996), sum(na.omit(ELSA_ds_w4[[2]])==997))
+Dicotomic <- table(ELSA_ds_w4[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:3->0","4:10->1","-1->996", "-9->997") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+
+<!--- #### Import to OPAL -->
+```{r importOPAL_w4, echo=FALSE}
+label(ELSA_ds_w4$cog_del_c) <- ds_label_cog_del_c
+label(ELSA_ds_w4$cog_del) <- ds_label_cog_del
+#opal.assign.data(o, 'ELSA_ds_w4', ELSA_ds_w4)
+#opal.symbol_import(o,'ELSA_ds_w4', project='_Athlos_Harm_Dataset')
+cog_del <- ELSA_ds_w4
+save(cog_del, file = "../RData/w4/cog_del.RData")
+rm(cog_del)
+
+ELSA_m_ds_w4 <- ELSA_ds_w4
+ELSA_m_ds_w4$cog_del <- car::recode(ELSA_m_ds_w4$cog_del, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+ELSA_m_ds_w4$cog_del_c <- car::recode(ELSA_m_ds_w4$cog_del_c, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ELSA_m_ds_w4', ELSA_m_ds_w4)
+#opal.symbol_import(o,'ELSA_m_ds_w4', project='_Athlos_Harm_Dataset')
+```
+
+
+### Wave 5 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `cflisd`
+* Label: `Number of words recalled after a delay`
+* Categories:
+    + `Continuous Variable 0-10`
+* Missings
+   + `-9 = Refusal` 
+   + `-1 = Not applicable` 
+
+
+```{r local w5, echo=FALSE}
+ELSA_w5_cog_del <- ELSA_w5
+
+vari <- ELSA_w5_cog_del$cflisd
+kable(Continuous_summary(var = vari, missing_values = c(-9,-1))[3], caption = "Immediate recall continuous")
+kable(Continuous_summary(vari, missing_values = c(-9,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-9,-1))$summary, caption = "Summary")
+ggplot(ELSA_w5_cog_del, aes(x=factor(cflisd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Delayed recall") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonized variable `cog_del_c` from the study-specific variables you have to sum the total of words and the missing values have to be recoded as follows:
+
+* `-9 Refusal into 997` 
+* `-1 Not applicable into 996`
+* `NA into 999`
+
+To compute the harmonized variable `cog_del` from `cog_del_c` it has to be recoded as follows:
+
+* `cog_del_c <=25% into 0`
+* `cog_del_c >25% into 1`
+
+**R script**
+
+```{r harmo w5}
+##cog_del_c
+ELSA_ds_w5 <- tibble(id=ELSA_w5_cog_del$id)
+ELSA_ds_w5$cog_del_c <- car::recode(ELSA_w5_cog_del$cflisd, "-9 = 997;-1 = 996")
+ELSA_ds_w5$cog_del_c <- labelled(ELSA_ds_w5$cog_del_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+
+##cog_del
+Q <- quantile(car::recode(ELSA_ds_w5$cog_del_c, "999=NA;997=NA;996=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+ELSA_ds_w5$cog_del <- car::recode(ELSA_ds_w5[[2]], "0:Q=0; (Q+1):10=1")
+ELSA_ds_w5$cog_del <- labelled(ELSA_ds_w5[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w5, echo=FALSE}
+vari <- ELSA_ds_w5$cog_del_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Immediate recall continuous")
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w5, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- ELSA_ds_w5$cog_del
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Cognition - Immediate recall")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w5, aes(x=factor(cog_del))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Delayed recall") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w5, echo=FALSE}
+Continous <- c(sum(na.omit(ELSA_ds_w5[[2]])<=Q), sum(na.omit(ELSA_ds_w5[[2]])>Q & na.omit(ELSA_ds_w5[[2]])<900), sum(na.omit(ELSA_ds_w5[[2]])==996), sum(na.omit(ELSA_ds_w5[[2]])==997))
+Dicotomic <- table(ELSA_ds_w5[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:3->0","4:10->1","-1->996", "-9->997") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+
+<!--- #### Import to OPAL -->
+```{r importOPAL_w5, echo=FALSE}
+label(ELSA_ds_w5$cog_del_c) <- ds_label_cog_del_c
+label(ELSA_ds_w5$cog_del) <- ds_label_cog_del
+#opal.assign.data(o, 'ELSA_ds_w5', ELSA_ds_w5)
+#opal.symbol_import(o,'ELSA_ds_w5', project='_Athlos_Harm_Dataset')
+cog_del <- ELSA_ds_w5
+save(cog_del, file = "../RData/w5/cog_del.RData")
+rm(cog_del)
+
+ELSA_m_ds_w5 <- ELSA_ds_w5
+ELSA_m_ds_w5$cog_del <- car::recode(ELSA_m_ds_w5$cog_del, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+ELSA_m_ds_w5$cog_del_c <- car::recode(ELSA_m_ds_w5$cog_del_c, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ELSA_m_ds_w5', ELSA_m_ds_w5)
+#opal.symbol_import(o,'ELSA_m_ds_w5', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 6 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `CfLisD`
+* Label: `Number of words recalled after a delay`
+* Categories:
+    + `Continuous Variable 0-10`
+* Missings
+   + `-9 = Refusal` 
+   + `-1 = Not applicable` 
+
+
+```{r local w6, echo=FALSE}
+ELSA_w6_cog_del <- ELSA_w6
+
+vari <- ELSA_w6_cog_del$CfLisD
+kable(Continuous_summary(var = vari, missing_values = c(-9,-1))[3], caption = "Immediate recall continuous")
+kable(Continuous_summary(vari, missing_values = c(-9,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-9,-1))$summary, caption = "Summary")
+ggplot(ELSA_w6_cog_del, aes(x=factor(CfLisD))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Delayed recall") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonized variable `cog_del_c` from the study-specific variables you have to sum the total of words and the missing values have to be recoded as follows:
+
+* `-9 Refusal into 997` 
+* `-1 Not applicable into 996`
+* `NA into 999`
+
+To compute the harmonized variable `cog_del` from `cog_del_c` it has to be recoded as follows:
+
+* `cog_del_c <=25% into 0`
+* `cog_del_c >25% into 1`
+
+**R script**
+
+```{r harmo w6}
+##cog_del_c
+ELSA_ds_w6 <- tibble(id=ELSA_w6_cog_del$id)
+ELSA_ds_w6$cog_del_c <- car::recode(ELSA_w6_cog_del$CfLisD, "-9 = 997;-1 = 996")
+ELSA_ds_w6$cog_del_c <- labelled(ELSA_ds_w6$cog_del_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+
+##cog_del
+Q <- quantile(car::recode(ELSA_ds_w6$cog_del_c, "999=NA;997=NA;996=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+ELSA_ds_w6$cog_del <- car::recode(ELSA_ds_w6[[2]], "0:Q=0; (Q+1):10=1")
+ELSA_ds_w6$cog_del <- labelled(ELSA_ds_w6[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w6, echo=FALSE}
+vari <- ELSA_ds_w6$cog_del_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Immediate recall continuous")
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w6, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- ELSA_ds_w6$cog_del
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Cognition - Immediate recall")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w6, aes(x=factor(cog_del))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Delayed recall") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w6, echo=FALSE}
+Continous <- c(sum(na.omit(ELSA_ds_w6[[2]])<=Q), sum(na.omit(ELSA_ds_w6[[2]])>Q & na.omit(ELSA_ds_w6[[2]])<900), sum(na.omit(ELSA_ds_w6[[2]])==996), sum(na.omit(ELSA_ds_w6[[2]])==997))
+Dicotomic <- table(ELSA_ds_w6[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:4->0","5:10->1","-1->996", "-9->997") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+
+<!--- #### Import to OPAL -->
+```{r importOPAL_w6, echo=FALSE}
+label(ELSA_ds_w6$cog_del_c) <- ds_label_cog_del_c
+label(ELSA_ds_w6$cog_del) <- ds_label_cog_del
+#opal.assign.data(o, 'ELSA_ds_w6', ELSA_ds_w6)
+#opal.symbol_import(o,'ELSA_ds_w6', project='_Athlos_Harm_Dataset')
+cog_del <- ELSA_ds_w6
+save(cog_del, file = "../RData/w6/cog_del.RData")
+rm(cog_del)
+
+ELSA_m_ds_w6 <- ELSA_ds_w6
+ELSA_m_ds_w6$cog_del <- car::recode(ELSA_m_ds_w6$cog_del, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+ELSA_m_ds_w6$cog_del_c <- car::recode(ELSA_m_ds_w6$cog_del_c, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ELSA_m_ds_w6', ELSA_m_ds_w6)
+#opal.symbol_import(o,'ELSA_m_ds_w6', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `CfLisD`
+* Label: `Number of words recalled after a delay`
+* Categories:
+    + `Continuous Variable 0-10`
+* Missings
+   + `-9 = Refusal` 
+   + `-1 = Not applicable` 
+
+
+```{r local w7, echo=FALSE}
+ELSA_w7_cog_del <- ELSA_w7
+
+vari <- ELSA_w7_cog_del$CfLisD
+kable(Continuous_summary(var = vari, missing_values = c(-9,-1))[3], caption = "Immediate recall continuous")
+kable(Continuous_summary(vari, missing_values = c(-9,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-9,-1))$summary, caption = "Summary")
+ggplot(ELSA_w7_cog_del, aes(x=factor(CfLisD))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Delayed recall") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonized variable `cog_del_c` from the study-specific variables you have to sum the total of words and the missing values have to be recoded as follows:
+
+* `-9 Refusal into 997` 
+* `-1 Not applicable into 996`
+* `NA into 999`
+
+To compute the harmonized variable `cog_del` from `cog_del_c` it has to be recoded as follows:
+
+* `cog_del_c <=25% into 0`
+* `cog_del_c >25% into 1`
+
+**R script**
+
+```{r harmo w7}
+##cog_del_c
+ELSA_ds_w7 <- tibble(id=ELSA_w7_cog_del$id)
+ELSA_ds_w7$cog_del_c <- car::recode(ELSA_w7_cog_del$CfLisD, "-9 = '997';-8 = '998';-1 = '996' ")
+ELSA_ds_w7$cog_del_c <- labelled(ELSA_ds_w7$cog_del_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+
+##cog_del
+Q <- quantile(car::recode(ELSA_ds_w7$cog_del_c, "999=NA;997=NA;996=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+ELSA_ds_w7$cog_del <- car::recode(ELSA_ds_w7[[2]], "0:Q=0; (Q+1):10=1")
+ELSA_ds_w7$cog_del <- labelled(ELSA_ds_w7[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w7, echo=FALSE}
+vari <- ELSA_ds_w7[[2]]
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Immediate recall continuous")
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w7, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- ELSA_ds_w7[[3]]
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Cognition - Immediate recall")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w7, aes(x=factor(cog_del))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Delayed recall") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w7, echo=FALSE}
+Continous <- c(sum(na.omit(ELSA_ds_w7[[2]])<=Q), sum(na.omit(ELSA_ds_w7[[2]])>Q & na.omit(ELSA_ds_w7[[2]])<900), sum(na.omit(ELSA_ds_w7[[2]])==996), sum(na.omit(ELSA_ds_w7[[2]])==997))
+Dicotomic <- table(ELSA_ds_w7[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:3->0","4:10->1","-1->996", "-9->997") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+
+<!--- #### Import to OPAL -->
+```{r importOPAL_w7, echo=FALSE}
+label(ELSA_ds_w7$cog_del_c) <- ds_label_cog_del_c
+label(ELSA_ds_w7$cog_del) <- ds_label_cog_del
+#opal.assign.data(o, 'ELSA_ds_w7', ELSA_ds_w7)
+#opal.symbol_import(o,'ELSA_ds_w7', project='_Athlos_Harm_Dataset')
+cog_del <- ELSA_ds_w7
+save(cog_del, file = "../RData/w7/cog_del.RData")
+rm(cog_del)
+
+ELSA_m_ds_w7 <- ELSA_ds_w7
+ELSA_m_ds_w7$cog_del <- car::recode(ELSA_m_ds_w7$cog_del, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+ELSA_m_ds_w7$cog_del_c <- car::recode(ELSA_m_ds_w7$cog_del_c, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ELSA_m_ds_w7', ELSA_m_ds_w7)
+#opal.symbol_import(o,'ELSA_m_ds_w7', project='_Athlos_Harm_Dataset')
+```
+
+
+### Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
+
+
+```{r summ, echo=FALSE}
+ELSA_ds_w1$cog_del_c <- labelled(ELSA_ds_w1$cog_del_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+ELSA_ds_w2$cog_del_c <- labelled(ELSA_ds_w2$cog_del_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+ELSA_ds_w3$cog_del_c <- labelled(ELSA_ds_w3$cog_del_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+ELSA_ds_w4$cog_del_c <- labelled(ELSA_ds_w4$cog_del_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+ELSA_ds_w5$cog_del_c <- labelled(ELSA_ds_w5$cog_del_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+ELSA_ds_w6$cog_del_c <- labelled(ELSA_ds_w6$cog_del_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+ELSA_ds_w7$cog_del_c <- labelled(ELSA_ds_w7$cog_del_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+
+tt <-    frq(ELSA_ds_w1$cog_del_c)[[1]][,c(1:2,4)]
+tt[4] <- frq(ELSA_ds_w2$cog_del_c)[[1]][,c(4)]
+tt[5] <- frq(ELSA_ds_w3$cog_del_c)[[1]][,c(4)]
+tt[6] <- frq(ELSA_ds_w4$cog_del_c)[[1]][,c(4)]
+tt[7] <- frq(ELSA_ds_w5$cog_del_c)[[1]][,c(4)]
+tt[8] <- frq(ELSA_ds_w6$cog_del_c)[[1]][,c(4)]
+tt[9] <- frq(ELSA_ds_w7$cog_del_c)[[1]][,c(4)]
+tt[13,] <- c("n", "sample size", 
+             length(ELSA_ds_w1$cog_del_c), length(ELSA_ds_w2$cog_del_c), length(ELSA_ds_w3$cog_del_c),
+             length(ELSA_ds_w4$cog_del_c), length(ELSA_ds_w5$cog_del_c), length(ELSA_ds_w6$cog_del_c),     
+             length(ELSA_ds_w7$cog_del_c))
+names(tt)<-c("val", "label", "w1", "w2", "w3", "w4", "w5", "w6", "w7")
+kable(tt)
+```
+
+
+
+
+
+# Quality estimation
+
+No comments
+
+[Comments on the quality of the new harmonised variable. This section can be done in a later stage, once all variables are harmonised.]
+
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

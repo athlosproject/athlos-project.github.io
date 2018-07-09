@@ -1,0 +1,346 @@
+---
+title: "Can people be trusted? (generalized trust, i.e. trust in other members of the society, not counting relatives and close friends)"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variables is the following:
+
+* Short name: `trust`
+* Variable label: `Generalized trust, i.e. trust in other members of the society, not counting relatives and close friends`
+* Domain: `Social environment`
+* Value type: `categorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## England
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised are:
+
+* Name: `scscd`
+* Label: `Most people in this area can be trusted/Most people in this area can't be trusted`
+* Categories: 
+    + `1 = Most people in this area can be trusted`
+    + `2`
+    + `3`
+    + `4`
+    + `5`
+    + `6`
+    + `7 = Most people in this area can't be trusted`
+* Missings:
+    + `-9 = Not answered`
+    + `-1 = Item not applicable`
+    
+* Description: 
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w1_trust','ELSA.wave_1_core_data_v3',variables=list('scscd'), missings = TRUE)
+```
+
+```{r local1, echo=F}
+ELSA_w1_trust <- opal.execute(o,'ELSA_w1_trust')
+
+vari <-  ELSA_w1_trust$scscd
+kable(Categorical_summary(vari, missing_values = c(-9,-1))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-9,-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-9,-1))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_w1_trust$scscd, missing_values = NA)
+ggplot(ELSA_w1_trust, aes(x=factor(scscd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Most people in this area can be trusted/Most people in this area can't be trusted") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1,2,3 into 1`
+* `4,5,6,7 into 0`
+* `-9 into 995`
+* `-1 into 996`
+* `NA into 999`
+
+ 
+**R script:**
+```{r harmo1, echo=TRUE}
+ELSA_ds_w1 <- tibble(id=ELSA_w1_trust$id)
+ELSA_ds_w1$trust <- car::recode(as.vector(ELSA_w1_trust$scscd), "1:3='1'; 4:7='0'; -9='995'; -1='996'; NA='999'")
+ELSA_ds_w1$trust <- labelled(ELSA_ds_w1$trust, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995, "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1, echo=F}
+vari <- ELSA_ds_w1$trust
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_ds_w1$trust, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ELSA_ds_w1, aes(x=factor(trust))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Generalized trust") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=F}
+AfterH <- table(ELSA_ds_w1$trust)
+BeforeH <- table(ELSA_w1_trust$scscd, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[1]] <- sum(BeforeH[c(6:9)])
+BeforeH1[[2]] <- sum(BeforeH[c(3:5)])
+BeforeH1[c(3,4)] <- BeforeH[c(1,2)]
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("4:7->0","1:3->1","-9->995","-1->996")
+kable(C)
+```
+
+ 
+ 
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `RFTRUST`
+* Label: `I know that I can trust my friends, and they know they can trust me`
+* Categories: 
+    + `1 = Strongly agree` 
+    + `2 = Somewhat agree` 
+    + `3 = Agree a little` 
+    + `4 = Neither agree nor disagree`
+    + `5 = Disagree a little` 
+    + `6 = Somewhat disagree` 
+    + `7 = Strongly disagree`
+* Missings:
+    + `-1 = Question not answered `
+
+    
+* Description: 
+```{r assign2, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w2_trust','ELSA.wave_2_ryff_data',variables=list('RFTRUST'), missings = TRUE)
+```
+
+```{r local2, echo=F}
+ELSA_w2_trust <- opal.execute(o,'ELSA_w2_trust')
+vari <-  ELSA_w2_trust$RFTRUST
+kable(Categorical_summary(vari, missing_values = c(-1))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-1))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_w2_trust$RFTRUST, missing_values = NA)
+ggplot(ELSA_w2_trust, aes(x=factor(RFTRUST))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("I know that I can trust my friends, and they know they can trust me") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1,2,3 into 1`
+* `4,5,6,7 into 0`
+* `-1 into 995`
+* `NA into 999`
+
+ 
+**R script:**
+```{r harmo2, echo=TRUE}
+ELSA_ds_w2 <- tibble(id=ELSA_w2_trust$id)
+ELSA_ds_w2$trust <- car::recode(as.vector(ELSA_w2_trust$RFTRUST), "1:3='1'; 4:7='0'; -1='995'; NA='999'")
+ELSA_ds_w2$trust <- labelled(ELSA_ds_w2$trust, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995, "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2, echo=F}
+vari <- ELSA_ds_w2$trust
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_ds_w2$trust, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ELSA_ds_w2, aes(x=factor(trust))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Generalized trust") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2, echo=F}
+AfterH <- table(ELSA_ds_w2$trust)
+BeforeH <- table(ELSA_w2_trust$RFTRUST, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[1]] <- sum(BeforeH[c(5:8)])
+BeforeH1[[2]] <- sum(BeforeH[c(2:4)])
+BeforeH1[[3]] <- BeforeH[[1]]
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("4:7->0","1:3->1","-1->995")
+kable(C)
+```
+
+ 
+ 
+
+
+
+
+### Wave 3
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `scscd`
+* Label: `Most people in this area can be trusted/Most people in this area can~t be trusted`
+* Categories: 
+    + `1 = Strongly agree` 
+    + `2 = Somewhat agree` 
+    + `3 = Agree a little` 
+    + `4 = Neither agree nor disagree`
+    + `5 = Disagree a little` 
+    + `6 = Somewhat disagree` 
+    + `7 = Strongly disagree`
+* Missings:
+    + `-9 = Not answered`
+    + `-8 = Don't know`
+    + `-1 = Item not applicable`
+    
+* Description: 
+```{r assign3, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w3_trust','ELSA.wave_3_elsa_data_v4',variables=list('scscd'), missings = TRUE)
+```
+
+```{r local3, echo=F}
+ELSA_w3_trust <- opal.execute(o,'ELSA_w3_trust')
+vari <-  ELSA_w3_trust$scscd
+kable(Categorical_summary(vari, missing_values = c(-9,-8,-1))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(-9,-8,-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-9,-8,-1))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_w3_trust$scscd, missing_values = NA)
+ggplot(ELSA_w3_trust, aes(x=factor(scscd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Most people in this area can be trusted/Most people in this area can~t be trusted") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1,2,3 into 1`
+* `4,5,6,7 into 0`
+* `-9 into 995`
+* `-8 into 998`
+* `-1 into 996`
+* `NA into 999`
+
+ 
+**R script:**
+```{r harmo3, echo=TRUE}
+ELSA_ds_w3 <- tibble(id=ELSA_w3_trust$id)
+ELSA_ds_w3$trust <- car::recode(as.vector(ELSA_w3_trust$scscd), "1:3='1'; 4:7='0'; -9='995'; -8='998'; -1='996'; NA='999'")
+ELSA_ds_w3$trust <- labelled(ELSA_ds_w3$trust, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995, "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript3, echo=F}
+vari <- ELSA_ds_w3$trust
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ELSA_ds_w3$trust, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ELSA_ds_w3, aes(x=factor(trust))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Generalized trust") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation3, echo=F}
+AfterH <- table(ELSA_ds_w3$trust)
+BeforeH <- table(ELSA_w3_trust$scscd, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[1]] <- sum(BeforeH[c(6:9)])
+BeforeH1[[2]] <- sum(BeforeH[c(3:5)])
+BeforeH1[c(3,4)] <- BeforeH[c(1,2)]
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("4:7->0","1:3->1","-9->995","-1->996")
+kable(C)
+```
+
+
+
+### Wave 4
+
+Not found.
+
+### Wave 5
+
+Not found.
+
+### Wave 6
+
+Not found.
+
+### Wave 7
+
+Not found.
+
+
+
+
+```{r save, echo=FALSE}
+trust <- ELSA_ds_w1
+save(trust, file = "../RData/w1/trust.RData")
+rm(trust)
+
+trust <- ELSA_ds_w2
+save(trust, file = "../RData/w2/trust.RData")
+rm(trust)
+
+trust <- ELSA_ds_w3
+save(trust, file = "../RData/w3/trust.RData")
+rm(trust)
+
+
+```
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+
+ 

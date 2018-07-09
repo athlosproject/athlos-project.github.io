@@ -1,0 +1,735 @@
+---
+title: "Living status"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+  
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+<!-- ########################################################## --> 
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `living_status`
+* Variable label: `Living status`
+* Variable description: `The individual is dead or alive?`
+* Domain: `Death`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | alive
+1        | Dead
+2        | Dropout  
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Living status"
+ds_label_all <- "The individual is dead or alive?"
+```
+
+<!-- ########################################################## --> 
+
+# Data process
+
+```{r, dataDirectory, echo=FALSE}
+datafolder <- "../RData"
+```
+
+## ELSA
+
+### Wave 1 
+
+
+```{r assign1, echo=FALSE}
+opal.assign.table.tibble(o, 'ELSA_w1_id','ELSA.wave_1_core_data_v3',
+                         variables=list('indsex'), missings = TRUE)
+ELSA_w1_id <- opal.execute(o,'ELSA_w1_id')
+```
+
+
+
+#### Harmonisation algorithm
+It's considered that at baseline all the individuals are alive. Therefore it is going to compute the variable with all the values as 0. 
+
+**R script:**
+
+```{r harmo1}
+ELSA_ds_w1 <- tibble(id=ELSA_w1_id$id)
+ELSA_ds_w1$living_status <- 0
+ELSA_ds_w1$living_status <- labelled(ELSA_ds_w1$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=FALSE}
+vari <- ELSA_ds_w1$living_status
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w1, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=FALSE}
+```
+
+
+```{r importOPAL1, echo=FALSE}
+#opal.assign.data(o, 'ELSA_ds_w1', ELSA_ds_w1)
+#opal.symbol_import(o,'ELSA_ds_w1', project='_Athlos_Harm_Dataset')
+
+ELSA_m_ds_w1 <- ELSA_ds_w1
+ELSA_m_ds_w1$living_status <- car::recode(ELSA_m_ds_w1$living_status, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ELSA_m_ds_w1', ELSA_m_ds_w1)
+#opal.symbol_import(o,'ELSA_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+```{r,  echo=FALSE}
+living_status <- ELSA_ds_w1
+save(living_status, file = paste0(datafolder, "/w1/living_status.RData"))
+```
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `EiDateY`
+* Label: `Year of death`
+* Type of variable: `countinous`
+* Missings
+    + `-9 = Refused/not answered`
+    + `-8 = Don't know`
+    + `-1 = Not applicable`
+
+* Name: `iintdaty`
+* Label: `Year of Individual Interview`
+* Type of variable: `countinous`
+
+```{r assign2, echo=FALSE}
+opal.assign.table.tibble(o, 'ELSA_w2_ydeath','ELSA.elsa_eol_w2_archive_v1',
+                         variables=list('EiDateY'), missings = TRUE)
+opal.assign.table.tibble(o, 'ELSA_w2_ids','ELSA.wave_2_derived_variables',
+                         variables=list('chonat'), missings = TRUE)
+ELSA_w2_ydeath <- opal.execute(o,'ELSA_w2_ydeath')
+ELSA_w2_ids <- opal.execute(o,'ELSA_w2_ids')
+
+opal.assign.table.tibble(o, 'ELSA_w2_yinter','ELSA.wave_2_ifs_derived_variables',
+                         variables=list('iintdaty'), missings = TRUE)
+ELSA_w2_yinter <- opal.execute(o,'ELSA_w2_yinter')
+```
+
+```{r local2, echo=FALSE}
+IDS <- tibble(id=c(ELSA_w2_ids$id, ELSA_w2_ydeath$id[!(ELSA_w2_ydeath$id%in%ELSA_w2_ids$id)]))
+ELSA_w2_LS <- left_join(x = IDS, y = ELSA_w2_ydeath, by = 'id')
+ELSA_w2_LS <- left_join(x = ELSA_w2_LS, y = ELSA_w2_yinter, by = 'id')
+
+vari <- ELSA_w2_LS$iintdaty
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ELSA_w2_LS, aes(factor(iintdaty))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+
+vari <- ELSA_w2_LS$EiDateY
+kable(Continuous_summary(var = vari, missing_values = c(-9,-8,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-9,-8,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-9,-8,-1))$summary, caption = "Summary")
+ggplot(ELSA_w2_LS, aes(factor(EiDateY))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `individuals that have date of interview into 0`
+* `individuals with date of death into 1`
+* `individuals without date of interview and death into 2`
+
+**R script:**
+
+```{r harmo2}
+ELSA_ds_w2 <- tibble(id=ELSA_w2_LS$id)
+ELSA_ds_w2$living_status <- NA
+ELSA_ds_w2$living_status[!is.na(ELSA_w2_LS$iintdaty)] <- 0
+ELSA_ds_w2$living_status[!is.na(ELSA_w2_LS$EiDateY)] <- 1
+ELSA_ds_w2$living_status[is.na(ELSA_w2_LS$EiDateY) & is.na(ELSA_w2_LS$iintdaty)] <- 2
+ELSA_ds_w2$living_status <- labelled(ELSA_ds_w2$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2, echo=FALSE}
+vari <- ELSA_ds_w2$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w2, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2, echo=FALSE}
+```
+
+```{r importOPAL2, echo=FALSE}
+#opal.assign.data(o, 'ELSA_ds_w2', ELSA_ds_w2)
+#opal.symbol_import(o,'ELSA_ds_w2', project='_Athlos_Harm_Dataset')
+
+ELSA_m_ds_w2 <- ELSA_ds_w2
+ELSA_m_ds_w2$living_status <- car::recode(ELSA_m_ds_w2$living_status, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ELSA_m_ds_w2', ELSA_m_ds_w2)
+#opal.symbol_import(o,'ELSA_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+```{r,  echo=FALSE}
+living_status <- ELSA_ds_w2
+save(living_status, file = paste0(datafolder, "/w2/living_status.RData"))
+```
+
+
+
+
+
+### Wave 3
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `EiDateY`
+* Label: `Year of death`
+* Type of variable: `countinous`
+* Missings
+    + `-9 = Refused/not answered`
+    + `-8 = Don't know`
+    + `-1 = Not applicable`
+
+* Name: `iintdaty`
+* Label: `Year of Individual Interview: Year of date: TODAYS DATE`
+* Type of variable: `countinous`
+
+```{r assign3, echo=FALSE}
+opal.assign.table.tibble(o, 'ELSA_w3_ydeath','ELSA.elsa_eol_w3_archive_v1',
+                         variables=list('EiDateY'), missings = TRUE)
+opal.assign.table.tibble(o, 'ELSA_w3_yinter','ELSA.wave_3_ifs_derived_variables',
+                         variables=list('iintdaty'), missings = TRUE)
+ELSA_w3_ydeath <- opal.execute(o,'ELSA_w3_ydeath')
+ELSA_w3_yinter <- opal.execute(o,'ELSA_w3_yinter')
+```
+
+```{r local3, echo=FALSE}
+all_ids_w3 <- c(ELSA_w3_yinter$id, ELSA_w3_ydeath$id[!(ELSA_w3_ydeath$id %in% ELSA_w3_yinter$id)])
+
+#dim(ELSA_ds_w2)
+#length(all_ids_w3)
+#sum(!all_ids_w3 %in% ELSA_ds_w2$id) #10144 - 8415 = 1729
+
+
+IDS_w3 <- tibble(id= c(all_ids_w3, ELSA_w2_LS$id[!(ELSA_w2_LS$id %in% all_ids_w3)]))
+
+ELSA_w3_LS <- left_join(x = IDS_w3, y = ELSA_w3_ydeath, by = 'id')
+ELSA_w3_LS <- left_join(x = ELSA_w3_LS, y = ELSA_w3_yinter, by = 'id')
+
+
+vari <- ELSA_w3_LS$iintdaty
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ELSA_w3_LS, aes(factor(iintdaty))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+
+vari <- ELSA_w3_LS$EiDateY
+kable(Continuous_summary(var = vari, missing_values = c(-9,-8,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-9,-8,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-9,-8,-1))$summary, caption = "Summary")
+ggplot(ELSA_w3_LS, aes(factor(EiDateY))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `individuals that have date of interview into 0`
+* `individuals with date of death into 1`
+* `individuals without date of interview and death into 2`
+* `individuals death in previous waves into 1`
+
+There are two individuals with date of interview and date of death that are going to be considered as they were alive for this interview because they were interview. 
+
+**R script:**
+
+```{r harmo3}
+ids_deaths_w2 <- ELSA_ds_w2$id[which(ELSA_ds_w2$living_status==1)]
+
+ELSA_ds_w3 <- tibble(id=ELSA_w3_LS$id)
+ELSA_ds_w3$living_status <- NA
+ELSA_ds_w3$living_status[!is.na(ELSA_w3_LS$EiDateY)] <- 1
+ELSA_ds_w3$living_status[!is.na(ELSA_w3_LS$iintdaty)] <- 0
+ELSA_ds_w3$living_status[is.na(ELSA_w3_LS$EiDateY) & is.na(ELSA_w3_LS$iintdaty)] <- 2
+ELSA_ds_w3$living_status[which(ELSA_ds_w3$id %in% ids_deaths_w2)] <- 1
+ELSA_ds_w3$living_status <- labelled(ELSA_ds_w3$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript3, echo=FALSE}
+vari <- ELSA_ds_w3$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w3, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation3, echo=FALSE}
+```
+
+```{r importOPAL3, echo=FALSE}
+#opal.assign.data(o, 'ELSA_ds_w3', ELSA_ds_w3)
+#opal.symbol_import(o,'ELSA_ds_w3', project='_Athlos_Harm_Dataset')
+
+ELSA_m_ds_w3 <- ELSA_ds_w3
+ELSA_m_ds_w3$living_status <- car::recode(ELSA_m_ds_w3$living_status, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ELSA_m_ds_w3', ELSA_m_ds_w3)
+#opal.symbol_import(o,'ELSA_m_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+
+```{r,  echo=FALSE}
+living_status <- ELSA_ds_w3
+save(living_status, file = paste0(datafolder, "/w3/living_status.RData"))
+```
+
+
+
+### Wave 4
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `EiDateY`
+* Label: `Year of death`
+* Type of variable: `countinous`
+* Missings
+    + `-9 = Refused/not answered`
+    + `-8 = Don't know`
+    + `-1 = Not applicable`
+
+* Name: `iintdaty`
+* Label: `Year of Individual Interview: Year of date: TODAYS DATE`
+* Type of variable: `countinous`
+
+```{r assign4, echo=FALSE}
+opal.assign.table.tibble(o, 'ELSA_w4_ydeath','ELSA.elsa_eol_w4_archive_v1',
+                         variables=list('EiDateY'), missings = TRUE)
+ELSA_w4_ydeath <- opal.execute(o,'ELSA_w4_ydeath')
+opal.assign.table.tibble(o, 'ELSA_w4_yinter','ELSA.wave_4_ifs_derived_variables',
+                         variables=list('iintdaty'), missings = TRUE)
+ELSA_w4_yinter <- opal.execute(o,'ELSA_w4_yinter')
+```
+
+```{r local4, echo=FALSE}
+all_ids_w4 <- c(ELSA_w4_yinter$id,ELSA_w4_ydeath$id)
+
+#dim(ELSA_ds_w3)
+#length(all_ids_w4)
+#sum(all_ids_w4 %in% ELSA_ds_w3$id) #11292 - 8603 = 2689
+
+
+
+
+IDS_w4 <- tibble(id= c(all_ids_w4, ELSA_ds_w3$id[!(ELSA_ds_w3$id %in% all_ids_w4)]))
+
+ELSA_w4_LS <- left_join(x = IDS_w4, y = ELSA_w4_ydeath, by = 'id')
+ELSA_w4_LS <- left_join(x = ELSA_w4_LS, y = ELSA_w4_yinter, by = 'id')
+
+vari <- ELSA_w4_LS$iintdaty
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ELSA_w4_LS, aes(factor(iintdaty))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+
+vari <- ELSA_w4_LS$EiDateY
+kable(Continuous_summary(var = vari, missing_values = c(-9,-8,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-9,-8,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-9,-8,-1))$summary, caption = "Summary")
+ggplot(ELSA_w4_LS, aes(factor(EiDateY))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `individuals that have date of interview into 0`
+* `individuals with date of death into 1`
+* `individuals without date of interview and death into 2`
+* `individuals death in previous waves into 1`
+
+**R script:**
+
+```{r harmo4}
+ids_deaths_w3 <- ELSA_ds_w3$id[which(ELSA_ds_w3$living_status==1)]
+
+ELSA_ds_w4 <- tibble(id=ELSA_w4_LS$id)
+ELSA_ds_w4$living_status <- NA
+ELSA_ds_w4$living_status[!is.na(ELSA_w4_LS$iintdaty)] <- 0
+ELSA_ds_w4$living_status[!is.na(ELSA_w4_LS$EiDateY)] <- 1
+ELSA_ds_w4$living_status[is.na(ELSA_w4_LS$EiDateY) & is.na(ELSA_w4_LS$iintdaty)] <- 2
+ELSA_ds_w4$living_status[which(ELSA_ds_w4$id %in% ids_deaths_w3)] <- 1
+ELSA_ds_w4$living_status <- labelled(ELSA_ds_w4$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript4, echo=FALSE}
+vari <- ELSA_ds_w4$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w4, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation4, echo=FALSE}
+```
+
+```{r importOPAL4, echo=FALSE}
+#opal.assign.data(o, 'ELSA_ds_w4', ELSA_ds_w4)
+#opal.symbol_import(o,'ELSA_ds_w4', project='_Athlos_Harm_Dataset')
+
+ELSA_m_ds_w4 <- ELSA_ds_w4
+ELSA_m_ds_w4$living_status <- car::recode(ELSA_m_ds_w4$living_status, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ELSA_m_ds_w4', ELSA_m_ds_w4)
+#opal.symbol_import(o,'ELSA_m_ds_w4', project='_Athlos_Harm_Dataset')
+```
+
+
+```{r,  echo=FALSE}
+living_status <- ELSA_ds_w4
+save(living_status, file = paste0(datafolder, "/w4/living_status.RData"))
+```
+
+
+
+
+
+
+### Wave 5
+
+#### Study-specific variable description
+
+
+```{r assign5, echo=FALSE}
+opal.assign.table.tibble(o, 'ELSA_w5_yinter','ELSA.wave_5_ifs_derived_variables',
+                         variables=list('iintdaty'), missings = TRUE)
+ELSA_w5_yinter <- opal.execute(o,'ELSA_w5_yinter')
+```
+
+```{r local5, echo=FALSE}
+
+#dim(ELSA_w5_yinter)
+#dim(ELSA_ds_w4)
+#sum(ELSA_w5_yinter$id %in% ELSA_ds_w4$id) #10274  - 10132 = 142
+
+
+IDS_w5 <- tibble(id = c(ELSA_w5_yinter$id , ELSA_ds_w4$id[!(ELSA_ds_w4$id %in% ELSA_w5_yinter$id)]))
+ELSA_w5_LS <- left_join(x = IDS_w5, y = ELSA_w5_yinter, by = 'id')
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `individuals that have date of interview into 0`
+* `death individuals in previous waves into 1`
+* `individuals without date of interview either as was not dead in previous waves into 2`
+
+**R script:**
+
+```{r harmo5}
+ids_deaths_w4 <- ELSA_ds_w4$id[which(ELSA_ds_w4$living_status==1)]
+
+ELSA_ds_w5 <- tibble(id=ELSA_w5_LS$id)
+ELSA_ds_w5$living_status <- NA
+ELSA_ds_w5$living_status[!is.na(ELSA_w5_LS$iintdaty)] <- 0
+ELSA_ds_w5$living_status[is.na(ELSA_w5_LS$iintdaty)] <- 2
+ELSA_ds_w5$living_status[which(ELSA_ds_w5$id %in% ids_deaths_w4)] <- 1
+ELSA_ds_w5$living_status <- labelled(ELSA_ds_w5$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript5, echo=FALSE}
+vari <- ELSA_ds_w5$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w5, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation5, echo=FALSE}
+```
+
+```{r importOPAL5, echo=FALSE}
+#opal.assign.data(o, 'ELSA_ds_w5', ELSA_ds_w5)
+#opal.symbol_import(o,'ELSA_ds_w5', project='_Athlos_Harm_Dataset')
+
+ELSA_m_ds_w5 <- ELSA_ds_w5
+ELSA_m_ds_w5$living_status <- car::recode(ELSA_m_ds_w5$living_status, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ELSA_m_ds_w5', ELSA_m_ds_w5)
+#opal.symbol_import(o,'ELSA_m_ds_w5', project='_Athlos_Harm_Dataset')
+```
+
+```{r,  echo=FALSE}
+living_status <- ELSA_ds_w5
+save(living_status, file = paste0(datafolder, "/w5/living_status.RData"))
+```
+
+
+### Wave 6
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `EiDateY`
+* Label: `Year of death`
+* Type of variable: `countinous`
+* Missings
+    + `-9 = Refused/not answered`
+    + `-8 = Don't know`
+    + `-1 = Not applicable`
+
+```{r assign6, echo=FALSE}
+opal.assign.table.tibble(o, 'ELSA_w6_ydeath','ELSA.elsa_endoflife_w6archive',
+                         variables=list('EiDateY'), missings = TRUE)
+opal.assign.table.tibble(o, 'ELSA_w6_yinter','ELSA.wave_6_ifs_derived_variables',
+                         variables=list('iintdaty'), missings = TRUE)
+ELSA_w6_ydeath <- opal.execute(o,'ELSA_w6_ydeath')
+ELSA_w6_yinter <- opal.execute(o,'ELSA_w6_yinter')
+```
+
+```{r local6, echo=FALSE}
+all_ids_w6 <- c(ELSA_w6_ydeath$id ,ELSA_w6_yinter$id)
+
+#dim(ELSA_ds_w5)
+#length(all_ids_w6)
+#sum(all_ids_w6 %in% ELSA_ds_w5$id) #11292 - 8603 = 1215
+
+
+
+IDS_W6 <- tibble(id=c(all_ids_w6, ELSA_ds_w5$id[!(ELSA_ds_w5$id %in% all_ids_w6)]))
+
+ELSA_w6_LS <- left_join(x = IDS_W6, y = ELSA_w6_ydeath, by = 'id')
+ELSA_w6_LS <- left_join(x = ELSA_w6_LS, y = ELSA_w6_yinter, by = 'id')
+
+vari <- ELSA_w6_LS$iintdaty
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ELSA_w6_LS, aes(factor(iintdaty))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+
+vari <- ELSA_w6_LS$EiDateY
+kable(Continuous_summary(var = vari, missing_values = c(-9,-8,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-9,-8,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-9,-8,-1))$summary, caption = "Summary")
+ggplot(ELSA_w6_LS, aes(factor(EiDateY))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `individuals that have date of interview into 0`
+* `individuals with date of death into 1`
+* `individuals without date of interview and death into 2`
+* `individuals death in previous waves into 1`
+
+**R script:**
+
+```{r harmo6}
+ids_deaths_w5 <- ELSA_ds_w5$id[which(ELSA_ds_w5$living_status==1)]
+
+ELSA_ds_w6 <- tibble(id=ELSA_w6_LS$id)
+ELSA_ds_w6$living_status <- NA
+ELSA_ds_w6$living_status[!is.na(ELSA_w6_LS$iintdaty)] <- 0
+ELSA_ds_w6$living_status[!is.na(ELSA_w6_LS$EiDateY)] <- 1
+ELSA_ds_w6$living_status[is.na(ELSA_w6_LS$EiDateY) & is.na(ELSA_w6_LS$iintdaty)] <- 2
+ELSA_ds_w6$living_status[which(ELSA_ds_w6$id %in% ids_deaths_w5)] <- 1
+ELSA_ds_w6$living_status <- labelled(ELSA_ds_w6$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript6, echo=FALSE}
+vari <- ELSA_ds_w6$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w6, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation6, echo=FALSE}
+```
+
+
+```{r importOPAL6, echo=FALSE}
+#opal.assign.data(o, 'ELSA_ds_w6', ELSA_ds_w6)
+#opal.symbol_import(o,'ELSA_ds_w6', project='_Athlos_Harm_Dataset')
+
+ELSA_m_ds_w6 <- ELSA_ds_w6
+ELSA_m_ds_w6$living_status <- car::recode(ELSA_m_ds_w6$living_status, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ELSA_m_ds_w6', ELSA_m_ds_w6)
+#opal.symbol_import(o,'ELSA_m_ds_w6', project='_Athlos_Harm_Dataset')
+```
+
+
+```{r,  echo=FALSE}
+living_status <- ELSA_ds_w6
+save(living_status, file = paste0(datafolder, "/w6/living_status.RData"))
+```
+
+
+### Wave 7
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `iintdaty`
+* Label: `Year of Individual Interview`
+* Type of variable: `countinous`
+
+
+```{r assign7, echo=FALSE}
+opal.assign.table.tibble(o, 'ELSA_w7_yinter','ELSA.wave_7_elsa_data',
+                         variables=list('iintdaty'), missings = TRUE)
+ELSA_w7_yinter <- opal.execute(o,'ELSA_w7_yinter')
+```
+
+```{r local7, echo=FALSE}
+
+
+#dim(ELSA_w7_yinter)
+#dim(ELSA_ds_w6)
+#sum(ELSA_w7_yinter$id %in% ELSA_ds_w6$id) #9666 - 9157 = 509
+
+
+
+
+IDS_w7 <- tibble(id = c(ELSA_w7_yinter$id , ELSA_ds_w6$id[!(ELSA_ds_w6$id %in% ELSA_w7_yinter$id)]))
+ELSA_w7_LS <- left_join(x = IDS_w7, y = ELSA_w7_yinter, by = 'id')
+
+vari <- ELSA_w7_LS$iintdaty
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ELSA_w7_LS, aes(factor(iintdaty))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `individuals that have date of interview into 0`
+* `individuals without date of interview into 2`
+* `individuals death in previous waves into 1`
+
+**R script:**
+
+```{r harmo7}
+ids_deaths_w6 <- ELSA_ds_w6$id[which(ELSA_ds_w6$living_status==1)]
+
+ELSA_ds_w7 <- tibble(id=ELSA_w7_LS$id)
+ELSA_ds_w7$living_status <- NA
+ELSA_ds_w7$living_status[!is.na(ELSA_w7_LS$iintdaty)] <- 0
+ELSA_ds_w7$living_status[is.na(ELSA_w7_LS$iintdaty)] <- 2
+ELSA_ds_w7$living_status[which(ELSA_ds_w7$id %in% ids_deaths_w6)] <- 1
+ELSA_ds_w7$living_status <- labelled(ELSA_ds_w7$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript7, echo=FALSE}
+vari <- ELSA_ds_w7$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w7, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation7, echo=FALSE}
+```
+
+
+```{r importOPAL7, echo=FALSE}
+#opal.assign.data(o, 'ELSA_ds_w7', ELSA_ds_w7)
+#opal.symbol_import(o,'ELSA_ds_w7', project='_Athlos_Harm_Dataset')
+
+ELSA_m_ds_w7 <- ELSA_ds_w7
+ELSA_m_ds_w7$living_status <- car::recode(ELSA_m_ds_w7$living_status, "c(991, 992, 993, 994, 995, 997, 997,998, 999)=NA")
+#opal.assign.data(o, 'ELSA_m_ds_w7', ELSA_m_ds_w7)
+#opal.symbol_import(o,'ELSA_m_ds_w7', project='_Athlos_Harm_Dataset')
+```
+
+
+```{r,  echo=FALSE}
+living_status <- ELSA_ds_w7
+save(living_status, file = paste0(datafolder, "/w7/living_status.RData"))
+```
+
+
+
+
+# Quality estimation
+At wave 2 there are 109 new individuals interviewed. 
+At wave 3 there are 1729 new individuals interviewed. 
+At wave 4 there are 2689 new individuals interviewed. At wave 5 there are 142 new individuals interviewed, 
+and we don't have date of death, therefore we don't know the individuals that died between wave 4 and 5. 
+At wave 6 there are 1215 new individuals interviewed. 
+At wave 7 there are 509 new individuals interviewed.
+
+The ELSA sample has been refreshed four times, at waves 3, 4, 6 and 7. The new individuals interviewed are either new participants or partners. For this reason, there are new individuals interviewed even at waves that there wasn't refreshment.
+
+### Validation throughout waves
+
+```{r valid_ws_hrs, echo=F}
+dbb <- full_join(x = ELSA_ds_w1, y = ELSA_ds_w2, by = "id", suffix = c(".w1", ".w2"))
+dbb <- full_join(x = dbb, y = ELSA_ds_w3, by = "id")
+names(dbb) <- c("id", "w1", "w2", "w3")
+dbb <- full_join(x = dbb, y = ELSA_ds_w4, by = "id")
+names(dbb) <- c("id", "w1", "w2", "w3", "w4")
+dbb <- full_join(x = dbb, y = ELSA_ds_w5, by = "id")
+names(dbb) <- c("id", "w1", "w2", "w3", "w4", "w5")
+dbb <- full_join(x = dbb, y = ELSA_ds_w6, by = "id")
+names(dbb) <- c("id", "w1", "w2", "w3", "w4", "w5", "w6")
+dbb <- full_join(x = dbb, y = ELSA_ds_w7, by = "id")
+names(dbb) <- c("id", "w1", "w2", "w3", "w4", "w5", "w6", "w7")
+dbb$join <- apply(dbb[, 2:8], MARGIN = 1, FUN = function(x) paste(x[1], x[2], x[3], x[4], x[5], x[6], x[7], sep=""))
+f.dbb <- frq(dbb$join)[[1]][, c(1, 2, 4)]
+kable(f.dbb)
+#kable(f.dbb[f.dbb[, 3] >= 0.3, ])
+```
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

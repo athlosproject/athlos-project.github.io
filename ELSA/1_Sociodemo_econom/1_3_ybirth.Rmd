@@ -1,0 +1,940 @@
+---
+title: "Year of Birth"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+  
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `ybirth`
+* Variable label: `year of birth`
+* Variable description: `Year of birth`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+# Data process
+
+## ELSA
+
+
+```{r assign_all, echo=F}
+
+#We load all the data in order to having all the years of birth from the beginning, since some of them only are asked in later waves. In particular, those years before 1912 often are categorized as -7 and collapsed, nevertheless they are specified in wave 5.
+
+opal.assign.table.tibble(o,'ELSA_w1_ybirth','ELSA.wave_1_core_data_v3',
+                         variables=list('indobyr'), missings = TRUE)
+opal.assign.table.tibble(o, 'ELSA_w2_ybirth','ELSA.wave_2_core_data_v4',
+                         variables=list('indobyr'), missings = TRUE)
+opal.assign.table.tibble(o, 'ELSA_w3_ybirth','ELSA.wave_3_elsa_data_v4',
+                         variables=list('indobyr'), missings = TRUE)
+opal.assign.table.tibble(o, 'ELSA_w4_ybirth','ELSA.wave_4_elsa_data_v3',
+                         variables=list('indobyr'), missings = TRUE)
+opal.assign.table.tibble(o, 'ELSA_w5_ybirth','ELSA.wave_5_elsa_data_v4',
+                         variables=list('indobyr'), missings = TRUE)
+opal.assign.table.tibble(o, 'ELSA_w6_ybirth','ELSA.wave_6_elsa_data_v2',
+                         variables=list('Indobyr'), missings = TRUE)
+opal.assign.table.tibble(o, 'ELSA_w7_ybirth','ELSA.wave_7_elsa_data',
+                         variables=list('Indobyr'), missings = TRUE)
+
+ELSA_w1_ybirth <- opal.execute(o,'ELSA_w1_ybirth')
+ELSA_w2_ybirth <- opal.execute(o,'ELSA_w2_ybirth')
+ELSA_w3_ybirth <- opal.execute(o,'ELSA_w3_ybirth')
+ELSA_w4_ybirth <- opal.execute(o,'ELSA_w4_ybirth')
+ELSA_w5_ybirth <- opal.execute(o,'ELSA_w5_ybirth')
+ELSA_w6_ybirth <- opal.execute(o,'ELSA_w6_ybirth')
+ELSA_w7_ybirth <- opal.execute(o,'ELSA_w7_ybirth')
+
+```
+
+**R script:**
+
+```{r global}
+
+#We generate a tbl with all the id (join of all the tables by id)
+
+ELSA_ds_w1 <- tibble(id=ELSA_w1_ybirth$id, yb_w1=ELSA_w1_ybirth$indobyr)
+ELSA_ds_w2 <- tibble(id=ELSA_w2_ybirth$id, yb_w2=ELSA_w2_ybirth$indobyr)
+ELSA_ds_w3 <- tibble(id=ELSA_w3_ybirth$id, yb_w3=ELSA_w3_ybirth$indobyr)
+ELSA_ds_w4 <- tibble(id=ELSA_w4_ybirth$id, yb_w4=ELSA_w4_ybirth$indobyr)
+ELSA_ds_w5 <- tibble(id=ELSA_w5_ybirth$id, yb_w5=ELSA_w5_ybirth$indobyr)
+ELSA_ds_w6 <- tibble(id=ELSA_w6_ybirth$id, yb_w6=ELSA_w6_ybirth$Indobyr)
+ELSA_ds_w7 <- tibble(id=ELSA_w7_ybirth$id, yb_w7=ELSA_w7_ybirth$Indobyr)
+ELSA_ds_join2 <- full_join(ELSA_ds_w1,ELSA_ds_w2, by="id")
+ELSA_ds_join3 <- full_join(ELSA_ds_join2,ELSA_ds_w3, by="id")
+ELSA_ds_join4 <- full_join(ELSA_ds_join3,ELSA_ds_w4, by="id")
+ELSA_ds_join5 <- full_join(ELSA_ds_join4,ELSA_ds_w5, by="id")
+ELSA_ds_join6 <- full_join(ELSA_ds_join5,ELSA_ds_w6, by="id")
+ELSA_ds_join7 <- full_join(ELSA_ds_join6,ELSA_ds_w7, by="id")
+
+
+#kable(ELSA_ds_join7,align = 'c')
+
+len_ELSA <- length(ELSA_ds_join7$id)
+
+
+#We save in a list all the id with the variances corresponding to the answered years.
+
+nnvar <- function(x){
+  return(var(as.numeric(ELSA_ds_join7[x,c("yb_w1","yb_w2","yb_w3","yb_w4","yb_w5","yb_w6","yb_w7")]),na.rm = T))
+} 
+ntvar <- lapply( 1:len_ELSA, nnvar)
+
+
+
+
+#Function computing the mode for a certain data, adapted to avoid missings. It returns a length 0 object if all the answers are -7 or other missings.
+#When there are two years with the same maximum frequence, they are consecutive (we show this below), so, for the sake of simplicity we assume the right data is the first year.
+
+statmod <- function(x) {
+  z <- table(as.numeric(x))
+  z <- z[names(z)!=-7 & names(z)!=-8 & names(z)!=-9 & names(z)!=-1]
+  z <- names(z)[z == max(z,na.rm=T)]
+  z <- z[1]
+  return(as.numeric(z))
+}
+
+#Function returning the most frequent year (assumed to be the right data) for each individual. If there is a unique answer or the variance is 0, the year or missing is determined. Otherwise, it uses the previous function. 
+#In the case an individual has only missings as data and at least two numeric, -7 is returned. Later, we will see that it is the only real case by showing a table with all the numeric missings but -7.
+
+retyear <- function(x){
+  partv <- as.numeric(ELSA_ds_join7[x,2:8])
+  partv <- partv[!is.na(partv)]
+  if(length(partv)==1 | as.numeric(ntvar[[x]])==0){
+    return(partv[1])
+  }else{
+    if(length(statmod(ELSA_ds_join7[x,2:8]))!=0){
+      return(statmod(ELSA_ds_join7[x,2:8]))
+    }else{
+        return(-7)
+      }
+  }
+}
+
+# One hopes that the data of an individual in each wave it appears is numeric. Indeed, this is what we check at the beginning of each validation. As a consequence, there is no individual for which all the answers are non-numeric (!=-7,-8,-9,-1) missings.
+
+
+#A table is generated from the lists of id's and assumed to be right years respectively, and it is joined by id with the table of all the individuals.
+
+rightyear <- lapply(1:len_ELSA,function(x)retyear(x)) # lista
+rightyear <- as.integer(unlist(rightyear))
+righttib <- tibble(id=ELSA_ds_join7$id,ybirth0=rightyear)
+ELSA_ds_global <- full_join(ELSA_ds_join7,righttib, by="id")
+
+
+# Since respondents aged 90 or over are coded as -7, we recode 'ybirth0' taking into account the year when the wave of the first data of an individual was made.
+#Actually, as all but the last -7 missings are interviewed in the wave 1, their years of birth are recoded as 1912, while the year of birth of the other, who only was interviewed in the wave 7, is recoded as 1924.
+
+mis7list <- ELSA_ds_global$id[ELSA_ds_global$ybirth0==-7]
+
+for(ind in mis7list){
+  pind <- match(-7,as.numeric(ELSA_ds_global[ELSA_ds_global$id==ind,2:8]))
+  ELSA_ds_global[ELSA_ds_global$id==ind,9] <- 1910 + 2*pind
+}
+
+```
+
+
+```{r descript0, echo=F}
+#kable(ELSA_ds_global,align='c')
+
+
+
+vari <- ELSA_ds_global$ybirth0 # VARIABLE
+kable(Continuous_summary(vari, missing_values = c(-7,-9,-8,-1))[3], caption = 'ybirth0')
+pander(Continuous_summary(vari, missing_values = c(-7,-9,-8,-1))$summary, caption = "Summary")
+
+
+ggplot(ELSA_ds_global, aes(ybirth0)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1900,2000)
+
+
+
+
+
+
+#We build the table with all the numeric missings but -7.
+misvec <- c(-9,-8,-1)
+nmis <- vector("character")
+for (x in seq_len(len_ELSA)){
+  rowvec <- as.numeric(ELSA_ds_join7[x,2:8])
+  if(length(intersect(rowvec,misvec))!=0){
+    nmis <- c(nmis,as.character(ELSA_ds_join7[x,1]))
+  }
+}
+kable(ELSA_ds_global[ELSA_ds_global$id %in% nmis,],align='c',caption = 'all the numeric missings but -7 and the assumed right year for each individual')
+
+#We build the table of individuals giving as answers two years with the same frequence.
+dmodq <- function(x) {
+  z <- table(as.numeric(x))
+  z <- z[names(z)!=-7 & names(z)!=-8]
+  z <- names(z)[z == max(z,na.rm=T)]
+  if(length(z)>1){
+    return(TRUE)
+  }else{
+    return(FALSE)
+  }
+}
+
+ndym <- vector("character")
+for (x in seq_len(len_ELSA)){
+  partv <- as.numeric(ELSA_ds_join7[x,2:8])
+  partv <- partv[!is.na(partv)]
+  if(length(partv)!=1 & as.numeric(ntvar[[x]])!=0){
+    if(      dmodq(ELSA_ds_join7[x,2:8])==T     ){
+      ndym <- c(ndym,   as.character(ELSA_ds_join7[x,1])   )
+      }
+  }
+}
+
+kable(ELSA_ds_global[ELSA_ds_global$id %in% ndym,],align='c',caption = 'individuals giving as answers two years with the same frequence, and the assumed year')
+```
+
+
+
+
+
+
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `indobyr` |
+|----------|------------|
+| **Label** | `Year of birth combined HH grid and individual demographics collapsed at 90 plus` |
+| **Table name** | `wave_1_core_data_v3` |
+| **Missings** |`-7 = DOB on or before 29/02/1912 collapsed to avoid disclosure`|
+| **Description** |  |
+
+
+```{r assign1, eval=F, echo=F}
+opal.assign.table.tibble(o,'ELSA_w1_ybirth','ELSA.wave_1_core_data_v3',
+                         variables=list('indobyr'), missings = TRUE)
+```
+
+```{r local1, echo=F}
+#ELSA_w1_ybirth <- opal.execute(o,'ELSA_w1_ybirth')
+# Data answered in wave 1
+vari <- ELSA_w1_ybirth$indobyr # VARIABLE
+kable(Continuous_summary(vari, missing_values = c(-7))[3], caption = 'indobyr')
+pander(Continuous_summary(vari, missing_values = c(-7))$summary, caption = "Summary")
+ggplot(ELSA_w1_ybirth, aes(indobyr)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1900,2000)
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `keep "DOB on or before 29/02/1912 collapsed to avoid disclosure" as born into 1912. This is done by means of joining with the global table, where data was suitably transformed above`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo1}
+#We save all the known answers for the individuals of the wave 1 from the global table built at the beginning.
+ELSA_ds_w1 <- left_join(ELSA_ds_w1,ELSA_ds_global[,c(1,9)], by = "id")[,c(1,3)]
+names(ELSA_ds_w1)[2]<- "ybirth"
+
+
+ELSA_ds_w1$ybirth <- car::recode(ELSA_ds_w1$ybirth, "NA='999'")
+ELSA_ds_w1$ybirth <- labelled(ELSA_ds_w1$ybirth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=F}
+
+vari <- ELSA_ds_w1$ybirth
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w1, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1900,2000)
+```
+
+#### Validation
+```{r crosstabulation1, echo=F, results='asis'}
+#ELSA_w1_ybirth[is.na(ELSA_w1_ybirth$indobyr),]
+# There is no non-numeric missing in the answers. We work under this fact.
+
+valsum <- 0
+idvec <- vector("character")
+for (x in ELSA_w1_ybirth$id) {
+  lc <- (  (ELSA_w1_ybirth[ELSA_w1_ybirth$id==x,]$indobyr!=ELSA_ds_w1[ELSA_ds_w1$id==x,]$ybirth)  &  ((!(ELSA_w1_ybirth[ELSA_w1_ybirth$id==x,]$indobyr %in% c(-7))) |  (!ELSA_ds_w1[ELSA_ds_w1$id==x,]$ybirth %in% c(1912,ELSA_ds_global[ELSA_ds_global$id==x,]$ybirth0))) )
+  if(lc){
+    idvec <- c(idvec,x)
+  }
+  valsum <- valsum + lc
+}
+cat("The differences which are not due to corrected missings are ",valsum)
+kable(ELSA_ds_global[ELSA_ds_global$id %in% idvec,],align = 'c',caption = 'years non validated')
+```
+
+We note that the non validation of certain years is due to the fact that they are not the most frequent along the different waves answers, so they were corrected.
+
+
+
+```{r importOPAL1, echo=F}
+
+#opal.assign.data(o, 'ELSA_ds_w1', ELSA_ds_w1)
+#opal.symbol_import(o,'ELSA_ds_w1', project='_Athlos_Harm_Dataset')
+
+ELSA_m_ds_w1 <- ELSA_ds_w1
+ELSA_m_ds_w1$ybirth <- car::recode(ELSA_m_ds_w1$ybirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ELSA_m_ds_w1', ELSA_m_ds_w1)
+#opal.symbol_import(o,'ELSA_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `indobyr` |
+|----------|------------|
+| **Label** | `Year of birth combined HH grid and individual demographics collapsed at 90 plus` |
+| **Table name** | `wave_2_core_data_v4` |
+| **Missings** |`-9 = Refusal; -8 = Don't know; -7 = DOB on or before 29/02/1914 collapsed to avoid disclosure; -1 = Not applicable`|
+| **Description** |  |
+
+
+
+```{r assign2, eval=F, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w2_ybirth','ELSA.wave_2_core_data_v4',
+                         variables=list('indobyr'), missings = TRUE)
+```
+
+```{r local2, echo=F}
+# ELSA_w2_ybirth <- opal.execute(o,'ELSA_w2_ybirth')
+# Data answered in wave 2
+vari <- ELSA_w2_ybirth$indobyr # VARIABLE
+kable(Continuous_summary(vari, missing_values = c(-7,-8,-9,-1))[3], caption = 'indobyr')
+pander(Continuous_summary(vari, missing_values = c(-7,-8,-9,-1))$summary, caption = "Summary")
+ggplot(ELSA_w2_ybirth, aes(indobyr)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1900,2000)
+
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `recode -9 "Refusal" into 997`
+* `recode -8 "Don't know" into 998`
+* `keep "DOB on or before 29/02/1914 collapsed to avoid disclosure" as born into 1914. This is done by means of joining with the global table, where data was suitably transformed above`
+* `recode -1 "Not applicable" into 996`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo2}
+#We save all the known answers for the individuals of the wave 2 from the global table built at the beginning.
+ELSA_ds_w2 <- left_join(ELSA_ds_w2,ELSA_ds_global[,c(1,9)], by = "id")[,c(1,3)]
+names(ELSA_ds_w2)[2]<- "ybirth"
+
+
+
+ELSA_ds_w2$ybirth <- car::recode(ELSA_ds_w2$ybirth, "-9=997; -8=998; -1=996; NA=999")
+ELSA_ds_w2$ybirth <- labelled(ELSA_ds_w2$ybirth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2, echo=F}
+vari <- ELSA_ds_w2$ybirth
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w2, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1900,2000)
+```
+
+#### Validation
+```{r crosstabulation2, echo=F, results='asis'}
+#ELSA_w2_ybirth[is.na(ELSA_w2_ybirth$indobyr),]
+# There is no non-numeric missing in the answers. We work under this fact.
+
+valsum <- 0
+idvec <- vector("character")
+for (x in ELSA_w2_ybirth$id) {
+  lc <- (  (ELSA_w2_ybirth[ELSA_w2_ybirth$id==x,]$indobyr!=ELSA_ds_w2[ELSA_ds_w2$id==x,]$ybirth)  &  ((!(ELSA_w2_ybirth[ELSA_w2_ybirth$id==x,]$indobyr %in% c(-7,-9,-8,-1))) |  (!ELSA_ds_w2[ELSA_ds_w2$id==x,]$ybirth %in% c(1914,996,997,998,ELSA_ds_global[ELSA_ds_global$id==x,]$ybirth0))) )
+  if(lc){
+    idvec <- c(idvec,x)
+  }
+  valsum <- valsum + lc
+}
+cat("The differences which are not due to corrected missings are ",valsum)
+kable(ELSA_ds_global[ELSA_ds_global$id %in% idvec,],align = 'c',caption = 'years non validated')
+
+```
+
+We note that the non validation of certain years is due to the fact that they are not the most frequent along the different waves answers, so they were corrected.
+
+
+
+```{r importOPAL2, echo=F}
+
+#opal.assign.data(o, 'ELSA_ds_w2', ELSA_ds_w2)
+#opal.symbol_import(o,'ELSA_ds_w2', project='_Athlos_Harm_Dataset')
+
+ELSA_m_ds_w2 <- ELSA_ds_w2
+ELSA_m_ds_w2$ybirth <- car::recode(ELSA_m_ds_w2$ybirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ELSA_m_ds_w2', ELSA_m_ds_w2)
+#opal.symbol_import(o,'ELSA_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 3
+
+#### Study-specific variable description
+
+| **Name** | `indobyr` |
+|----------|------------|
+| **Label** | `Definitive year of birth collapsed at 90 plus. Priority: Didbn, Dhdob` |
+| **Table name** | `wave_3_elsa_data_v4` |
+| **Missings** |`-9 = Refusal; -8 = Don't know; -7 = DOB collapsed as on or before 29/02/1916; -1 = Not applicable`|
+| **Description** |  |
+
+
+
+
+```{r assign3, eval=F, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w3_ybirth','ELSA.wave_3_elsa_data_v4',
+                         variables=list('indobyr'), missings = TRUE)
+```
+
+```{r local3, echo=F}
+# ELSA_w3_ybirth <- opal.execute(o,'ELSA_w3_ybirth')
+# Data answered in wave 3
+vari <- ELSA_w3_ybirth$indobyr # VARIABLE
+kable(Continuous_summary(vari, missing_values = c(-7,-8,-9,-1))[3], caption = 'indobyr')
+pander(Continuous_summary(vari, missing_values = c(-7,-8,-9,-1))$summary, caption = "Summary")
+ggplot(ELSA_w3_ybirth, aes(indobyr)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1900,2000)
+
+
+
+
+
+
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `recode -9 "Refusal" into 997`
+* `recode -8 "Don't know" into 998`
+* `keep "DOB collapsed as on or before 29/02/1916" as born into 1916. This is done by means of joining with the global table, where data was suitably transformed above`
+* `recode -1 "Not applicable" into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo3}
+#We save all the known answers for the individuals of the wave 3 from the global table built at the beginning.
+ELSA_ds_w3 <- left_join(ELSA_ds_w3,ELSA_ds_global[,c(1,9)], by = "id")[,c(1,3)]
+names(ELSA_ds_w3)[2]<- "ybirth"
+
+
+ELSA_ds_w3$ybirth <- car::recode(ELSA_ds_w3$ybirth, "-9=997; -8=998; -1=996; NA=999")
+ELSA_ds_w3$ybirth <- labelled(ELSA_ds_w3$ybirth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript3, echo=F}
+vari <- ELSA_ds_w3$ybirth
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w3, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim( 1900,2000)
+```
+
+#### Validation
+```{r crosstabulation3, echo=F, results='asis'}
+#ELSA_w3_ybirth[is.na(ELSA_w3_ybirth$indobyr),]
+# There is no non-numeric missing in the answers. We work under this fact.
+
+valsum <- 0
+idvec <- vector("character")
+for (x in ELSA_w3_ybirth$id) {
+  lc <- (  (ELSA_w3_ybirth[ELSA_w3_ybirth$id==x,]$indobyr!=ELSA_ds_w3[ELSA_ds_w3$id==x,]$ybirth)  &  ((!(ELSA_w3_ybirth[ELSA_w3_ybirth$id==x,]$indobyr %in% c(-7,-9,-8,-1))) |  (!ELSA_ds_w3[ELSA_ds_w3$id==x,]$ybirth %in% c(1916,996,997,998,ELSA_ds_global[ELSA_ds_global$id==x,]$ybirth0))) )
+  if(lc){
+    idvec <- c(idvec,x)
+  }
+  valsum <- valsum + lc
+}
+cat("The differences which are not due to corrected missings are ",valsum)
+kable(ELSA_ds_global[ELSA_ds_global$id %in% idvec,],align = 'c',caption = 'years non validated')
+
+```
+
+We note that the non validation of certain years is due to the fact that they are not the most frequent along the different waves answers, so they were corrected.
+
+
+
+
+
+```{r importOPAL3, echo=F}
+
+#opal.assign.data(o, 'ELSA_ds_w3', ELSA_ds_w3)
+#opal.symbol_import(o,'ELSA_ds_w3', project='_Athlos_Harm_Dataset')
+
+ELSA_m_ds_w3 <- ELSA_ds_w3
+ELSA_m_ds_w3$ybirth <- car::recode(ELSA_m_ds_w3$ybirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ELSA_m_ds_w3', ELSA_m_ds_w3)
+#opal.symbol_import(o,'ELSA_m_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 4
+
+#### Study-specific variable description
+
+| **Name** | `indobyr` |
+|----------|------------|
+| **Label** | `Definitive year of birth collapsed at 90 plus. Priority: Didbn, Dhdob` |
+| **Table name** | `wave_4_elsa_data_v3` |
+| **Missings** |`-7 = DOB collapsed if aged 90 or over at interview`|
+| **Description** |  |
+
+
+
+```{r assign4, eval=F, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w4_ybirth','ELSA.wave_4_elsa_data_v3',
+                         variables=list('indobyr'), missings = TRUE)
+```
+
+```{r local4, echo=F}
+# ELSA_w4_ybirth <- opal.execute(o,'ELSA_w4_ybirth')
+# Data answered in wave 4
+vari <- ELSA_w4_ybirth$indobyr # VARIABLE
+kable(Continuous_summary(vari, missing_values = c(-7))[3], caption = 'indobyr')
+pander(Continuous_summary(vari, missing_values = c(-7))$summary, caption = "Summary")
+ggplot(ELSA_w4_ybirth, aes(indobyr)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1900,2000)
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `keep "DOB collapsed if aged 90 or over at interview" as born into 1918. This is done by means of joining with the global table, where data was suitably transformed above`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo4}
+#We save all the known answers for the individuals of the wave 4 from the global table built at the beginning.
+ELSA_ds_w4 <- left_join(ELSA_ds_w4,ELSA_ds_global[,c(1,9)], by = "id")[,c(1,3)]
+names(ELSA_ds_w4)[2]<- "ybirth"
+
+ELSA_ds_w4$ybirth <- car::recode(ELSA_ds_w4$ybirth, "NA=999")
+ELSA_ds_w4$ybirth <- labelled(ELSA_ds_w4$ybirth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript4, echo=F}
+vari <- ELSA_ds_w4$ybirth
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w4, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1900, 2000)
+```
+
+#### Validation
+```{r crosstabulation4, echo=F, results='asis'}
+#ELSA_w4_ybirth[is.na(ELSA_w4_ybirth$indobyr),]
+# There is no non-numeric missing in the answers. We work under this fact.
+
+valsum <- 0
+idvec <- vector("character")
+for (x in ELSA_w4_ybirth$id) {
+  lc <- (  (ELSA_w4_ybirth[ELSA_w4_ybirth$id==x,]$indobyr!=ELSA_ds_w4[ELSA_ds_w4$id==x,]$ybirth)  &  ((!(ELSA_w4_ybirth[ELSA_w4_ybirth$id==x,]$indobyr %in% c(-7))) |  (!ELSA_ds_w4[ELSA_ds_w4$id==x,]$ybirth %in% c(1918,ELSA_ds_global[ELSA_ds_global$id==x,]$ybirth0))) )
+  if(lc){
+    idvec <- c(idvec,x)
+  }
+  valsum <- valsum + lc
+}
+cat("The differences which are not due to corrected missings are ",valsum)
+kable(ELSA_ds_global[ELSA_ds_global$id %in% idvec,],align = 'c',caption = 'years non validated')
+
+```
+
+We note that the non validation of certain years is due to the fact that they are not the most frequent along the different waves answers, so they were corrected.
+
+
+
+
+
+```{r importOPAL4, echo=F}
+
+#opal.assign.data(o, 'ELSA_ds_w4', ELSA_ds_w4)
+#opal.symbol_import(o,'ELSA_ds_w4', project='_Athlos_Harm_Dataset')
+
+ELSA_m_ds_w4 <- ELSA_ds_w4
+ELSA_m_ds_w4$ybirth <- car::recode(ELSA_m_ds_w4$ybirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ELSA_m_ds_w4', ELSA_m_ds_w4)
+#opal.symbol_import(o,'ELSA_m_ds_w4', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 5
+
+#### Study-specific variable description
+
+| **Name** | `indobyr` |
+|----------|------------|
+| **Label** | `Definitive year of birth collapsed at 90 plus. Priority: Didbn, Dhdob` |
+| **Table name** | `wave_5_elsa_data_v4` |
+| **Missings** |`-7 = DOB on or before 29/02/1920 collapsed to avoid disclosure; -1 = Not applicable`|
+| **Description** |  |
+
+
+
+```{r assign5, eval=F, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w5_ybirth','ELSA.wave_5_elsa_data_v4',
+                         variables=list('indobyr'), missings = TRUE)
+```
+
+```{r local5, echo=F}
+# ELSA_w5_ybirth <- opal.execute(o,'ELSA_w5_ybirth')
+# Data answered in wave 5
+vari <- ELSA_w5_ybirth$indobyr # VARIABLE
+kable(Continuous_summary(vari, missing_values = c(-7,-1))[3], caption = 'indobyr')
+pander(Continuous_summary(vari, missing_values = c(-7,-1))$summary, caption = "Summary")
+ggplot(ELSA_w5_ybirth, aes(indobyr)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1900,2000)
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `keep "DOB on or before 29/02/1920 collapsed to avoid disclosure" as born into 1920. This is done by means of joining with the global table, where data was suitably transformed above`
+* `recode -1 "Not applicable" into 996`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo5}
+#We save all the known answers for the individuals of the wave 5 from the global table built at the beginning.
+ELSA_ds_w5 <- left_join(ELSA_ds_w5,ELSA_ds_global[,c(1,9)], by = "id")[,c(1,3)]
+names(ELSA_ds_w5)[2]<- "ybirth"
+
+ELSA_ds_w5$ybirth <- car::recode(ELSA_ds_w5$ybirth, "-1=996; NA=999")
+ELSA_ds_w5$ybirth <- labelled(ELSA_ds_w5$ybirth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript5, echo=F}
+vari <- ELSA_ds_w5$ybirth
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w5, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1900,2000)
+```
+
+#### Validation
+```{r crosstabulation5, echo=F, results='asis'}
+#ELSA_w5_ybirth[is.na(ELSA_w5_ybirth$indobyr),]
+# There is no non-numeric missing in the answers. We work under this fact.
+
+valsum <- 0
+idvec <- vector("character")
+for (x in ELSA_w5_ybirth$id) {
+  lc <- (  (ELSA_w5_ybirth[ELSA_w5_ybirth$id==x,]$indobyr!=ELSA_ds_w5[ELSA_ds_w5$id==x,]$ybirth)  &  ((!(ELSA_w5_ybirth[ELSA_w5_ybirth$id==x,]$indobyr %in% c(-7,-1))) |  (!ELSA_ds_w5[ELSA_ds_w5$id==x,]$ybirth %in% c(1920,ELSA_ds_global[ELSA_ds_global$id==x,]$ybirth0))) )
+  if(lc){
+    idvec <- c(idvec,x)
+  }
+  valsum <- valsum + lc
+}
+cat("The differences which are not due to corrected missings are ",valsum)
+kable(ELSA_ds_global[ELSA_ds_global$id %in% idvec,],align = 'c',caption = 'years non validated')
+```
+
+We note that the non validation of certain years is due to the fact that they are not the most frequent along the different waves answers, so they were corrected.
+
+
+
+
+```{r importOPAL5, echo=F}
+
+#opal.assign.data(o, 'ELSA_ds_w5', ELSA_ds_w5)
+#opal.symbol_import(o,'ELSA_ds_w5', project='_Athlos_Harm_Dataset')
+
+ELSA_m_ds_w5 <- ELSA_ds_w5
+ELSA_m_ds_w5$ybirth <- car::recode(ELSA_m_ds_w5$ybirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ELSA_m_ds_w5', ELSA_m_ds_w5)
+#opal.symbol_import(o,'ELSA_m_ds_w5', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 6
+
+#### Study-specific variable description
+
+| **Name** | `Indobyr` |
+|----------|------------|
+| **Label** | `Definitive year of birth collapsed at 90 plus` |
+| **Table name** | `wave_6_elsa_data_v2` |
+| **Missings** |`-7 = DOB collapsed if aged 90 or over at interview`|
+| **Description** |  |
+
+
+
+```{r assign6, eval=F, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w6_ybirth','ELSA.wave_6_elsa_data_v2',
+                         variables=list('Indobyr'), missings = TRUE)
+```
+
+```{r local6, echo=F}
+# ELSA_w6_ybirth <- opal.execute(o,'ELSA_w6_ybirth')
+# Data answered in wave 6
+vari <- ELSA_w6_ybirth$Indobyr # VARIABLE
+kable(Continuous_summary(vari, missing_values = c(-7))[3], caption = 'Indobyr')
+pander(Continuous_summary(vari, missing_values = c(-7))$summary, caption = "Summary")
+ggplot(ELSA_w6_ybirth, aes(Indobyr)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1900,2000)
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `keep "DOB collapsed if aged 90 or over at interview" as born into 1922. This is done by means of joining with the global table, where data was suitably transformed above`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo6}
+#We save all the known answers for the individuals of the wave 6 from the global table built at the beginning.
+ELSA_ds_w6 <- left_join(ELSA_ds_w6,ELSA_ds_global[,c(1,9)], by = "id")[,c(1,3)]
+names(ELSA_ds_w6)[2]<- "ybirth"
+
+ELSA_ds_w6$ybirth <- car::recode(ELSA_ds_w6$ybirth, "NA=999")
+ELSA_ds_w6$ybirth <- labelled(ELSA_ds_w6$ybirth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript6, echo=F}
+vari <- ELSA_ds_w6$ybirth
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w6, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1900,2000)
+```
+
+#### Validation
+```{r crosstabulation6, echo=F, results='asis'}
+#ELSA_w6_ybirth[is.na(ELSA_w6_ybirth$Indobyr),]
+# There is no non-numeric missing in the answers. We work under this fact.
+
+valsum <- 0
+idvec <- vector("character")
+for (x in ELSA_w6_ybirth$id) {
+  lc <- (  (ELSA_w6_ybirth[ELSA_w6_ybirth$id==x,]$Indobyr!=ELSA_ds_w6[ELSA_ds_w6$id==x,]$ybirth)  &  ((!(ELSA_w6_ybirth[ELSA_w6_ybirth$id==x,]$Indobyr %in% c(-7))) |  (!ELSA_ds_w6[ELSA_ds_w6$id==x,]$ybirth %in% c(1922,ELSA_ds_global[ELSA_ds_global$id==x,]$ybirth0))) )
+  if(lc){
+    idvec <- c(idvec,x)
+  }
+  valsum <- valsum + lc
+}
+cat("The differences which are not due to corrected missings are ",valsum)
+kable(ELSA_ds_global[ELSA_ds_global$id %in% idvec,],align = 'c',caption = 'years non validated')
+```
+
+We note that the non validation of certain years is due to the fact that they are not the most frequent along the different waves answers, so they were corrected.
+
+
+
+```{r importOPAL6, echo=F}
+
+#opal.assign.data(o, 'ELSA_ds_w6', ELSA_ds_w6)
+#opal.symbol_import(o,'ELSA_ds_w6', project='_Athlos_Harm_Dataset')
+
+ELSA_m_ds_w6 <- ELSA_ds_w6
+ELSA_m_ds_w6$ybirth <- car::recode(ELSA_m_ds_w6$ybirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ELSA_m_ds_w6', ELSA_m_ds_w6)
+#opal.symbol_import(o,'ELSA_m_ds_w6', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 7
+
+#### Study-specific variable description
+
+| **Name** | `Indobyr` |
+|----------|------------|
+| **Label** | `Definitive year of birth collapsed at 90 plus` |
+| **Table name** | `wave_7_elsa_data` |
+| **Missings** |`-7 = DOB collapsed if aged 90 or over at interview`|
+| **Description** |  |
+
+
+```{r assign7, eval=F, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w7_ybirth','ELSA.wave_7_elsa_data',
+                         variables=list('Indobyr'), missings = TRUE)
+```
+
+
+```{r local7, echo=F}
+# ELSA_w7_ybirth <- opal.execute(o,'ELSA_w7_ybirth')
+# Data answered in wave 7
+vari <- ELSA_w7_ybirth$Indobyr # VARIABLE
+kable(Continuous_summary(vari, missing_values = c(-7))[3], caption = 'Indobyr')
+pander(Continuous_summary(vari, missing_values = c(-7))$summary, caption = "Summary")
+ggplot(ELSA_w7_ybirth, aes(Indobyr)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1900,2000)
+```
+
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `keep "DOB collapsed if aged 90 or over at interview" as born into 1924. This is done by means of joining with the global table, where data was suitably transformed above`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo7}
+#We save all the known answers for the individuals of the wave 7 from the global table built at the beginning.
+ELSA_ds_w7 <- left_join(ELSA_ds_w7,ELSA_ds_global[,c(1,9)], by = "id")[,c(1,3)]
+names(ELSA_ds_w7)[2]<- "ybirth"
+
+ELSA_ds_w7$ybirth <- car::recode(ELSA_ds_w7$ybirth, "NA=999")
+ELSA_ds_w7$ybirth <- labelled(ELSA_ds_w7$ybirth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript7, echo=F}
+vari <- ELSA_ds_w7$ybirth
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w7, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1900,2000)
+```
+
+
+#### Validation
+```{r crosstabulation7, echo=F, results='asis'}
+#ELSA_w7_ybirth[is.na(ELSA_w7_ybirth$Indobyr),]
+# There is no non-numeric missing in the answers. We work under this fact.
+
+valsum <- 0
+idvec <- vector("character")
+for (x in ELSA_w7_ybirth$id) {
+  lc <- (  (ELSA_w7_ybirth[ELSA_w7_ybirth$id==x,]$Indobyr!=ELSA_ds_w7[ELSA_ds_w7$id==x,]$ybirth)  &  ((!(ELSA_w7_ybirth[ELSA_w7_ybirth$id==x,]$Indobyr %in% c(-7))) |  (!ELSA_ds_w7[ELSA_ds_w7$id==x,]$ybirth %in% c(1924,ELSA_ds_global[ELSA_ds_global$id==x,]$ybirth0))) )
+  if(lc){
+    idvec <- c(idvec,x)
+  }
+  valsum <- valsum + lc
+}
+cat("The differences which are not due to corrected missings are ",valsum)
+kable(ELSA_ds_global[ELSA_ds_global$id %in% idvec,],align = 'c',caption = 'years non validated')
+```
+
+We note that the non validation of certain years is due to the fact that they are not the most frequent along the different waves answers, so they were corrected.
+
+
+
+
+
+```{r importOPAL7, echo=F}
+
+#opal.assign.data(o, 'ELSA_ds_w7', ELSA_ds_w7)
+#opal.symbol_import(o,'ELSA_ds_w7', project='_Athlos_Harm_Dataset')
+
+ELSA_m_ds_w7 <- ELSA_ds_w7
+ELSA_m_ds_w7$ybirth <- car::recode(ELSA_m_ds_w7$ybirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ELSA_m_ds_w7', ELSA_m_ds_w7)
+#opal.symbol_import(o,'ELSA_m_ds_w7', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+# Quality estimation
+
+
+Respondents aged 90 or over were coded as missing (-7) and recoded 
+to DK (998) or NA (996).
+
+
+
+```{r save, echo=FALSE}
+ybirth <- ELSA_ds_w1
+save(ybirth, file = "../RData/w1/ybirth.RData")
+rm(ybirth)
+
+ybirth <- ELSA_ds_w2
+save(ybirth, file = "../RData/w2/ybirth.RData")
+rm(ybirth)
+
+ybirth <- ELSA_ds_w3
+save(ybirth, file = "../RData/w3/ybirth.RData")
+rm(ybirth)
+
+ybirth <- ELSA_ds_w4
+save(ybirth, file = "../RData/w4/ybirth.RData")
+rm(ybirth)
+
+ybirth <- ELSA_ds_w5
+save(ybirth, file = "../RData/w5/ybirth.RData")
+rm(ybirth)
+
+ybirth <- ELSA_ds_w6
+save(ybirth, file = "../RData/w6/ybirth.RData")
+rm(ybirth)
+
+ybirth <- ELSA_ds_w7
+save(ybirth, file = "../RData/w7/ybirth.RData")
+rm(ybirth)
+```
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

@@ -1,0 +1,574 @@
+---
+title: "Sex"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+```{r setup, include=FALSE, echo=FALSE}
+source("../../setup_iago.r")
+```
+
+
+```{r lab, echo=FALSE}
+ds_label <- "Sex"
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `sex`
+* Variable label: `biological sex`
+* Variable description: `participant's biological sex`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | female
+1        | male
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## England 
+
+### Wave 1 
+
+#### Study-specific variable description
+
+* Name: `indsex`
+* Label: `Definitive sex variable`
+* Categories: 
+    + `1.0 = Male`
+    + `2.0 = Female`
+* Description:
+
+```{r assign1, echo=FALSE}
+opal.assign.table.tibble(o, 'ELSA_w1_sex','ELSA.wave_1_core_data_v3',
+                         variables=list('indsex'), missings = TRUE)
+ELSA_w1_sex <- opal.execute(o,'ELSA_w1_sex')
+```
+
+```{r local1, echo=FALSE}
+vari <- ELSA_w1_sex$indsex
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ELSA_w1_sex, aes(x=factor(indsex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Sex") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1 "Male" into 1`
+* `2 "Female" into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1, echo=TRUE}
+ELSA_ds_w1 <- tibble(id=ELSA_w1_sex$id)
+ELSA_ds_w1$sex <- car::recode(ELSA_w1_sex$indsex, "1=1; 2=0")
+ELSA_ds_w1$sex <- labelled(ELSA_ds_w1$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+label(ELSA_ds_w1$sex) <- ds_label
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1, echo=FALSE}
+vari <- ELSA_ds_w1$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w1, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=FALSE}
+AfterH <- table(ELSA_ds_w1$sex)
+BeforeH <- table(ELSA_w1_sex$indsex)[c(2,1)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1")
+kable(C)
+```
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+* Name: `indsex`
+* Label: `Definitive sex variable. Priority: Disex, Dhsex`
+* Categories: 
+    + `1 = Male`
+    + `2 = Female`
+* Missings
+    + `-9 = Refusal`
+    + `-8 = Don't Know`
+    + `-1 = Not applicable`
+* Description:
+
+```{r assign2, echo=FALSE}
+opal.assign.table.tibble(o, 'ELSA_w2_sex','ELSA.wave_2_core_data_v4',
+                         variables=list('indsex'), missings = TRUE)
+ELSA_w2_sex <- opal.execute(o,'ELSA_w2_sex')
+```
+
+```{r local2, echo=FALSE}
+vari <- ELSA_w2_sex$indsex
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ELSA_w2_sex, aes(x=factor(indsex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Sex") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1 "Male" into 1`
+* `2 "Female" into 0`
+* `-9 "Refusal" into 997` 
+* `-8 "Don't Know" into 998` 
+* `-1 "Not applicable" into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2, echo=TRUE}
+ELSA_ds_w2 <- tibble(id=ELSA_w2_sex$id)
+ELSA_ds_w2$sex <- car::recode(ELSA_w2_sex$indsex, "1=1; 2=0;-9=997; -8=998")
+ELSA_ds_w2$sex <- labelled(ELSA_ds_w2$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+label(ELSA_ds_w2$sex) <- ds_label
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2, echo=FALSE}
+vari <- ELSA_ds_w2$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w2, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2, echo=FALSE}
+AfterH <- table(ELSA_ds_w2$sex)
+BeforeH <- table(ELSA_w2_sex$indsex)[c(2,1)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1")
+kable(C)
+```
+
+
+```{r importOPAL2, echo=FALSE}
+val_labels(ELSA_ds_w2) <- NULL
+opal.assign.data(o, 'ELSA_ds_w2', ELSA_ds_w2)
+#opal.symbol_import(o,'ELSA_ds_w2', project='_Athlos_Harm_Dataset')
+
+ELSA_m_ds_w2 <- ELSA_ds_w2
+ELSA_m_ds_w2$sex <- car::recode(ELSA_m_ds_w2$sex, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+opal.assign.data(o, 'ELSA_m_ds_w2', ELSA_m_ds_w2)
+#opal.symbol_import(o,'ELSA_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 3
+
+#### Study-specific variable description
+
+* Name: `indsex`
+* Label: `Definitive sex variable. Priority: Disex, Dhsex`
+* Categories: 
+  + `1 = Male`
+  + `2 = Female`
+* Missings
+  + `-9 = Refusal`
+  + `-8 = Don't Know`
+  + `-1 = Not applicable`
+* Description:
+```{r assign3, echo=FALSE}
+opal.assign.table.tibble(o, 'ELSA_w3_sex','ELSA.wave_3_elsa_data_v4',
+                         variables=list('indsex'), missings = TRUE)
+ELSA_w3_sex <- opal.execute(o,'ELSA_w3_sex')
+```
+
+```{r local3, echo=FALSE}
+vari <- ELSA_w3_sex$indsex
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ELSA_w3_sex, aes(x=factor(indsex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Sex") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1 "Male" into 1`
+* `2 "Female" into 0`
+* `-9 "Refusal" into 997` 
+* `-8 "Don't Know" into 998` 
+* `-1 "Not applicable" into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo3, echo=TRUE}
+ELSA_ds_w3 <- tibble(id=ELSA_w3_sex$id)
+ELSA_ds_w3$sex <- car::recode(ELSA_w3_sex$indsex, "1=1; 2=0;-9=997; -8=998")
+ELSA_ds_w3$sex <- labelled(ELSA_ds_w3$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+label(ELSA_ds_w3$sex) <- ds_label
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript3, echo=FALSE}
+vari <- ELSA_ds_w3$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w3, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue")+ xlab("Sex") + ylab("Frequency")
+```
+
+##### Validation
+```{r crosstabulation3, echo=FALSE}
+AfterH <- table(ELSA_ds_w3$sex)
+BeforeH <- table(ELSA_w3_sex$indsex)[c(2,1)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1")
+kable(C)
+```
+
+
+
+### Wave 4
+
+#### Study-specific variable description
+
+
+* Name: `indsex`
+* Label: `Definitive sex variable. Priority: Disex, Dhsex`
+* Categories: 
+   + `1 = Male`
+   + `2 = Female`
+* Description:
+```{r assign4, echo=FALSE}
+opal.assign.table.tibble(o, 'ELSA_w4_sex','ELSA.wave_4_elsa_data_v3',
+                         variables=list('indsex'), missings = TRUE)
+ELSA_w4_sex <- opal.execute(o,'ELSA_w4_sex')
+```
+
+```{r local4, echo=FALSE}
+vari <- ELSA_w4_sex$indsex
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ELSA_w4_sex, aes(x=factor(indsex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Sex") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1 "Male" into 1`
+* `2 "Female" into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo4, echo=TRUE}
+ELSA_ds_w4 <- tibble(id=ELSA_w4_sex$id)
+ELSA_ds_w4$sex <- car::recode(ELSA_w4_sex$indsex, "1=1; 2=0;-9=997; -8=998")
+ELSA_ds_w4$sex <- labelled(ELSA_ds_w4$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+label(ELSA_ds_w4$sex) <- ds_label
+
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript4, echo=FALSE}
+vari <- ELSA_ds_w4$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w4, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation4, echo=FALSE}
+AfterH <- table(ELSA_ds_w4$sex)
+BeforeH <- table(ELSA_w4_sex$indsex)[c(2,1)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1")
+kable(C)
+```
+
+
+
+
+### Wave 5
+
+#### Study-specific variable description
+
+* Name: `indsex`
+* Label: `Definitive sex variable. Priority: Disex, Dhsex`
+* Categories: 
+  + `1.0 = Male`
+  + `2.0 = Female`
+* Description:
+```{r assign5, echo=FALSE}
+opal.assign.table.tibble(o, 'ELSA_w5_sex','ELSA.wave_5_elsa_data_v4',
+                         variables=list('indsex'), missings = TRUE)
+ELSA_w5_sex <- opal.execute(o,'ELSA_w5_sex')
+```
+
+```{r local5, echo=FALSE}
+vari <- ELSA_w5_sex$indsex
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ELSA_w5_sex, aes(x=factor(indsex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Sex") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1 "Male" into 1`
+* `2 "Female" into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo5, echo=TRUE}
+ELSA_ds_w5 <- tibble(id=ELSA_w5_sex$id)
+ELSA_ds_w5$sex <- car::recode(ELSA_w5_sex$indsex, "1=1; 2=0;-9=997; -8=998")
+ELSA_ds_w5$sex <- labelled(ELSA_ds_w5$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+label(ELSA_ds_w5$sex) <- ds_label
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript5, echo=FALSE}
+vari <- ELSA_ds_w5$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w5, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation5, echo=FALSE}
+AfterH <- table(ELSA_ds_w5$sex)
+BeforeH <- table(ELSA_w5_sex$indsex)[c(2,1)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1")
+kable(C)
+```
+
+
+
+
+### Wave 6
+
+#### Study-specific variable description
+
+* Name: `indsex`
+* Label: `Definitive sex variable. Priority: Disex, Dhsex`
+* Categories: 
+  + `1 = Male`
+  + `2 = Female`
+* Description:
+```{r assign6, echo=FALSE}
+opal.assign.table.tibble(o, 'ELSA_w6_sex','ELSA.wave_6_elsa_data_v2',
+                         variables=list('indsex'), missings = TRUE)
+ELSA_w6_sex <- opal.execute(o,'ELSA_w6_sex')
+```
+
+```{r local6, echo=FALSE}
+vari <- ELSA_w6_sex$indsex
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ELSA_w6_sex, aes(x=factor(indsex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Sex") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1 "Male" into 1`
+* `2 "Female" into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo6, echo=TRUE}
+ELSA_ds_w6 <- tibble(id=ELSA_w6_sex$id)
+ELSA_ds_w6$sex <- car::recode(ELSA_w6_sex$indsex, "1=1; 2=0;-9=997; -8=998")
+ELSA_ds_w6$sex <- labelled(ELSA_ds_w6$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+label(ELSA_ds_w6$sex) <- ds_label
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript6, echo=FALSE}
+vari <- ELSA_ds_w6$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w6, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Sex") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation6, echo=FALSE}
+AfterH <- table(ELSA_ds_w6$sex)
+BeforeH <- table(ELSA_w6_sex$indsex)[c(2,1)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1")
+kable(C)
+```
+
+
+
+
+
+
+### Wave 7
+
+#### Study-specific variable description
+
+
+| **Name** | `indsex` |
+|-|-|
+| **Label** | `Definitive sex variable: priority disex, dhsex` |
+| **Table name** | `wave_7_elsa_data` |
+| **Categories** |`1 = Male`<br/>`2 = Female`|
+| **Description** |  |
+
+
+```{r assign w7, echo=FALSE}
+
+opal.assign.table.tibble(o, 'ELSA_w7','ELSA.wave_7_elsa_data', variables=list('indsex'), missings = TRUE)
+ELSA_w7 <- opal.execute(o,'ELSA_w7')
+
+```
+
+```{r local w7, echo=FALSE}
+
+vari <- ELSA_w7$indsex
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = 'indsex') 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ELSA_w7, aes(x=factor(indsex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `1 "Male" into 1`
+* `2 "Female" into 0`
+
+**R script:**
+
+```{r harmo w7, echo=TRUE}
+
+ELSA_ds_w7 <- tibble(id=ELSA_w7$id)
+ELSA_ds_w7$sex <- car::recode(ELSA_w7$indsex, "1=1; 2=0")
+ELSA_ds_w7$sex <- labelled(ELSA_ds_w7$sex, labels = c("Female"=0, "Male"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+label(ELSA_ds_w7$sex) <- ds_label
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w7, echo=FALSE}
+
+vari <- ELSA_ds_w7$sex
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w7, aes(x=factor(sex))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Sex") + ylab("Frequency")
+
+```
+
+#### Validation
+
+```{r crosstabulation w7, echo=FALSE}
+
+AfterH <- table(ELSA_ds_w7$sex)
+BeforeH <- table(ELSA_w7$indsex)[c(2,1)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1")
+kable(C)
+
+```
+
+
+
+
+
+# Quality estimation
+No comments.
+
+```{r save, echo=FALSE}
+sex <- ELSA_ds_w1
+save(sex, file = "../RData/w1/sex.RData")
+rm(sex)
+
+sex <- ELSA_ds_w2
+save(sex, file = "../RData/w2/sex.RData")
+rm(sex)
+
+sex <- ELSA_ds_w3
+save(sex, file = "../RData/w3/sex.RData")
+rm(sex)
+
+sex <- ELSA_ds_w4
+save(sex, file = "../RData/w4/sex.RData")
+rm(sex)
+
+sex <- ELSA_ds_w5
+save(sex, file = "../RData/w5/sex.RData")
+rm(sex)
+
+sex <- ELSA_ds_w6
+save(sex, file = "../RData/w6/sex.RData")
+rm(sex)
+
+sex <- ELSA_ds_w7
+save(sex, file = "../RData/w7/sex.RData")
+rm(sex)
+```
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```

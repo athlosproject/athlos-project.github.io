@@ -1,0 +1,657 @@
+---
+title: "Verbal fluency"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+
+# Loading local datasets of ELSA and domain health status:
+load("ELSA_w1.rdata")
+load("ELSA_w2.rdata")
+load("ELSA_w3.rdata")
+load("ELSA_w4.rdata")
+load("ELSA_w5.rdata")
+load("ELSA_w6.rdata")
+load("ELSA_w7.rdata")
+```
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `cog_verb_c`
+* Variable label: `Cognition - verbal fluency - Continuous`
+* Variable description: `Cognition - verbal fluency - Continuous. Test that assesses verbal (semantic) fluency: name as many animals as they could think of in 1 minute`
+* Domain: `Health status and functional limitations`
+* Value type: `Continuous`
+* Comments: `Means of all sistolic blood pressure measures.`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+* Short name: `cog_verb`
+* Variable label: `Cognition - verbal fluency`
+* Variable description: `Cognition - verbal fluency. Test that assesses verbal (semantic) fluency: name as many animals as they could think of in 1 minute. Discrete variable: value 0 = <=25%; value 1 = >25%.`
+* Domain: `Health status and functional limitations`
+* Value type: `Categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | <=25%
+1        | >25%
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Verbal fluency"
+ds_label_cog_verb_c <- "Cognition - verbal fluency - Continuous. Test that assesses verbal (semantic) fluency: name as many animals as they could think of in 1 minute"
+ds_label_cog_verb <- "Cognition - verbal fluency. Test that assesses verbal (semantic) fluency: name as many animals as they could think of in 1 minute. Discrete variable: value 0 = <=25%; value 1 = >25%"
+```
+
+# Data process
+
+## England
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `cfani`
+* Label: `Number of  animals  mentioned after request  to list as many as possible in one minute`
+* Categories:
+    + `Continuous Variable 0-50`
+* Missings
+   + `-9 = Refusal` 
+   + `-8 = Don't know` 
+   + `-1 = Not applicable` 
+
+```{r local w1, echo=FALSE}
+ELSA_w1_cog_verb <- ELSA_w1
+vari <- ELSA_w1_cog_verb$cfani
+kable(Continuous_summary(var = vari, missing_values = c(-8,-9,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-8,-9,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-8,-9,-1))$summary, caption = "Summary")
+ggplot(ELSA_w1_cog_verb, aes(cfani)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")+xlim(0,50)
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+* `-9 Refusal into 997` 
+* `-8 Don't know into 998`
+* `-1 Not applicable into 996`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo w1}
+#cog_verb_c
+ELSA_ds_w1 <- tibble(id=ELSA_w1_cog_verb$id)
+ELSA_ds_w1$cog_verb_c <- car::recode(ELSA_w1_cog_verb$cfani, "-9=997; -8=998; -1=996")
+ELSA_ds_w1$cog_verb_c <- labelled(ELSA_ds_w1$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(ELSA_ds_w1$cog_verb_c, "999=NA; 997=NA; 998=NA; 996=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+ELSA_ds_w1$cog_verb <- car::recode(ELSA_ds_w1[[2]], "0:Q=0; (Q+1):900=1")
+ELSA_ds_w1$cog_verb <- labelled(ELSA_ds_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=FALSE}
+vari <- ELSA_ds_w1$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w1, aes(cog_verb_c)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")+xlim(0,50)
+
+vari <- ELSA_ds_w1$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w1, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1, echo=FALSE}
+Continous <- c(sum(na.omit(ELSA_ds_w1[[2]])<=Q), sum(na.omit(ELSA_ds_w1[[2]])>Q & na.omit(ELSA_ds_w1[[2]])<900), sum(na.omit(ELSA_ds_w1[[2]])==996), sum(na.omit(ELSA_ds_w1[[2]])==997), sum(na.omit(ELSA_ds_w1[[2]])==998))
+Dicotomic <- table(ELSA_ds_w1[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:15->0","16:160->1", "-1->996", "-9->997", "-8->998") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL_w1, echo=FALSE}
+#label(ELSA_ds_w1$cog_verb) <- "Verbal fluency"
+#opal.assign.data(o, 'ELSA_ds_w1', ELSA_ds_w1)
+#opal.symbol_import(o,'ELSA_ds_w1', project='_Athlos_Harm_Dataset')
+
+label(ELSA_ds_w1$cog_verb_c) <- ds_label_cog_verb_c
+label(ELSA_ds_w1$cog_verb) <- ds_label_cog_verb
+cog_verb <- ELSA_ds_w1
+save(cog_verb, file = "../RData/w1/cog_verb.RData")
+```
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `CfAni`
+* Label: `Number of animals mentioned (fluency) `
+* Categories:
+    + `Continuous Variable 0-63`
+* Missings
+   + `-9 = Refusal` 
+   + `-8 = Don't know` 
+   + `-1 = Not applicable` 
+
+
+```{r local w2, echo=FALSE}
+ELSA_w2_cog_verb <- ELSA_w2
+vari <- ELSA_w2_cog_verb$CfAni
+kable(Continuous_summary(var = vari, missing_values = c(-8,-9,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-8,-9,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-8,-9,-1))$summary, caption = "Summary")
+ggplot(ELSA_w2_cog_verb, aes(CfAni)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")+xlim(0,65)
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+* `-9 Refusal into 997` 
+* `-8 Don't know into 998`
+* `-1 Not applicable into 996`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo w2}
+#cog_verb_c
+ELSA_ds_w2 <- tibble(id=ELSA_w2_cog_verb$id)
+ELSA_ds_w2$cog_verb_c <- car::recode(ELSA_w2_cog_verb$CfAni, "-9=997; -8=998; -1=996")
+ELSA_ds_w2$cog_verb_c <- labelled(ELSA_ds_w2$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(ELSA_ds_w2$cog_verb_c, "999=NA; 997=NA; 998=NA; 996=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+ELSA_ds_w2$cog_verb <- car::recode(ELSA_ds_w2[[2]], "0:Q=0; (Q+1):900=1")
+ELSA_ds_w2$cog_verb <- labelled(ELSA_ds_w2[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w2, echo=FALSE}
+vari <- ELSA_ds_w2$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w2, aes(cog_verb_c)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")+xlim(0,65)
+
+vari <- ELSA_ds_w2$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w2, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w2, echo=FALSE}
+Continous <- c(sum(na.omit(ELSA_ds_w2[[2]])<=Q), sum(na.omit(ELSA_ds_w2[[2]])>Q & na.omit(ELSA_ds_w2[[2]])<900), sum(na.omit(ELSA_ds_w2[[2]])==996), sum(na.omit(ELSA_ds_w2[[2]])==997), sum(na.omit(ELSA_ds_w2[[2]])==998))
+Dicotomic <- table(ELSA_ds_w2[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:15->0","16:160->1", "-1->996", "-9->997", "-8->998") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL_w2, echo=FALSE}
+#label(ELSA_ds_w2$cog_verb) <- "Verbal fluency"
+#opal.assign.data(o, 'ELSA_ds_w2', ELSA_ds_w2)
+#opal.symbol_import(o,'ELSA_ds_w2', project='_Athlos_Harm_Dataset')
+
+label(ELSA_ds_w2$cog_verb_c) <- ds_label_cog_verb_c
+label(ELSA_ds_w2$cog_verb) <- ds_label_cog_verb
+cog_verb <- ELSA_ds_w2
+save(cog_verb, file = "../RData/w2/cog_verb.RData")
+```
+
+
+
+### Wave 3 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `cfani`
+* Label: `Number of animals mentioned (fluency) `
+* Categories:
+    + `Continuous Variable 0-56`
+* Missings
+   + `-9 = Refusal` 
+   + `-8 = Don't know` 
+   + `-1 = Not applicable` 
+
+
+```{r local w3, echo=FALSE}
+ELSA_w3_cog_verb <- ELSA_w3
+vari <- ELSA_w3_cog_verb$cfani
+kable(Continuous_summary(var = vari, missing_values = c(-8,-9,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-8,-9,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-8,-9,-1))$summary, caption = "Summary")
+ggplot(ELSA_w3_cog_verb, aes(cfani)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")+xlim(0,60)
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+* `-9 Refusal into 997` 
+* `-8 Don't know into 998`
+* `-1 Not applicable into 996`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+
+```{r harmo w3}
+#cog_verb_c
+ELSA_ds_w3 <- tibble(id=ELSA_w3_cog_verb$id)
+ELSA_ds_w3$cog_verb_c <- car::recode(ELSA_w3_cog_verb$cfani, "-9=997; -8=998; -1=996")
+ELSA_ds_w3$cog_verb_c <- labelled(ELSA_ds_w3$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(ELSA_ds_w3$cog_verb_c, "999=NA; 997=NA; 998=NA; 996=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+ELSA_ds_w3$cog_verb <- car::recode(ELSA_ds_w3[[2]], "0:Q=0; (Q+1):900=1")
+ELSA_ds_w3$cog_verb <- labelled(ELSA_ds_w3[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w3, echo=FALSE}
+vari <- ELSA_ds_w3$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w3, aes(cog_verb_c)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")+xlim(0,60)
+
+vari <- ELSA_ds_w3$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w3, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w3, echo=FALSE}
+Continous <- c(sum(na.omit(ELSA_ds_w3[[2]])<=Q), sum(na.omit(ELSA_ds_w3[[2]])>Q & na.omit(ELSA_ds_w3[[2]])<900), sum(na.omit(ELSA_ds_w3[[2]])==996), sum(na.omit(ELSA_ds_w3[[2]])==997))
+Dicotomic <- table(ELSA_ds_w3[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:16->0","17:160->1", "-1->996", "-9->997") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+<!--- #### Import to OPAL -->
+```{r importOPAL_w3, echo=FALSE}
+#label(ELSA_ds_w3$cog_verb) <- "Verbal fluency"
+#opal.assign.data(o, 'ELSA_ds_w3', ELSA_ds_w3)
+#opal.symbol_import(o,'ELSA_ds_w3', project='_Athlos_Harm_Dataset')
+
+label(ELSA_ds_w3$cog_verb_c) <- ds_label_cog_verb_c
+label(ELSA_ds_w3$cog_verb) <- ds_label_cog_verb
+cog_verb <- ELSA_ds_w3
+save(cog_verb, file = "../RData/w3/cog_verb.RData")
+```
+
+
+### Wave 4 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `cfani`
+* Label: `Number of animals mentioned (fluency) `
+* Categories:
+    + `Continuous Variable 0-55`
+* Missings
+   + `-9 = Refusal` 
+   + `-8 = Don't know` 
+   + `-1 = Not applicable` 
+
+
+```{r local w4, echo=FALSE}
+ELSA_w4_cog_verb <- ELSA_w4
+vari <- ELSA_w4_cog_verb$cfani
+kable(Continuous_summary(var = vari, missing_values = c(-8,-9,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-8,-9,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-8,-9,-1))$summary, caption = "Summary")
+ggplot(ELSA_w4_cog_verb, aes(cfani)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")+xlim(0,55)
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+* `-9 Refusal into 997` 
+* `-8 Don't know into 998`
+* `-1 Not applicable into 996`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo w4}
+#cog_verb_c
+ELSA_ds_w4 <- tibble(id=ELSA_w4_cog_verb$id)
+ELSA_ds_w4$cog_verb_c <- car::recode(ELSA_w4_cog_verb$cfani, "-9=997; -8=998; -1=996")
+ELSA_ds_w4$cog_verb_c <- labelled(ELSA_ds_w4$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(ELSA_ds_w4$cog_verb_c, "999=NA; 997=NA; 998=NA; 996=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+ELSA_ds_w4$cog_verb <- car::recode(ELSA_ds_w4[[2]], "0:Q=0; (Q+1):900=1")
+ELSA_ds_w4$cog_verb <- labelled(ELSA_ds_w4[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w4, echo=FALSE}
+vari <- ELSA_ds_w4$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w4, aes(cog_verb_c)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")+xlim(0,55)
+
+vari <- ELSA_ds_w4$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w4, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w4, echo=FALSE}
+Continous <- c(sum(na.omit(ELSA_ds_w4[[2]])<=Q), sum(na.omit(ELSA_ds_w4[[2]])>Q & na.omit(ELSA_ds_w4[[2]])<900), sum(na.omit(ELSA_ds_w4[[2]])==996), sum(na.omit(ELSA_ds_w4[[2]])==997), sum(na.omit(ELSA_ds_w4[[2]])==998))
+Dicotomic <- table(ELSA_ds_w4[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:16->0","17:160->1", "-1->996", "-9->997", "-8->998") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+<!--- #### Import to OPAL -->
+```{r importOPAL_w4, echo=FALSE}
+#label(ELSA_ds_w4$cog_verb) <- "Verbal fluency"
+#opal.assign.data(o, 'ELSA_ds_w4', ELSA_ds_w4)
+#opal.symbol_import(o,'ELSA_ds_w4', project='_Athlos_Harm_Dataset')
+
+label(ELSA_ds_w4$cog_verb_c) <- ds_label_cog_verb_c
+label(ELSA_ds_w4$cog_verb) <- ds_label_cog_verb
+cog_verb <- ELSA_ds_w4
+save(cog_verb, file = "../RData/w4/cog_verb.RData")
+```
+
+
+### Wave 5 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `cfani`
+* Label: `Number of animals mentioned (fluency) `
+* Categories:
+    + `Continuous Variable 0-51`
+* Missings
+   + `-9 = Refusal` 
+   + `-8 = Don't know` 
+   + `-1 = Not applicable` 
+
+
+```{r local w5, echo=FALSE}
+ELSA_w5_cog_verb <- ELSA_w5
+vari <- ELSA_w5_cog_verb$cfani
+kable(Continuous_summary(var = vari, missing_values = c(-8,-9,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-8,-9,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-8,-9,-1))$summary, caption = "Summary")
+ggplot(ELSA_w5_cog_verb, aes(cfani)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")+xlim(0,55)
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+* `-9 Refusal into 997` 
+* `-8 Don't know into 998`
+* `-1 Not applicable into 996`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+```{r harmo w5}
+#cog_verb_c
+ELSA_ds_w5 <- tibble(id=ELSA_w5_cog_verb$id)
+ELSA_ds_w5$cog_verb_c <- car::recode(ELSA_w5_cog_verb$cfani, "-9=997; -8=998; -1=996")
+ELSA_ds_w5$cog_verb_c <- labelled(ELSA_ds_w5$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(ELSA_ds_w5$cog_verb_c, "999=NA; 997=NA; 998=NA; 996=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+ELSA_ds_w5$cog_verb <- car::recode(ELSA_ds_w5[[2]], "0:Q=0; (Q+1):900=1")
+ELSA_ds_w5$cog_verb <- labelled(ELSA_ds_w5[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w5, echo=FALSE}
+vari <- ELSA_ds_w5$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w5, aes(cog_verb_c)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")+xlim(0,55)
+
+vari <- ELSA_ds_w5$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w5, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w5, echo=FALSE}
+Continous <- c(sum(na.omit(ELSA_ds_w5[[2]])<=Q), sum(na.omit(ELSA_ds_w5[[2]])>Q & na.omit(ELSA_ds_w5[[2]])<900), sum(na.omit(ELSA_ds_w5[[2]])==996), sum(na.omit(ELSA_ds_w5[[2]])==997), sum(na.omit(ELSA_ds_w5[[2]])==998))
+Dicotomic <- table(ELSA_ds_w5[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:15->0","16:160->1", "-1->996", "-9->997", "-8->998") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+
+<!--- #### Import to OPAL -->
+```{r importOPAL_w5, echo=FALSE}
+#label(ELSA_ds_w5$cog_verb) <- "Verbal fluency"
+#opal.assign.data(o, 'ELSA_ds_w5', ELSA_ds_w5)
+#opal.symbol_import(o,'ELSA_ds_w5', project='_Athlos_Harm_Dataset')
+
+label(ELSA_ds_w5$cog_verb_c) <- ds_label_cog_verb_c
+label(ELSA_ds_w5$cog_verb) <- ds_label_cog_verb
+cog_verb <- ELSA_ds_w5
+save(cog_verb, file = "../RData/w5/cog_verb.RData")
+```
+
+
+### Wave 6
+
+Measure not found at wave 6. 
+
+
+
+
+### Wave 7
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `CfAni`
+* Label: `Number of animals mentioned (fluency) `
+* Categories:
+    + `Continuous Variable 0-67`
+* Missings
+   + `-9 = Refusal` 
+   + `-8 = Don't know` 
+   + `-1 = Not applicable` 
+
+
+```{r local w7, echo=FALSE}
+ELSA_w7_cog_verb <- ELSA_w7
+vari <- ELSA_w7_cog_verb$CfAni
+kable(Continuous_summary(var = vari, missing_values = c(-8,-9,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-8,-9,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-8,-9,-1))$summary, caption = "Summary")
+ggplot(ELSA_w7_cog_verb, aes(CfAni)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")+xlim(0,70)
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `cog_verb_c` from the study-specific variable the missing values have to be recoded as follows:
+
+* `NA into 999`
+* `-9 Refusal into 997` 
+* `-8 Don't know into 998`
+* `-1 Not applicable into 996`
+
+To compute the harmonized variable `cog_verb` from `cog_verb_c` it has to be recoded as follows:
+
+* `cog_verb_c <=25% into 0`
+* `cog_verb_c >25% into 1`
+
+**R script:**
+
+
+```{r harmo w7}
+#cog_verb_c
+ELSA_ds_w7 <- tibble(id=ELSA_w7_cog_verb$id)
+ELSA_ds_w7$cog_verb_c <- car::recode(ELSA_w7_cog_verb$CfAni, "-9=997; -8=998; -1=996")
+ELSA_ds_w7$cog_verb_c <- labelled(ELSA_ds_w7$cog_verb_c, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#cog_verb
+Q <- quantile(car::recode(ELSA_ds_w7$cog_verb_c, "999=NA; 997=NA; 998=NA; 996=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+ELSA_ds_w7$cog_verb <- car::recode(ELSA_ds_w7[[2]], "0:Q=0; (Q+1):900=1")
+ELSA_ds_w7$cog_verb <- labelled(ELSA_ds_w7[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w7, echo=FALSE}
+vari <- ELSA_ds_w7$cog_verb_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ELSA_ds_w7, aes(cog_verb_c)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")+xlim(0,70)
+
+vari <- ELSA_ds_w7$cog_verb
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w7, aes(x=factor(cog_verb))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Verbal fluency") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w7, echo=FALSE}
+Continous <- c(sum(na.omit(ELSA_ds_w7[[2]])<=Q), sum(na.omit(ELSA_ds_w7[[2]])>Q & na.omit(ELSA_ds_w7[[2]])<900), sum(na.omit(ELSA_ds_w7[[2]])==996), sum(na.omit(ELSA_ds_w7[[2]])==997))
+Dicotomic <- table(ELSA_ds_w7[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:17->0","18:160->1", "-1->996", "-9->997") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+
+<!--- #### Import to OPAL -->
+```{r importOPAL_w7, echo=FALSE}
+#label(ELSA_ds_w7$cog_verb) <- "Verbal fluency"
+#opal.assign.data(o, 'ELSA_ds_w7', ELSA_ds_w7)
+#opal.symbol_import(o,'ELSA_ds_w7', project='_Athlos_Harm_Dataset')
+
+label(ELSA_ds_w7$cog_verb_c) <- ds_label_cog_verb_c
+label(ELSA_ds_w7$cog_verb) <- ds_label_cog_verb
+cog_verb <- ELSA_ds_w7
+save(cog_verb, file = "../RData/w7/cog_verb.RData")
+```
+
+
+# Quality estimation
+
+No comments
+
+[Comments on the quality of the new harmonised variable. This section can be done in a later stage, once all variables are harmonised.]
+
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+

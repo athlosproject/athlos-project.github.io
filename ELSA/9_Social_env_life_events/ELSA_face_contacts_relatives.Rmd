@@ -1,0 +1,684 @@
+---
+title: "ELSA"
+author: "Katarzyna Jablonska"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true 
+    depth: 6
+    number_sections: true  
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r prepare, message=FALSE, include=FALSE}
+library(bitops)
+library(RCurl)
+library(rjson)
+library(mime)
+library(opal)
+library(tibble)
+library(car)
+library(labelled)
+library(Hmisc)
+source("Continuous_summary.R")
+source("Categorical_summary.R")
+
+# authenticate within opal server 
+o <- opal.login('','...','http://...')
+```
+
+# Socio-demographic and economic characteristics 
+
+## `Face to face contacts with relatives`
+
+### Description of DataSchema variable `Are face to face contacts with family members/relatives frequent (i.e. contact once a month or more often)`
+
+The description of harmonised variable is the following:
+  
+* Name: `face_rel`
+* Label: `Are face to face contacts with family members/relatives frequent (i.e. contact once a month or more often)`
+* Type: categorical
+* Categories: 
+    + `0 = no`
+    + `1 = yes`
+* Missings: 
+    + `991 = CAPI/interviewer error`
+    + `992 = Impute`
+    + `993 = Disable to measure`
+    + `994 = Not attempt/not done/not yet recorded`
+    + `995 = Don't answer`
+    + `996 = Not applicable`
+    + `997 = Refuse`
+    + `998 = Do not know`
+    + `999 = Missing`
+
+
+
+### ELSA - Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `scchdg`
+* Label: `On average how often do you meet up with your children`
+* Categories:
+    + `1	= Three or more times a week`
+    + `2	= Once or twice a week`
+    + `3	= Once or twice a month`	
+    + `4	= Every few months`
+    + `5	= Once or twice a year`
+    + `6	= Less than once a year or never`
+* Missings:
+    + `-9	= Not answered`
+    + `-1	= Item not applicable`
+    
+    
+* Name: `scfamg`
+* Label: `On average how often meet up with family members`
+* Categories:
+    + `1	= Three or more times a week`
+    + `2	= Once or twice a week`
+    + `3	= Once or twice a month`	
+    + `4	= Every few months`
+    + `5	= Once or twice a year`
+    + `6	= Less than once a year or never`
+* Missings:
+    + `-9	= Not answered`
+    + `-1	= Item not applicable`
+
+
+
+```{r assign1}
+opal.assign.table.tibble(o, 'ELSA_w1_face_rel','ELSA.wave_1_core_data_v3',variables=list('scchdg','scfamg'), missings = TRUE)
+```
+
+```{r local1}
+ELSA_w1_face_rel <- opal.execute(o,'ELSA_w1_face_rel')
+Categorical_summary(var = ELSA_w1_face_rel$scchdg, missing_values = NA)
+ggplot(ELSA_w1_face_rel, aes(x=factor(scchdg))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("On average how often do you meet up with your children") + ylab("Frequency")
+Categorical_summary(var = ELSA_w1_face_rel$scfamg, missing_values = NA)
+ggplot(ELSA_w1_face_rel, aes(x=factor(scfamg))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("On average how often meet up with family members") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `scchdg in (1,2,3) OR scfamg in (1,2,3) into 1`
+* `scchdg in (4,5,6) AND scfamg in (4,5,6) into 0`
+* `scchdg = -9 OR scfamg = -9 into 995`
+* `scchdg = -1 OR scfamg = -1 into 996`
+* `NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo1}
+ELSA_ds_w1 <- tibble(id=ELSA_w1_face_rel$id)
+
+ELSA_w1_face_rel$scchdg <- car::recode(as.vector(ELSA_w1_face_rel$scchdg), "NA='-999'")
+ELSA_w1_face_rel$scfamg <- car::recode(as.vector(ELSA_w1_face_rel$scfamg), "NA='-999'")
+
+ELSA_ds_w1$face_rel <- c(NA) # I think it is required
+for(i in 1:dim(ELSA_w1_face_rel)[1]){
+  if( ELSA_w1_face_rel$scchdg[i] %in% c(1,2,3) | ELSA_w1_face_rel$scfamg[i] %in% c(1,2,3) ) { ELSA_ds_w1$face_rel[i] = 1 }
+  else if( ELSA_w1_face_rel$scchdg[i] %in% c(4,5,6) &  ELSA_w1_face_rel$scfamg[i] %in% c(4,5,6) ){ ELSA_ds_w1$face_rel[i] = 0 }
+  else if( ELSA_w1_face_rel$scchdg[i] == -9 |  ELSA_w1_face_rel$scfamg[i] == -9 ){ ELSA_ds_w1$face_rel[i] = 995 }
+  else if( ELSA_w1_face_rel$scchdg[i] == -1 |  ELSA_w1_face_rel$scfamg[i] == -1 ){ ELSA_ds_w1$face_rel[i] = 996 }
+}
+
+ELSA_ds_w1$face_rel <- car::recode(as.vector(ELSA_ds_w1$face_rel), "NA='999'")
+ELSA_ds_w1$face_rel <- labelled(ELSA_ds_w1$face_rel, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1}
+Categorical_summary(var = ELSA_ds_w1$face_rel, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ELSA_ds_w1, aes(x=factor(face_rel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are face to face contacts with relatives frequent (i.e. contact once a month or more often)") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1}
+AfterH <- table(ELSA_ds_w1$face_rel)
+BeforeH1 <- table(ELSA_w1_face_rel$scchdg,ELSA_w1_face_rel$scfamg,useNA='ifany')
+BeforeH <- c(NA)
+BeforeH[[2]] <- sum(sum(BeforeH1[c('1','2','3'),]), sum(BeforeH1[c('-9','-1','4','5','6'),c('1','2','3')]))
+BeforeH[[1]] <- sum(BeforeH1[c('4','5','6'),c('4','5','6')])
+BeforeH[[3]] <- sum(sum(BeforeH1['-9',c('-9','-1','4','5','6')]),sum(BeforeH1[c('-1','4','5','6'),'-9']))
+BeforeH[[4]] <- sum(sum(BeforeH1['-1',c('-1','4','5','6')]),sum(BeforeH1[c('4','5','6'),'-1']))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1:3->0","4:5->1","-9->995","-1->996")
+C
+kable(C)
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+### ELSA - Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `scchdg`
+* Label: `On average how often do you meet up with your children`
+* Categories:
+    + `1	= Three or more times a week`
+    + `2	= Once or twice a week`
+    + `3	= Once or twice a month`	
+    + `4	= Every few months`
+    + `5	= Once or twice a year`
+    + `6	= Less than once a year or never`
+* Missings:
+    + `-9	= Not answered`
+    + `-1	= Item not applicable`
+    
+    
+* Name: `scfamg`
+* Label: `On average how often meet up with family members`
+* Categories:
+    + `1	= Three or more times a week`
+    + `2	= Once or twice a week`
+    + `3	= Once or twice a month`	
+    + `4	= Every few months`
+    + `5	= Once or twice a year`
+    + `6	= Less than once a year or never`
+* Missings:
+    + `-9	= Not answered`
+    + `-1	= Item not applicable`
+
+
+
+```{r assign2}
+opal.assign.table.tibble(o, 'ELSA_w2_face_rel','ELSA.wave_2_core_data_v4',variables=list('scchdg','scfamg'), missings = TRUE)
+```
+
+```{r local2}
+ELSA_w2_face_rel <- opal.execute(o,'ELSA_w2_face_rel')
+Categorical_summary(var = ELSA_w2_face_rel$scchdg, missing_values = NA)
+ggplot(ELSA_w2_face_rel, aes(x=factor(scchdg))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("On average how often do you meet up with your children") + ylab("Frequency")
+Categorical_summary(var = ELSA_w2_face_rel$scfamg, missing_values = NA)
+ggplot(ELSA_w2_face_rel, aes(x=factor(scfamg))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("On average how often meet up with family members") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `scchdg in (1,2,3) OR scfamg in (1,2,3) into 1`
+* `scchdg in (4,5,6) AND scfamg in (4,5,6) into 0`
+* `scchdg = -9 OR scfamg = -9 into 995`
+* `scchdg = -1 OR scfamg = -1 into 996`
+* `NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo2}
+ELSA_ds_w2 <- tibble(id=ELSA_w2_face_rel$id)
+
+ELSA_w2_face_rel$scchdg <- car::recode(as.vector(ELSA_w2_face_rel$scchdg), "NA='-999'")
+ELSA_w2_face_rel$scfamg <- car::recode(as.vector(ELSA_w2_face_rel$scfamg), "NA='-999'")
+
+ELSA_ds_w2$face_rel <- c(NA) # I think it is required
+for(i in 1:dim(ELSA_w2_face_rel)[1]){
+  if( ELSA_w2_face_rel$scchdg[i] %in% c(1,2,3) | ELSA_w2_face_rel$scfamg[i] %in% c(1,2,3) ) { ELSA_ds_w2$face_rel[i] = 1 }
+  else if( ELSA_w2_face_rel$scchdg[i] %in% c(4,5,6) &  ELSA_w2_face_rel$scfamg[i] %in% c(4,5,6) ){ ELSA_ds_w2$face_rel[i] = 0 }
+  else if( ELSA_w2_face_rel$scchdg[i] == -9 |  ELSA_w2_face_rel$scfamg[i] == -9 ) { ELSA_ds_w2$face_rel[i] = 995 }
+  else if( ELSA_w2_face_rel$scchdg[i] == -1 |  ELSA_w2_face_rel$scfamg[i] == -1 ){ ELSA_ds_w2$face_rel[i] = 996 }
+}
+
+ELSA_ds_w2$face_rel <- car::recode(as.vector(ELSA_ds_w2$face_rel), "NA='999'")
+ELSA_ds_w2$face_rel <- labelled(ELSA_ds_w2$face_rel, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2}
+Categorical_summary(var = ELSA_ds_w2$face_rel, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ELSA_ds_w2, aes(x=factor(face_rel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are face to face contacts with relatives frequent (i.e. contact once a month or more often)") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2}
+AfterH <- table(ELSA_ds_w2$face_rel)
+BeforeH1 <- table(ELSA_w2_face_rel$scchdg,ELSA_w2_face_rel$scfamg,useNA='ifany')
+BeforeH <- c(NA)
+BeforeH[[2]] <- sum(sum(BeforeH1[c('1','2','3'),]), sum(BeforeH1[c('-9','-1','4','5','6'),c('1','2','3')]))
+BeforeH[[1]] <- sum(BeforeH1[c('4','5','6'),c('4','5','6')])
+BeforeH[[3]] <- sum(sum(BeforeH1['-9',c('-9','-1','4','5','6')]),sum(BeforeH1[c('-1','4','5','6'),'-9']))
+BeforeH[[4]] <- sum(sum(BeforeH1['-1',c('-1','4','5','6')]),sum(BeforeH1[c('4','5','6'),'-1']))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1:3->0","4:5->1","-9->995","-1->996")
+C
+kable(C)
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+
+### ELSA - Wave 3
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `scchdg`
+* Label: `On average how often do you meet up with your children`
+* Categories:
+    + `1	= Three or more times a week`
+    + `2	= Once or twice a week`
+    + `3	= Once or twice a month`	
+    + `4	= Every few months`
+    + `5	= Once or twice a year`
+    + `6	= Less than once a year or never`
+* Missings:
+    + `-9	= Not answered`
+    + `-8	= Don't know`    
+    + `-1	= Item not applicable`
+    
+    
+* Name: `scfamg`
+* Label: `On average how often meet up with family members`
+* Categories:
+    + `1	= Three or more times a week`
+    + `2	= Once or twice a week`
+    + `3	= Once or twice a month`	
+    + `4	= Every few months`
+    + `5	= Once or twice a year`
+    + `6	= Less than once a year or never`
+* Missings:
+    + `-9	= Not answered`
+    + `-8	= Don't know` 
+    + `-1	= Item not applicable`
+
+
+```{r assign3}
+opal.assign.table.tibble(o, 'ELSA_w3_face_rel','ELSA.wave_3_elsa_data_v4',variables=list('scchdg','scfamg'), missings = TRUE)
+```
+
+```{r local3}
+ELSA_w3_face_rel <- opal.execute(o,'ELSA_w3_face_rel')
+Categorical_summary(var = ELSA_w3_face_rel$scchdg, missing_values = NA)
+ggplot(ELSA_w3_face_rel, aes(x=factor(scchdg))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("On average how often do you meet up with your children") + ylab("Frequency")
+Categorical_summary(var = ELSA_w3_face_rel$scfamg, missing_values = NA)
+ggplot(ELSA_w3_face_rel, aes(x=factor(scfamg))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("On average how often meet up with family members") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `scchdg in (1,2,3) OR scfamg in (1,2,3) into 1`
+* `scchdg in (4,5,6) AND scfamg in (4,5,6) into 0`
+* `scchdg = -9 OR scfamg = -9 into 995`
+* `scchdg = -8 OR scfamg = -8 into 998`
+* `scchdg = -1 OR scfamg = -1 into 996`
+* `NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo3}
+ELSA_ds_w3 <- tibble(id=ELSA_w3_face_rel$id)
+
+ELSA_w3_face_rel$scchdg <- car::recode(as.vector(ELSA_w3_face_rel$scchdg), "NA='-999'")
+ELSA_w3_face_rel$scfamg <- car::recode(as.vector(ELSA_w3_face_rel$scfamg), "NA='-999'")
+
+ELSA_ds_w3$face_rel <- c(NA) # I think it is required
+for(i in 1:dim(ELSA_w3_face_rel)[1]){
+  if( ELSA_w3_face_rel$scchdg[i] %in% c(1,2,3) | ELSA_w3_face_rel$scfamg[i] %in% c(1,2,3) ) { ELSA_ds_w3$face_rel[i] = 1 }
+  else if( ELSA_w3_face_rel$scchdg[i] %in% c(4,5,6) &  ELSA_w3_face_rel$scfamg[i] %in% c(4,5,6) ){ ELSA_ds_w3$face_rel[i] = 0 }
+  else if( ELSA_w3_face_rel$scchdg[i] == -9 |  ELSA_w3_face_rel$scfamg[i] == -9 ) { ELSA_ds_w3$face_rel[i] = 995 }
+  else if( ELSA_w3_face_rel$scchdg[i] == -8 |  ELSA_w3_face_rel$scfamg[i] == -8 ) { ELSA_ds_w3$face_rel[i] = 998 }
+  else if( ELSA_w3_face_rel$scchdg[i] == -1 |  ELSA_w3_face_rel$scfamg[i] == -1 ){ ELSA_ds_w3$face_rel[i] = 996 }
+}
+
+ELSA_ds_w3$face_rel <- car::recode(as.vector(ELSA_ds_w3$face_rel), "NA='999'")
+ELSA_ds_w3$face_rel <- labelled(ELSA_ds_w3$face_rel, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript3}
+Categorical_summary(var = ELSA_ds_w3$face_rel, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ELSA_ds_w3, aes(x=factor(face_rel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are face to face contacts with relatives frequent (i.e. contact once a month or more often)") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation3}
+AfterH <- table(ELSA_ds_w3$face_rel)
+BeforeH1 <- table(ELSA_w3_face_rel$scchdg,ELSA_w3_face_rel$scfamg,useNA='ifany')
+BeforeH <- c(NA)
+BeforeH[[2]] <- sum(sum(BeforeH1[c('1','2','3'),]), sum(BeforeH1[c('-9','-1','4','5','6'),c('1','2','3')]))
+BeforeH[[1]] <- sum(BeforeH1[c('4','5','6'),c('4','5','6')])
+BeforeH[[3]] <- sum(sum(BeforeH1['-9',c('-9','-1','4','5','6')]),sum(BeforeH1[c('-1','4','5','6'),'-9']))
+BeforeH[[4]] <- sum(sum(BeforeH1['-1',c('-1','4','5','6')]),sum(BeforeH1[c('4','5','6'),'-1']))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1:3->0","4:5->1","-9->995","-1->996")
+C
+kable(C)
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+### ELSA - Wave 4
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `scchdg`
+* Label: `On average how often do you meet up with your children`
+* Categories:
+    + `1	= Three or more times a week`
+    + `2	= Once or twice a week`
+    + `3	= Once or twice a month`	
+    + `4	= Every few months`
+    + `5	= Once or twice a year`
+    + `6	= Less than once a year or never`
+* Missings:
+    + `-9	= Not answered`
+    + `-8	= Don't know`    
+    + `-1	= Item not applicable`
+    
+    
+* Name: `scfamg`
+* Label: `On average how often meet up with family members`
+* Categories:
+    + `1	= Three or more times a week`
+    + `2	= Once or twice a week`
+    + `3	= Once or twice a month`	
+    + `4	= Every few months`
+    + `5	= Once or twice a year`
+    + `6	= Less than once a year or never`
+* Missings:
+    + `-9	= Not answered`
+    + `-8	= Don't know` 
+    + `-1	= Item not applicable`
+
+
+```{r assign4}
+opal.assign.table.tibble(o, 'ELSA_w4_face_rel','ELSA.wave_4_elsa_data_v3',variables=list('scchdg','scfamg'), missings = TRUE)
+```
+
+```{r local4}
+ELSA_w4_face_rel <- opal.execute(o,'ELSA_w4_face_rel')
+Categorical_summary(var = ELSA_w4_face_rel$scchdg, missing_values = NA)
+ggplot(ELSA_w4_face_rel, aes(x=factor(scchdg))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("On average how often do you meet up with your children") + ylab("Frequency")
+Categorical_summary(var = ELSA_w4_face_rel$scfamg, missing_values = NA)
+ggplot(ELSA_w4_face_rel, aes(x=factor(scfamg))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("On average how often meet up with family members") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `scchdg in (1,2,3) OR scfamg in (1,2,3) into 1`
+* `scchdg in (4,5,6) AND scfamg in (4,5,6) into 0`
+* `scchdg = -9 OR scfamg = -9 into 995`
+* `scchdg = -8 OR scfamg = -8 into 998`
+* `scchdg = -1 OR scfamg = -1 into 996`
+* `NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo4}
+ELSA_ds_w4 <- tibble(id=ELSA_w4_face_rel$id)
+
+ELSA_w4_face_rel$scchdg <- car::recode(as.vector(ELSA_w4_face_rel$scchdg), "NA='-999'")
+ELSA_w4_face_rel$scfamg <- car::recode(as.vector(ELSA_w4_face_rel$scfamg), "NA='-999'")
+
+ELSA_ds_w4$face_rel <- c(NA) # I think it is required
+for(i in 1:dim(ELSA_w4_face_rel)[1]){
+  if( ELSA_w4_face_rel$scchdg[i] %in% c(1,2,3) | ELSA_w4_face_rel$scfamg[i] %in% c(1,2,3) ) { ELSA_ds_w4$face_rel[i] = 1 }
+  else if( ELSA_w4_face_rel$scchdg[i] %in% c(4,5,6) &  ELSA_w4_face_rel$scfamg[i] %in% c(4,5,6) ){ ELSA_ds_w4$face_rel[i] = 0 }
+  else if( ELSA_w4_face_rel$scchdg[i] == -9 |  ELSA_w4_face_rel$scfamg[i] == -9 ) { ELSA_ds_w4$face_rel[i] = 995 }
+  else if( ELSA_w4_face_rel$scchdg[i] == -8 |  ELSA_w4_face_rel$scfamg[i] == -8 ) { ELSA_ds_w4$face_rel[i] = 998 }
+  else if( ELSA_w4_face_rel$scchdg[i] == -1 |  ELSA_w4_face_rel$scfamg[i] == -1 ){ ELSA_ds_w4$face_rel[i] = 996 }
+}
+
+ELSA_ds_w4$face_rel <- car::recode(as.vector(ELSA_ds_w4$face_rel), "NA='999'")
+ELSA_ds_w4$face_rel <- labelled(ELSA_ds_w4$face_rel, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript4}
+Categorical_summary(var = ELSA_ds_w4$face_rel, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ELSA_ds_w4, aes(x=factor(face_rel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are face to face contacts with relatives frequent (i.e. contact once a month or more often)") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation4}
+AfterH <- table(ELSA_ds_w4$face_rel)
+BeforeH1 <- table(ELSA_w4_face_rel$scchdg,ELSA_w4_face_rel$scfamg,useNA='ifany')
+BeforeH <- c(NA)
+BeforeH[[2]] <- sum(sum(BeforeH1[c('1','2','3'),]), sum(BeforeH1[c('-9','-1','4','5','6'),c('1','2','3')]))
+BeforeH[[1]] <- sum(BeforeH1[c('4','5','6'),c('4','5','6')])
+BeforeH[[3]] <- sum(sum(BeforeH1['-9',c('-9','-1','4','5','6')]),sum(BeforeH1[c('-1','4','5','6'),'-9']))
+BeforeH[[4]] <- sum(sum(BeforeH1['-1',c('-1','4','5','6')]),sum(BeforeH1[c('4','5','6'),'-1']))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1:3->0","4:5->1","-9->995","-1->996")
+C
+kable(C)
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+### ELSA - Wave 5
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `scchdg`
+* Label: `On average how often do you meet up with your children`
+* Categories:
+    + `1	= Three or more times a week`
+    + `2	= Once or twice a week`
+    + `3	= Once or twice a month`	
+    + `4	= Every few months`
+    + `5	= Once or twice a year`
+    + `6	= Less than once a year or never`
+* Missings:
+    + `-9	= Not answered`
+    + `-8	= Don't know`    
+    + `-2 = Schedule Not Applicable`
+    + `-1	= Item not applicable`
+    
+    
+* Name: `scfamg`
+* Label: `On average how often meet up with family members`
+* Categories:
+    + `1	= Three or more times a week`
+    + `2	= Once or twice a week`
+    + `3	= Once or twice a month`	
+    + `4	= Every few months`
+    + `5	= Once or twice a year`
+    + `6	= Less than once a year or never`
+* Missings:
+    + `-9	= Not answered`
+    + `-8	= Don't know` 
+    + `-2 = Schedule Not Applicable`    
+    + `-1	= Item not applicable`
+
+
+```{r assign5}
+opal.assign.table.tibble(o, 'ELSA_w5_face_rel','ELSA.wave_5_elsa_data_v4',variables=list('scchdg','scfamg'), missings = TRUE)
+```
+
+```{r local5}
+ELSA_w5_face_rel <- opal.execute(o,'ELSA_w5_face_rel')
+Categorical_summary(var = ELSA_w5_face_rel$scchdg, missing_values = NA)
+ggplot(ELSA_w5_face_rel, aes(x=factor(scchdg))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("On average how often do you meet up with your children") + ylab("Frequency")
+Categorical_summary(var = ELSA_w5_face_rel$scfamg, missing_values = NA)
+ggplot(ELSA_w5_face_rel, aes(x=factor(scfamg))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("On average how often meet up with family members") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `scchdg in (1,2,3) OR scfamg in (1,2,3) into 1`
+* `scchdg in (4,5,6) AND scfamg in (4,5,6) into 0`
+* `scchdg = -9 OR scfamg = -9 into 995`
+* `scchdg = -8 OR scfamg = -8 into 998`
+* `scchdg = -2 OR scfamg = -2 into 996`
+* `scchdg = -1 OR scfamg = -1 into 996`
+* `NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo5}
+ELSA_ds_w5 <- tibble(id=ELSA_w5_face_rel$id)
+
+ELSA_w5_face_rel$scchdg <- car::recode(as.vector(ELSA_w5_face_rel$scchdg), "NA='-999'")
+ELSA_w5_face_rel$scfamg <- car::recode(as.vector(ELSA_w5_face_rel$scfamg), "NA='-999'")
+
+ELSA_ds_w5$face_rel <- c(NA) # I think it is required
+for(i in 1:dim(ELSA_w5_face_rel)[1]){
+  if( ELSA_w5_face_rel$scchdg[i] %in% c(1,2,3) | ELSA_w5_face_rel$scfamg[i] %in% c(1,2,3) ) { ELSA_ds_w5$face_rel[i] = 1 }
+  else if( ELSA_w5_face_rel$scchdg[i] %in% c(4,5,6) &  ELSA_w5_face_rel$scfamg[i] %in% c(4,5,6) ){ ELSA_ds_w5$face_rel[i] = 0 }
+  else if( ELSA_w5_face_rel$scchdg[i] == -9 |  ELSA_w5_face_rel$scfamg[i] == -9 ) { ELSA_ds_w5$face_rel[i] = 995 }
+  else if( ELSA_w5_face_rel$scchdg[i] == -8 |  ELSA_w5_face_rel$scfamg[i] == -8 ) { ELSA_ds_w5$face_rel[i] = 998 }
+  else if( ELSA_w5_face_rel$scchdg[i] == -2 |  ELSA_w5_face_rel$scfamg[i] == -2 ) { ELSA_ds_w5$face_rel[i] = 996 }
+  else if( ELSA_w5_face_rel$scchdg[i] == -1 |  ELSA_w5_face_rel$scfamg[i] == -1 ){ ELSA_ds_w5$face_rel[i] = 996 }
+}
+
+ELSA_ds_w5$face_rel <- car::recode(as.vector(ELSA_ds_w5$face_rel), "NA='999'")
+ELSA_ds_w5$face_rel <- labelled(ELSA_ds_w5$face_rel, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript5}
+Categorical_summary(var = ELSA_ds_w5$face_rel, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ELSA_ds_w5, aes(x=factor(face_rel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are face to face contacts with relatives frequent (i.e. contact once a month or more often)") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation5}
+AfterH <- table(ELSA_ds_w5$face_rel)
+BeforeH1 <- table(ELSA_w5_face_rel$scchdg,ELSA_w5_face_rel$scfamg,useNA='ifany')
+BeforeH <- c(NA)
+BeforeH[[2]] <- sum(sum(BeforeH1[c('1','2','3'),]), sum(BeforeH1[c('-9','-1','-2','4','5','6'),c('1','2','3')]))
+BeforeH[[1]] <- sum(BeforeH1[c('4','5','6'),c('4','5','6')])
+BeforeH[[3]] <- sum(sum(BeforeH1['-9',c('-9','-2','-1','4','5','6')]),sum(BeforeH1[c('-2','-1','4','5','6'),'-9']))
+BeforeH[[4]] <- sum(sum(BeforeH1[c('-1','-2'),c('-2','-1','4','5','6')]),sum(BeforeH1[c('4','5','6'),c('-1','-2')]))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1:3->0","4:5->1","-9->995","-2,-1->996")
+C
+kable(C)
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+### ELSA - Wave 6
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `scchdg`
+* Label: `On average how often do you meet up with your children`
+* Categories:
+    + `1	= Three or more times a week`
+    + `2	= Once or twice a week`
+    + `3	= Once or twice a month`	
+    + `4	= Every few months`
+    + `5	= Once or twice a year`
+    + `6	= Less than once a year or never`
+* Missings:
+    + `-9	= Not answered`
+    + `-8	= Don't know`    
+    + `-2 = Schedule Not Applicable`
+    + `-1	= Item not applicable`
+    
+    
+* Name: `scfamg`
+* Label: `On average how often meet up with family members`
+* Categories:
+    + `1	= Three or more times a week`
+    + `2	= Once or twice a week`
+    + `3	= Once or twice a month`	
+    + `4	= Every few months`
+    + `5	= Once or twice a year`
+    + `6	= Less than once a year or never`
+* Missings:
+    + `-9	= Not answered`
+    + `-8	= Don't know` 
+    + `-2 = Schedule Not Applicable`    
+    + `-1	= Item not applicable`
+
+
+```{r assign6}
+opal.assign.table.tibble(o, 'ELSA_w6_face_rel','ELSA.wave_6_elsa_data_v2',variables=list('scchdg','scfamg'), missings = TRUE)
+```
+
+```{r local6}
+ELSA_w6_face_rel <- opal.execute(o,'ELSA_w6_face_rel')
+Categorical_summary(var = ELSA_w6_face_rel$scchdg, missing_values = NA)
+ggplot(ELSA_w6_face_rel, aes(x=factor(scchdg))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("On average how often do you meet up with your children") + ylab("Frequency")
+Categorical_summary(var = ELSA_w6_face_rel$scfamg, missing_values = NA)
+ggplot(ELSA_w6_face_rel, aes(x=factor(scfamg))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("On average how often meet up with family members") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `scchdg in (1,2,3) OR scfamg in (1,2,3) into 1`
+* `scchdg in (4,5,6) AND scfamg in (4,5,6) into 0`
+* `scchdg = -9 OR scfamg = -9 into 995`
+* `scchdg = -8 OR scfamg = -8 into 998`
+* `scchdg = -2 OR scfamg = -2 into 996`
+* `scchdg = -1 OR scfamg = -1 into 996`
+* `NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo6}
+ELSA_ds_w6 <- tibble(id=ELSA_w6_face_rel$id)
+
+ELSA_w6_face_rel$scchdg <- car::recode(as.vector(ELSA_w6_face_rel$scchdg), "NA='-999'")
+ELSA_w6_face_rel$scfamg <- car::recode(as.vector(ELSA_w6_face_rel$scfamg), "NA='-999'")
+
+ELSA_ds_w6$face_rel <- c(NA) # I think it is required
+for(i in 1:dim(ELSA_w6_face_rel)[1]){
+  if( ELSA_w6_face_rel$scchdg[i] %in% c(1,2,3) | ELSA_w6_face_rel$scfamg[i] %in% c(1,2,3) ) { ELSA_ds_w6$face_rel[i] = 1 }
+  else if( ELSA_w6_face_rel$scchdg[i] %in% c(4,5,6) &  ELSA_w6_face_rel$scfamg[i] %in% c(4,5,6) ){ ELSA_ds_w6$face_rel[i] = 0 }
+  else if( ELSA_w6_face_rel$scchdg[i] == -9 |  ELSA_w6_face_rel$scfamg[i] == -9 ) { ELSA_ds_w6$face_rel[i] = 995 }
+  else if( ELSA_w6_face_rel$scchdg[i] == -8 |  ELSA_w6_face_rel$scfamg[i] == -8 ) { ELSA_ds_w6$face_rel[i] = 998 }
+  else if( ELSA_w6_face_rel$scchdg[i] == -2 |  ELSA_w6_face_rel$scfamg[i] == -2 ) { ELSA_ds_w6$face_rel[i] = 996 }
+  else if( ELSA_w6_face_rel$scchdg[i] == -1 |  ELSA_w6_face_rel$scfamg[i] == -1 ){ ELSA_ds_w6$face_rel[i] = 996 }
+}
+
+ELSA_ds_w6$face_rel <- car::recode(as.vector(ELSA_ds_w6$face_rel), "NA='999'")
+ELSA_ds_w6$face_rel <- labelled(ELSA_ds_w6$face_rel, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript6}
+Categorical_summary(var = ELSA_ds_w6$face_rel, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ELSA_ds_w6, aes(x=factor(face_rel))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are face to face contacts with relatives frequent (i.e. contact once a month or more often)") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation6}
+AfterH <- table(ELSA_ds_w6$face_rel)
+BeforeH1 <- table(ELSA_w6_face_rel$scchdg,ELSA_w6_face_rel$scfamg,useNA='ifany')
+BeforeH <- c(NA)
+BeforeH[[2]] <- sum(sum(BeforeH1[c('1','2','3'),]), sum(BeforeH1[c('-9','-1','-2','4','5','6'),c('1','2','3')]))
+BeforeH[[1]] <- sum(BeforeH1[c('4','5','6'),c('4','5','6')])
+BeforeH[[3]] <- sum(sum(BeforeH1['-9',c('-9','-2','-1','4','5','6')]),sum(BeforeH1[c('-2','-1','4','5','6'),'-9']))
+BeforeH[[4]] <- sum(sum(BeforeH1[c('-1','-2'),c('-2','-1','4','5','6')]),sum(BeforeH1[c('4','5','6'),c('-1','-2')]))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1:3->0","4:5->1","-9->995","-2,-1->996")
+C
+kable(C)
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
