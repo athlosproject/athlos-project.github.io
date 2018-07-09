@@ -1,0 +1,237 @@
+---
+title: "Hearing general"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+
+* Short name: `hearing_gen`
+* Variable label: `Difficulty for hearing`
+* Variable description: `It measures if the participant experiences some difficulty for hearing (i.e., hearing someone talking on the other side of the room in a normal voice) or not, using a hearing aid as usual`
+* Domain: `Health status and functional limitations`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | Yes
+1        | No
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+# Data process
+
+
+
+## Finland
+
+
+### Wave 1 
+
+#### Study-specific variable description
+
+
+
+
+| **Name** | `KYS3_KUUL`|
+|-|-|
+| **Label** | `15D hearing` |
+| **Table name** | `t00_athlos_2017_02_23` |
+| **Categories** |`1 = I can hear normally, i.e. normal speech with or without a hearing aid; 2 = I hear normal speech with a little difficulty; 3 = I hear normal speech with considerable difficulty, in conversation I need voices to be louder than normal; 4 = I hear even loud voices poorly, I am almost deaf` |
+| **Missings** | `NA` |
+| **Description** |  |
+
+
+```{r assign w1, echo=F}
+opal.assign.table.tibble(o, 'HEALTH2000_w1_hearing_gen','Health2000-2011.t00_athlos_2017_02_23', variables=list('KYS3_KUUL'), missings = TRUE)
+```
+
+```{r local w1, echo=F}
+HEALTH2000_w1_hearing_gen <- opal.execute(o,'HEALTH2000_w1_hearing_gen')
+vari <- HEALTH2000_w1_hearing_gen$KYS3_KUUL
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "KYS3_KUUL")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HEALTH2000_w1_hearing_gen, aes(x=factor(KYS3_KUUL))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Hearing - General") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2,3,4,5 into 0` 
+* `NA into 999`
+
+**R script:**
+```{r harmo w1}
+Health20002011_ds_w1 <- tibble(id=HEALTH2000_w1_hearing_gen$id)
+Health20002011_ds_w1$hearing_gen <- car::recode(HEALTH2000_w1_hearing_gen$KYS3_KUUL, "1 = '1';2 = '0';3 = '0';4 = '0';5 = '0';NA = '999' ")
+Health20002011_ds_w1$hearing_gen <- labelled(Health20002011_ds_w1$hearing_gen, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=F}
+vari <- Health20002011_ds_w1$hearing_gen
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "hearing_gen")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(Health20002011_ds_w1, aes(x=factor(hearing_gen))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Hearing - General") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1, echo=F}
+AfterH <- table(Health20002011_ds_w1$hearing_gen)
+X<-table(HEALTH2000_w1_hearing_gen$KYS3_KUUL)
+BeforeH <- c(sum(X[2:5]),X[1],sum(is.na(HEALTH2000_w1_hearing_gen$KYS3_KUUL)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2,3,4,5->0","1->1","NA->999")  
+kable(C)
+```
+
+
+
+
+
+
+```{r importOPAL w1, echo=FALSE}
+
+label(Health20002011_ds_w1$hearing_gen) <- "Difficulty for hearing"
+#opal.assign.data(o, 'Health20002011_ds_w1', Health20002011_ds_w1)
+#opal.symbol_import(o,'Health20002011_ds_w1', project='_Athlos_Harm_Dataset')
+hearing_gen <- Health20002011_ds_w1
+save(hearing_gen, file = "../RData/w1/hearing_gen.RData")
+
+Health20002011_m_ds_w1 <- Health20002011_ds_w1
+Health20002011_m_ds_w1$hearing_gen <- car::recode(Health20002011_m_ds_w1$hearing_gen, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'Health20002011_m_ds_w1', Health20002011_m_ds_w1)
+#opal.symbol_import(o,'Health20002011_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+
+
+
+| **Name** | `KYS3_KUUL`|
+|-|-|
+| **Label** | `hearing` |
+| **Table name** | `t11_athlos_2017_02_27` |
+| **Categories** |`1 = I can hear normally, i.e. normal speech with or without a hearing aid; 2 = I hear normal speech with a little difficulty; 3 = I hear normal speech with considerable difficulty, in conversation I need voices to be louder than normal; 4 = I hear even loud voices poorly, I am almost deaf` |
+| **Missings** | `NA` |
+| **Description** |  |
+
+
+```{r assign w2, echo=F}
+opal.assign.table.tibble(o, 'HEALTH2000_w2_hearing_gen','Health2000-2011.t11_athlos_2017_02_27', variables=list('KYS3_KUUL'), missings = TRUE)
+```
+
+```{r local w2, echo=F}
+HEALTH2000_w2_hearing_gen <- opal.execute(o,'HEALTH2000_w2_hearing_gen')
+vari <- HEALTH2000_w2_hearing_gen$KYS3_KUUL
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "KYS3_KUUL")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HEALTH2000_w2_hearing_gen, aes(x=factor(KYS3_KUUL))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Hearing - General") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2,3,4 into 0` 
+* `NA into 999`
+
+**R script:**
+```{r harmo w2}
+Health20002011_ds_w2 <- tibble(id=HEALTH2000_w2_hearing_gen$id)
+Health20002011_ds_w2$hearing_gen <- car::recode(HEALTH2000_w2_hearing_gen$KYS3_KUUL, "1 = '1';2 = '0';3 = '0';4 = '0';NA = '999' ")
+Health20002011_ds_w2$hearing_gen <- labelled(Health20002011_ds_w2$hearing_gen, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w2, echo=F}
+vari <- Health20002011_ds_w2$hearing_gen
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "hearing_gen")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(Health20002011_ds_w2, aes(x=factor(hearing_gen))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Hearing - General") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w2, echo=F}
+AfterH <- table(Health20002011_ds_w2$hearing_gen)
+X<-table(HEALTH2000_w2_hearing_gen$KYS3_KUUL)
+BeforeH <- c(sum(X[2:4]),X[1],sum(is.na(HEALTH2000_w2_hearing_gen$KYS3_KUUL)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2,3,4->0","1->1","NA->999")  
+kable(C)
+```
+
+
+
+
+
+
+```{r importOPAL w2, echo=FALSE}
+
+label(Health20002011_ds_w2$hearing_gen) <- "Difficulty for hearing"
+#opal.assign.data(o, 'Health20002011_ds_w2', Health20002011_ds_w2)
+#opal.symbol_import(o,'Health20002011_ds_w2', project='_Athlos_Harm_Dataset')
+hearing_gen <- Health20002011_ds_w2
+save(hearing_gen, file = "../RData/w2/hearing_gen.RData")
+
+Health20002011_m_ds_w2 <- Health20002011_ds_w2
+Health20002011_m_ds_w2$hearing_gen <- car::recode(Health20002011_m_ds_w2$hearing_gen, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'Health20002011_m_ds_w2', Health20002011_m_ds_w2)
+#opal.symbol_import(o,'Health20002011_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+# Quality estimation
+In this study the variable collects the hearing/auditory range of the respondent "with or without it using hearing aid 
+or auditory device", while the variable original definition was: "using hearing aid or auditory device"
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

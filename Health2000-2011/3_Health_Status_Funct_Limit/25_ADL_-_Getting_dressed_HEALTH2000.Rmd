@@ -1,0 +1,253 @@
+---
+title: "ADL - Getting dressed"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/Rmds/setup_ania.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `adl_dressing`
+* Variable label: `ADL-Difficulties for getting dressed`
+* Domain: `Health status and functional limitations`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | yes
+1        | no
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+```{r, dataDirectory, echo=FALSE}
+datafolder <- "../RData"
+``` 
+
+## Finnish population
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+
+* Name: `HA01B`
+* Label: `Managing: dressing`
+* Categories:
+    + `1 = without difficulties`
+    + `2 = with minor difficulties`
+    + `3 = with major difficulties`
+    + `4 = not at all`
+* Missings
+    + `NA`
+
+
+* Description: 
+```{r assign w1,  echo=FALSE}
+opal.assign.table.tibble(o, 'HEALTH2000_w1_adl_dressing','Health2000-2011.t00_athlos_2017_02_23', variables=list('HA01B'), missings = TRUE)
+```
+
+```{r local w1,  echo=FALSE}
+HEALTH2000_w1_adl_dressing <- opal.execute(o,'HEALTH2000_w1_adl_dressing')
+vari <- HEALTH2000_w1_adl_dressing$HA01B # VARIABLE
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(HEALTH2000_w1_adl_dressing$HA01B)
+ggplot(HEALTH2000_w1_adl_dressing, aes(x=factor(HA01B))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Difficulty getting dressed") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1`  
+* `2,3,4 into 0`
+* `NA into 999`
+
+**R script:** 
+```{r harmo w1,   echo=TRUE}
+Health20002011_ds_w1 <- tibble(id=HEALTH2000_w1_adl_dressing$id)
+Health20002011_ds_w1$adl_dressing <- car::recode(HEALTH2000_w1_adl_dressing$HA01B,"1 = '1';2 = '0';3 = '0';4 = '0';NA = '999' ")
+Health20002011_ds_w1$adl_dressing <- labelled(Health20002011_ds_w1$adl_dressing, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1,  echo=FALSE}
+vari <- Health20002011_ds_w1$adl_dressing # variable you want to descrive
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = Health20002011_ds_w1$adl_dressing, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(Health20002011_ds_w1, aes(x=factor(adl_dressing))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Difficulty getting dressed") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1,  echo=FALSE}
+AfterH <- table(Health20002011_ds_w1$adl_dressing)
+X<-table(HEALTH2000_w1_adl_dressing$HA01B)
+BeforeH <- c(sum(X[2:4]),X[1],sum(is.na(HEALTH2000_w1_adl_dressing$HA01B)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2,3,4->0","1->1","NA->999") 
+kable(C)
+```
+
+ 
+ 
+
+
+#### Import to OPAL
+```{r importOPAL w1, echo=FALSE,  echo=FALSE}
+val_labels(Health20002011_ds_w1) <- NULL
+label(Health20002011_ds_w1$adl_dressing) <- "Difficulties for getting dressed"
+#opal.assign.data(o, 'Health20002011_ds_w1', Health20002011_ds_w1)
+#opal.symbol_import(o,'Health20002011_ds_w1', project='_Athlos_Harm_Dataset')
+
+Health20002011_m_ds_w1 <- Health20002011_ds_w1
+Health20002011_m_ds_w1$adl_dressing <- car::recode(Health20002011_m_ds_w1$adl_dressing, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'Health20002011_m_ds_w1', Health20002011_m_ds_w1)
+#opal.symbol_import(o,'Health20002011_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+```{r,  echo=FALSE}
+adl_dressing <- Health20002011_ds_w1
+save(adl_dressing, file = paste0(datafolder, "/w1/adl_dressing.RData"))
+```
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+ 
+
+
+* Name: `HA01B`
+* Label: `Managing: dressing`
+* Categories:
+    + `1 = without difficulties`
+    + `2 = with minor difficulties`
+    + `3 = with major difficulties`
+    + `4 = not at all`
+* Missings
+    + `NA`
+
+
+* Description: 
+```{r assign w2,  echo=FALSE}
+opal.assign.table.tibble(o, 'HEALTH2000_w2_adl_dressing','Health2000-2011.t11_athlos_2017_02_27', variables=list('HA01B'), missings = TRUE)
+```
+
+```{r local w2,  echo=FALSE}
+HEALTH2000_w2_adl_dressing <- opal.execute(o,'HEALTH2000_w2_adl_dressing')
+vari <- HEALTH2000_w2_adl_dressing$HA01B # VARIABLE
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(HEALTH2000_w2_adl_dressing$HA01B)
+ggplot(HEALTH2000_w2_adl_dressing, aes(x=factor(HA01B))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Difficulty getting dressed") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1`  
+* `2,3,4 into 0`
+* `NA into 999`
+
+**R script:** 
+```{r harmo w2,   echo=TRUE}
+Health20002011_ds_w2 <- tibble(id=HEALTH2000_w2_adl_dressing$id)
+Health20002011_ds_w2$adl_dressing <- car::recode(HEALTH2000_w2_adl_dressing$HA01B,"1 = '1';2 = '0';3 = '0';4 = '0';NA = '999' ")
+Health20002011_ds_w2$adl_dressing <- labelled(Health20002011_ds_w2$adl_dressing, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w2,  echo=FALSE}
+vari <- Health20002011_ds_w2$adl_dressing # variable you want to descrive
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = Health20002011_ds_w2$adl_dressing, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(Health20002011_ds_w2, aes(x=factor(adl_dressing))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Difficulty getting dressed") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w2,  echo=FALSE}
+AfterH <- table(Health20002011_ds_w2$adl_dressing)
+X<-table(HEALTH2000_w2_adl_dressing$HA01B)
+BeforeH <- c(sum(X[2:4]),X[1],sum(is.na(HEALTH2000_w2_adl_dressing$HA01B)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2,3,4->0","1->1","NA->999") 
+kable(C)
+```
+
+ 
+ 
+
+
+
+```{r importOPAL w2, echo=FALSE,  echo=FALSE}
+val_labels(Health20002011_ds_w2) <- NULL
+label(Health20002011_ds_w2$adl_dressing) <- "Difficulties for getting dressed"
+#opal.assign.data(o, 'Health20002011_ds_w2', Health20002011_ds_w2)
+#opal.symbol_import(o,'Health20002011_ds_w2', project='_Athlos_Harm_Dataset')
+
+Health20002011_m_ds_w2 <- Health20002011_ds_w2
+Health20002011_m_ds_w2$adl_dressing <- car::recode(Health20002011_m_ds_w2$adl_dressing, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'Health20002011_m_ds_w2', Health20002011_m_ds_w2)
+#opal.symbol_import(o,'Health20002011_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+```{r,  echo=FALSE}
+adl_dressing <- Health20002011_ds_w2
+save(adl_dressing, file = paste0(datafolder, "/w2/adl_dressing.RData"))
+```
+
+
+# Quality control
+
+No comments
+
+```{r closeRsession, echo=FALSE,  echo=FALSE}
+opal.logout(o)
+```

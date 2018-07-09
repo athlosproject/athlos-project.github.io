@@ -1,0 +1,256 @@
+---
+title: "Experience of a loss of any close person"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_ania.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variables is the following:
+
+* Short name: `bereav`
+* Variable label: `Experience of a loss of any close person`
+* Domain: `Social environment`
+* Value type: `cathegorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Finnish population
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `CA05`
+* Label: `Father's age at death`
+
+* Name: `CA11`
+* Label: `Mother's age at death`
+    
+* Name: `CA16`
+* Label: `Number of dead siblings`
+
+* Name: `AA01`
+* Label: `Marital status`
+* Categories: 
+    + `1 = married`
+    + `2 = cohabiting`
+    + `3 = divorced/separated`
+    + `4 = widow`
+    + `5 = single`
+
+
+* Description: 
+```{r assign1}
+opal.assign.table.tibble(o, 'Health20002011_w1_bereav','Health2000-2011.t00_athlos_2017_02_23',
+                         variables=list('CA05','CA11','CA16','AA01'), missings = TRUE)
+```
+
+```{r local1}
+Health20002011_w1_bereav <- opal.execute(o,'Health20002011_w1_bereav')
+vari <- Health20002011_w1_bereav$CA05
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = Health20002011_w1_bereav$CA05, missing_values = NA)
+ggplot(Health20002011_w1_bereav, aes(CA05)) + geom_histogram(stat="count", fill="steelblue") + xlab("Father's age at death") + ylab("Frequency")
+
+vari <- Health20002011_w1_bereav$CA11
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = Health20002011_w1_bereav$CA11, missing_values = NA)
+ggplot(Health20002011_w1_bereav, aes(CA11)) + geom_histogram(stat="count", fill="steelblue") + xlab("Mother's age at death") + ylab("Frequency")
+
+vari <- Health20002011_w1_bereav$CA16
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = Health20002011_w1_bereav$CA16, missing_values = NA)
+ggplot(Health20002011_w1_bereav, aes(CA16)) + geom_histogram(stat="count", fill="steelblue") + xlab("Number of dead siblings") + ylab("Frequency")
+
+
+vari <- Health20002011_w1_bereav$AA01
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = Health20002011_w1_bereav$AA01, missing_values = NA)
+ggplot(Health20002011_w1_bereav, aes(x=factor(AA01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `(CA05 == NA) and (CA11 == NA) and (CA16 == NA) and (AA01 != 4) INTO 0`
+* `(CA05 != NA) or (CA11 != NA) or (CA16 != 0) or (AA01=4) INTO 1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1, echo=TRUE}
+Health20002011_ds_w1 <- tibble(id=Health20002011_w1_bereav$id)
+
+Health20002011_w1_bereav$CA05 <- car::recode(as.vector(Health20002011_w1_bereav$CA05), "NA='-999'")
+Health20002011_w1_bereav$CA11 <- car::recode(as.vector(Health20002011_w1_bereav$CA11), "NA='-999'")
+Health20002011_w1_bereav$CA16 <- car::recode(as.vector(Health20002011_w1_bereav$CA16), "NA='-999'")
+Health20002011_w1_bereav$AA01 <- car::recode(as.vector(Health20002011_w1_bereav$AA01), "NA='-999'")
+
+Health20002011_ds_w1$bereav <- c(NA)  
+
+for(i in 1:dim(Health20002011_w1_bereav)[1]){
+  if(Health20002011_w1_bereav$CA05[i] == -999 & Health20002011_w1_bereav$CA11[i] == -999
+   & Health20002011_w1_bereav$CA16[i] == -999 & Health20002011_w1_bereav$AA01[i] %in% c(1,2,3,5) ) { 
+  Health20002011_ds_w1$bereav[i] = 0 }
+  else if(!(Health20002011_w1_bereav$CA05[i] == -999) | !(Health20002011_w1_bereav$CA11[i] == -999)
+   | Health20002011_w1_bereav$CA16[i] > 0 | Health20002011_w1_bereav$AA01[i] == 4 ) { 
+  Health20002011_ds_w1$bereav[i] = 1 }
+}
+
+Health20002011_ds_w1$bereav <- car::recode(as.vector(Health20002011_ds_w1$bereav), "NA='999'")
+Health20002011_ds_w1$bereav <- labelled(Health20002011_ds_w1$bereav, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1}
+vari <- Health20002011_ds_w1$bereav
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = Health20002011_ds_w1$bereav, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(Health20002011_ds_w1, aes(x=factor(bereav))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Experience of a loss of any close person") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1}
+
+```
+
+ 
+ 
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `AA01`
+* Label: `Marital status`
+* Categories: 
+    + `1 = married or in a civil union`
+    + `2 = living with your partner`
+    + `3 = divorced or separated`
+    + `4 = widowed`
+    + `5 = or single?`
+
+* Description: 
+```{r assign2}
+opal.assign.table.tibble(o, 'Health20002011_w2_bereav','Health2000-2011.t11_athlos_2017_02_27',variables=list('AA01'), missings = TRUE)
+```
+
+```{r local2}
+Health20002011_w2_bereav <- opal.execute(o,'Health20002011_w2_bereav')
+vari <- Health20002011_w2_bereav$AA01
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = Health20002011_w2_bereav$AA01, missing_values = NA)
+ggplot(Health20002011_w2_bereav, aes(x=factor(AA01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To recode the harmonize variable from the study-specific variable it has to be recoded as follows:  
+
+* `4 Widowed into 1`
+* `1,2,3,5 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2, echo=TRUE}
+Health20002011_ds_w2 <- tibble(id=Health20002011_w2_bereav$id)
+Health20002011_ds_w2$bereav <- car::recode(as.vector(Health20002011_w2_bereav$AA01), "4='1'; 1:3='0'; 5='0'; NA='999'")
+Health20002011_ds_w2$bereav <- labelled(Health20002011_ds_w2$bereav, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2}
+vari <- Health20002011_ds_w2$bereav
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = Health20002011_ds_w2$bereav, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(Health20002011_ds_w2, aes(x=factor(bereav))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Experience of a loss of any close person") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2}
+AfterH <- table(Health20002011_ds_w2$bereav)
+BeforeH <- table(Health20002011_w2_bereav$AA01, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[1]] <- sum(BeforeH[c(1:3,5)])
+BeforeH1[c(2,3)] <- BeforeH[c(4,6)]
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("1,2,3,5->0","4->1","NA->999")
+kable(C)
+```
+
+```{r save, echo=FALSE}
+bereav <- Health20002011_ds_w1
+save(bereav, file = "../RData/w1/bereav.RData")
+rm(bereav)
+
+bereav <- Health20002011_ds_w2
+save(bereav, file = "../RData/w2/bereav.RData")
+rm(bereav)
+
+
+```
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+``` 
+ 

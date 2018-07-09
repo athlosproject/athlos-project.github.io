@@ -1,0 +1,168 @@
+---
+title: "Wealth"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `wealth`
+* Variable label: `Total score based in all sources of income transformed into a comparable and normalized categoric variable.`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `categorical ordinal`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+1        | 1st quintile
+2        | 2nd quintile
+3        | 3rd quintile
+4        | 4th quintile
+5        | 5th quintile
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+* Comments: `Need to pay attention to specificities like: before/after taxes or contributions. People: HH income is prioritized. When not available individual/caregiver/informant/family income is caolected. Source: Pension/family/work/government/disablity/total. all sources are taken into account. For some studies, the maximum value can be compared (and crossed by sex and age to control biases) . Time-lapse: weekly, monthly, in the last 12 months. 'Many values are missing since not all respondents have all sources of income or, within the household there is not always more members, in these cases do not confuse missing data with missing values and mean a 0 should be added to the total sum in each case.`
+
+```{r lab, echo=FALSE}
+ds_label <- "Wealth"
+ds_label_all <- "Total score based in all sources of income transformed into a comparable and normalized categoric variable"
+```
+
+
+# Data process
+
+## Finland
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `AJ01`|
+|-|-|
+| **Label** | `Household gross incomes/month` |
+| **Table name** | `t00_athlos_2017_02_23` |
+| **Categories** | `1 = less than 2500` |
+| | `2 = 2500-5000` | 
+| | `3 = 5001-7500` | 
+| | `4 = 7501-10 000` | 
+| | `5 = 10 001-12 500` | 
+| | `6 = 12 501-15 000` | 
+| | `7 = 15 001-17 500` | 
+| | `8 = 17 501-20 000` | 
+| | `9 = 20 001-25 000` | 
+| | `10 = 25 001-30 000` | 
+| | `11 = 30 001-40 000` | 
+| | `12 = 40 001-50 000` | 
+| | `13 = over 50 000` | 
+| **Description** |  |  |
+
+```{r assign1, echo=FALSE}
+opal.assign.table.tibble(o, 'Health2000_wealth','Health2000-2011.t00_athlos_2017_02_23',
+                         variables=list('AJ01'), missings = TRUE)
+Health2000_wealth <- opal.execute(o,'Health2000_wealth')
+```
+
+```{r local1, echo=FALSE}
+vari <- Health2000_wealth$AJ01
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(Health2000_wealth, aes(x=factor(AJ01))) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable it has to create a continuous variable by calculating the mean value for each category, From this continuous variable the population is going to be divided into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows:  
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1}
+Health2000_wealth$AJ01 <- car::recode(Health2000_wealth$AJ01, "1=2500; 2=3750; 3=6250; 4=8750; 5=11250; 6=13750; 7=16250; 8=18750; 9=22500; 10=27500; 11=35000; 12=45000; 13=50000")
+
+qq <- quantile(Health2000_wealth$AJ01, probs = seq(0, 1, .2), na.rm = TRUE)
+
+Health20002011_ds_w1 <- tibble(id=Health2000_wealth$id)
+Health20002011_ds_w1$wealth <- car::recode(Health2000_wealth$AJ01, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+Health20002011_ds_w1$wealth <- car::recode(Health20002011_ds_w1$wealth, "NA=999")
+Health20002011_ds_w1$wealth <- as.integer(Health20002011_ds_w1$wealth)
+Health20002011_ds_w1$wealth <- labelled(Health20002011_ds_w1$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=FALSE}
+vari <- Health20002011_ds_w1$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(Health20002011_ds_w1, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=FALSE}
+```
+
+```{r importOPAL1, echo=FALSE}
+#val_labels(Health20002011_ds_w1) <- NULL
+#opal.assign.data(o, 'Health20002011_ds_w1', Health20002011_ds_w1)
+#opal.symbol_import(o,'Health20002011_ds_w1', project='_Athlos_Harm_Dataset')
+wealth <- Health20002011_ds_w1
+save(wealth, file = "../RData/w1/wealth.RData")
+rm(wealth)
+```
+
+
+
+
+
+
+### Wave 2 
+
+There is no variable
+
+
+# Quality estimation
+This variable was created by calculating the mean value for each category and using the continuous variable 
+to create quintiles based on the household (with taxes) income of each participant that divided the population into 5 
+groups each containing 20% of the corresponding N.    
+
+Sources of income included job income, pensions,  child allowances, affiliation orders, study allowences, and
+maternity, illness and unemployement allowances as well as the accomodation allowance.
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

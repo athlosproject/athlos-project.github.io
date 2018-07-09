@@ -1,0 +1,138 @@
+---
+title: "Residence"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_ania.r")
+```
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `residence`
+* Variable label: `Current residence`
+* Variable description: `Current residence`
+* Domain: `Physical Measures`
+* Value type: `Categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | Community living
+1        | Institutions
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Current residence"
+```
+
+# Data process
+
+## Finland
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `GB01_L`
+* Label: `Home: institution`
+* Categories: 
+    + `0 = no`
+    + `1 = yes`
+
+```{r assign1, echo=FALSE}
+opal.assign.table.tibble(o, 'Health20002011_w1_resi','Health2000-2011.t00_athlos_2017_02_23',
+                         variables=list('GB01_L'), missings = TRUE)
+Health20002011_w1_resi <- opal.execute(o,'Health20002011_w1_resi')
+```
+
+```{r local1, echo=FALSE}
+vari <- Health20002011_w1_resi$GB01_L
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(Health20002011_w1_resi, aes(x=factor(GB01_L))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence in institution") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "no" into 1`
+* `keep "yes" into 0`
+
+R code of the ALGORITHM:
+
+```{r harmo1}
+Health20002011_ds_w1 <- tibble(id=Health20002011_w1_resi$id)
+Health20002011_ds_w1$residence <- car::recode(Health20002011_w1_resi$GB01_L, "NA=999")
+Health20002011_ds_w1$residence <- labelled(Health20002011_ds_w1$residence, labels = c("Community living"=0, "Institutions"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=FALSE}
+vari <- Health20002011_ds_w1$residence 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(Health20002011_ds_w1, aes(x=factor(residence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=FALSE}
+BeforeH <- c(table(Health20002011_w1_resi$GB01_L), sum(is.na(Health20002011_w1_resi$GB01_L)))
+AfterH <- table(Health20002011_ds_w1$residence)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0","1", "NA->999")
+kable(C)
+```
+
+
+```{r importOPAL1, echo=FALSE}
+label(Health20002011_ds_w1) <- ds_label
+residence <- Health20002011_ds_w1
+save(residence, file = "../RData/w1/residence.RData")
+```
+
+
+
+
+
+
+### Health2000-2011 - Wave 2 
+
+There is no variable. 
+
+
+### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+
+

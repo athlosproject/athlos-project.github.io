@@ -1,0 +1,238 @@
+---
+title: "Self Rated Health"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/Rmds/setup_laia.r")
+```
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `srh`
+* Variable label: `Respondent's self-rated/self-reported health on a Likert-type scale`
+* Variable description: `Respondent's self-rated/self-reported health on a Likert-type scale`
+* Domain: `Health status and functional limitations`
+* Value type: `categorical`
+* Category coding:
+
+
+**Code** | **Category Label**
+-------- | ------------------
+1        | Good
+2        | Average/Fair/Moderate
+3        | Poor
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+
+```{r lab, echo=FALSE}
+ds_label <- "Self Rated Health"
+ds_label_all <- "Respondent's self-rated/self-reported health on a Likert-type scale"
+```
+
+# Data process
+
+## HEALTH 2000
+
+### Wave 1 
+
+#### Study-specific variable description
+
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `BA01`
+* Label: `Current health`
+* Categories:
+   + `1 = Good`
+   + `2 = Rather Good`
+   + `3 = Moderate`
+   + `4 = Rather Poor`
+   + `5 = Poor`
+* Missings
+   + `NA`
+
+```{r assign w1, echo=FALSE}
+opal.assign.table.tibble(o, 'HEALTH2000_w1_srh','Health2000-2011.t00_athlos_2017_02_23', variables=list('BA01'), missings = TRUE)
+HEALTH2000_w1_srh <- opal.execute(o,'HEALTH2000_w1_srh')
+```
+
+```{r local w1, echo=FALSE}
+vari <- HEALTH2000_w1_srh$BA01
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HEALTH2000_w1_srh, aes(x=factor(BA01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 1` 
+* `3 into 2`
+* `4 into 3`
+* `5 into 3`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w1}
+Health20002011_ds_w1 <- tibble(id=HEALTH2000_w1_srh$id)
+Health20002011_ds_w1$srh <- recode(HEALTH2000_w1_srh$BA01, "1 = '1';2 = '1';3 = '2';4 = '3';5 = '3';NA = '999' ")
+Health20002011_ds_w1$srh <- labelled(Health20002011_ds_w1$srh, labels = c("Good"=1, "Fair"=2, "Bad"=3,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=FALSE}
+vari <- Health20002011_ds_w1$srh
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(Health20002011_ds_w1, aes(x=factor(srh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1, echo=FALSE}
+AfterH <- table(Health20002011_ds_w1$srh)
+X<-table(HEALTH2000_w1_srh$BA01)
+BeforeH <- c(sum(X[1:2]),X[3],sum(X[4:5]),sum(is.na(HEALTH2000_w1_srh$BA01)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1,2->1","3->2","4,5->3","NA->999")
+kable(C)
+```
+
+```{r importOPAL w1, echo=FALSE}
+label(Health20002011_ds_w1$srh) <- "Respondent's self-rated/self-reported health on a Likert-type scale"
+srh <- Health20002011_ds_w1
+save(srh, file = "../RData/w1/srh.RData")
+#opal.assign.data(o, 'Health20002011_ds_w1', Health20002011_ds_w1)
+#opal.symbol_import(o,'Health20002011_ds_w1', project='_Athlos_Harm_Dataset')
+
+Health20002011_m_ds_w1 <- Health20002011_ds_w1
+Health20002011_m_ds_w1$srh <- recode(Health20002011_m_ds_w1$srh, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'Health20002011_m_ds_w1', Health20002011_m_ds_w1)
+#opal.symbol_import(o,'Health20002011_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+#### HEALTH2000 - Wave 2
+
+##### Study-specific variables
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `BA01`
+* Label: `Current health`
+* Categories:
+   + `1 = Good`
+   + `2 = Rather Good`
+   + `3 = Moderate`
+   + `4 = Rather Poor`
+   + `5 = Poor`
+* Missings
+   + `NA`
+
+```{r assign w2, echo=FALSE}
+opal.assign.table.tibble(o, 'HEALTH2000_w2_srh','Health2000-2011.t11_athlos_2017_02_27', variables=list('BA01'), missings = TRUE)
+HEALTH2000_w2_srh <- opal.execute(o,'HEALTH2000_w2_srh')
+```
+
+```{r local w2, echo=FALSE}
+vari <- HEALTH2000_w2_srh$BA01
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HEALTH2000_w2_srh, aes(x=factor(BA01))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 1` 
+* `3 into 2`
+* `4 into 3`
+* `5 into 3`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w2}
+Health20002011_ds_w2 <- tibble(id=HEALTH2000_w2_srh$id)
+Health20002011_ds_w2$srh <- recode(HEALTH2000_w2_srh$BA01, "1 = '1';2 = '1';3 = '2';4 = '3';5 = '3';NA = '999' ")
+Health20002011_ds_w2$srh <- labelled(Health20002011_ds_w2$srh, labels = c("Good"=1, "Fair"=2, "Bad"=3,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w2, echo=FALSE}
+vari <- Health20002011_ds_w2$srh
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(Health20002011_ds_w2, aes(x=factor(srh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w2, echo=FALSE}
+AfterH <- table(Health20002011_ds_w2$srh)
+X<-table(HEALTH2000_w2_srh$BA01)
+BeforeH <- c(sum(X[1:2]),X[3],sum(X[4:5]),sum(is.na(HEALTH2000_w2_srh$BA01)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1,2->1","3->2","4,5->3","NA->999")
+kable(C)
+```
+
+```{r importOPAL w2, echo=FALSE}
+label(Health20002011_ds_w2$srh) <- "Respondent's self-rated/self-reported health on a Likert-type scale"
+srh <- Health20002011_ds_w2
+save(srh, file = "../RData/w2/srh.RData")
+#opal.assign.data(o, 'Health20002011_ds_w2', Health20002011_ds_w2)
+#opal.symbol_import(o,'Health20002011_ds_w2', project='_Athlos_Harm_Dataset')
+
+Health20002011_m_ds_w2 <- Health20002011_ds_w2
+Health20002011_m_ds_w2$srh <- recode(Health20002011_m_ds_w2$srh, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'Health20002011_m_ds_w2', Health20002011_m_ds_w2)
+#opal.symbol_import(o,'Health20002011_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+####Quality estimation
+
+The original values are not exactly the same between waves.
+
+
+
+#### Close OPAL R Session
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

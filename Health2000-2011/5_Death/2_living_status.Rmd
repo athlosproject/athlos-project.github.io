@@ -1,0 +1,193 @@
+---
+title: "Living status"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+  
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+<!-- ########################################################## --> 
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `living_status`
+* Variable label: `Living status`
+* Variable description: `The individual is dead or alive?`
+* Domain: `Death`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | alive
+1        | Dead
+2        | Dropout  
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Living status"
+ds_label_all <- "The individual is dead or alive?"
+```
+
+
+# Data process
+
+## Finland
+
+### Wave 1 
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `KOKO_VPVM`
+* Label: `koko tutkimuksen viitep?iv?`
+* Type of variable: `countinous`
+
+```{r assign1, echo=FALSE}
+opal.assign.table.tibble(o, 'Health20002011_w1_id','Health2000-2011.Date_of_interview_wave1',
+                         variables=list('dinterview'), missings = TRUE)
+Health20002011_w1_id <- opal.execute(o,'Health20002011_w1_id')
+```
+
+#### Harmonisation algorithm
+It's considered that at baseline all the individuals are alive. Therefore it is going to compute the variable with all the values as 0. 
+
+**R script:**
+
+```{r harmo1}
+Health20002011_ds_w1 <- tibble(id=Health20002011_w1_id$id)
+Health20002011_ds_w1$living_status <- 0
+Health20002011_ds_w1$living_status <- labelled(Health20002011_ds_w1$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=FALSE}
+vari <- Health20002011_ds_w1$living_status
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(Health20002011_ds_w1, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Validation
+```{r crosstabulation1, echo=FALSE}
+```
+
+```{r importOPAL1, echo=FALSE}
+#opal.assign.data(o, 'Health20002011_ds_w1', Health20002011_ds_w1)
+#opal.symbol_import(o,'Health20002011_ds_w1', project='_Athlos_Harm_Dataset')
+living_status <- Health20002011_ds_w1
+save(living_status, file = "../RData/w1/living_status.RData")
+```
+
+
+
+
+
+### Wave 2 
+
+
+```{r assign2, echo=FALSE}
+opal.assign.table.tibble(o, 'Health20002011_w1_id','Health2000-2011.Date_of_interview_wave1',
+                         variables=list('dinterview'), missings = TRUE)
+Health20002011_w1_id <- opal.execute(o,'Health20002011_w1_id')
+
+opal.assign.table.tibble(o, 'Health20002011_w2_dinter','Health2000-2011.Date_of_interview_wave2',
+                         variables=list('dinterview'), missings = TRUE)
+Health20002011_w2_dinter <- opal.execute(o,'Health20002011_w2_dinter')
+
+#New ids in wave2 that have to be removed:
+New_id_w2_Health2000 <- tibble(id=as.character(c(Health20002011_w2_dinter$id[which(!(Health20002011_w2_dinter$id %in% Health20002011_w1_id$id))])))
+save(New_id_w2_Health2000, file = "../New_id_w2_Health2000.RData")
+
+Health20002011_w2_dinter <- Health20002011_w2_dinter[!(Health20002011_w2_dinter$id %in% New_id_w2_Health2000$id),]
+
+Health20002011_w2_ls <- left_join(x = Health20002011_w1_id, y = Health20002011_w2_dinter, by='id')
+
+vari <- Health20002011_w2_ls$dinterview.y
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(Health20002011_w2_ls, aes(dinterview.y)) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+
+#### Harmonisation algorithm
+The harmonize variable is going to be derived as follows: 
+
+* `individuals that has date of interview in wave 2 as 0`
+* `individuals that dont't have date of interview in wave 2 as 2`
+
+**R script:**
+
+```{r harmo2}
+Health20002011_ds_w2 <- tibble(id=Health20002011_w2_ls$id)
+Health20002011_ds_w2$living_status <- 0
+Health20002011_ds_w2$living_status[is.na(Health20002011_w2_ls$dinterview.y)] <- 2
+Health20002011_ds_w2$living_status <- labelled(Health20002011_ds_w2$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2, echo=FALSE}
+vari <- Health20002011_ds_w2$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(Health20002011_ds_w2, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+
+### Quality estimation
+We don't have death information, therefore the only values that appear are 0 (alive) and 2 (dropout). 
+
+
+
+
+### Validation
+```{r crosstabulation2, echo=FALSE}
+```
+
+```{r importOPAL2, echo=FALSE}
+#opal.assign.data(o, 'Health20002011_ds_w2', Health20002011_ds_w2)
+#opal.symbol_import(o,'Health20002011_ds_w2', project='_Athlos_Harm_Dataset')
+living_status <- Health20002011_ds_w2
+save(living_status, file = "../RData/w2/living_status.RData")
+rm(living_status)
+
+Health20002011_m_ds_w2 <- Health20002011_ds_w2
+Health20002011_m_ds_w2$living_status <- car::recode(Health20002011_m_ds_w2$living_status, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'Health20002011_m_ds_w2', Health20002011_m_ds_w2)
+#opal.symbol_import(o,'Health20002011_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

@@ -1,0 +1,403 @@
+---
+title: "Myocardial infarction or heart attack"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `mi_ha`
+* Variable label: `Myocardial infarction or heart attack`
+* Variable description: `Myocardial infarction or heart attack since the last wave`
+* Domain: `Diseases`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+* Short name: `mi_ha_age`
+* Variable label: `Age of each episode of myocardial infarction or heart attack`
+* Variable description: `Age of each episode of myocardial infarction or heart attack`
+* Domain: `Diseases`
+* Value type: `Continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+<!-- # Global variables -->
+```{r global, include=FALSE, echo=F}
+miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
+ds_label <- "Myocardial infarction or heart attack"
+ds_label_age <- "Age of each episode of myocardial infarction or heart attack"
+cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
+cont_label <- cat_label[3:11]
+datafolder <- "../RData/"
+#sing_idlist <- c()
+```
+<!-- ########################################################## --> 
+
+
+
+# Data process
+
+
+
+## Finland
+
+
+### Wave 1
+
+#### Study-specific variable description
+
+| **Name** | `BA08` |`BA08A`|`ybirth`|
+|-|-|-|-|
+| **Label** | `Illness: coronary thrombosis` |`Illness: coronary thrombosis, year when diagnosed`|`Year of birth`|
+| **Table name**  | `t00_athlos_2017_02_23` | `t00_athlos_2017_02_23` |`ybirth`|
+| **Categories** | `0 = no`<br/>`1 = yes` | `continuous` | `continuous` |
+| **Missings** | `NA` | `NA` |  |
+| **Description** |  |  |  |
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'Health20002011_w1','Health2000-2011.t00_athlos_2017_02_23',variables=list('BA08','BA08A'), missings = T)
+Health20002011_w1 <- opal.execute(o,'Health20002011_w1')
+load(paste0(datafolder,"w1/ybirth.RData"))
+Health20002011_w1 <- left_join(Health20002011_w1,ybirth, by="id")
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- Health20002011_w1$BA08
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(Health20002011_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(Health20002011_w1, aes(x=factor(BA08))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- Health20002011_w1$BA08A
+kable(Continuous_summary(var = vbl, missing_values = NA)[3], caption = names(Health20002011_w1)[3])
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(Health20002011_w1, aes(BA08A)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1915,2005)
+
+vbl <- Health20002011_w1$ybirth
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(Health20002011_w1)[4])
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(Health20002011_w1, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1900,1970)
+
+```
+
+#### Harmonisation algorithm
+
+To compute `mi_ha` from the study-specific variable it has to be recoded as follows:
+
+* `keep up 0 into 0`
+* `keep up 1 into 1`
+* `NA into 999`
+
+To compute `mi_ha_age` from the study-specific variable it has to be recoded as follows:
+
+* `if mi_ha == 1, mi_ha_age = BA08A - ybirth`
+* `if mi_ha == 0, mi_ha_age = 996`
+* `BA08<ybirth into 991`
+* `mi_ha == 999 into 999`
+
+**R script:**
+
+```{r harmo w1}
+
+# Categorical variable harmonization
+Health20002011_ds_w1 <- tibble(id=Health20002011_w1$id)
+Health20002011_ds_w1$mi_ha <- car::recode(Health20002011_w1$BA08, "NA = 999")
+
+#There is an individual having answered year of diagnostic:
+Health20002011_ds_w1$mi_ha[which(!is.na(Health20002011_w1$BA08A) & is.na(Health20002011_w1$BA08))] <- 1
+
+# Continuous variable harmonization
+Health20002011_ds_w1$mi_ha_age <- rep(999,length(Health20002011_w1$id))
+Health20002011_ds_w1$mi_ha_age[which(Health20002011_ds_w1$mi_ha == 0)] <- 996
+Health20002011_ds_w1$mi_ha_age[which(Health20002011_ds_w1$mi_ha == 1 & Health20002011_w1$BA08A > Health20002011_w1$ybirth)] <- Health20002011_w1$BA08A[which(Health20002011_ds_w1$mi_ha == 1 & Health20002011_w1$BA08A > Health20002011_w1$ybirth)] - Health20002011_w1$ybirth[which(Health20002011_ds_w1$mi_ha == 1 & Health20002011_w1$BA08A > Health20002011_w1$ybirth)]
+Health20002011_ds_w1$mi_ha_age[which(Health20002011_ds_w1$mi_ha == 1 & Health20002011_w1$BA08A < Health20002011_w1$ybirth)] <- 991
+Health20002011_ds_w1$mi_ha_age <- car::recode(Health20002011_ds_w1$mi_ha_age, "NA = 999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- Health20002011_ds_w1$mi_ha
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(Health20002011_ds_w1, aes(x=factor(mi_ha))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- Health20002011_ds_w1$mi_ha_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(Health20002011_ds_w1, aes(mi_ha_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(10,95)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+
+continuous <- c(sum(Health20002011_ds_w1$mi_ha_age==996),sum(Health20002011_ds_w1$mi_ha_age!=996))
+X <- table(Health20002011_ds_w1$mi_ha, useNA = "ifany")
+dichotomous <- c(X[1],sum(X[2:3]))
+C <- rbind(continuous,dichotomous)
+colnames(C) <- c("0<-->996","1,NA<-->(possibly missing) age of diagnostic")
+kable(C,caption = "Continuous vs Dichotomous")
+
+```
+
+
+
+### Wave 2
+
+
+#### Study-specific variable description
+
+
+| **Name** | `BA08` |`BA08A`|`ybirth`|
+|-|-|-|-|
+| **Label** | `Illness: coronary thrombosis` |`Illness: coronary thrombosis, year when diagnosed`|`Year of birth`|
+| **Table name**  | `t11_athlos_2017_02_27` | `t11_athlos_2017_02_27` |`ybirth`|
+| **Categories** | `0 = no`<br/>`1 = yes` | `continuous` | `continuous` |
+| **Missings** | `NA` | `NA` | `999 = Missing` |
+| **Description** |  |  |  |
+
+
+```{r assign w2, echo=F}
+
+opal.assign.table.tibble(o, 'Health20002011_w2','Health2000-2011.t11_athlos_2017_02_27',variables=list('BA08','BA08A'), missings = T)
+Health20002011_w2 <- opal.execute(o,'Health20002011_w2')
+load(paste0(datafolder,"w2/ybirth.RData"))
+Health20002011_w2 <- left_join(Health20002011_w2,ybirth, by="id")
+rm(ybirth)
+
+```
+
+```{r local w2, echo=F}
+
+vbl <- Health20002011_w2$BA08
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(Health20002011_w2)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(Health20002011_w2, aes(x=factor(BA08))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- Health20002011_w2$BA08A
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(Health20002011_w2)[3])
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(Health20002011_w2, aes(BA08A)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1965,2015)
+
+vbl <- Health20002011_w2$ybirth
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(Health20002011_w2)[4])
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(Health20002011_w2, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1905,1975)
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `mi_ha` from the study-specific variable it has to be recoded as follows:
+
+* `keep up 0 into 0`
+* `BA08 (w2) == 1 & (BA08A (w2) >= 2001 & (BA08A (w2) != BA08A (w1)) | BA08 (w1) == 0`
+* `NA into 999`
+
+To compute `mi_ha_age` from the study-specific variable it has to be recoded as follows:
+
+* `if mi_ha == 1, mi_ha_age = BA08A - ybirth`
+* `if mi_ha == 0, mi_ha_age = 996`
+* `mi_ha == 999 into 999`
+
+**R script:**
+
+```{r harmo w2}
+
+# We use the harmonized variable of wave 1 instead of the study-specific variable
+Health20002011_w2 <- left_join(Health20002011_w2, Health20002011_w1, by = "id",suffix=c("","_w1"))
+
+# Categorical variable harmonization
+Health20002011_ds_w2 <- tibble(id=Health20002011_w2$id)
+Health20002011_ds_w2$mi_ha <- rep(999,length(Health20002011_w2$id))
+Health20002011_ds_w2$mi_ha[which(Health20002011_w2$BA08==0)] <- 0
+# Individuals having mi_ha since wave 1, so their year of diagnostic is at least 2001 (wave 1 data was collected between 2001 and 2002) and distinct from answered in wave 1 or missing but until wave 1 they have no mi_ha.
+Health20002011_ds_w2$mi_ha[which(Health20002011_w2$BA08==1 & ((Health20002011_w2$BA08A>=2001 & (Health20002011_w2$BA08A!=Health20002011_w2$BA08A_w1 | is.na(Health20002011_w2$BA08A_w1))) | Health20002011_w2$BA08_w1==0))] <- 1
+
+# Continuous variable harmonization
+Health20002011_ds_w2$mi_ha_age <- rep(999,length(Health20002011_ds_w2$id))
+Health20002011_ds_w2$mi_ha_age[which(Health20002011_ds_w2$mi_ha==0)] <- 996
+
+Health20002011_ds_w2$mi_ha_age[which(Health20002011_ds_w2$mi_ha==1 & !Health20002011_w2$ybirth %in% miss_values_vector & Health20002011_w2$BA08A>=2001)] <- Health20002011_w2$BA08A[which(Health20002011_ds_w2$mi_ha==1 & !Health20002011_w2$ybirth %in% miss_values_vector & Health20002011_w2$BA08A>=2001)] - Health20002011_w2$ybirth[which(Health20002011_ds_w2$mi_ha==1 & !Health20002011_w2$ybirth %in% miss_values_vector & Health20002011_w2$BA08A>=2001)]
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w2, echo=F}
+
+vbl <- Health20002011_ds_w2$mi_ha
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(Health20002011_ds_w2, aes(x=factor(mi_ha))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- Health20002011_ds_w2$mi_ha_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(Health20002011_ds_w2, aes(mi_ha_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(35,90)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w2, echo=F, results='asis'}
+
+continuous <- c(sum(Health20002011_ds_w1$mi_ha_age==996),sum(Health20002011_ds_w1$mi_ha_age!=996))
+X <- table(Health20002011_ds_w1$mi_ha, useNA = "ifany")
+dichotomous <- c(X[1],sum(X[2:3]))
+C <- rbind(continuous,dichotomous)
+colnames(C) <- c("0<-->996","1,NA<-->(possibly missing) age of diagnostic")
+kable(C,caption = "Continuous vs Dichotomous")
+
+cat("There are some individuals which in the first wave told they had no mi_ha and in the second wave told they had mi_ha and give year of diagnosis previous to first wave. We harmonize them as having mi_ha but keep missing age of diagnosis ")
+kable(Health20002011_w2[which(Health20002011_w2$BA08_w1==0 & Health20002011_w2$BA08A<2001),])
+
+```
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
+
+**R script:**
+
+```{r summ}
+Health20002011_ds_w1$mi_ha <- labelled(Health20002011_ds_w1$mi_ha, labels = cat_label)
+label(Health20002011_ds_w1$mi_ha) <- ds_label
+Health20002011_ds_w1$mi_ha_age <- labelled(Health20002011_ds_w1$mi_ha_age, labels = cont_label)
+label(Health20002011_ds_w1$mi_ha_age) <- ds_label_age
+Health20002011_ds_w2$mi_ha <- labelled(Health20002011_ds_w2$mi_ha, labels = cat_label)
+label(Health20002011_ds_w2$mi_ha) <- ds_label
+Health20002011_ds_w2$mi_ha_age <- labelled(Health20002011_ds_w2$mi_ha_age, labels = cont_label)
+label(Health20002011_ds_w2$mi_ha_age) <- ds_label_age
+
+Health20002011_m_ds_w1 <- Health20002011_ds_w1
+Health20002011_m_ds_w1$mi_ha <- car::recode(Health20002011_m_ds_w1$mi_ha, "miss_values_vector=NA")
+Health20002011_m_ds_w2 <- Health20002011_ds_w2
+Health20002011_m_ds_w2$mi_ha <- car::recode(Health20002011_m_ds_w2$mi_ha, "miss_values_vector=NA")
+
+tt <-    frq(Health20002011_ds_w1$mi_ha)[[1]][,c(1:2,4)]
+tt[4] <- frq(Health20002011_ds_w2$mi_ha)[[1]][,c(4)]
+tt[13,] <- c("n", "sample size", 
+             length(Health20002011_ds_w1$mi_ha), length(Health20002011_ds_w2$mi_ha)
+             )
+names(tt)<-c("val", "label", "w1", "w2")
+kable(tt)
+
+dbb <- merge(Health20002011_m_ds_w1[,c("id","mi_ha")], Health20002011_m_ds_w2[,c("id","mi_ha")], by="id", suffixes = c(".w1",".w2"), all=T)
+names(dbb) <- c("id", "w1", "w2")
+v.dbb <- paste(dbb[,2],dbb[,3],sep="")
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb[f.dbb[,3]>=0.3,])
+```
+
+
+
+# Quality estimation
+
+No comments
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+l.Health20002011 <- list(w1 = Health20002011_ds_w1, w2 = Health20002011_ds_w2)
+
+for(index in seq_along(l.Health20002011)){
+  mi_ha <- l.Health20002011[[index]]
+  save(mi_ha, file = paste0(datafolder,names(l.Health20002011)[index],"/mi_ha.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

@@ -1,0 +1,245 @@
+---
+title: "Current depressive status"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE, echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_albert.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `depression`
+* Variable label: `Current depressive status of the participant`
+* Variable description: `Current depressive status of the participant`
+* Domain: `Psycological measures`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | no depression
+1        | depression
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+```{r lab, echo=FALSE}
+ds_label <- "Current depressive status"
+ds_label_all <- "Current depressive status of the participant"
+```
+
+# Data process
+
+## Finland
+
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+| **Name** | `KYS1_K82_BDI`|
+|-|-|
+| **Label** | `BDI, sum score, Already calculated value`|
+| **Table name** | `t00_athlos_2017_02_23` |
+| **Description** |  |
+
+```{r assign1, echo=FALSE}
+opal.assign.table.tibble(o, 'Health20002011_dep','Health2000-2011.t00_athlos_2017_02_23',
+                         variables=list('KYS1_K82_BDI'), missings = TRUE)
+Health20002011_dep <- opal.execute(o,'Health20002011_dep')
+```
+
+```{r local1, echo=FALSE}
+vari <- Health20002011_dep[[2]]
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(Health20002011_dep, aes(x=vari)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `KYS1_K82_BDI < 17 into 0` 
+* `KYS1_K82_BDI >= 17 into 1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1, echo=TRUE}
+Health20002011_ds_w1 <- tibble(id=Health20002011_dep$id)
+Health20002011_ds_w1$depression <- car::recode(Health20002011_dep[[2]], "lo:16=0; 17:hi=1; NA=999")
+Health20002011_ds_w1$depression <- labelled(Health20002011_ds_w1[[2]], labels = c("no depression"=0, "depression"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1, echo=FALSE}
+vari <- Health20002011_ds_w1$depression
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(Health20002011_ds_w1, aes(x=factor(depression))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=FALSE}
+BeforeH <- c(sum(na.omit(Health20002011_dep[[2]])<17),sum(na.omit(Health20002011_dep[[2]])>=17), sum(is.na(Health20002011_dep[[2]])))
+AfterH <- table(Health20002011_ds_w1[[2]], useNA = "ifany")
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("<17->0",">=17->1","NA->999") 
+kable(C)
+```
+
+
+```{r importOPAL1, echo=FALSE}
+#opal.assign.data(o, 'Health20002011_ds_w1', Health20002011_ds_w1)
+#opal.symbol_import(o,'Health20002011_ds_w1', project='_Athlos_Harm_Dataset')
+label(Health20002011_ds_w1$depression) <- ds_label_all
+depression <- Health20002011_ds_w1
+save(depression, file = "../RData/w1/depression.RData")
+rm(depression, Health20002011_dep)
+
+Health20002011_m_ds_w1 <- Health20002011_ds_w1
+Health20002011_m_ds_w1$depression <- car::recode(Health20002011_m_ds_w1$depression, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'Health20002011_m_ds_w1', Health20002011_m_ds_w1)
+#opal.symbol_import(o,'Health20002011_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+ 
+
+| **Name** | `CIDI_YF32_DI`| `CIDI_YF33_DI`|`CIDI_MDD12`|`CIDI_DEPDOB12`|
+|-|-|-|-|-|
+| **Label** | `12 month major depressive disorder, single episode`| `12 month major depressive disorder, recurrent` | `12 month major depressive disorder` | `12 month depressive disorder` |
+| **Table name** | `1066-Cuba-Baseline` | | | |
+| **Categories** |`0 = No; 1 = Yes`|`0 = No; 1 = Yes`|`0 = No; 1 = Yes`|`0 = No; 1 = Yes`|
+| **Description** |  | | | |
+
+```{r assign2, echo=FALSE}
+opal.assign.table.tibble(o, 'Health20002011_dep','Health2000-2011.t11_athlos_2017_02_27',
+                         variables=list('CIDI_YF32_DI', 'CIDI_YF33_DI', 'CIDI_MDD12', 'CIDI_DEPDOB12'), missings = TRUE)
+Health20002011_dep <- opal.execute(o,'Health20002011_dep')
+```
+
+```{r local2, echo=FALSE}
+vari <- Health20002011_dep$CIDI_YF32_DI
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(Health20002011_dep, aes(x=factor(CIDI_YF32_DI))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- Health20002011_dep$CIDI_YF33_DI
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(Health20002011_dep, aes(x=factor(CIDI_YF33_DI))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- Health20002011_dep$CIDI_MDD12
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(Health20002011_dep, aes(x=factor(CIDI_MDD12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- Health20002011_dep$CIDI_DEPDOB12
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(Health20002011_dep, aes(x=factor(CIDI_DEPDOB12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `0 in 'CIDI_YF32_DI', 'CIDI_YF33_DI', 'CIDI_MDD12', 'CIDI_DEPDOB12' into 0`
+* `1 in someone of 'CIDI_YF32_DI', 'CIDI_YF33_DI', 'CIDI_MDD12', 'CIDI_DEPDOB12' into 1`
+
+**R script:**
+
+```{r harmo2, echo=TRUE}
+Health20002011_dep$sum <- apply(Health20002011_dep[,2:5], MARGIN = 1, FUN = sum)
+
+
+Health20002011_ds_w2 <- tibble(id=Health20002011_dep$id)
+Health20002011_ds_w2$depression <- car::recode(Health20002011_dep$sum, "1:4=1; NA=999")
+Health20002011_ds_w2$depression <- labelled(Health20002011_ds_w2[[2]], labels = c("no depression"=0, "depression"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2, echo=FALSE}
+vari <- Health20002011_ds_w2$depression
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(Health20002011_ds_w2, aes(x=factor(depression))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2, echo=FALSE}
+BeforeH <- c(sum(na.omit(Health20002011_dep[[2]])==0),sum(na.omit(Health20002011_dep[[2]])>=1), sum(is.na(Health20002011_dep[[2]])))
+AfterH <- table(Health20002011_ds_w2[[2]], useNA = "ifany")
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0",">=1->1","NA->999") 
+kable(C)
+```
+
+
+```{r importOPAL2, echo=FALSE}
+#opal.assign.data(o, 'Health20002011_ds_w2', Health20002011_ds_w2)
+#opal.symbol_import(o,'Health20002011_ds_w2', project='_Athlos_Harm_Dataset')
+label(Health20002011_ds_w2$depression) <- ds_label_all
+depression <- Health20002011_ds_w2
+save(depression, file = "../RData/w2/depression.RData")
+rm(depression)
+
+Health20002011_m_ds_w2 <- Health20002011_ds_w2
+Health20002011_m_ds_w2$depression <- car::recode(Health20002011_m_ds_w2$depression, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'Health20002011_m_ds_w2', Health20002011_m_ds_w2)
+#opal.symbol_import(o,'Health20002011_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+# Quality estimation
+
+w1: They used the Beck Depression Index modified > We had the final score computed in integer format > After searching information, I have built the algorithm using 17 as cut-off score because in this article (https://www.ncbi.nlm.nih.gov/pubmed/19141552) with finnish population they found 17 or greater as the optimal cut-off score. 
+w2: They used the CIDI > We had the final score variable in binary format
+
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
