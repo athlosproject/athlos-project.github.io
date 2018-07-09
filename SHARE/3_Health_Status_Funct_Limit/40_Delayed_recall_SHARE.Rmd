@@ -1,0 +1,513 @@
+---
+title: "Delayed recall"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `cog_del_c`
+* Variable label: `Cognition - delayed recall - Continuous`
+* Variable description: `Delayed recall of a list previously employed for measuring Immediate recall. The number of words is exactly the same as in the study-specific variable`
+* Domain: `Health status and functional limitations`
+* Value type: `Continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+* Short name: `cog_del`
+* Variable label: `Cognition - delayed recall`
+* Variable description: `Delayed recall of a list of common nouns. Discrete variable: value 0 = <=25%; value 1 = >25%.`
+* Domain: `Health status and functional limitations`
+* Value type: `Categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | <=25%
+1        | >25%
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Delayed recall"
+ds_label_cog_del_c <- "Delayed recall of a list previously employed for measuring Immediate recall. The number of words is exactly the same as in the study-specific variable"
+ds_label_cog_del <- "Delayed recall of a list of common nouns. Discrete variable: value 0 = <=25%; value 1 = >25%"
+```
+
+# Data process
+
+## SHARE
+
+### Wave 1 
+
+#### Study-specific variable description
+
+
+| **Name** | `cf016tot`|
+|-|-|
+| **Label** | `ten words list learning delayed recall total` |
+| **Table name** |`sharew1_rel2-6-0_cf`|
+| **Categories** |`Continuous Variable 0-10`|
+| **Missings** |`NA`|
+| **Description** |  |
+
+
+```{r assign w1, echo=FALSE}
+opal.assign.table.tibble(o, 'SHARE_w1_cog_del','SHARE.sharew1_rel2-6-0_cf', variables=list('cf016tot'), missings = TRUE)
+SHARE_w1_cog_del <- opal.execute(o,'SHARE_w1_cog_del')
+```
+
+```{r local w1, echo=FALSE}
+vari <- SHARE_w1_cog_del$cf016tot
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Delayed recall continuous")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(SHARE_w1_cog_del, aes(x=factor(cf016tot))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonized variable `cog_del_c` from the study-specific variables you have to sum the total of words and the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_del` from `cog_del_c` it has to be recoded as follows:
+
+* `cog_del_c <=25% into 0`
+* `cog_del_c >25% into 1`
+
+**R script**
+
+```{r harmo w1}
+##cog_del_c
+SHARE_ds_w1 <- tibble(id=SHARE_w1_cog_del$id)
+SHARE_ds_w1$cog_del_c <- car::recode(SHARE_w1_cog_del$cf016tot, "NA = 999")
+SHARE_ds_w1$cog_del_c <- labelled(SHARE_ds_w1$cog_del_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995, Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+
+##cog_del
+Q <- quantile(car::recode(SHARE_ds_w1$cog_del_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+SHARE_ds_w1$cog_del <- car::recode(SHARE_ds_w1[[2]], "0:Q=0; (Q+1):10=1")
+SHARE_ds_w1$cog_del <- labelled(SHARE_ds_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995, "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=FALSE}
+vari <- SHARE_ds_w1$cog_del_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Delayed recall continuous")
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(SHARE_ds_w1, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("cog_del") + ylab("Frequency")
+
+vari <- SHARE_ds_w1$cog_del
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Delayed recall categorical") 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(SHARE_ds_w1, aes(x=factor(cog_del))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1, echo=FALSE}
+Continous <- c(sum(na.omit(SHARE_ds_w1[[2]])<=Q), sum(na.omit(SHARE_ds_w1[[2]])>Q&na.omit(SHARE_ds_w1[[2]])<900), sum(na.omit(SHARE_ds_w1[[2]])==999))
+Dicotomic <- table(SHARE_ds_w1[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:2->0","3:20->1", "NA->999") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL w1, echo=FALSE}
+label(SHARE_ds_w1$cog_del_c) <- ds_label_cog_del_c
+label(SHARE_ds_w1$cog_del) <- ds_label_cog_del
+#opal.assign.data(o, 'SHARE_ds_w1', SHARE_ds_w1)
+#opal.symbol_import(o,'SHARE_ds_w1', project='_Athlos_Harm_Dataset')
+cog_del <- SHARE_ds_w1
+save(cog_del, file = "../RData/w1/cog_del.RData")
+rm(cog_del)
+
+SHARE_m_ds_w1 <- SHARE_ds_w1
+SHARE_m_ds_w1$cog_del <- car::recode(SHARE_m_ds_w1$cog_del, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+SHARE_m_ds_w1$cog_del_c <- car::recode(SHARE_m_ds_w1$cog_del_c, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SHARE_m_ds_w1', SHARE_m_ds_w1)
+#opal.symbol_import(o,'SHARE_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+
+| **Name** | `cf016tot`|
+|-|-|
+| **Label** | `ten words list learning delayed recall total` |
+| **Table name** |`sharew2_rel2-6-0_cf`|
+| **Categories** |`Continuous Variable 0-10`|
+| **Missings** |`NA`|
+| **Description** |  |
+
+
+
+```{r assign w2, echo=FALSE}
+opal.assign.table.tibble(o, 'SHARE_w2_cog_del','SHARE.sharew2_rel2-6-0_cf', variables=list('cf016tot'), missings = TRUE)
+SHARE_w2_cog_del <- opal.execute(o,'SHARE_w2_cog_del')
+```
+
+```{r local w2, echo=FALSE}
+vari <- SHARE_w2_cog_del$cf016tot
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Delayed recall continuous")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(SHARE_w2_cog_del, aes(x=factor(cf016tot))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonized variable `cog_del_c` from the study-specific variables you have to sum the total of words and the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_del` from `cog_del_c` it has to be recoded as follows:
+
+* `cog_del_c <=25% into 0`
+* `cog_del_c >25% into 1`
+
+**R script**
+
+```{r harmo w2}
+##cog_del_c
+SHARE_ds_w2 <- tibble(id=SHARE_w2_cog_del$id)
+SHARE_ds_w2$cog_del_c <- car::recode(SHARE_w2_cog_del$cf016tot, "NA = 999")
+SHARE_ds_w2$cog_del_c <- labelled(SHARE_ds_w2$cog_del_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995, Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+
+##cog_del
+Q <- quantile(car::recode(SHARE_ds_w2$cog_del_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+SHARE_ds_w2$cog_del <- car::recode(SHARE_ds_w2[[2]], "0:Q=0; (Q+1):10=1")
+SHARE_ds_w2$cog_del <- labelled(SHARE_ds_w2[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995, "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w2, echo=FALSE}
+vari <- SHARE_ds_w2$cog_del_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Delayed recall continuous")
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(SHARE_ds_w2, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("cog_del") + ylab("Frequency")
+
+vari <- SHARE_ds_w2$cog_del
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Delayed recall categorical") 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(SHARE_ds_w2, aes(x=factor(cog_del))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w2, echo=FALSE}
+Continous <- c(sum(na.omit(SHARE_ds_w2[[2]])<=Q), sum(na.omit(SHARE_ds_w2[[2]])>Q&na.omit(SHARE_ds_w2[[2]])<900), sum(na.omit(SHARE_ds_w2[[2]])==999))
+Dicotomic <- table(SHARE_ds_w2[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:2->0","3:20->1", "NA->999") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL w2, echo=FALSE}
+label(SHARE_ds_w2$cog_del_c) <- ds_label_cog_del_c
+label(SHARE_ds_w2$cog_del) <- ds_label_cog_del
+#opal.assign.data(o, 'SHARE_ds_w2', SHARE_ds_w2)
+#opal.symbol_import(o,'SHARE_ds_w2', project='_Athlos_Harm_Dataset')
+cog_del <- SHARE_ds_w2
+save(cog_del, file = "../RData/w2/cog_del.RData")
+rm(cog_del)
+
+SHARE_m_ds_w2 <- SHARE_ds_w2
+SHARE_m_ds_w2$cog_del <- car::recode(SHARE_m_ds_w2$cog_del, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+SHARE_m_ds_w2$cog_del_c <- car::recode(SHARE_m_ds_w2$cog_del_c, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SHARE_m_ds_w2', SHARE_m_ds_w2)
+#opal.symbol_import(o,'SHARE_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 3
+
+Not found
+
+
+
+### Wave 4 
+
+#### Study-specific variable description
+
+
+| **Name** | `cf113tot`| `cf114tot`|`cf115tot`|`cf116tot`|
+|-|-|-|-|-|
+| **Label** | `Ten words list learning delayed recall total` |`Ten words list learning delayed recall total` |`Ten words list learning delayed recall total` |`Ten words list learning delayed recall total` |
+| **Table name** |`sharew4_rel1-1-1_cf`|`sharew4_rel1-1-1_cf`|`sharew4_rel1-1-1_cf`|`sharew4_rel1-1-1_cf`|
+| **Categories** |`Continuous Variable 0-10`|`Continuous Variable 0-10`|`Continuous Variable 0-10`|`Continuous Variable 0-10`|
+| **Missings** |`NA`|`NA`|`NA`|`NA`|
+| **Description** |  |  |  |  |
+
+
+```{r assign w4, echo=FALSE}
+opal.assign.table.tibble(o, 'SHARE_w4_cog_del','SHARE.sharew4_rel1-1-1_cf', variables=list('cf113tot','cf114tot','cf115tot','cf116tot'), missings = TRUE)
+SHARE_w4_cog_del <- opal.execute(o,'SHARE_w4_cog_del')
+```
+
+```{r local w4, echo=FALSE}
+vari <- SHARE_w4_cog_del$cf113tot
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Delayed recall continuous")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(SHARE_w4_cog_del, aes(x=factor(cf113tot))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+
+vari <- SHARE_w4_cog_del$cf114tot
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Delayed recall continuous")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(SHARE_w4_cog_del, aes(x=factor(cf114tot))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+
+vari <- SHARE_w4_cog_del$cf115tot
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Delayed recall continuous")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(SHARE_w4_cog_del, aes(x=factor(cf115tot))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+
+vari <- SHARE_w4_cog_del$cf116tot
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Delayed recall continuous")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(SHARE_w4_cog_del, aes(x=factor(cf116tot))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonized variable `cog_del_c` from the study-specific variables you have to sum the total of words and the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_del` from `cog_del_c` it has to be recoded as follows:
+
+* `cog_del_c <=25% into 0`
+* `cog_del_c >25% into 1`
+
+**R script**
+
+```{r harmo w4}
+##cog_del_c
+SHARE_ds_w4 <- tibble(id=SHARE_w4_cog_del$id)
+SHARE_ds_w4$cog_del_c<- rep(NA,length(SHARE_ds_w4$id))
+SHARE_ds_w4$cog_del_c[which(is.na(SHARE_w4_cog_del$cf113tot)==FALSE)]<-SHARE_w4_cog_del$cf113tot[which(is.na(SHARE_w4_cog_del$cf113tot)==FALSE)]
+SHARE_ds_w4$cog_del_c[which(is.na(SHARE_w4_cog_del$cf114tot)==FALSE)]<-SHARE_w4_cog_del$cf114tot[which(is.na(SHARE_w4_cog_del$cf114tot)==FALSE)]
+SHARE_ds_w4$cog_del_c[which(is.na(SHARE_w4_cog_del$cf115tot)==FALSE)]<-SHARE_w4_cog_del$cf115tot[which(is.na(SHARE_w4_cog_del$cf115tot)==FALSE)]
+SHARE_ds_w4$cog_del_c[which(is.na(SHARE_w4_cog_del$cf116tot)==FALSE)]<-SHARE_w4_cog_del$cf116tot[which(is.na(SHARE_w4_cog_del$cf116tot)==FALSE)]
+SHARE_ds_w4$cog_del_c <- car::recode(SHARE_ds_w4$cog_del_c, "NA = 999")
+SHARE_ds_w4$cog_del_c <- labelled(SHARE_ds_w4$cog_del_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995, Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+
+##cog_del
+Q <- quantile(car::recode(SHARE_ds_w4$cog_del_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+SHARE_ds_w4$cog_del <- car::recode(SHARE_ds_w4[[2]], "0:Q=0; (Q+1):10=1")
+SHARE_ds_w4$cog_del <- labelled(SHARE_ds_w4[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995, "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w4, echo=FALSE}
+vari <- SHARE_ds_w4$cog_del_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Delayed recall continuous")
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(SHARE_ds_w4, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("cog_del") + ylab("Frequency")
+
+vari <- SHARE_ds_w4$cog_del
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Delayed recall categorical") 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(SHARE_ds_w4, aes(x=factor(cog_del))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w4, echo=FALSE}
+Continous <- c(sum(na.omit(SHARE_ds_w4[[2]])<=Q), sum(na.omit(SHARE_ds_w4[[2]])>Q&na.omit(SHARE_ds_w4[[2]])<900), sum(na.omit(SHARE_ds_w4[[2]])==999))
+Dicotomic <- table(SHARE_ds_w4[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:2->0","3:20->1", "NA->999") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL w4, echo=FALSE}
+label(SHARE_ds_w4$cog_del_c) <- ds_label_cog_del_c
+label(SHARE_ds_w4$cog_del) <- ds_label_cog_del
+#opal.assign.data(o, 'SHARE_ds_w4', SHARE_ds_w4)
+#opal.symbol_import(o,'SHARE_ds_w4', project='_Athlos_Harm_Dataset')
+cog_del <- SHARE_ds_w4
+save(cog_del, file = "../RData/w4/cog_del.RData")
+rm(cog_del)
+
+SHARE_m_ds_w4 <- SHARE_ds_w4
+SHARE_m_ds_w4$cog_del <- car::recode(SHARE_m_ds_w4$cog_del, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+SHARE_m_ds_w4$cog_del_c <- car::recode(SHARE_m_ds_w4$cog_del_c, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SHARE_m_ds_w4', SHARE_m_ds_w4)
+#opal.symbol_import(o,'SHARE_m_ds_w4', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 5 
+
+#### Study-specific variable description
+
+
+
+| **Name** | `cf113tot`| `cf114tot`|`cf115tot`|`cf116tot`|
+|-|-|-|-|-|
+| **Label** | `Ten words list learning delayed recall total` |`Ten words list learning delayed recall total` |`Ten words list learning delayed recall total` |`Ten words list learning delayed recall total` |
+| **Table name** |`sharew5_rel1-0-0_cf`|`sharew5_rel1-0-0_cf`|`sharew5_rel1-0-0_cf`|`sharew5_rel1-0-0_cf`|
+| **Categories** |`Continuous Variable 0-10`|`Continuous Variable 0-10`|`Continuous Variable 0-10`|`Continuous Variable 0-10`|
+| **Missings** |`NA`|`NA`|`NA`|`NA`|
+| **Description** |  |  |  |  |
+
+
+
+
+```{r assign w5, echo=FALSE}
+opal.assign.table.tibble(o, 'SHARE_w5_cog_del','SHARE.sharew5_rel1-0-0_cf', variables=list('cf113tot','cf114tot','cf115tot','cf116tot'), missings = TRUE)
+SHARE_w5_cog_del <- opal.execute(o,'SHARE_w5_cog_del')
+```
+
+```{r local w5, echo=FALSE}
+vari <- SHARE_w5_cog_del$cf113tot
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Delayed recall continuous")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(SHARE_w5_cog_del, aes(x=factor(cf113tot))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+
+vari <- SHARE_w5_cog_del$cf114tot
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Delayed recall continuous")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(SHARE_w5_cog_del, aes(x=factor(cf114tot))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+
+vari <- SHARE_w5_cog_del$cf115tot
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Delayed recall continuous")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(SHARE_w5_cog_del, aes(x=factor(cf115tot))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+
+vari <- SHARE_w5_cog_del$cf116tot
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Delayed recall continuous")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(SHARE_w5_cog_del, aes(x=factor(cf116tot))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonized variable `cog_del_c` from the study-specific variables you have to sum the total of words and the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `cog_del` from `cog_del_c` it has to be recoded as follows:
+
+* `cog_del_c <=25% into 0`
+* `cog_del_c >25% into 1`
+
+**R script**
+
+```{r harmo w5}
+##cog_del_c
+SHARE_ds_w5 <- tibble(id=SHARE_w5_cog_del$id)
+SHARE_ds_w5$cog_del_c<- rep(NA,length(SHARE_ds_w5$id))
+SHARE_ds_w5$cog_del_c[which(is.na(SHARE_w5_cog_del$cf113tot)==FALSE)]<-SHARE_w5_cog_del$cf113tot[which(is.na(SHARE_w5_cog_del$cf113tot)==FALSE)]
+SHARE_ds_w5$cog_del_c[which(is.na(SHARE_w5_cog_del$cf114tot)==FALSE)]<-SHARE_w5_cog_del$cf114tot[which(is.na(SHARE_w5_cog_del$cf114tot)==FALSE)]
+SHARE_ds_w5$cog_del_c[which(is.na(SHARE_w5_cog_del$cf115tot)==FALSE)]<-SHARE_w5_cog_del$cf115tot[which(is.na(SHARE_w5_cog_del$cf115tot)==FALSE)]
+SHARE_ds_w5$cog_del_c[which(is.na(SHARE_w5_cog_del$cf116tot)==FALSE)]<-SHARE_w5_cog_del$cf116tot[which(is.na(SHARE_w5_cog_del$cf116tot)==FALSE)]
+SHARE_ds_w5$cog_del_c <- car::recode(SHARE_ds_w5$cog_del_c, "NA = 999")
+SHARE_ds_w5$cog_del_c <- labelled(SHARE_ds_w5$cog_del_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995, Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+
+##cog_del
+Q <- quantile(car::recode(SHARE_ds_w5$cog_del_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+
+SHARE_ds_w5$cog_del <- car::recode(SHARE_ds_w5[[2]], "0:Q=0; (Q+1):10=1")
+SHARE_ds_w5$cog_del <- labelled(SHARE_ds_w5[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995, "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w5, echo=FALSE}
+vari <- SHARE_ds_w5$cog_del_c
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Delayed recall continuous")
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(SHARE_ds_w5, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("cog_del") + ylab("Frequency")
+
+vari <- SHARE_ds_w5$cog_del
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Delayed recall categorical") 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(SHARE_ds_w5, aes(x=factor(cog_del))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Delayed recall") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w5, echo=FALSE}
+Continous <- c(sum(na.omit(SHARE_ds_w5[[2]])<=Q), sum(na.omit(SHARE_ds_w5[[2]])>Q&na.omit(SHARE_ds_w5[[2]])<900), sum(na.omit(SHARE_ds_w5[[2]])==999))
+Dicotomic <- table(SHARE_ds_w5[[3]], useNA = "ifany")
+C <- rbind(Continous,Dicotomic)
+colnames(C) <- c("0:2->0","3:20->1", "NA->999") 
+kable(C, caption = "Continuous vs Dichotomous")
+```
+
+```{r importOPAL w5, echo=FALSE}
+label(SHARE_ds_w5$cog_del_c) <- ds_label_cog_del_c
+label(SHARE_ds_w5$cog_del) <- ds_label_cog_del
+#opal.assign.data(o, 'SHARE_ds_w5', SHARE_ds_w5)
+#opal.symbol_import(o,'SHARE_ds_w5', project='_Athlos_Harm_Dataset')
+cog_del <- SHARE_ds_w5
+save(cog_del, file = "../RData/w5/cog_del.RData")
+rm(cog_del)
+
+SHARE_m_ds_w5 <- SHARE_ds_w5
+SHARE_m_ds_w5$cog_del <- car::recode(SHARE_m_ds_w5$cog_del, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+SHARE_m_ds_w5$cog_del_c <- car::recode(SHARE_m_ds_w5$cog_del_c, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SHARE_m_ds_w5', SHARE_m_ds_w5)
+#opal.symbol_import(o,'SHARE_m_ds_w5', project='_Athlos_Harm_Dataset')
+```
+
+
+
+# Quality estimation
+[Comments on the quality of the new harmonised variable. This section can be done in a later stage, once all variables are harmonised.]
+
+No comments
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

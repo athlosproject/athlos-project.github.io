@@ -1,0 +1,538 @@
+---
+title: "Month of Birth"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+  
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+<!-- ########################################################## --> 
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+
+* Short name: `mbirth`
+* Variable label: `Month of birth`
+* Variable description: `Month of birth`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Month of birth"
+```
+
+
+# Data process
+
+## SHARE
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `mobirth` |
+|----------|------------|
+| **Label** | `month of birth` |
+| **Table name** | `sharew1_rel2-6-0_cv_r_whitout_nointw1` |
+| **Missings** | `-2 = refusal; -1 = don't know` |
+| **Categories** | `1 = january; 2 = february; 3 = march; 4 = april; 5 = may; 6 = june; 7 = july; 8 = august; 9 = september; 10 = october; 11 = november; 12 = december; 13 = today` |
+| **Description** |  |
+
+
+
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w1_mbirth','SHARE.sharew1_rel2-6-0_cv_r_whitout_nointw1',
+                         variables=list('mobirth'), missings = TRUE)
+SHARE_w1_mbirth <- opal.execute(o,'SHARE_w1_mbirth')
+```
+
+```{r local1, echo=F}
+vari <- SHARE_w1_mbirth$mobirth
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[2], caption = "Type of missing")
+ggplot(SHARE_w1_mbirth, aes(x=factor(mobirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "january" into 1`
+* `keep "february" into 2`
+* `keep "march" into 3`
+* `keep "april" into 4`
+* `keep "may" into 5`
+* `keep "june" into 6`
+* `keep "july" into 7`
+* `keep "august" into 8`
+* `keep "september" into 9`
+* `keep "october" into 10`
+* `keep "november" into 11`
+* `keep "december" into 12`
+* `keep "today" into 1`
+* `recode 13 "today" with the month_of_interview`
+* `recode -2 "refusal" into 997`
+* `recode -1 "don't know" into 998`
+
+**R script:**
+
+```{r harmo1}
+SHARE_ds_w1 <- tibble(id=SHARE_w1_mbirth$id)
+SHARE_ds_w1$mbirth <- car::recode(SHARE_w1_mbirth$mobirth, "-2=997; -1=998;  NA=999")
+SHARE_ds_w1$mbirth <- labelled(SHARE_ds_w1$mbirth, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=F}
+vari <- SHARE_ds_w1$mbirth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(SHARE_ds_w1, aes(x=factor(mbirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=F}
+BeforeH <- table(SHARE_w1_mbirth$mobirth)[c(3:14,1,2)]
+AfterH <- table(SHARE_ds_w1$mbirth)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "-2->997", "-1->998")
+kable(C)
+```
+
+
+
+
+
+```{r importOPAL1, echo=F}
+label(SHARE_ds_w1$mbirth) <- ds_label
+mbirth <- SHARE_ds_w1
+save(mbirth, file = "../RData/w1/mbirth.RData")
+#opal.assign.data(o, 'SHARE_ds_w1', SHARE_ds_w1)
+#opal.symbol_import(o,'SHARE_ds_w1', project='_Athlos_Harm_Dataset')
+
+SHARE_m_ds_w1 <- SHARE_ds_w1
+SHARE_m_ds_w1$mbirth <- car::recode(SHARE_m_ds_w1$mbirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SHARE_m_ds_w1', SHARE_m_ds_w1)
+#opal.symbol_import(o,'SHARE_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `mobirth` |
+|----------|------------|
+| **Label** | `month of birth` |
+| **Table name** | `sharew2_rel2-6-0_cv_r_without_noint` |
+| **Missings** | `-2 = refusal; -1 = don't know` |
+| **Categories** | `1 = january; 2 = february; 3 = march; 4 = april; 5 = may; 6 = june; 7 = july; 8 = august; 9 = september; 10 = october; 11 = november; 12 = december; 13 = today` |
+| **Description** |  |
+
+
+```{r assign2, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w2_mbirth','SHARE.sharew2_rel2-6-0_cv_r_without_noint',
+                         variables=list('mobirth'), missings = TRUE)
+SHARE_w2_mbirth <- opal.execute(o,'SHARE_w2_mbirth')
+```
+
+```{r local2, echo=F}
+vari <- SHARE_w2_mbirth$mobirth
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[2], caption = "Type of missing")
+ggplot(SHARE_w2_mbirth, aes(x=factor(mobirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "january" into 1`
+* `keep "february" into 2`
+* `keep "march" into 3`
+* `keep "april" into 4`
+* `keep "may" into 5`
+* `keep "june" into 6`
+* `keep "july" into 7`
+* `keep "august" into 8`
+* `keep "september" into 9`
+* `keep "october" into 10`
+* `keep "november" into 11`
+* `keep "december" into 12`
+* `keep "today" into 1`
+* `recode 13 "today" with the month_of_interview`
+* `recode -2 "refusal" into 997`
+* `recode -1 "don't know" into 998`
+
+**R script:**
+
+```{r harmo2}
+SHARE_ds_w2 <- tibble(id=SHARE_w2_mbirth$id)
+SHARE_ds_w2$mbirth <- car::recode(SHARE_w2_mbirth$mobirth, "-2=997; -1=998;  NA=999")
+SHARE_ds_w2$mbirth <- labelled(SHARE_ds_w2$mbirth, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2, echo=F}
+vari <- SHARE_ds_w2$mbirth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(SHARE_ds_w2, aes(x=factor(mbirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2, echo=F}
+BeforeH <- c(table(SHARE_w2_mbirth$mobirth)[c(3:14,1,2)], sum(is.na(SHARE_w2_mbirth$mobirth)))
+AfterH <- table(SHARE_ds_w2$mbirth)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "-2->997", "-1->998", "NA->999")
+kable(C)
+```
+
+
+
+
+
+```{r importOPAL2, echo=F}
+label(SHARE_ds_w2$mbirth) <- ds_label
+mbirth <- SHARE_ds_w2
+save(mbirth, file = "../RData/w2/mbirth.RData")
+#opal.assign.data(o, 'SHARE_ds_w2', SHARE_ds_w2)
+#opal.symbol_import(o,'SHARE_ds_w2', project='_Athlos_Harm_Dataset')
+
+SHARE_m_ds_w2 <- SHARE_ds_w2
+SHARE_m_ds_w2$mbirth <- car::recode(SHARE_m_ds_w2$mbirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SHARE_m_ds_w2', SHARE_m_ds_w2)
+#opal.symbol_import(o,'SHARE_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+### Wave 3 
+
+#### Study-specific variable description
+
+| **Name** | `mobirth` |
+|----------|------------|
+| **Label** | `month of birth` |
+| **Table name** | `sharew3_rel1_cv_r_without_noint` |
+| **Missings** | `-2 = refusal; -1 = don't know` |
+| **Categories** | `1 = january; 2 = february; 3 = march; 4 = april; 5 = may; 6 = june; 7 = july; 8 = august; 9 = september; 10 = october; 11 = november; 12 = december; 13 = today` |
+| **Description** |  |
+
+
+```{r assign3, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w3_mbirth','SHARE.sharew3_rel1_cv_r_without_noint',
+                         variables=list('mobirth'), missings = TRUE)
+SHARE_w3_mbirth <- opal.execute(o,'SHARE_w3_mbirth')
+```
+
+```{r local3, echo=F}
+vari <- SHARE_w3_mbirth$mobirth
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[2], caption = "Type of missing")
+ggplot(SHARE_w3_mbirth, aes(x=factor(mobirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "january" into 1`
+* `keep "february" into 2`
+* `keep "march" into 3`
+* `keep "april" into 4`
+* `keep "may" into 5`
+* `keep "june" into 6`
+* `keep "july" into 7`
+* `keep "august" into 8`
+* `keep "september" into 9`
+* `keep "october" into 10`
+* `keep "november" into 11`
+* `keep "december" into 12`
+* `keep "today" into 1`
+* `recode 13 "today" with the month_of_interview`
+* `recode -2 "refusal" into 997`
+* `recode -1 "don't know" into 998`
+
+**R script:**
+
+```{r harmo3}
+SHARE_ds_w3 <- tibble(id=SHARE_w3_mbirth$id)
+SHARE_ds_w3$mbirth <- car::recode(SHARE_w3_mbirth$mobirth, "-2=997; -1=998;  NA=999")
+SHARE_ds_w3$mbirth <- labelled(SHARE_ds_w3$mbirth, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript3, echo=F}
+vari <- SHARE_ds_w3$mbirth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(SHARE_ds_w3, aes(x=factor(mbirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation3, echo=F}
+BeforeH <- c( table(SHARE_w3_mbirth$mobirth), sum(is.na(SHARE_w3_mbirth$mobirth)) )
+AfterH <- table(SHARE_ds_w3$mbirth)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "NA->999")
+kable(C)
+```
+
+
+
+
+
+```{r importOPAL3, echo=F}
+label(SHARE_ds_w3$mbirth) <- ds_label
+mbirth <- SHARE_ds_w3
+save(mbirth, file = "../RData/w3/mbirth.RData")
+#opal.assign.data(o, 'SHARE_ds_w3', SHARE_ds_w3)
+#opal.symbol_import(o,'SHARE_ds_w3', project='_Athlos_Harm_Dataset')
+
+SHARE_m_ds_w3 <- SHARE_ds_w3
+SHARE_m_ds_w3$mbirth <- car::recode(SHARE_m_ds_w3$mbirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SHARE_m_ds_w3', SHARE_m_ds_w3)
+#opal.symbol_import(o,'SHARE_m_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 4 
+
+#### Study-specific variable description
+
+| **Name** | `mobirth` |
+|----------|------------|
+| **Label** | `month of birth` |
+| **Table name** | `sharew4_rel1-1-1_cv_r_without_noint` |
+| **Missings** | `-2 = refusal; -1 = don't know` |
+| **Categories** | `1 = january; 2 = february; 3 = march; 4 = april; 5 = may; 6 = june; 7 = july; 8 = august; 9 = september; 10 = october; 11 = november; 12 = december; 13 = today` |
+| **Description** |  |
+
+
+
+```{r assign4, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w4_mbirth','SHARE.sharew4_rel1-1-1_cv_r_without_noint',
+                         variables=list('mobirth'), missings = TRUE)
+SHARE_w4_mbirth <- opal.execute(o,'SHARE_w4_mbirth')
+```
+
+```{r local4, echo=F}
+vari <- SHARE_w4_mbirth$mobirth
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[2], caption = "Type of missing")
+ggplot(SHARE_w4_mbirth, aes(x=factor(mobirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "january" into 1`
+* `keep "february" into 2`
+* `keep "march" into 3`
+* `keep "april" into 4`
+* `keep "may" into 5`
+* `keep "june" into 6`
+* `keep "july" into 7`
+* `keep "august" into 8`
+* `keep "september" into 9`
+* `keep "october" into 10`
+* `keep "november" into 11`
+* `keep "december" into 12`
+* `keep "today" into 1`
+* `recode 13 "today" with the month_of_interview`
+* `recode -2 "refusal" into 997`
+* `recode -1 "don't know" into 998`
+
+**R script:**
+
+```{r harmo4}
+SHARE_ds_w4 <- tibble(id=SHARE_w4_mbirth$id)
+SHARE_ds_w4$mbirth <- car::recode(SHARE_w4_mbirth$mobirth, "-2=997; -1=998;  NA=999")
+SHARE_ds_w4$mbirth <- labelled(SHARE_ds_w4$mbirth, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript4, echo=F}
+vari <- SHARE_ds_w4$mbirth 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(SHARE_ds_w4, aes(x=factor(mbirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation4, echo=F}
+BeforeH <- c(table(SHARE_w4_mbirth$mobirth), sum(is.na(SHARE_w4_mbirth$mobirth)))
+AfterH <- table(SHARE_ds_w4$mbirth)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "NA->999")
+kable(C)
+```
+
+
+
+
+
+```{r importOPAL4, echo=F}
+label(SHARE_ds_w4$mbirth) <- ds_label
+mbirth <- SHARE_ds_w4
+save(mbirth, file = "../RData/w4/mbirth.RData")
+#opal.assign.data(o, 'SHARE_ds_w4', SHARE_ds_w4)
+#opal.symbol_import(o,'SHARE_ds_w4', project='_Athlos_Harm_Dataset')
+
+SHARE_m_ds_w4 <- SHARE_ds_w4
+SHARE_m_ds_w4$mbirth <- car::recode(SHARE_m_ds_w4$mbirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SHARE_m_ds_w4', SHARE_m_ds_w4)
+#opal.symbol_import(o,'SHARE_m_ds_w4', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+### Wave 5 
+
+#### Study-specific variable description
+
+| **Name** | `mobirth` |
+|----------|------------|
+| **Label** | `month of birth` |
+| **Table name** | `sharew5_rel1-0-0_cv_r_without_noint` |
+| **Missings** | `-2 = refusal; -1 = don't know` |
+| **Categories** | `1 = january; 2 = february; 3 = march; 4 = april; 5 = may; 6 = june; 7 = july; 8 = august; 9 = september; 10 = october; 11 = november; 12 = december; 13 = today` |
+| **Description** |  |
+
+
+```{r assign5, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w5_mbirth','SHARE.sharew5_rel1-0-0_cv_r_without_noint',
+                         variables=list('mobirth'), missings = TRUE)
+SHARE_w5_mbirth <- opal.execute(o,'SHARE_w5_mbirth')
+```
+
+```{r local5, echo=F}
+vari <- SHARE_w5_mbirth$mobirth
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[2], caption = "Type of missing")
+ggplot(SHARE_w5_mbirth, aes(x=factor(mobirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "january" into 1`
+* `keep "february" into 2`
+* `keep "march" into 3`
+* `keep "april" into 4`
+* `keep "may" into 5`
+* `keep "june" into 6`
+* `keep "july" into 7`
+* `keep "august" into 8`
+* `keep "september" into 9`
+* `keep "october" into 10`
+* `keep "november" into 11`
+* `keep "december" into 12`
+* `keep "today" into 1`
+* `recode 13 "today" with the month_of_interview`
+* `recode -2 "refusal" into 997`
+* `recode -1 "don't know" into 998`
+
+**R script:**
+
+```{r harmo5}
+SHARE_ds_w5 <- tibble(id=SHARE_w5_mbirth$id)
+SHARE_ds_w5$mbirth <- car::recode(SHARE_w5_mbirth$mobirth, "-2=997; -1=998;  NA=999")
+SHARE_ds_w5$mbirth <- labelled(SHARE_ds_w5$mbirth, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript5, echo=F}
+vari <- SHARE_ds_w5$mbirth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(SHARE_ds_w5, aes(x=factor(mbirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation5, echo=F}
+BeforeH <- c(table(SHARE_w5_mbirth$mobirth), sum(is.na(SHARE_w5_mbirth$mobirth)))
+AfterH <- table(SHARE_ds_w5$mbirth)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "NA->999")
+kable(C)
+```
+
+
+
+
+
+```{r importOPAL5, echo=F}
+label(SHARE_ds_w5$mbirth) <- ds_label
+mbirth <- SHARE_ds_w5
+save(mbirth, file = "../RData/w5/mbirth.RData")
+#opal.assign.data(o, 'SHARE_ds_w5', SHARE_ds_w5)
+#opal.symbol_import(o,'SHARE_ds_w5', project='_Athlos_Harm_Dataset')
+
+SHARE_m_ds_w5 <- SHARE_ds_w5
+SHARE_m_ds_w5$mbirth <- car::recode(SHARE_m_ds_w5$mbirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SHARE_m_ds_w5', SHARE_m_ds_w5)
+#opal.symbol_import(o,'SHARE_m_ds_w5', project='_Athlos_Harm_Dataset')
+```
+
+
+# Quality estimation
+No comments.
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

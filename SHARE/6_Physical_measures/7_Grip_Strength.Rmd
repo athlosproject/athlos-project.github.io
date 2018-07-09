@@ -1,0 +1,514 @@
+---
+title: "Grip strength"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `grip`
+* Variable label: `Grip strength in kg`
+* Variable description: `Grip strength`
+* Domain: `Physical measures`
+* Value type: `continuous`
+
+* Comments: `According to a systematic review (Roberts et al, 2011), there are some inconsistencies in the use of maximum or mean grip strength as a summary measure which limit comparison of results between epidemiological studies. With multiple attempts, the maximum grip strength will be greater than the mean value. 
+Even though for right handed people, there is a 10% stronger grip in the dominant hand, this is not true for left handed or ambidextrous people, whose grip strength are more or less equal in both hands (Roberts et al, 2011). 
+In light of the above, the harmonised variable "grip" is proposed to be the highest score (to the nearest kg) of all hand grip measurements in each study, regardless of hand dominance. This is following a protocol suggested by Roberts et al (2011), based on the American Society of Hand Therapists (ASHT) protocol.`
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Grip strength"
+```
+
+# Data process
+
+
+```{r, dataDirectory, echo=FALSE}
+datafolder <- "../RData"
+```
+
+## SHARE
+
+### Wave 1 
+
+#### Study-specific variable description
+
+
+| **Name** | `gs006_`| `gs007_`| `gs008_`| `gs009_`|
+|-|-|-|-|-|
+| **Label** | `1st measurement: left hand` | `2nd measurement: left hand` | `1st measurement: right hand` | `2nd measurement: right hand` |
+| **Table name** | `sharew1_rel2-6-0_gs` |`sharew1_rel2-6-0_gs` |`sharew1_rel2-6-0_gs` | `sharew1_rel2-6-0_gs` |
+| **Categories** | `continuous` |`continuous` |`continuous` |`continuous` |
+| **Missing values** | `-2 = refusal` | `-2 = refusal` | `-2 = refusal` | `-2 = refusal` | 
+| **Missing values** | `-1 = don't know` | `-1 = don't know` | `-1 = don't know` | `-1 = don't know` | 
+| **Description** |  | | | |
+
+```{r assign_aksst1, echo=FALSE}
+opal.assign.table.tibble(o, 'SHARE_gs','SHARE.sharew1_rel2-6-0_gs',
+                         variables=list('gs006_', 'gs007_', 'gs008_', 'gs009_'), missings = TRUE)
+SHARE_gs <- opal.execute(o,'SHARE_gs')
+```
+
+```{r local_aksst1,echo=F}
+vari <- SHARE_gs$gs006_
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_gs, aes(gs006_)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- SHARE_gs$gs007_
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_gs, aes(gs007_)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- SHARE_gs$gs008_
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_gs, aes(gs008_)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- SHARE_gs$gs009_
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_gs, aes(gs009_)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the higest score of all measurements and the missing values have to be recoded as follows: 
+
+* `recode -2 "Refusal" into 997`
+* `recode -1 "don't know" into 998`
+* `NA as 999`
+
+**R script:**
+
+```{r harmo1}
+SHARE_ds_w1 <- tibble(id=SHARE_gs$id)
+SHARE_ds_w1$grip <- apply(SHARE_gs[,2:5], MARGIN = 1, FUN = function(x) max(x, na.rm = TRUE))
+SHARE_ds_w1$grip <- car::recode(SHARE_ds_w1$grip, "-Inf=999; -2=997; -1=998")
+SHARE_ds_w1$grip <- as.integer(SHARE_ds_w1$grip)
+SHARE_ds_w1$grip <- labelled(SHARE_ds_w1$grip, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_aksst1,echo=F}
+vari <- SHARE_ds_w1$grip
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(SHARE_ds_w1, aes(grip)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100) 
+```
+
+#### Validation
+```{r crosstabulation1, echo=FALSE}
+```
+
+```{r importOPAL1, echo=FALSE}
+label(SHARE_ds_w1$grip) <- ds_label
+grip <- SHARE_ds_w1
+save(grip, file = "../RData/w1/grip.RData")
+rm(grip)
+```
+
+
+```{r read1, include=FALSE}
+rm(SHARE_gs)
+```
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+
+| **Name** | `gs006_`| `gs007_`| `gs008_`| `gs009_`|
+|-|-|-|-|-|
+| **Label** | `1st measurement: left hand` | `2nd measurement: left hand` | `1st measurement: right hand` | `2nd measurement: right hand` |
+| **Table name** | `sharew2_rel2-6-0_gs` |`sharew2_rel2-6-0_gs` |`sharew2_rel2-6-0_gs` | `sharew2_rel2-6-0_gs` |
+| **Categories** | `continuous` |`continuous` |`continuous` |`continuous` |
+| **Missing values** | `-2 = refusal` | `-2 = refusal` | `-2 = refusal` | `-2 = refusal` | 
+| **Missing values** | `-1 = don't know` | `-1 = don't know` | `-1 = don't know` | `-1 = don't know` | 
+| **Description** |  | | | |
+
+    
+```{r assign2, include=FALSE}
+opal.assign.table.tibble(o, 'SHARE_gs','SHARE.sharew2_rel2-6-0_gs',
+                         variables=list('gs006_', 'gs007_', 'gs008_', 'gs009_'), missings = TRUE)
+SHARE_gs <- opal.execute(o,'SHARE_gs')
+```
+
+```{r local2, echo=F}
+vari <- SHARE_gs$gs006_
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_gs, aes(gs006_)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- SHARE_gs$gs007_
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_gs, aes(gs007_)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- SHARE_gs$gs008_
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_gs, aes(gs008_)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- SHARE_gs$gs009_
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_gs, aes(gs009_)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the higest score of all measurements and the missing values have to be recoded as follows: 
+
+* `recode -2 "Refusal" into 997`
+* `recode -1 "don't know" into 998`
+* `NA as 999`
+
+**R script:**
+
+
+```{r harmo2}
+SHARE_ds_w2 <- tibble(id=SHARE_gs$id)
+SHARE_ds_w2$grip <- apply(SHARE_gs[,2:5], MARGIN = 1, FUN = function(x) max(x, na.rm = TRUE))
+SHARE_ds_w2$grip <- car::recode(SHARE_ds_w2$grip, "-Inf=999; -2=997; -1=998")
+SHARE_ds_w2$grip <- as.integer(SHARE_ds_w2$grip)
+SHARE_ds_w2$grip <- labelled(SHARE_ds_w2$grip, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2, echo=F}
+vari <- SHARE_ds_w2$grip
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(SHARE_ds_w2, aes(grip)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100) 
+```
+
+#### Validation
+```{r crosstab2, echo=F}
+```
+
+```{r read2, include=FALSE}
+label(SHARE_ds_w2$grip) <- ds_label
+grip <- SHARE_ds_w2
+save(grip, file = "../RData/w2/grip.RData")
+rm(SHARE_gs)
+```
+
+
+### Wave 3
+
+
+#### Study-specific variable description
+
+
+| **Name** | `sl_gs006_`| `sl_gs007_`| `sl_gs008_`| `sl_gs009_`|
+|-|-|-|-|-|
+| **Label** | `1st measurement: left hand` | `2nd measurement: left hand` | `1st measurement: right hand` | `2nd measurement: right hand` |
+| **Table name** | `sharew3_rel1_gs` |`sharew3_rel1_gs` |`sharew3_rel1_gs` | `sharew3_rel1_gs` |
+| **Categories** | `continuous` |`continuous` |`continuous` |`continuous` |
+| **Missing values** | `-2 = refusal` | `-2 = refusal` | `-2 = refusal` | `-2 = refusal` | 
+| **Missing values** | `-1 = don't know` | `-1 = don't know` | `-1 = don't know` | `-1 = don't know` | 
+| **Description** |  | | | |
+
+    
+```{r assign3, include=FALSE}
+opal.assign.table.tibble(o, 'SHARE_gs','SHARE.sharew3_rel1_gs',
+                         variables=list('sl_gs006_', 'sl_gs007_', 'sl_gs008_', 'sl_gs009_'), missings = TRUE)
+SHARE_gs <- opal.execute(o,'SHARE_gs')
+```
+
+```{r local3, echo=F}
+vari <- SHARE_gs$sl_gs006_
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_gs, aes(sl_gs006_)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- SHARE_gs$sl_gs007_
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_gs, aes(sl_gs007_)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- SHARE_gs$sl_gs008_
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_gs, aes(sl_gs008_)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- SHARE_gs$sl_gs009_
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_gs, aes(sl_gs009_)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the higest score of all measurements and the missing values have to be recoded as follows: 
+
+* `recode -2 "Refusal" into 997`
+* `recode -1 "don't know" into 998`
+* `NA as 999`
+
+**R script:**
+
+
+```{r harmo3}
+SHARE_ds_w3 <- tibble(id=SHARE_gs$id)
+SHARE_ds_w3$grip <- apply(SHARE_gs[,2:5], MARGIN = 1, FUN = function(x) max(x, na.rm = TRUE))
+SHARE_ds_w3$grip <- car::recode(SHARE_ds_w3$grip, "-Inf=999; -2=997; -1=998")
+SHARE_ds_w3$grip <- as.integer(SHARE_ds_w3$grip)
+SHARE_ds_w3$grip <- labelled(SHARE_ds_w3$grip, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript3, echo=F}
+vari <- SHARE_ds_w3$grip
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(SHARE_ds_w3, aes(grip)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100) 
+```
+
+#### Validation
+```{r crosstab3, echo=F}
+```
+
+```{r read3, include=FALSE}
+label(SHARE_ds_w3$grip) <- ds_label
+grip <- SHARE_ds_w3
+save(grip, file = "../RData/w3/grip.RData")
+rm(SHARE_gs)
+```
+
+
+### Wave 4
+
+#### Study-specific variable description
+
+
+| **Name** | `gs006_`| `gs007_`| `gs008_`| `gs009_`|
+|-|-|-|-|-|
+| **Label** | `1st measurement: left hand` | `2nd measurement: left hand` | `1st measurement: right hand` | `2nd measurement: right hand` |
+| **Table name** | `sharew4_rel1-1-1_gs` |`sharew4_rel1-1-1_gs` |`sharew4_rel1-1-1_gs` | `sharew4_rel1-1-1_gs` |
+| **Categories** | `continuous` |`continuous` |`continuous` |`continuous` |
+| **Missing values** | `-2 = refusal` | `-2 = refusal` | `-2 = refusal` | `-2 = refusal` | 
+| **Missing values** | `-1 = don't know` | `-1 = don't know` | `-1 = don't know` | `-1 = don't know` | 
+| **Description** |  | | | |
+
+    
+```{r assign4, include=FALSE}
+opal.assign.table.tibble(o, 'SHARE_gs','SHARE.sharew4_rel1-1-1_gs',
+                         variables=list('gs006_', 'gs007_', 'gs008_', 'gs009_'), missings = TRUE)
+SHARE_gs <- opal.execute(o,'SHARE_gs')
+```
+
+```{r local4, echo=F}
+vari <- SHARE_gs$gs006_
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_gs, aes(gs006_)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- SHARE_gs$gs007_
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_gs, aes(gs007_)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- SHARE_gs$gs008_
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_gs, aes(gs008_)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- SHARE_gs$gs009_
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_gs, aes(gs009_)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the higest score of all measurements and the missing values have to be recoded as follows: 
+
+* `recode -2 "Refusal" into 997`
+* `recode -1 "don't know" into 998`
+* `NA as 999`
+
+**R script:**
+
+```{r harmo4}
+SHARE_ds_w4 <- tibble(id=SHARE_gs$id)
+SHARE_ds_w4$grip <- apply(SHARE_gs[,2:5], MARGIN = 1, FUN = function(x) max(x, na.rm = TRUE))
+SHARE_ds_w4$grip <- car::recode(SHARE_ds_w4$grip, "-Inf=999; -2=997; -1=998")
+SHARE_ds_w4$grip <- as.integer(SHARE_ds_w4$grip)
+SHARE_ds_w4$grip <- labelled(SHARE_ds_w4$grip, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript4, echo=F}
+vari <- SHARE_ds_w4$grip
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(SHARE_ds_w4, aes(grip)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100) 
+```
+
+#### Validation
+```{r crosstab4, echo=F}
+```
+
+
+```{r read4, include=FALSE}
+label(SHARE_ds_w4$grip) <- ds_label
+grip <- SHARE_ds_w4
+save(grip, file = "../RData/w4/grip.RData")
+rm(SHARE_gs)
+```
+
+
+
+### Wave 5
+
+#### Study-specific variable description
+
+
+| **Name** | `gs006_`| `gs007_`| `gs008_`| `gs009_`|
+|-|-|-|-|-|
+| **Label** | `1st measurement: left hand` | `2nd measurement: left hand` | `1st measurement: right hand` | `2nd measurement: right hand` |
+| **Table name** | `sharew5_rel1-0-0_gs` |`sharew5_rel1-0-0_gs` |`sharew5_rel1-0-0_gs` | `sharew5_rel1-0-0_gs` |
+| **Categories** | `continuous` |`continuous` |`continuous` |`continuous` |
+| **Missing values** | `-2 = refusal` | `-2 = refusal` | `-2 = refusal` | `-2 = refusal` | 
+| **Missing values** | `-1 = don't know` | `-1 = don't know` | `-1 = don't know` | `-1 = don't know` | 
+| **Description** |  | | | |
+
+    
+```{r assign5, include=FALSE}
+opal.assign.table.tibble(o, 'SHARE_gs','SHARE.sharew5_rel1-0-0_gs',
+                         variables=list('gs006_', 'gs007_', 'gs008_', 'gs009_'), missings = TRUE)
+SHARE_gs <- opal.execute(o,'SHARE_gs')
+```
+
+```{r local5, echo=F}
+vari <- SHARE_gs$gs006_
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_gs, aes(gs006_)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- SHARE_gs$gs007_
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_gs, aes(gs007_)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- SHARE_gs$gs008_
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_gs, aes(gs008_)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- SHARE_gs$gs009_
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_gs, aes(gs009_)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the higest score of all measurements and the missing values have to be recoded as follows: 
+
+* `recode -2 "Refusal" into 997`
+* `recode -1 "don't know" into 998`
+* `NA as 999`
+
+**R script:**
+
+```{r harmo5}
+SHARE_ds_w5 <- tibble(id=SHARE_gs$id)
+SHARE_ds_w5$grip <- apply(SHARE_gs[,2:5], MARGIN = 1, FUN = function(x) max(x, na.rm = TRUE))
+SHARE_ds_w5$grip <- car::recode(SHARE_ds_w5$grip, "-Inf=999; -2=997; -1=998")
+SHARE_ds_w5$grip <- as.integer(SHARE_ds_w5$grip)
+SHARE_ds_w5$grip <- labelled(SHARE_ds_w5$grip, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript5, echo=F}
+vari <- SHARE_ds_w5$grip
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(SHARE_ds_w5, aes(grip)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100) 
+```
+
+#### Validation
+```{r crosstab5, echo=F}
+```
+
+```{r read5, include=FALSE}
+label(SHARE_ds_w5$grip) <- ds_label
+grip <- SHARE_ds_w5
+save(grip, file = "../RData/w5/grip.RData")
+rm(SHARE_gs)
+```
+
+
+
+
+# Quality control
+No comments.
+
+
+
+
+<!--- #### Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+

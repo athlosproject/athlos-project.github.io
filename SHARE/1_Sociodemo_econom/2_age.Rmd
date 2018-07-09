@@ -1,0 +1,739 @@
+---
+title: "Age"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+  
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+
+* Short name: `age`
+* Variable label: `age`
+* Variable description: `Age of participant at each wave`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Age"
+ds_label_all <- "Age of participant at each wave"
+```
+
+
+# Data process
+
+## SHARE
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `yrbirth`|`mobirth`| `int_year` | `int_month` |
+|-|-|-|-|-|
+| **Label** | `year of birth`| `month of birth` | `interview year` | `interview month` |
+| **Table name** | `sharew1_rel2-6-0_cv_r_whitout_nointw1` | `idem` | `idem` | `idem` |
+| **Categories** |  | `1 = january; 2 = february; 3 = march; 4 = april; 5 = may; 6 = june; 7 = july; 8 = august; 9 = september; 10 = october; 11 = november; 12 = december; 13 = today` |  | `1 = january; 2 = february; 3 = march; 4 = april; 5 = may; 6 = june; 7 = july; 8 = august; 9 = september; 10 = october; 11 = november; 12 = december; 13 = today` |
+| **Missings** | `-2 = refusal; -1 = don't know` | `-2 = refusal; -1 = don't know` |  | `-2 = refusal; -1 = don't know` |
+| **Description** |  |  |  |  |
+
+
+
+
+
+
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w1_age','SHARE.sharew1_rel2-6-0_cv_r_whitout_nointw1',
+                         variables=list('yrbirth', 'mobirth', 'int_year', 'int_month'), missings = TRUE)
+SHARE_w1_age <- opal.execute(o,'SHARE_w1_age')
+```
+
+```{r local1, echo=F}
+vari <- SHARE_w1_age$yrbirth
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = "Year of birth")
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_w1_age, aes(yrbirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Year of birth") + ylab("Frequency")+xlim(1900,1980)
+
+vari <- SHARE_w1_age$mobirth
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[3], caption = "Month of birth") 
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[2], caption = "Type of missing")
+ggplot(SHARE_w1_age, aes(x=factor(mobirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+
+vari <- SHARE_w1_age$int_year
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = "Year of interview") 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(SHARE_w1_age, aes(x=factor(int_year))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Year of interview") + ylab("Frequency")
+
+vari <- SHARE_w1_age$int_month
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[3], caption = "Month of interview") 
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[2], caption = "Type of missing")
+ggplot(SHARE_w1_age, aes(x=factor(int_month))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variables it has to be computed by applying the following formula: 
+
+* `date of interview - date of birth`
+
+**R script:**
+
+```{r harmo1}
+SHARE_ds_w1 <- tibble(id=SHARE_w1_age$id)
+
+#harmonise year of birth
+SHARE_w1_age$year_of_birth <- car::recode(SHARE_w1_age$yrbirth, "-2=997; -1=998;  NA=999")
+
+#harmonise month of birth
+SHARE_w1_age$month_of_birth <- car::recode(SHARE_w1_age$mobirth, "-2=997; -1=998;  NA=999")
+
+#harmonise month of interview
+SHARE_w1_age$month_of_interview <- car::recode(SHARE_w1_age$int_month, "-2=997; -1=998;  c(13,NA)='999'")
+
+#harmonise year of interview
+SHARE_w1_age$year_of_interview <- car::recode(SHARE_w1_age$int_year, "NA=999")
+
+#function to compute the age
+comp_age <- function(y_birth, m_birth, y_int, m_int, miss){
+  #first, it's computed the age of all
+  age <- NULL
+  age[m_int<m_birth] <- y_int[m_int<m_birth]-y_birth[m_int<m_birth]-1
+  age[m_int>=m_birth] <- y_int[m_int>=m_birth]-y_birth[m_int>=m_birth]
+  age[m_birth>900] <- y_int[m_birth>900]-y_birth[m_birth>900]
+  
+  #It's emphasized the individues that has missing
+  mis <- rep(0,length(y_birth))
+  for(i in 1:length(miss)){
+    mis[which(y_int==miss[i])] <- miss[i]
+  }
+  mis <- rep(0,length(y_birth))
+  for(i in 1:length(miss)){
+    mis[which(y_birth==miss[i])] <- miss[i]
+  }
+  
+  age[mis!=0] <- mis[mis!=0]
+  
+  age
+
+}
+
+SHARE_ds_w1$age <- comp_age(y_birth=SHARE_w1_age$year_of_birth , m_birth=SHARE_w1_age$month_of_birth ,
+         y_int=SHARE_w1_age$year_of_interview , m_int=SHARE_w1_age$month_of_interview , miss=c(997, 998, 999))
+
+
+
+SHARE_ds_w1$age <- labelled(SHARE_ds_w1$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=F}
+vari <- SHARE_ds_w1$age
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(SHARE_ds_w1, aes(age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Age") + ylab("Frequency")+xlim(25,105)
+```
+
+#### Validation
+```{r crosstabulation1, echo=F}
+```
+
+
+
+
+
+```{r importOPAL1, echo=F}
+label(SHARE_ds_w1$age) <- ds_label_all
+age <- SHARE_ds_w1
+save(age, file = "../RData/w1/age.RData")
+#opal.assign.data(o, 'SHARE_ds_w1', SHARE_ds_w1)
+#opal.symbol_import(o,'SHARE_ds_w1', project='_Athlos_Harm_Dataset')
+
+SHARE_m_ds_w1 <- SHARE_ds_w1
+SHARE_m_ds_w1$age <- car::recode(SHARE_m_ds_w1$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SHARE_m_ds_w1', SHARE_m_ds_w1)
+#opal.symbol_import(o,'SHARE_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+
+
+
+| **Name** |`mobirth`| `yrbirth`| `int_month_w2` | `int_year_w2` |
+|-|-|-|-|-|
+| **Label** | `month of birth` | `year of birth`| `interview month` | `interview year` |
+| **Table name** | `sharew2_rel2-6-0_cv_r_without_noint` | `idem` | `idem` | `idem` |
+| **Categories** | `1 = january; 2 = february; 3 = march; 4 = april; 5 = may; 6 = june; 7 = july; 8 = august; 9 = september; 10 = october; 11 = november; 12 = december; 13 = today` |  | `1 = january; 2 = february; 3 = march; 4 = april; 5 = may; 6 = june; 7 = july; 8 = august; 9 = september; 10 = october; 11 = november; 12 = december; 13 = today` |  |
+| **Missings** | `-2 = refusal; -1 = don't know` | `-2 = refusal; -1 = don't know` | `-2 = refusal; -1 = don't know` |  |
+| **Description** |  |  |  |  |
+
+```{r assign2, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w2_age','SHARE.sharew2_rel2-6-0_cv_r_without_noint',
+                         variables=list('mobirth', 'yrbirth', 'int_month_w2', 'int_year_w2'), missings = TRUE)
+SHARE_w2_age <- opal.execute(o,'SHARE_w2_age')
+```
+
+```{r local2, echo=F}
+vari <- SHARE_w2_age$yrbirth
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = "Year of birth")
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_w2_age, aes(yrbirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Year of birth") + ylab("Frequency")+xlim(1900,1995)
+
+vari <- SHARE_w2_age$mobirth
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[3], caption = "Month of birth") 
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[2], caption = "Type of missing")
+ggplot(SHARE_w2_age, aes(x=factor(mobirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+
+vari <- SHARE_w2_age$int_year_w2
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = "Year of interview") 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(SHARE_w2_age, aes(x=factor(int_year_w2))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Year of interview") + ylab("Frequency")
+
+vari <- SHARE_w2_age$int_month_w2
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[3], caption = "Month of interview") 
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[2], caption = "Type of missing")
+ggplot(SHARE_w2_age, aes(x=factor(int_month_w2))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variables it has to be computed by applying the following formula: 
+
+* `date of interview - date of birth`
+
+**R script:**
+
+```{r harmo2}
+SHARE_ds_w2 <- tibble(id=SHARE_w2_age$id)
+
+#harmonise year of birth
+SHARE_w2_age$year_of_birth <- car::recode(SHARE_w2_age$yrbirth, "-2=997; -1=998;  NA=999")
+
+#harmonise month of birth
+SHARE_w2_age$month_of_birth <- car::recode(SHARE_w2_age$mobirth, "-2=997; -1=998;  NA=999")
+
+#harmonise month of interview
+SHARE_w2_age$month_of_interview <- car::recode(SHARE_w2_age$int_month_w2, "-2=997; -1=998;  c(13,NA)='999'")
+
+#harmonise year of interview
+SHARE_w2_age$year_of_interview <- car::recode(SHARE_w2_age$int_year_w2, "NA=999")
+
+#function to compute the age
+comp_age <- function(y_birth, m_birth, y_int, m_int, miss){
+  #first, it's computed the age of all
+  age <- NULL
+  age[m_int<m_birth] <- y_int[m_int<m_birth]-y_birth[m_int<m_birth]-1
+  age[m_int>=m_birth] <- y_int[m_int>=m_birth]-y_birth[m_int>=m_birth]
+  age[m_birth>900] <- y_int[m_birth>900]-y_birth[m_birth>900]
+  
+  #It's emphasized the individues that has missing
+  mis <- rep(0,length(y_birth))
+  for(i in 1:length(miss)){
+    mis[which(y_int==miss[i])] <- miss[i]
+  }
+  mis <- rep(0,length(y_birth))
+  for(i in 1:length(miss)){
+    mis[which(y_birth==miss[i])] <- miss[i]
+  }
+  
+  age[mis!=0] <- mis[mis!=0]
+  
+  age
+
+}
+
+SHARE_ds_w2$age <- comp_age(y_birth=SHARE_w2_age$year_of_birth , m_birth=SHARE_w2_age$month_of_birth ,
+         y_int=SHARE_w2_age$year_of_interview , m_int=SHARE_w2_age$month_of_interview , miss=c(997, 998, 999))
+SHARE_ds_w2$age <- labelled(SHARE_ds_w2$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2, echo=F}
+vari <- SHARE_ds_w2$age
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(SHARE_ds_w2, aes(age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Age") + ylab("Frequency")+xlim(10,105)
+```
+
+#### Validation
+```{r crosstabulation2, echo=F}
+```
+
+
+
+
+
+```{r importOPAL2, echo=F}
+label(SHARE_ds_w2$age) <- ds_label_all
+age <- SHARE_ds_w2
+save(age, file = "../RData/w2/age.RData")
+#opal.assign.data(o, 'SHARE_ds_w2', SHARE_ds_w2)
+#opal.symbol_import(o,'SHARE_ds_w2', project='_Athlos_Harm_Dataset')
+
+SHARE_m_ds_w2 <- SHARE_ds_w2
+SHARE_m_ds_w2$age <- car::recode(SHARE_m_ds_w2$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SHARE_m_ds_w2', SHARE_m_ds_w2)
+#opal.symbol_import(o,'SHARE_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 3 
+
+#### Study-specific variable description
+
+
+
+| **Name** |`mobirth`| `yrbirth`| `int_month_w3` | `int_year_w3` |
+|-|-|-|-|-|
+| **Label** | `month of birth` | `year of birth`| `interview month` | `interview year` |
+| **Table name** | `sharew3_rel1_cv_r_without_noint` | `idem` | `idem` | `idem` |
+| **Categories** | `1 = january; 2 = february; 3 = march; 4 = april; 5 = may; 6 = june; 7 = july; 8 = august; 9 = september; 10 = october; 11 = november; 12 = december; 13 = today` |  | `1 = january; 2 = february; 3 = march; 4 = april; 5 = may; 6 = june; 7 = july; 8 = august; 9 = september; 10 = october; 11 = november; 12 = december; 13 = today` |  |
+| **Missings** | `-2 = refusal; -1 = don't know` | `-2 = refusal; -1 = don't know` | `-2 = refusal; -1 = don't know` |  |
+| **Description** |  |  |  |  |
+
+
+
+```{r assign3, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w3_age','SHARE.sharew3_rel1_cv_r_without_noint',
+                         variables=list('yrbirth', 'mobirth', 'int_month_w3', 'int_year_w3'), missings = TRUE)
+SHARE_w3_age <- opal.execute(o,'SHARE_w3_age')
+```
+
+```{r local3, echo=F}
+vari <- SHARE_w3_age$yrbirth
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = "Year of birth")
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_w3_age, aes(yrbirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Year of birth") + ylab("Frequency")+xlim(1905,1985)
+
+vari <- SHARE_w3_age$mobirth
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[3], caption = "Month of birth") 
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[2], caption = "Type of missing")
+ggplot(SHARE_w3_age, aes(x=factor(mobirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+
+vari <- SHARE_w3_age$int_year_w3
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = "Year of interview") 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(SHARE_w3_age, aes(x=factor(int_year_w3))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Year of interview") + ylab("Frequency")
+
+vari <- SHARE_w3_age$int_month_w3
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[3], caption = "Month of interview") 
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[2], caption = "Type of missing")
+ggplot(SHARE_w3_age, aes(x=factor(int_month_w3))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variables it has to be computed by applying the following formula: 
+
+* `date of interview - date of birth`
+
+**R script:**
+
+```{r harmo3}
+SHARE_ds_w3 <- tibble(id=SHARE_w3_age$id)
+#harmonise year of birth
+SHARE_w3_age$year_of_birth <- car::recode(SHARE_w3_age$yrbirth, "-2=997; -1=998;  NA=999")
+
+#harmonise month of birth
+SHARE_w3_age$month_of_birth <- car::recode(SHARE_w3_age$mobirth, "-2=997; -1=998;  NA=999")
+
+#harmonise month of interview
+SHARE_w3_age$month_of_interview <- car::recode(SHARE_w3_age$int_month_w3, "-2=997; -1=998;  c(13,NA)='999'")
+
+#harmonise year of interview
+SHARE_w3_age$year_of_interview <- car::recode(SHARE_w3_age$int_year_w3, "NA=2009")
+
+#function to compute the age
+comp_age <- function(y_birth, m_birth, y_int, m_int, miss){
+  #first, it's computed the age of all
+  age <- NULL
+  age[m_int<m_birth] <- y_int[m_int<m_birth]-y_birth[m_int<m_birth]-1
+  age[m_int>=m_birth] <- y_int[m_int>=m_birth]-y_birth[m_int>=m_birth]
+  age[m_birth>900] <- y_int[m_birth>900]-y_birth[m_birth>900]
+  
+  #It's emphasized the individues that has missing
+  mis <- rep(0,length(y_birth))
+  for(i in 1:length(miss)){
+    mis[which(y_int==miss[i])] <- miss[i]
+  }
+  mis <- rep(0,length(y_birth))
+  for(i in 1:length(miss)){
+    mis[which(y_birth==miss[i])] <- miss[i]
+  }
+  
+  age[mis!=0] <- mis[mis!=0]
+  
+  age
+
+}
+
+SHARE_ds_w3$age <- comp_age(y_birth=SHARE_w3_age$year_of_birth , m_birth=SHARE_w3_age$month_of_birth ,
+         y_int=SHARE_w3_age$year_of_interview , m_int=SHARE_w3_age$month_of_interview , miss=c(997, 998, 999))
+
+
+
+SHARE_ds_w3$age <- labelled(SHARE_ds_w3$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript3, echo=F}
+vari <- SHARE_ds_w3$age
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(SHARE_ds_w3, aes(age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Age") + ylab("Frequency")+xlim(20,105)
+```
+
+#### Validation
+```{r crosstabulation3, echo=F}
+```
+
+
+
+
+
+```{r importOPAL3, echo=F}
+label(SHARE_ds_w3$age) <- ds_label_all
+age <- SHARE_ds_w3
+save(age, file = "../RData/w3/age.RData")
+#opal.assign.data(o, 'SHARE_ds_w3', SHARE_ds_w3)
+#opal.symbol_import(o,'SHARE_ds_w3', project='_Athlos_Harm_Dataset')
+
+SHARE_m_ds_w3 <- SHARE_ds_w3
+SHARE_m_ds_w3$age <- car::recode(SHARE_m_ds_w3$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SHARE_m_ds_w3', SHARE_m_ds_w3)
+#opal.symbol_import(o,'SHARE_m_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 4 
+
+#### Study-specific variable description
+
+
+
+
+| **Name** |`mobirth`| `yrbirth`| `int_month_w4` | `int_year_w4` |
+|-|-|-|-|-|
+| **Label** | `month of birth` | `year of birth`| `interview month` | `interview year` |
+| **Table name** | `sharew4_rel1-1-1_cv_r_without_noint` | `idem` | `idem` | `idem` |
+| **Categories** | `1 = january; 2 = february; 3 = march; 4 = april; 5 = may; 6 = june; 7 = july; 8 = august; 9 = september; 10 = october; 11 = november; 12 = december; 13 = today` |  | `1 = january; 2 = february; 3 = march; 4 = april; 5 = may; 6 = june; 7 = july; 8 = august; 9 = september; 10 = october; 11 = november; 12 = december; 13 = today` |  |
+| **Missings** | `-2 = refusal; -1 = don't know` | `-2 = refusal; -1 = don't know` | `-2 = refusal; -1 = don't know` | `-3 = implausible/ suspected wrong` |
+| **Description** |  |  |  |  |
+
+```{r assign4, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w4_age','SHARE.sharew4_rel1-1-1_cv_r_without_noint',
+                         variables=list('mobirth', 'yrbirth', 'int_month_w4', 'int_year_w4'), missings = TRUE)
+SHARE_w4_age <- opal.execute(o,'SHARE_w4_age')
+```
+
+```{r local4, echo=F}
+vari <- SHARE_w4_age$yrbirth
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = "Year of birth")
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_w4_age, aes(yrbirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Year of birth") + ylab("Frequency")+xlim(1900,2015)
+
+vari <- SHARE_w4_age$mobirth
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[3], caption = "Month of birth") 
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[2], caption = "Type of missing")
+ggplot(SHARE_w4_age, aes(x=factor(mobirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+
+vari <- SHARE_w4_age$int_year_w4
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = "Year of interview") 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(SHARE_w4_age, aes(x=factor(int_year_w4))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Year of interview") + ylab("Frequency")
+
+vari <- SHARE_w4_age$int_month_w4
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[3], caption = "Month of interview") 
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[2], caption = "Type of missing")
+ggplot(SHARE_w4_age, aes(x=factor(int_month_w4))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variables it has to be computed by applying the following formula: 
+
+* `date of interview - date of birth`
+
+**R script:**
+
+```{r harmo4}
+SHARE_ds_w4 <- tibble(id=SHARE_w4_age$id)
+
+#harmonise year of birth
+SHARE_w4_age$yrbirth <- car::recode(SHARE_w4_age$yrbirth, "-2=997; -1=998;  NA=999")
+
+#harmonise month of birth
+SHARE_w4_age$mobirth <- car::recode(SHARE_w4_age$mobirth, "-2=997; -1=998;  NA=999")
+
+#harmonise month of interview
+SHARE_w4_age$int_month_w4 <- car::recode(SHARE_w4_age$int_month_w4, "-2=997; -1=998;  c(13,NA)='999'")
+
+#harmonise year of interview
+SHARE_w4_age$int_year_w4 <- car::recode(SHARE_w4_age$int_year_w4,  "-3=999; NA=2011")
+
+#function to compute the age
+comp_age <- function(y_birth, m_birth, y_int, m_int, miss){
+  #first, it's computed the age of all
+  age <- NULL
+  age[m_int<m_birth] <- y_int[m_int<m_birth]-y_birth[m_int<m_birth]-1
+  age[m_int>=m_birth] <- y_int[m_int>=m_birth]-y_birth[m_int>=m_birth]
+  age[m_birth>900] <- y_int[m_birth>900]-y_birth[m_birth>900]
+  
+  #It's emphasized the individues that has missing
+  mis <- rep(0,length(y_birth))
+  for(i in 1:length(miss)){
+    mis[which(y_int==miss[i])] <- miss[i]
+  }
+  mis <- rep(0,length(y_birth))
+  for(i in 1:length(miss)){
+    mis[which(y_birth==miss[i])] <- miss[i]
+  }
+  
+  age[mis!=0] <- mis[mis!=0]
+  
+  age
+
+}
+
+SHARE_w4_age$age <- comp_age(y_birth=SHARE_w4_age$yrbirth , m_birth=SHARE_w4_age$mobirth ,
+         y_int=SHARE_w4_age$int_year_w4 , m_int=SHARE_w4_age$int_month_w4 , miss=c(997, 998, 999))
+
+
+SHARE_ds_w4$age <- car::recode(SHARE_w4_age$age, "0=999; NA=999")
+SHARE_ds_w4$age <- labelled(SHARE_ds_w4$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript4, echo=F}
+vari <- SHARE_ds_w4$age
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(SHARE_ds_w4, aes(age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Age") + ylab("Frequency")+xlim(20,110)
+```
+
+#### Validation
+```{r crosstabulation4, echo=F}
+```
+
+
+
+
+
+```{r importOPAL4, echo=F}
+label(SHARE_ds_w4$age) <- ds_label_all
+age <- SHARE_ds_w4
+save(age, file = "../RData/w4/age.RData")
+#opal.assign.data(o, 'SHARE_ds_w4', SHARE_ds_w4)
+#opal.symbol_import(o,'SHARE_ds_w4', project='_Athlos_Harm_Dataset')
+
+SHARE_m_ds_w4 <- SHARE_ds_w4
+SHARE_m_ds_w4$age <- car::recode(SHARE_m_ds_w4$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SHARE_m_ds_w4', SHARE_m_ds_w4)
+#opal.symbol_import(o,'SHARE_m_ds_w4', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 5 
+
+#### Study-specific variable description
+
+
+
+| **Name** |`mobirth`| `yrbirth`| `int_month_w5` | `int_year_w5` |
+|-|-|-|-|-|
+| **Label** | `month of birth` | `year of birth`| `interview month` | `interview year` |
+| **Table name** | `sharew5_rel1-0-0_cv_r_without_noint` | `idem` | `idem` | `idem` |
+| **Categories** | `1 = january; 2 = february; 3 = march; 4 = april; 5 = may; 6 = june; 7 = july; 8 = august; 9 = september; 10 = october; 11 = november; 12 = december; 13 = today` |  | `1 = january; 2 = february; 3 = march; 4 = april; 5 = may; 6 = june; 7 = july; 8 = august; 9 = september; 10 = october; 11 = november; 12 = december; 13 = today` |  |
+| **Missings** | `-2 = refusal; -1 = don't know` | `-2 = refusal; -1 = don't know` | `-2 = refusal; -1 = don't know` | `-2 = refusal; -1 = don't know` |
+| **Description** |  |  |  |  |
+
+
+
+```{r assign5, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w5_age','SHARE.sharew5_rel1-0-0_cv_r_without_noint',
+                         variables=list('yrbirth', 'mobirth', 'int_year_w5', 'int_month_w5'), missings = TRUE)
+SHARE_w5_age <- opal.execute(o,'SHARE_w5_age')
+```
+
+```{r local5, echo=F}
+vari <- SHARE_w5_age$yrbirth
+kable(Continuous_summary(var = vari, missing_values = c(-2,-1))[3], caption = "Year of birth")
+kable(Continuous_summary(vari, missing_values = c(-2,-1))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-2,-1))$summary, caption = "Summary")
+ggplot(SHARE_w5_age, aes(yrbirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Year of birth") + ylab("Frequency")+xlim(1905,2015)
+
+vari <- SHARE_w5_age$mobirth
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[3], caption = "Month of birth") 
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[2], caption = "Type of missing")
+ggplot(SHARE_w5_age, aes(x=factor(mobirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+
+vari <- SHARE_w5_age$int_year_w5
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = "Year of interview") 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(SHARE_w5_age, aes(x=factor(int_year_w5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Year of interview") + ylab("Frequency")
+
+vari <- SHARE_w5_age$int_month_w5
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[3], caption = "Month of interview") 
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[2], caption = "Type of missing")
+ggplot(SHARE_w5_age, aes(x=factor(int_month_w5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variables it has to be computed by applying the following formula: 
+
+* `date of interview - date of birth`
+
+**R script:**
+
+```{r harmo5}
+SHARE_ds_w5 <- tibble(id=SHARE_w5_age$id)
+#harmonise year of birth
+SHARE_w5_age$year_of_birth <- car::recode(SHARE_w5_age$yrbirth, "-2=997; -1=998;  NA=999")
+
+#harmonise month of birth
+SHARE_w5_age$month_of_birth <- car::recode(SHARE_w5_age$mobirth, "-2=997; -1=998;  NA=999")
+
+#harmonise month of interview
+SHARE_w5_age$month_of_interview <- car::recode(SHARE_w5_age$int_month_w5, "-2=997; -1=998;  13=999; NA=999")
+
+#harmonise year of interview
+SHARE_w5_age$year_of_interview <- car::recode(SHARE_w5_age$int_year_w5, "-2=997; -1=998; NA=999")
+
+#function to compute the age
+comp_age <- function(y_birth, m_birth, y_int, m_int, miss){
+  #first, it's computed the age of all
+  age <- NULL
+  age[m_int<m_birth] <- y_int[m_int<m_birth]-y_birth[m_int<m_birth]-1
+  age[m_int>=m_birth] <- y_int[m_int>=m_birth]-y_birth[m_int>=m_birth]
+  age[m_birth>900] <- y_int[m_birth>900]-y_birth[m_birth>900]
+  
+  #It's emphasized the individues that has missing
+  mis <- rep(0,length(y_birth))
+  for(i in 1:length(miss)){
+    mis[which(y_int==miss[i])] <- miss[i]
+  }
+  mis <- rep(0,length(y_birth))
+  for(i in 1:length(miss)){
+    mis[which(y_birth==miss[i])] <- miss[i]
+  }
+  
+  age[mis!=0] <- mis[mis!=0]
+  
+  age
+
+}
+
+SHARE_w5_age$age <- comp_age(y_birth=SHARE_w5_age$year_of_birth , m_birth=SHARE_w5_age$month_of_birth ,
+         y_int=SHARE_w5_age$year_of_interview , m_int=SHARE_w5_age$month_of_interview , miss=c(997, 998, 999))
+
+
+SHARE_ds_w5$age <- car::recode(SHARE_w5_age$age, "0=999; NA=999")
+SHARE_ds_w5$age <- labelled(SHARE_ds_w5$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript5, echo=F}
+vari <- SHARE_ds_w5$age
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(SHARE_ds_w5, aes(age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Age") + ylab("Frequency")+xlim(20,110)
+```
+
+#### Validation
+```{r crosstabulation5, echo=F}
+```
+
+
+
+
+
+```{r importOPAL5, echo=F}
+label(SHARE_ds_w5$age) <- ds_label_all
+age <- SHARE_ds_w5
+save(age, file = "../RData/w5/age.RData")
+#opal.assign.data(o, 'SHARE_ds_w5', SHARE_ds_w5)
+#opal.symbol_import(o,'SHARE_ds_w5', project='_Athlos_Harm_Dataset')
+
+SHARE_m_ds_w5 <- SHARE_ds_w5
+SHARE_m_ds_w5$age <- car::recode(SHARE_m_ds_w5$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SHARE_m_ds_w5', SHARE_m_ds_w5)
+#opal.symbol_import(o,'SHARE_m_ds_w5', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+# Quality estimation
+No comments.
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

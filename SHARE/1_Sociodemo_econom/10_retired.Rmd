@@ -1,0 +1,690 @@
+---
+title: "Retired"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/retiredDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/retiredDS.R')
+```
+
+
+
+# Data process
+
+
+
+
+## SHARE
+
+
+### Wave 1
+
+#### Study-specific variable description
+
+| **Name** | `ep005_`|`ep050_`|`ybirth`|
+|-|-|-|-|
+| **Label** | `current job situation`|`year last job end`|`year of birth`|
+| **Table name**  | `sharew1_rel2-6-0_ep` | `sharew1_rel2-6-0_ep` |`ybirth`|
+| **Categories** | `1 = retired`<br/>`2 = employed or self-employed (including working for family business)`<br/>`3 = unemployed`<br/>`4 = permanently sick or disabled`<br/>`5 = homemaker`<br/>`6 = country-specific category 6 (IL)`<br/>`7 = country-specific category 7 (IL)`<br/>`97 = other` |`continuous`|`continuous`|
+| **Missings** | `-1 = don't know`<br/>`-2 = refusal`<br/>`NA` |`-1 = don't know`<br/>`-2 = refusal`<br/>`NA` | `997 = Refuse`<br/>`998 = Do not know` |
+| **Description** |  |  |  |
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'SHARE_w1','SHARE.sharew1_rel2-6-0_ep',variables=list('ep005_','ep050_'), missings = T)
+SHARE_w1 <- opal.execute(o,'SHARE_w1')
+load(paste0(datafolder,"w1/ybirth.RData"))
+SHARE_w1 <- left_join(SHARE_w1,ybirth,by="id")
+rm(ybirth)
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- SHARE_w1$ep005_
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[3], caption = 'ep005_')
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[1], caption = "Category")
+ggplot(SHARE_w1, aes(x=factor(ep005_))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w1$ep050_
+vbl_miss <- c(-1,-2)
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'ep050_')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(SHARE_w1,!vbl %in% vbl_miss), aes(ep050_)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w1$ybirth
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'ybirth')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(SHARE_w1,!vbl %in% vbl_miss), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+To compute `retired` from the study-specific variable `ep005_` it has to be recoded as follows:
+
+* `1 into 1`
+* `2,3,4,5,6,7,97 into 0`
+* `-2 into 997`
+* `-1 into 998`
+* `otherwise into 999`
+
+To compute `age_retired` from the study-specific variable it has to be recoded as follows:
+
+* `if retired == 1, age_retired = ep050_ - ybirth`
+* `if retired == 0, age_retired = 996`
+* `-2 into 997`
+* `-1 into 998`
+* `otherwise, age_retired = 999`
+
+**R script:**
+
+```{r harmo w1}
+
+# Categorical variable harmonization
+SHARE_ds_w1 <- tibble(id=SHARE_w1$id)
+SHARE_ds_w1$retired <- car::recode(SHARE_w1$ep005_, "c(1)=1; c(2,3,4,5,6,7,97)=0; -2=997; -1=998; NA = 999")
+
+# Continuous variable harmonization
+SHARE_ds_w1$age_retired <- rep(999,length(SHARE_ds_w1$id))
+SHARE_ds_w1$age_retired[which(SHARE_ds_w1$retired==1 & !SHARE_w1$ybirth %in% miss_values_vector)] <- SHARE_w1$ep050_[which(SHARE_ds_w1$retired==1 & !SHARE_w1$ybirth %in% miss_values_vector)] - SHARE_w1$ybirth[which(SHARE_ds_w1$retired==1 & !SHARE_w1$ybirth %in% miss_values_vector)]
+SHARE_ds_w1$age_retired[which(SHARE_w1$ep050_==-2)] <- 997
+SHARE_ds_w1$age_retired[which(SHARE_w1$ep050_==-1)] <- 998
+SHARE_ds_w1$age_retired <- car::recode(SHARE_ds_w1$age_retired, "NA=999")
+SHARE_ds_w1$age_retired[which(SHARE_ds_w1$retired==0)] <- 996
+SHARE_ds_w1$age_retired[which(SHARE_ds_w1$age_retired<=0)] <- 999
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- SHARE_ds_w1$retired
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SHARE_ds_w1, aes(x=factor(retired))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- SHARE_ds_w1$age_retired
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(filter(SHARE_ds_w1,!vbl %in% miss_values_vector), aes(age_retired)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+
+```
+
+
+
+### Wave 2
+
+
+#### Study-specific variable description
+
+| **Name** | `ep005_`|`ep329_`|`ep328_`|`ybirth`|`mbirth`|
+|-|-|-|-|-|-|
+| **Label** | `current job situation`|`retirement year`|`retirement month`|`year of birth`|`month of birth`|
+| **Table name**  | `sharew2_rel2-6-0_ep` | `sharew2_rel2-6-0_ep` | `sharew2_rel2-6-0_ep` |`ybirth`|`mbirth`|
+| **Categories** | `1 = retired`<br/>`2 = employed or self-employed (including working for family business)`<br/>`3 = unemployed`<br/>`4 = permanently sick or disabled`<br/>`5 = homemaker`<br/>`6 = additional category 6 (IL)`<br/>`7 = additional category 7 (IL)`<br/>`97 = other (Rentier, Living off own property, Student, Doing voluntary work)` |`continuous`|`1 = january`<br/>`2 = february`<br/>`3 = march`<br/>`4 = april`<br/>`5 = may`<br/>`6 = june`<br/>`7 = july`<br/>`8 = august`<br/>`9 = september`<br/>`10 = october`<br/>`11 = november`<br/>`12 = december`<br/>`13 = today`|`continuous`|`continuous`|
+| **Missings** | `-1 = don't know`<br/>`-2 = refusal`<br/>`NA` | `-1 = don't know`<br/>`-2 = refusal`<br/>`NA` | `-1 = don't know`<br/>`-2 = refusal`<br/>`NA` |`997 = Refuse` |`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing` |
+| **Description** |  |  |  |  |  |
+
+```{r assign w2, echo=F}
+
+opal.assign.table.tibble(o, 'SHARE_w2','SHARE.sharew2_rel2-6-0_ep',variables=list('ep005_','ep329_','ep328_'), missings = T)
+SHARE_w2 <- opal.execute(o,'SHARE_w2')
+load(paste0(datafolder,"w2/ybirth.RData"))
+SHARE_w2 <- left_join(SHARE_w2,ybirth,by="id")
+rm(ybirth)
+load(paste0(datafolder,"w2/mbirth.RData"))
+SHARE_w2 <- left_join(SHARE_w2,mbirth,by="id")
+rm(mbirth)
+
+```
+
+```{r local w2, echo=F}
+
+vbl <- SHARE_w2$ep005_
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[3], caption = 'ep005_')
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[1], caption = "Category")
+ggplot(SHARE_w2, aes(x=factor(ep005_))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w2$ep329_
+vbl_miss <- c(-1,-2)
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'ep329_')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(SHARE_w2,!vbl %in% vbl_miss), aes(ep329_)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w2$ep328_
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[3], caption = 'ep328_')
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[1], caption = "Category")
+ggplot(SHARE_w2, aes(x=factor(ep328_))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w2$ybirth
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'ybirth')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(SHARE_w2,!vbl %in% vbl_miss), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w2$mbirth
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'mbirth')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(SHARE_w2,!vbl %in% vbl_miss), aes(mbirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+scale_x_continuous(breaks=c(3,6,9,12))
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `retired` from the study-specific variable `ep005_` it has to be recoded as follows:
+
+* `1 into 1`
+* `2,3,4,5,6,7,97 into 0`
+* `-2 into 997`
+* `-1 into 998`
+* `otherwise into 999`
+
+To compute `age_retired` from the study-specific variable it has to be recoded as follows:
+
+* `age_retired = date of retirement - date of birth`
+* `if retired == 0, age_retired = 996`
+* `-2 into 997`
+* `-1 into 998`
+* `otherwise, age_retired = 999`
+
+**R script:**
+
+```{r harmo w2}
+
+# Categorical variable harmonization
+SHARE_ds_w2 <- tibble(id=SHARE_w2$id)
+SHARE_ds_w2$retired <- car::recode(SHARE_w2$ep005_, "c(1)=1; c(2,3,4,5,6,7,97)=0; -2=997; -1=998; NA = 999")
+
+# Continuous variable harmonization
+SHARE_w2$month <- car::recode(SHARE_w2$ep328_, "-1 = 998; -2 = 997; NA = 999")
+SHARE_w2$year <- car::recode(SHARE_w2$ep329_, "-1 = 998; -2 = 997; NA = 999")
+
+#function to compute the age
+comp_age <- function(y_birth, m_birth, a_year, a_month, miss){
+  N <- length(y_birth)
+  #first, it's computed the age of all
+  age <- rep(NA,N)
+  age[which(a_month<m_birth)] <- (a_year[which(a_month<m_birth)]-y_birth[which(a_month<m_birth)])-1
+  age[which(a_month>=m_birth)] <- a_year[which(a_month>=m_birth)]-y_birth[which(a_month>=m_birth)]
+  age[which(m_birth>900)] <- a_year[which(m_birth>900)]-y_birth[which(m_birth>900)]
+  
+  #It's emphasized the individues having missing
+  
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(y_birth==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(a_year==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+  
+  
+  age
+
+}
+
+SHARE_ds_w2$age_retired <- comp_age(y_birth=SHARE_w2$ybirth, m_birth=SHARE_w2$mbirth , a_year=SHARE_w2$year, a_month=SHARE_w2$month, miss=miss_values_vector)
+SHARE_ds_w2$age_retired[which(SHARE_ds_w2$retired==0)] <- 996
+SHARE_ds_w2$age_retired[which(SHARE_ds_w2$age_retired<=0)] <- 999
+
+```
+
+#### Statistics of the new harmonized variable
+
+```{r descript w2, echo=F}
+
+vbl <- SHARE_ds_w2$retired
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SHARE_ds_w2, aes(x=factor(retired))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- SHARE_ds_w2$age_retired
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(filter(SHARE_ds_w2,!vbl %in% miss_values_vector), aes(age_retired)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
+
+```
+
+#### Validation
+
+```{r crosstabulation w2, echo=F}
+
+```
+
+
+### Wave 3
+
+Not found harmonizable variable.
+
+
+### Wave 4
+
+#### Study-specific variable description
+
+| **Name** | `ep005_`|`ep329_`|`ep328_`|`ybirth`|`mbirth`|
+|-|-|-|-|-|-|
+| **Label** | `current job situation`|`retirement year`|`retirement month`|`year of birth`|`month of birth`|
+| **Table name**  | `sharew4_rel1-1-1_ep` | `sharew4_rel1-1-1_ep` | `sharew4_rel1-1-1_ep` |`ybirth`|`mbirth`|
+| **Categories** | `1 = retired`<br/>`2 = employed or self-employed (including working for family business)`<br/>`3 = unemployed`<br/>`4 = permanently sick or disabled`<br/>`5 = homemaker`<br/>`97 = other (specify)` |`continuous`|`1 = january`<br/>`2 = february`<br/>`3 = march`<br/>`4 = april`<br/>`5 = may`<br/>`6 = june`<br/>`7 = july`<br/>`8 = august`<br/>`9 = september`<br/>`10 = october`<br/>`11 = november`<br/>`12 = december`<br/>`13 = today`|`continuous`|`continuous`|
+| **Missings** | `-1 = don't know`<br/>`-2 = refusal`<br/>`NA` |`-1 = don't know`<br/>`-2 = refusal`<br/>`NA` |`-1 = don't know`<br/>`-2 = refusal`<br/>`NA` |`998 = Do not know`<br/>`999 = Missing` |`999 = Missing` |
+| **Description** |  |  |  |  |  |
+
+```{r assign w4, echo=F}
+
+opal.assign.table.tibble(o, 'SHARE_w4','SHARE.sharew4_rel1-1-1_ep',variables=list('ep005_','ep329_','ep328_'), missings = T)
+SHARE_w4 <- opal.execute(o,'SHARE_w4')
+load(paste0(datafolder,"w4/ybirth.RData"))
+SHARE_w4 <- left_join(SHARE_w4,ybirth,by="id")
+rm(ybirth)
+load(paste0(datafolder,"w4/mbirth.RData"))
+SHARE_w4 <- left_join(SHARE_w4,mbirth,by="id")
+rm(mbirth)
+
+```
+
+```{r local w4, echo=F}
+
+vbl <- SHARE_w4$ep005_
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[3], caption = 'ep005_')
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[1], caption = "Category")
+ggplot(SHARE_w4, aes(x=factor(ep005_))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w4$ep329_
+vbl_miss <- c(-1,-2)
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'ep329_')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(SHARE_w4,!vbl %in% vbl_miss), aes(ep329_)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w4$ep328_
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[3], caption = 'ep328_')
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[1], caption = "Category")
+ggplot(SHARE_w4, aes(x=factor(ep328_))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w4$ybirth
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'ybirth')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(SHARE_w4,!vbl %in% vbl_miss), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w4$mbirth
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'mbirth')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(SHARE_w4,!vbl %in% vbl_miss), aes(mbirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+scale_x_continuous(breaks=c(3,6,9,12))
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `retired` from the study-specific variable `ep005_` it has to be recoded as follows:
+
+* `1 into 1`
+* `2,3,4,5,97 into 0`
+* `-2 into 997`
+* `-1 into 998`
+* `otherwise into 999`
+
+To compute `age_retired` from the study-specific variable it has to be recoded as follows:
+
+* `age_retired = date of retirement - date of birth`
+* `if retired == 0, age_retired = 996`
+* `-2 into 997`
+* `-1 into 998`
+* `otherwise, age_retired = 999`
+
+**R script:**
+
+```{r harmo w4}
+
+# Categorical variable harmonization
+SHARE_ds_w4 <- tibble(id=SHARE_w4$id)
+SHARE_ds_w4$retired <- car::recode(SHARE_w4$ep005_, "c(1)=1; c(2,3,4,5,97)=0; -2=997; -1=998; NA = 999")
+
+# Continuous variable harmonization
+SHARE_w4$month <- car::recode(SHARE_w4$ep328_, "-1 = 998; -2 = 997; NA = 999")
+SHARE_w4$year <- car::recode(SHARE_w4$ep329_, "-1 = 998; -2 = 997; NA = 999")
+
+#function to compute the age
+comp_age <- function(y_birth, m_birth, a_year, a_month, miss){
+  N <- length(y_birth)
+  #first, it's computed the age of all
+  age <- rep(NA,N)
+  age[which(a_month<m_birth)] <- (a_year[which(a_month<m_birth)]-y_birth[which(a_month<m_birth)])-1
+  age[which(a_month>=m_birth)] <- a_year[which(a_month>=m_birth)]-y_birth[which(a_month>=m_birth)]
+  age[which(m_birth>900)] <- a_year[which(m_birth>900)]-y_birth[which(m_birth>900)]
+  
+  #It's emphasized the individues having missing
+  
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(y_birth==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(a_year==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+  
+  
+  age
+
+}
+
+SHARE_ds_w4$age_retired <- comp_age(y_birth=SHARE_w4$ybirth, m_birth=SHARE_w4$mbirth , a_year=SHARE_w4$year, a_month=SHARE_w4$month, miss=miss_values_vector)
+SHARE_ds_w4$age_retired[which(SHARE_ds_w4$retired==0)] <- 996
+SHARE_ds_w4$age_retired[which(SHARE_ds_w4$age_retired<=0)] <- 999
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w4, echo=F}
+
+vbl <- SHARE_ds_w4$retired
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SHARE_ds_w4, aes(x=factor(retired))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- SHARE_ds_w4$age_retired
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(filter(SHARE_ds_w4,!vbl %in% miss_values_vector), aes(age_retired)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w4, echo=F, results='asis'}
+
+```
+
+
+
+
+### Wave 5
+
+#### Study-specific variable description
+
+| **Name** | `ep005_`|`ep329_`|`ep328_`|`ybirth`|`mbirth`|
+|-|-|-|-|-|-|
+| **Label** | `current job situation`|`retirement year`|`retirement month`|`year of birth`|`month of birth`|
+| **Table name**  |`sharew5_rel1-0-0_ep` |`sharew5_rel1-0-0_ep` |`sharew5_rel1-0-0_ep` |`ybirth`|`mbirth`|
+| **Categories** | `1 = retired`<br/>`2 = employed or self-employed (including working for family business)`<br/>`3 = unemployed`<br/>`4 = permanently sick or disabled`<br/>`5 = homemaker`<br/>`97 = other` |`continuous`|`1 = january`<br/>`2 = february`<br/>`3 = march`<br/>`4 = april`<br/>`5 = may`<br/>`6 = june`<br/>`7 = july`<br/>`8 = august`<br/>`9 = september`<br/>`10 = october`<br/>`11 = november`<br/>`12 = december`<br/>`13 = today`|`continuous`|`continuous`|
+| **Missings** | `-1 = don't know`<br/>`-2 = refusal`<br/>`NA` |`-1 = don't know`<br/>`-2 = refusal`<br/>`NA` |`-1 = don't know`<br/>`-2 = refusal`<br/>`NA` |`998 = Do not know`<br/>`999 = Missing` |`999 = Missing` |
+| **Description** |  |
+
+```{r assign w5, echo=F}
+
+opal.assign.table.tibble(o, 'SHARE_w5','SHARE.sharew5_rel1-0-0_ep',variables=list('ep005_','ep329_','ep328_'), missings = T)
+SHARE_w5 <- opal.execute(o,'SHARE_w5')
+load(paste0(datafolder,"w5/ybirth.RData"))
+SHARE_w5 <- left_join(SHARE_w5,ybirth,by="id")
+rm(ybirth)
+load(paste0(datafolder,"w5/mbirth.RData"))
+SHARE_w5 <- left_join(SHARE_w5,mbirth,by="id")
+rm(mbirth)
+
+```
+
+```{r local w5, echo=F}
+
+vbl <- SHARE_w5$ep005_
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[3], caption = 'ep005_')
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[1], caption = "Category")
+ggplot(SHARE_w5, aes(x=factor(ep005_))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w5$ep329_
+vbl_miss <- c(-1,-2)
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'ep329_')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(SHARE_w5,!vbl %in% vbl_miss), aes(ep329_)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w5$ep328_
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[3], caption = 'ep328_')
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[1], caption = "Category")
+ggplot(SHARE_w5, aes(x=factor(ep328_))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w5$ybirth
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'ybirth')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(SHARE_w5,!vbl %in% vbl_miss), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w5$mbirth
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(var = vbl, missing_values = vbl_miss)[3], caption = 'mbirth')
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(filter(SHARE_w5,!vbl %in% vbl_miss), aes(mbirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+scale_x_continuous(breaks=c(3,6,9,12))
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `retired` from the study-specific variable `ep005_` it has to be recoded as follows:
+
+* `1 into 1`
+* `2,3,4,5,97 into 0`
+* `-2 into 997`
+* `-1 into 998`
+* `otherwise into 999`
+
+To compute `age_retired` from the study-specific variable it has to be recoded as follows:
+
+* `age_retired = date of retirement - date of birth`
+* `if retired == 0, age_retired = 996`
+* `-2 into 997`
+* `-1 into 998`
+* `otherwise, age_retired = 999`
+
+**R script:**
+
+```{r harmo w5}
+
+# Categorical variable harmonization
+SHARE_ds_w5 <- tibble(id=SHARE_w5$id)
+SHARE_ds_w5$retired <- car::recode(SHARE_w5$ep005_, "c(1)=1; c(2,3,4,5,97)=0; -2=997; -1=998; NA = 999")
+
+# Continuous variable harmonization
+SHARE_w5$month <- car::recode(SHARE_w5$ep328_, "-1 = 998; -2 = 997; NA = 999")
+SHARE_w5$year <- car::recode(SHARE_w5$ep329_, "-1 = 998; -2 = 997; NA = 999")
+
+#function to compute the age
+comp_age <- function(y_birth, m_birth, a_year, a_month, miss){
+  N <- length(y_birth)
+  #first, it's computed the age of all
+  age <- rep(NA,N)
+  age[which(a_month<m_birth)] <- (a_year[which(a_month<m_birth)]-y_birth[which(a_month<m_birth)])-1
+  age[which(a_month>=m_birth)] <- a_year[which(a_month>=m_birth)]-y_birth[which(a_month>=m_birth)]
+  age[which(m_birth>900)] <- a_year[which(m_birth>900)]-y_birth[which(m_birth>900)]
+  
+  #It's emphasized the individues having missing
+  
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(y_birth==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(a_year==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+  
+  
+  age
+
+}
+
+SHARE_ds_w5$age_retired <- comp_age(y_birth=SHARE_w5$ybirth, m_birth=SHARE_w5$mbirth , a_year=SHARE_w5$year, a_month=SHARE_w5$month, miss=miss_values_vector)
+SHARE_ds_w5$age_retired[which(SHARE_ds_w5$retired==0)] <- 996
+SHARE_ds_w5$age_retired[which(SHARE_ds_w5$age_retired<=0)] <- 999
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w5, echo=F}
+
+vbl <- SHARE_ds_w5$retired
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SHARE_ds_w5, aes(x=factor(retired))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- SHARE_ds_w5$age_retired
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(filter(SHARE_ds_w5,!vbl %in% miss_values_vector), aes(age_retired)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w5, echo=F, results='asis'}
+
+```
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
+
+**R script:**
+
+```{r summ}
+
+l.hds <- list(w1 = SHARE_ds_w1, w2 = SHARE_ds_w2, w4 = SHARE_ds_w4, w5 = SHARE_ds_w5)
+
+for(name in names(l.hds)) {
+  aux_object <- l.hds[[name]]
+  label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
+  l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
+  label(l.hds[[name]][[3]]) <- label(aux_object[[3]]) <- ds_label_age # Text value assigned at the DS description, at the top
+  l.hds[[name]][[3]] <- labelled(l.hds[[name]][[3]], labels = cont_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  m_name <- paste0("SHARE_m_ds_",name)
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+for (i in seq_along(l.hds)){
+  t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+}
+t.hds[13,] <- c("n", "sample size",   sapply(l.hds,function(wave) length(wave[[1]]))
+             )
+names(t.hds)<-c("val", "label", names(l.hds))
+kable(t.hds)
+
+dbb <- get(paste0("SHARE_m_ds_",names(l.hds)[1]))[,c("id","retired")]
+for(ind in 2:length(l.hds)){
+  dbb <- merge(dbb, get(paste0("SHARE_m_ds_",names(l.hds)[ind]))[,c("id","retired")], by = "id", suffixes = c("", paste0(".",names(l.hds)[ind])), all = T)
+}
+names(dbb) <- c("id", names(l.hds))
+
+v.dbb <- dbb[,2]
+for(ind in 2:length(l.hds)){
+  v.dbb <- paste0(v.dbb,dbb[,ind+1])
+}
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb[f.dbb[,3]>=0.3,])
+
+```
+
+
+
+# Quality estimation
+
+The study owners maybe have observed an irregular behaviour in the first waves since in wave 4 questionnaire there is the next message related to `ep005_` variable: 
+```
+Retired refers to retired from own work only. Recipients of survivor pensions who do not receive pensions from own work should not be coded as retired. If they do not fit in categories 2 through 5, they should go into other.
+```
+
+There are some individuals with no-sense trajectories (10NANA, NANA10).
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+for(index in seq_along(l.hds)){
+  retired <- l.hds[[index]]
+  save(retired, file = paste0(datafolder,names(l.hds)[index],"/retired.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

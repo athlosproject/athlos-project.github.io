@@ -1,0 +1,419 @@
+---
+title: "Smoking"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/smokingDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/smokingDS.R')
+```
+
+
+
+# Data process
+
+## Europe
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `cusmoke` |
+|-|-|
+| **Label** | `ever smoked daily` |
+| **Table name** | `sharew1_rel2-6-0_gv_health` |
+| **Categories:**| `1 = yes` <br/> `5 = no`|
+| **Missings:**|`-2 = refusal` <br/> `-1 = don't know` <br/> `NA`|
+| **Description** |  |
+
+   
+
+```{r assign w1, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w1','SHARE.sharew1_rel2-6-0_gv_health', variables=list('cusmoke'), missings = TRUE)
+SHARE_w1 <- opal.execute(o,'SHARE_w1')
+```
+
+```{r local w1, echo=F}
+vbl <- SHARE_w1$cusmoke
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[3], caption = names(SHARE_w1)[2])
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[1], caption = "Category")
+ggplot(SHARE_w1, aes(x=factor(cusmoke))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute `smoking` from the study-specific variable it has to be recoded as follows:
+
+* `1 into 2` 
+* `2 into 0` 
+* `5 into 1`
+* `-2 into 997`
+* `-1 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w1}
+SHARE_ds_w1 <- tibble(id=SHARE_w1$id)
+SHARE_ds_w1$smoking <- car::recode(SHARE_w1$cusmoke, "1 = 2;2 = 0;5 = 1;-2 = 997;-1 = 998;NA = 999 ")
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=F}
+vbl <- SHARE_ds_w1$smoking
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SHARE_ds_w1, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+
+#### Validation
+```{r crosstabulation w1, echo=F}
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `br001_` | `br002_` | `br022_` |
+|-|-|-|-|
+| **Label** | `ever smoked daily` | `smoke at the present time` | `stopped smoking`|
+| **Table name** | `sharew2_rel2-6-0_br` | `sharew2_rel2-6-0_br` | `sharew2_rel2-6-0_br` |
+| **Categories:**| `1 = yes` <br/> `5 = no`| `1 = yes` <br/> `5 = no`| `1 = yes, I stopped after last interview` <br/> `5 = no, I did not smoke by last interview` <br/> `3 = no, I still smoke nowadays`|
+| **Missings:**|`-2 = refusal` <br/> `-1 = don't know` <br/> `NA`| `-2 = refusal` <br/> `-1 = don't know` <br/> `NA`| `NA` |
+| **Description** |  | | |
+
+
+```{r assign w2, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w2','SHARE.sharew2_rel2-6-0_br', variables=list('br001_','br002_','br022_'), missings = TRUE)
+SHARE_w2 <- opal.execute(o,'SHARE_w2')
+```
+
+```{r local w2, echo=F}
+vbl <- SHARE_w2$br001_
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[3], caption = names(SHARE_w2)[2])
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[1], caption = "Category")
+ggplot(SHARE_w2, aes(x=factor(br001_))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w2$br002_
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[3], caption = names(SHARE_w2)[3])
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[1], caption = "Category")
+ggplot(SHARE_w2, aes(x=factor(br002_))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w2$br022_
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[3], caption = names(SHARE_w2)[4])
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[1], caption = "Category")
+ggplot(SHARE_w2, aes(x=factor(br022_))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute `smoking` from the study-specific variable it has to be recoded as follows:
+
+* `br001_=5 into 0` 
+* `(br001_=1&br002_=5)|(br022_=1|br022_=2) into 1` 
+* `br002_=1 into 2`
+* `-2 into 997`
+* `-1 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w2}
+SHARE_ds_w2 <- tibble(id=SHARE_w2$id)
+SHARE_ds_w2 <- tibble(id=SHARE_w2$id)
+SHARE_ds_w2$smoking <- rep(999,length(SHARE_ds_w2$id))
+SHARE_ds_w2$smoking[SHARE_w2$br001_==5] <- 0
+SHARE_ds_w2$smoking[(SHARE_w2$br001_==1&SHARE_w2$br002_==5)|(SHARE_w2$br022_==1|SHARE_w2$br022_==2)] <- 1
+SHARE_ds_w2$smoking[SHARE_w2$br002_==1] <- 2
+SHARE_ds_w2$smoking[SHARE_w2$br001_==-2|SHARE_w2$br002_==-2|SHARE_w2$br022_==-2]<-997
+SHARE_ds_w2$smoking[SHARE_w2$br001_==-1|SHARE_w2$br002_==-1|SHARE_w2$br022_==-1]<-998
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w2, echo=F}
+vbl <- SHARE_ds_w2$smoking
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SHARE_ds_w2, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+
+#### Validation
+```{r crosstabulation w2, echo=F}
+AfterH <- table(SHARE_ds_w2$smoking)
+X<-c(sum(na.omit(SHARE_w2$br001_==5)),sum(na.omit((SHARE_w2$br001_==1&SHARE_w2$br002_==5)|(SHARE_w2$br022_==1|SHARE_w2$br022_==2))),sum(na.omit(SHARE_w2$br002_==1)),sum(na.omit(SHARE_w2$br001_==-2|SHARE_w2$br002_==-2|SHARE_w2$br022_==-2)),sum(na.omit(SHARE_w2$br001_==-1|SHARE_w2$br002_==-1|SHARE_w2$br022_==-1)))
+BeforeH <- c(X,length(SHARE_w2$br001_)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("br001_=5->0","(br001_=1&br002_=5)|(br022_=1|br022_=2)->1","br002_=1->2","-2->997","-1->998","NA->999") 
+kable(C)
+```
+
+
+
+### Wave 3
+
+Not found
+
+
+
+### Wave 4
+
+#### Study-specific variable description
+
+| **Name** | `br001_` | `br002_` | `br022_` |
+|-|-|-|-|
+| **Label** | `ever smoked daily` | `smoke at the present time` | `stopped smoking`|
+| **Table name** | `sharew4_rel1-1-1_br` | `sharew4_rel1-1-1_br` | `sharew4_rel1-1-1_br` |
+| **Categories:**| `1 = yes` <br/> `5 = no`| `1 = yes` <br/> `5 = no`| `1 = yes, I stopped after last interview` <br/> `5 = no, I did not smoke by last interview` <br/> `3 = no, I still smoke nowadays`|
+| **Missings:**|`-2 = refusal` <br/> `-1 = don't know` <br/> `NA`| `-2 = refusal` <br/> `-1 = don't know` <br/> `NA`| `-1 = don't know` <br/> `NA` |
+| **Description** |  | | |
+
+
+```{r assign w4, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w4','SHARE.sharew4_rel1-1-1_br', variables=list('br001_','br002_','br022_'), missings = TRUE)
+SHARE_w4 <- opal.execute(o,'SHARE_w4')
+```
+
+```{r local w4, echo=F}
+vbl <- SHARE_w4$br001_
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[3], caption = names(SHARE_w4)[2])
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[1], caption = "Category")
+ggplot(SHARE_w4, aes(x=factor(br001_))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w4$br002_
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[3], caption = names(SHARE_w4)[3])
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[1], caption = "Category")
+ggplot(SHARE_w4, aes(x=factor(br002_))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w4$br022_
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[3], caption = names(SHARE_w4)[4])
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[1], caption = "Category")
+ggplot(SHARE_w4, aes(x=factor(br022_))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute `smoking` from the study-specific variable it has to be recoded as follows:
+
+* `br001_=5 into 0` 
+* `(br001_=1&br002_=5)|(br022_=1|br022_=2) into 1` 
+* `br002_=1 into 2`
+* `-2 into 997`
+* `-1 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w4}
+SHARE_ds_w4 <- tibble(id=SHARE_w4$id)
+SHARE_ds_w4 <- tibble(id=SHARE_w4$id)
+SHARE_ds_w4$smoking <- rep(999,length(SHARE_ds_w4$id))
+SHARE_ds_w4$smoking[SHARE_w4$br001_==5] <- 0
+SHARE_ds_w4$smoking[(SHARE_w4$br001_==1&SHARE_w4$br002_==5)|(SHARE_w4$br022_==1|SHARE_w4$br022_==2)] <- 1
+SHARE_ds_w4$smoking[SHARE_w4$br002_==1] <- 2
+SHARE_ds_w4$smoking[SHARE_w4$br001_==-2|SHARE_w4$br002_==-2|SHARE_w4$br022_==-2]<-997
+SHARE_ds_w4$smoking[SHARE_w4$br001_==-1|SHARE_w4$br002_==-1|SHARE_w4$br022_==-1]<-998
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w4, echo=F}
+vbl <- SHARE_ds_w4$smoking
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SHARE_ds_w4, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+
+#### Validation
+```{r crosstabulation w4, echo=F}
+AfterH <- table(SHARE_ds_w4$smoking)
+X<-c(sum(na.omit(SHARE_w4$br001_==5)),sum(na.omit((SHARE_w4$br001_==1&SHARE_w4$br002_==5)|(SHARE_w4$br022_==1|SHARE_w4$br022_==2))),sum(na.omit(SHARE_w4$br002_==1)),sum(na.omit(SHARE_w4$br001_==-2|SHARE_w4$br002_==-2|SHARE_w4$br022_==-2)),sum(na.omit(SHARE_w4$br001_==-1|SHARE_w4$br002_==-1|SHARE_w4$br022_==-1)))
+BeforeH <- c(X,length(SHARE_w4$br001_)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("br001_=5->0","(br001_=1&br002_=5)|(br022_=1|br022_=2)->1","br002_=1->2","-2->997","-1->998","NA->999") 
+kable(C)
+```
+
+
+
+
+### Wave 5
+
+#### Study-specific variable description
+
+| **Name** | `br001_` | `br002_` | `br022_` |
+|-|-|-|-|
+| **Label** | `ever smoked daily` | `smoke at the present time` | `stopped smoking`|
+| **Table name** | `sharew5_rel1-0-0_br` | `sharew5_rel1-0-0_br` | `sharew5_rel1-0-0_br` |
+| **Categories:**| `1 = yes` <br/> `5 = no`| `1 = yes` <br/> `5 = no`| `1 = yes, I stopped after last interview` <br/> `5 = no, I did not smoke by last interview` <br/> `3 = no, I still smoke nowadays`|
+| **Missings:**|`-2 = refusal` <br/> `-1 = don't know` <br/> `NA`| `-2 = refusal` <br/> `-1 = don't know` <br/> `NA`| `-2 = refusal` <br/> `-1 = don't know` <br/> `NA` |
+| **Description** |  |  |  |
+
+
+```{r assign w5, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w5','SHARE.sharew5_rel1-0-0_br', variables=list('br001_','br002_','br022_'), missings = TRUE)
+SHARE_w5 <- opal.execute(o,'SHARE_w5')
+```
+
+```{r local w5, echo=F}
+vbl <- SHARE_w5$br001_
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[3], caption = names(SHARE_w5)[2])
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[1], caption = "Category")
+ggplot(SHARE_w5, aes(x=factor(br001_))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w5$br002_
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[3], caption = names(SHARE_w5)[3])
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[1], caption = "Category")
+ggplot(SHARE_w5, aes(x=factor(br002_))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w5$br022_
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[3], caption = names(SHARE_w5)[4])
+kable(Categorical_summary(vbl, missing_values = c(-1,-2))[1], caption = "Category")
+ggplot(SHARE_w5, aes(x=factor(br022_))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute `smoking` from the study-specific variable it has to be recoded as follows:
+
+* `br001_=5 into 0` 
+* `(br001_=1&br002_=5)|(br022_=1|br022_=2) into 1` 
+* `br002_=1 into 2`
+* `-2 into 997`
+* `-1 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w5}
+SHARE_ds_w5 <- tibble(id=SHARE_w5$id)
+SHARE_ds_w5 <- tibble(id=SHARE_w5$id)
+SHARE_ds_w5$smoking <- rep(999,length(SHARE_ds_w5$id))
+SHARE_ds_w5$smoking[SHARE_w5$br001_==5] <- 0
+SHARE_ds_w5$smoking[(SHARE_w5$br001_==1&SHARE_w5$br002_==5)|(SHARE_w5$br022_==1|SHARE_w5$br022_==2)] <- 1
+SHARE_ds_w5$smoking[SHARE_w5$br002_==1] <- 2
+SHARE_ds_w5$smoking[SHARE_w5$br001_==-2|SHARE_w5$br002_==-2|SHARE_w5$br022_==-2]<-997
+SHARE_ds_w5$smoking[SHARE_w5$br001_==-1|SHARE_w5$br002_==-1|SHARE_w5$br022_==-1]<-998
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w5, echo=F}
+vbl <- SHARE_ds_w5$smoking
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SHARE_ds_w5, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+
+#### Validation
+```{r crosstabulation w5, echo=F}
+AfterH <- table(SHARE_ds_w5$smoking)
+X<-c(sum(na.omit(SHARE_w5$br001_==5)),sum(na.omit((SHARE_w5$br001_==1&SHARE_w5$br002_==5)|(SHARE_w5$br022_==1|SHARE_w5$br022_==2))),sum(na.omit(SHARE_w5$br002_==1)),sum(na.omit(SHARE_w5$br001_==-2|SHARE_w5$br002_==-2|SHARE_w5$br022_==-2)),sum(na.omit(SHARE_w5$br001_==-1|SHARE_w5$br002_==-1|SHARE_w5$br022_==-1)))
+BeforeH <- c(X,length(SHARE_w5$br001_)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("br001_=5->0","(br001_=1&br002_=5)|(br022_=1|br022_=2)->1","br002_=1->2","-2->997","-1->998","NA->999") 
+kable(C)
+```
+
+
+
+
+```{r final, echo=F}
+
+l.hds <- list(w1 = SHARE_ds_w1, w2 = SHARE_ds_w2, w4 = SHARE_ds_w4, w5 = SHARE_ds_w5)
+
+for(name in names(l.hds)) {
+  aux_object <- l.hds[[name]]
+  label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
+  l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:3])
+  m_name <- paste0("SHARE_m_ds_",name)
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+```
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories.
+
+
+```{r summ}
+
+t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+for (i in seq_along(l.hds)){
+  t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+}
+t.hds[14,] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+             )
+names(t.hds)<-c("val", "label",names(l.hds))
+kable(t.hds)
+
+dbb <- get(paste0("SHARE_m_ds_",names(l.hds)[1]))[,c("id","smoking")]
+for(ind in 2:length(l.hds)){
+  dbb <- merge(dbb, get(paste0("SHARE_m_ds_",names(l.hds)[ind]))[,c("id","smoking")], by = "id", suffixes = c("", paste0(".",names(l.hds)[ind])), all = T)
+}
+names(dbb) <- c("id", names(l.hds))
+
+v.dbb <- dbb[,2]
+for(ind in 2:length(l.hds)){
+  v.dbb <- paste(v.dbb,dbb[,ind+1],sep="")
+}
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb)
+
+```
+
+
+# Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+
+for(index in seq_along(l.hds)){
+  smoking <- l.hds[[index]]
+  save(smoking, file = paste0(datafolder,names(l.hds)[index],"/smoking.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

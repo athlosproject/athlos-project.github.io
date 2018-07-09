@@ -1,0 +1,334 @@
+---
+title: "Incontinence"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+
+* Short name: `incontinence`
+* Variable label: `Incontinence`
+* Variable description: `It measures if the participant has experienced loss of urine (or has used any special device for urine leakage) or not.`
+* Domain: `Health status and functional limitations`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | Yes
+1        | No
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+# Data process
+
+
+## SHARE
+
+### Wave 1 
+
+#### Study-specific variable description
+
+
+
+
+| **Name** | `ph010d11`|
+|-|-|
+| **Label** | `bothered by: incontinence` |
+| **Table name** | `sharew1_rel2-6-0_ph` |
+| **Categories** |`0 = Not selected; 1 = Selected` |
+| **Missings** | `-1 = Don't know; -2 = Refusal; NA` |
+| **Description** |  |
+
+
+```{r assign w1, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w1_incontinence','SHARE.sharew1_rel2-6-0_ph', variables=list('ph010d11'), missings = TRUE)
+```
+
+```{r local w1, echo=F}
+SHARE_w1_incontinence <- opal.execute(o,'SHARE_w1_incontinence')
+vari <- SHARE_w1_incontinence$ph010d11
+kable(Categorical_summary(vari, missing_values = c(-1,-2))[3], caption = "ph010d11")
+kable(Categorical_summary(vari, missing_values = c(-1,-2))[1], caption = "Category")
+ggplot(SHARE_w1_incontinence, aes(x=factor(ph010d11))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Incontinence") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `0 into 1` 
+* `1 into 0`
+* `-1 into 998`
+* `-2 into 997`
+* `NA into 999`
+
+**R script:**
+```{r harmo w1}
+SHARE_ds_w1 <- tibble(id=SHARE_w1_incontinence$id)
+SHARE_ds_w1$incontinence <- car::recode(SHARE_w1_incontinence$ph010d11, "0 = '1';1 = '0';NA = '999';-2 = '997';-1 = '998' ")
+SHARE_ds_w1$incontinence <- labelled(SHARE_ds_w1$incontinence, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=F}
+vari <- SHARE_ds_w1$incontinence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "incontinence")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(SHARE_ds_w1, aes(x=factor(incontinence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Incontinence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1, echo=F}
+AfterH <- table(SHARE_ds_w1$incontinence)
+X<-table(SHARE_w1_incontinence$ph010d11)
+BeforeH <- c(X[c(4,3,1,2)],sum(is.na(SHARE_w1_incontinence$ph010d11)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","0->1","-2->997","-1->998","NA->999") 
+kable(C)
+```
+
+
+
+
+
+
+```{r importOPAL w1, echo=FALSE}
+
+label(SHARE_ds_w1$incontinence) <- "It measures if the participant has experienced loss of urine (or has used any special device for urine leakage) or not."
+#opal.symbol_import(o, 'SHARE_ds_w1', SHARE_ds_w1)
+#opal.symbol_import(o,'SHARE_ds_w1', project='_Athlos_Harm_Dataset')
+incontinence <- SHARE_ds_w1
+save(incontinence, file = "../RData/w1/incontinence.RData")
+
+SHARE_m_ds_w1 <- SHARE_ds_w1
+SHARE_m_ds_w1$incontinence <- car::recode(SHARE_m_ds_w1$incontinence, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.symbol_import(o, 'SHARE_m_ds_w1', SHARE_m_ds_w1)
+#opal.symbol_import(o,'SHARE_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+
+
+
+| **Name** | `ph010d11`|
+|-|-|
+| **Label** | `bothered by: incontinence` |
+| **Table name** | `sharew2_rel2-6-0_ph` |
+| **Categories** |`0 = Not selected; 1 = Selected` |
+| **Missings** | `-1 = Don't know; -2 = Refusal; NA` |
+| **Description** |  |
+
+
+```{r assign w2, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w2_incontinence','SHARE.sharew2_rel2-6-0_ph', variables=list('ph010d11'), missings = TRUE)
+```
+
+```{r local w2, echo=F}
+SHARE_w2_incontinence <- opal.execute(o,'SHARE_w2_incontinence')
+vari <- SHARE_w2_incontinence$ph010d11
+kable(Categorical_summary(vari, missing_values = c(-1,-2))[3], caption = "ph010d11")
+kable(Categorical_summary(vari, missing_values = c(-1,-2))[1], caption = "Category")
+ggplot(SHARE_w2_incontinence, aes(x=factor(ph010d11))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Incontinence") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `0 into 1` 
+* `1 into 0`
+* `-1 into 998`
+* `-2 into 997`
+* `NA into 999`
+
+**R script:**
+```{r harmo w2}
+SHARE_ds_w2 <- tibble(id=SHARE_w2_incontinence$id)
+SHARE_ds_w2$incontinence <- car::recode(SHARE_w2_incontinence$ph010d11, "0 = '1';1 = '0';NA = '999';-2 = '997';-1 = '998' ")
+SHARE_ds_w2$incontinence <- labelled(SHARE_ds_w2$incontinence, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w2, echo=F}
+vari <- SHARE_ds_w2$incontinence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "incontinence")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(SHARE_ds_w2, aes(x=factor(incontinence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Incontinence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w2, echo=F}
+AfterH <- table(SHARE_ds_w2$incontinence)
+X<-table(SHARE_w2_incontinence$ph010d11)
+BeforeH <- c(X[c(4,3,1,2)],sum(is.na(SHARE_w2_incontinence$ph010d11)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","0->1","-2->997","-1->998","NA->999") 
+kable(C)
+```
+
+
+
+
+
+
+```{r importOPAL w2, echo=FALSE}
+
+label(SHARE_ds_w2$incontinence) <- "It measures if the participant has experienced loss of urine (or has used any special device for urine leakage) or not."
+#opal.symbol_import(o, 'SHARE_ds_w2', SHARE_ds_w2)
+#opal.symbol_import(o,'SHARE_ds_w2', project='_Athlos_Harm_Dataset')
+incontinence <- SHARE_ds_w2
+save(incontinence, file = "../RData/w2/incontinence.RData")
+
+SHARE_m_ds_w2 <- SHARE_ds_w2
+SHARE_m_ds_w2$incontinence <- car::recode(SHARE_m_ds_w2$incontinence, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.symbol_import(o, 'SHARE_m_ds_w2', SHARE_m_ds_w2)
+#opal.symbol_import(o,'SHARE_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 3
+
+Not found.
+
+
+
+### Wave 4
+
+#### Study-specific variable description
+
+
+
+
+| **Name** | `ph010d11`|
+|-|-|
+| **Label** | `bothered by: incontinence` |
+| **Table name** | `sharew4_rel1-1-1_ph` |
+| **Categories** |`0 = Not selected; 1 = Selected` |
+| **Missings** | `-1 = Don't know; -2 = Refusal; NA` |
+| **Description** |  |
+
+
+```{r assign w4, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w4_incontinence','SHARE.sharew4_rel1-1-1_ph', variables=list('ph010d11'), missings = TRUE)
+```
+
+```{r local w4, echo=F}
+SHARE_w4_incontinence <- opal.execute(o,'SHARE_w4_incontinence')
+vari <- SHARE_w4_incontinence$ph010d11
+kable(Categorical_summary(vari, missing_values = c(-1,-2))[3], caption = "ph010d11")
+kable(Categorical_summary(vari, missing_values = c(-1,-2))[1], caption = "Category")
+ggplot(SHARE_w4_incontinence, aes(x=factor(ph010d11))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Incontinence") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `0 into 1` 
+* `1 into 0`
+* `-1 into 998`
+* `-2 into 997`
+* `NA into 999`
+
+**R script:**
+```{r harmo w4}
+SHARE_ds_w4 <- tibble(id=SHARE_w4_incontinence$id)
+SHARE_ds_w4$incontinence <- car::recode(SHARE_w4_incontinence$ph010d11, "0 = '1';1 = '0';NA = '999';-2 = '997';-1 = '998' ")
+SHARE_ds_w4$incontinence <- labelled(SHARE_ds_w4$incontinence, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w4, echo=F}
+vari <- SHARE_ds_w4$incontinence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "incontinence")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(SHARE_ds_w4, aes(x=factor(incontinence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Incontinence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w4, echo=F}
+AfterH <- table(SHARE_ds_w4$incontinence)
+X<-table(SHARE_w4_incontinence$ph010d11)
+BeforeH <- c(X[c(4,3,1,2)],sum(is.na(SHARE_w4_incontinence$ph010d11)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","0->1","-2->997","-1->998","NA->999") 
+kable(C)
+```
+
+
+
+
+
+
+```{r importOPAL w4, echo=FALSE}
+
+label(SHARE_ds_w4$incontinence) <- "It measures if the participant has experienced loss of urine (or has used any special device for urine leakage) or not."
+#opal.symbol_import(o, 'SHARE_ds_w4', SHARE_ds_w4)
+#opal.symbol_import(o,'SHARE_ds_w4', project='_Athlos_Harm_Dataset')
+incontinence <- SHARE_ds_w4
+save(incontinence, file = "../RData/w4/incontinence.RData")
+
+SHARE_m_ds_w4 <- SHARE_ds_w4
+SHARE_m_ds_w4$incontinence <- car::recode(SHARE_m_ds_w4$incontinence, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.symbol_import(o, 'SHARE_m_ds_w4', SHARE_m_ds_w4)
+#opal.symbol_import(o,'SHARE_m_ds_w4', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 5
+
+Not found.
+
+
+
+# Quality estimation
+No comments.
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

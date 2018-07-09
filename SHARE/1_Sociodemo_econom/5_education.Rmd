@@ -1,0 +1,504 @@
+---
+title: "Education"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `education`
+* Variable label: `Highest level of formal education achieved`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | less than primary education
+1        | primary education
+2        | secondary education
+3        | tertiary education
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+```{r lab, echo=FALSE}
+ds_label <- "Education"
+ds_label_all <- "Highest level of formal education achieved"
+```
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## SHARE 
+
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+| **Name** | `isced_r` |
+|----------|------------|
+| **Label** | `ISCED-97 coding of education` |
+| **Table name** | `sharew1_rel2-6-0_gv_isced` |
+| **Categories** | `0 = none; 1 = isced-97 code 1; 2 = isced-97 code 2; 3 = isced-97 code 3; 4 = isced-97 code 4; 5 = isced-97 code 5; 6 = isced-97 code 6; 95 = still in school; 97 = other` |
+| **Missings** | `-7 = not yet coded (temporary); -2 = refusal; -1 = don't know` |
+| **Description** |  |
+
+
+
+```{r assign1,  echo=FALSE}
+opal.assign.table.tibble(o, 'SHARE_w1_educ','SHARE.sharew1_rel2-6-0_gv_isced',
+                         variables=list('isced_r'), missings = TRUE)
+SHARE_w1_educ <- opal.execute(o,'SHARE_w1_educ')
+```
+
+```{r local1,  echo=FALSE}
+vari <- SHARE_w1_educ$isced_r
+kable(Categorical_summary(vari, missing_values = c(-7,-2,-1))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(-7,-2,-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-7,-2,-1))[2], caption = "Type of missing")
+ggplot(SHARE_w1_educ, aes(x=factor(isced_r))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "none" into 0`
+* `keep "isced-97 code 1" into 1`
+* `keep "isced-97 code 2" into 2`
+* `recode 3 "isced-97 code 3" into 2`
+* `recode 4 "isced-97 code 4" into 2`
+* `recode 5 "isced-97 code 5" into 3`
+* `recode 6 "isced-97 code 6" into 3`
+* `recode 95 "still in school" into 996`
+* `recode 97 "other" into 999`
+* `recode -7 "not yet coded (temporary)" into 994`
+* `recode -2 "refusal" into 997`
+* `recode -1 "don't know" into 998`
+
+**R script:**
+
+```{r harmo1,   echo=TRUE}
+SHARE_ds_w1 <- tibble(id=SHARE_w1_educ$id)
+SHARE_ds_w1$education <- car::recode(SHARE_w1_educ$isced_r, "3=2; 4=2; 5=3; 6=3; 95=996; 97=999; -7=994;-2=997; -1=998;  NA=999")
+SHARE_ds_w1$education <- labelled(SHARE_ds_w1$education, labels = c("less than primary education"=0, "primary education"=1, "secondary education"=2, "tertiary education"=3, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1,  echo=FALSE}
+vari <- SHARE_ds_w1$education
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(SHARE_ds_w1, aes(x=factor(education))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1,  echo=FALSE}
+BeforeH <- table(SHARE_w1_educ$isced_r)
+BeforeH <- c(BeforeH[3], BeforeH[4],sum(BeforeH[5:7]), sum(BeforeH[8:9]), BeforeH[10], BeforeH[1], BeforeH[2], sum(BeforeH[11],sum(is.na(SHARE_w1_educ$isced_r))))
+AfterH <- table(SHARE_ds_w1$education)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0", "1", "(2,3,4)->2", "(5,6)->3", "95->996", "-2->997", "-1->998", "(97,NA)->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL1,  echo=FALSE}
+label(SHARE_ds_w1$education) <- ds_label_all
+education <- SHARE_ds_w1
+save(education, file = "../RData/w1/education.RData")
+#opal.assign.data(o, 'SHARE_ds_w1', SHARE_ds_w1)
+#opal.symbol_import( o,'SHARE_ds_w1', project='_Athlos_Harm_Dataset')
+
+SHARE_m_ds_w1 <- SHARE_ds_w1
+SHARE_m_ds_w1$education <- car::recode(SHARE_m_ds_w1$education, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SHARE_m_ds_w1', SHARE_m_ds_w1)
+#opal.symbol_import( o,'SHARE_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+
+ 
+| **Name** | `isced_r` |
+|----------|------------|
+| **Label** | `ISCED-97 coding of education` |
+| **Table name** | `sharew2_rel2-6-0_gv_isced` |
+| **Categories** | `0 = none; 1 = isced-97 code 1; 2 = isced-97 code 2; 3 = isced-97 code 3; 4 = isced-97 code 4; 5 = isced-97 code 5; 6 = isced-97 code 6; 95 = still in school; 97 = other` |
+| **Missings** | `-2 = refusal; -1 = don't know` |
+| **Description** |  |
+
+
+
+* Description: 
+```{r assign2,  echo=FALSE}
+opal.assign.table.tibble(o, 'SHARE_w2_educ','SHARE.sharew2_rel2-6-0_gv_isced',
+                         variables=list('isced_r'), missings = TRUE)
+SHARE_w2_educ <- opal.execute(o,'SHARE_w2_educ')
+```
+
+```{r local2,  echo=FALSE}
+vari <- SHARE_w2_educ$isced_r
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[2], caption = "Type of missing")
+ggplot(SHARE_w2_educ, aes(x=factor(isced_r))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "none" into 0`
+* `keep "isced-97 code 1" into 1`
+* `keep "isced-97 code 2" into 2`
+* `recode 3 "isced-97 code 3" into 2`
+* `recode 4 "isced-97 code 4" into 2`
+* `recode 5 "isced-97 code 5" into 3`
+* `recode 6 "isced-97 code 6" into 3`
+* `recode 95 "still in school" into 996`
+* `recode 97 "other" into 999`
+* `recode -2 "refusal" into 997`
+* `recode -1 "don't know" into 998`
+
+**R script:**
+
+```{r harmo2,   echo=TRUE}
+SHARE_ds_w2 <- tibble(id=SHARE_w2_educ$id)
+SHARE_ds_w2$education <- car::recode(SHARE_w2_educ$isced_r, "3=2; 4=2; 5=3; 6=3; 95=996; 97=999; -2=997; -1=998;  NA=999")
+SHARE_ds_w2$education <- labelled(SHARE_ds_w2$education, labels = c("less than primary education"=0, "primary education"=1, "secondary education"=2, "tertiary education"=3, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2,  echo=FALSE}
+vari <- SHARE_ds_w2$education
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(SHARE_ds_w2, aes(x=factor(education))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2,  echo=FALSE}
+BeforeH <- table(SHARE_w2_educ$isced_r)
+BeforeH <- c(BeforeH[3], BeforeH[4],sum(BeforeH[5:7]), sum(BeforeH[8:9]), BeforeH[10], BeforeH[1], BeforeH[2], sum(BeforeH[11],sum(is.na(SHARE_w2_educ$isced_r))))
+AfterH <- table(SHARE_ds_w2$education)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0", "1", "(2,3,4)->2", "(5,6)->3", "95->996", "-2->997", "-1->998", "(97,NA)->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL2,  echo=FALSE}
+label(SHARE_ds_w2$education) <- ds_label_all
+education <- SHARE_ds_w2
+save(education, file = "../RData/w2/education.RData")
+#opal.assign.data(o, 'SHARE_ds_w2', SHARE_ds_w2)
+#opal.symbol_import( o,'SHARE_ds_w2', project='_Athlos_Harm_Dataset')
+
+SHARE_m_ds_w2 <- SHARE_ds_w2
+SHARE_m_ds_w2$education <- car::recode(SHARE_m_ds_w2$education, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SHARE_m_ds_w2', SHARE_m_ds_w2)
+#opal.symbol_import( o,'SHARE_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+### Wave 3 
+
+There is no variable.
+
+
+
+
+
+
+### Wave 4 
+
+#### Study-specific variable description
+
+ 
+| **Name** | `isced_r` |
+|----------|------------|
+| **Label** | `ISCED-97 coding of education` |
+| **Table name** | `sharew4_rel1-1-1_gv_isced` |
+| **Categories** | `0 = none; 1 = isced-97 code 1; 2 = isced-97 code 2; 3 = isced-97 code 3; 4 = isced-97 code 4; 5 = isced-97 code 5; 6 = isced-97 code 6; 95 = still in school; 97 = other` |
+| **Missings** | `-2 = refusal; -1 = don't know` |
+| **Description** |  |
+
+
+
+```{r assign4,  echo=FALSE}
+opal.assign.table.tibble(o, 'SHARE_w4_educ','SHARE.sharew4_rel1-1-1_gv_isced',
+                         variables=list('isced_r'), missings = TRUE)
+opal.assign.table.tibble(o, 'SHARE_w4_id','SHARE.sharew4_rel1-1-1_cv_r_without_noint',
+                         variables=list('hhid4'), missings = TRUE)
+SHARE_w4_educ <- opal.execute(o,'SHARE_w4_educ')
+SHARE_w4_id <- opal.execute(o,'SHARE_w4_id')
+```
+
+```{r local4,  echo=FALSE}
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(rep(NA, dim(new)[1]*dim(new)[2] ), nrow = dim(new)[1])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], isced_r=as.numeric(new_2[,2]))
+  new_22
+}
+
+SHARE_w4_educ <- Add_indiv(old = SHARE_w4_educ, new = SHARE_w4_id)
+
+vari <- SHARE_w4_educ$isced_r
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[2], caption = "Type of missing")
+ggplot(SHARE_w4_educ, aes(x=factor(isced_r))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "none" into 0`
+* `keep "isced-97 code 1" into 1`
+* `keep "isced-97 code 2" into 2`
+* `recode 3 "isced-97 code 3" into 2`
+* `recode 4 "isced-97 code 4" into 2`
+* `recode 5 "isced-97 code 5" into 3`
+* `recode 6 "isced-97 code 6" into 3`
+* `recode 95 "still in school" into 996`
+* `recode 97 "other" into 999`
+* `recode -2 "refusal" into 997`
+* `recode -1 "don't know" into 998`
+
+**R script:**
+
+```{r harmo4,   echo=TRUE}
+SHARE_ds_w4 <- tibble(id=SHARE_w4_educ$id)
+SHARE_ds_w4$education <- car::recode(SHARE_w4_educ$isced_r, "3=2; 4=2; 5=3; 6=3; 95=996; 97=999;-2=997; -1=998;  NA=999")
+SHARE_ds_w4$education <- labelled(SHARE_ds_w4$education, labels = c("less than primary education"=0, "primary education"=1, "secondary education"=2, "tertiary education"=3, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript4,  echo=FALSE}
+vari <- SHARE_ds_w4$education
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(SHARE_ds_w4, aes(x=factor(education))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation4,  echo=FALSE}
+BeforeH <- table(SHARE_w4_educ$isced_r)
+BeforeH <- c(BeforeH[3], BeforeH[4],sum(BeforeH[5:7]), sum(BeforeH[8:9]), BeforeH[10], BeforeH[1], BeforeH[2], sum(BeforeH[11],sum(is.na(SHARE_w4_educ$isced_r))))
+AfterH <- table(SHARE_ds_w4$education)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0", "1", "(2,3,4)->2", "(5,6)->3", "95->996", "-2->997", "-1->998", "(97,NA)->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL4,  echo=FALSE}
+label(SHARE_ds_w4$education) <- ds_label_all
+education <- SHARE_ds_w4
+save(education, file = "../RData/w4/education.RData")
+#opal.assign.data(o, 'SHARE_ds_w4', SHARE_ds_w4)
+#opal.symbol_import( o,'SHARE_ds_w4', project='_Athlos_Harm_Dataset')
+
+SHARE_m_ds_w4 <- SHARE_ds_w4
+SHARE_m_ds_w4$education <- car::recode(SHARE_m_ds_w4$education, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SHARE_m_ds_w4', SHARE_m_ds_w4)
+#opal.symbol_import( o,'SHARE_m_ds_w4', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+### Wave 5 
+
+#### Study-specific variable description
+
+
+| **Name** | `isced2011_r` |
+|----------|------------|
+| **Label** | `ISCED-11 coding of education` |
+| **Table name** | `sharew5_rel1-0-0_gv_isced` |
+| **Categories** | `0 = none; 1 = isced-11 code 1; 2 = isced-11 code 2; 3 = isced-11 code 3; 4 = isced-11 code 4; 5 = isced-11 code 5; 6 = isced-11 code 6; 7 = ISCED-11 code 7; 8 = ISCED-11 code 8; 95 = still in school; 97 = other` |
+| **Missings** | `-2 = refusal; -1 = don't know` |
+| **Description** |  |
+
+
+
+* Description: 
+```{r assign5,  echo=FALSE}
+opal.assign.table.tibble(o, 'SHARE_w5_educ','SHARE.sharew5_rel1-0-0_gv_isced',
+                         variables=list('isced2011_r'), missings = TRUE)
+opal.assign.table.tibble(o, 'SHARE_w5_id','SHARE.sharew5_rel1-0-0_cv_r_without_noint',
+                         variables=list('hhid5'), missings = TRUE)
+SHARE_w5_educ <- opal.execute(o,'SHARE_w5_educ')
+SHARE_w5_id <- opal.execute(o,'SHARE_w5_id')
+```
+
+```{r local5,  echo=FALSE}
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(rep(NA, dim(new)[1]*dim(new)[2] ), nrow = dim(new)[1])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], isced2011_r=as.numeric(new_2[,2]))
+  new_22
+}
+
+SHARE_w5_educ <- Add_indiv(old = SHARE_w5_educ, new = SHARE_w5_id)
+
+vari <- SHARE_w5_educ$isced2011_r
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-2,-1))[2], caption = "Type of missing")
+ggplot(SHARE_w5_educ, aes(x=factor(isced2011_r))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "None" into 0`
+* `keep "ISCED-11 code 1" into 1`
+* `keep "ISCED-11 code 2" into 2`
+* `recode 3 "ISCED-11 code 3" into 2`
+* `recode 4 "ISCED-11 code 4" into 2`
+* `recode 5 "ISCED-11 code 5" into 3`
+* `recode 6 "ISCED-11 code 6" into 3`
+* `recode 7 "ISCED-11 code 7" into 3`
+* `recode 8 "ISCED-11 code 8" into 3`
+* `recode 95 "still in school" into 996`
+* `recode 97 "other" into 999`
+* `recode -2 "refusal" into 997`
+* `recode -1 "don't know" into 998`
+
+**R script:**
+
+```{r harmo5,   echo=TRUE}
+SHARE_ds_w5 <- tibble(id=SHARE_w5_educ$id)
+SHARE_ds_w5$education <- car::recode(SHARE_w5_educ$isced2011_r, "3=2; 4=2; 5=3; 6=3;7=3; 8=3; 95=996; 97=999;-2=997; -1=998;  NA=999")
+SHARE_ds_w5$education <- labelled(SHARE_ds_w5$education, labels = c("less than primary education"=0, "primary education"=1, "secondary education"=2, "tertiary education"=3, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript5,  echo=FALSE}
+vari <- SHARE_ds_w5$education
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(SHARE_ds_w5, aes(x=factor(education))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation5,  echo=FALSE}
+BeforeH <- table(SHARE_w5_educ$isced2011_r)
+BeforeH <- c(BeforeH[3], BeforeH[4],sum(BeforeH[5:7]), sum(BeforeH[8:11]), BeforeH[1], BeforeH[2], sum(BeforeH[12],sum(is.na(SHARE_w5_educ$isced2011_r))))
+AfterH <- table(SHARE_ds_w5$education)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0", "1", "(2,3,4)->2", "(5,6,7,8)->3", "-2->997", "-1->998", "(97,NA)->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL5,  echo=FALSE}
+label(SHARE_ds_w5$education) <- ds_label_all
+education <- SHARE_ds_w5
+save(education, file = "../RData/w5/education.RData")
+#opal.assign.data(o, 'SHARE_ds_w5', SHARE_ds_w5)
+#opal.symbol_import( o,'SHARE_ds_w5', project='_Athlos_Harm_Dataset')
+
+SHARE_m_ds_w5 <- SHARE_ds_w5
+SHARE_m_ds_w5$education <- car::recode(SHARE_m_ds_w5$education, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SHARE_m_ds_w5', SHARE_m_ds_w5)
+#opal.symbol_import( o,'SHARE_m_ds_w5', project='_Athlos_Harm_Dataset')
+```
+
+
+# Quality estimation
+
+The SHARE study used the ISCED to create the education variable. They used the ISCED-1997 in w1, w2, w4 and ISCED-2011 in w4. We transformed that into a 4-label categorical variable taking into account the ISCED directions. 
+
+[Comments on the quality of the new harmonised variable. This section can be done in a later stage, once all variables are harmonised.]
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```

@@ -1,0 +1,552 @@
+---
+title: "Stroke or myocardial infarction (heart attack) or angina"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `cvd`
+* Variable label: `Stroke or myocardial infarction (heart attack) or angina`
+* Variable description: `stroke, myocardial infarction, heart attack or angina diagnosed by a doctor`
+* Domain: `Diseases`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | no, the participant has not been diagnosed by angina or stroke or myocardial infarction or heart attack
+1        | yes, the participant has been diagnosed by angina or stroke or myocardial infarction or heart attack
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+<!-- # Global variables -->
+```{r global, include=FALSE, echo=F}
+miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
+ds_label <- "Stroke or myocardial infarction (heart attack) or angina"
+cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
+datafolder <- "../RData/"
+#sing_idlist <- c()
+```
+<!-- ########################################################## --> 
+
+
+
+# Data process
+
+
+
+
+## SHARE
+
+
+### Wave 1
+
+#### Study-specific variable description
+
+| **Name** | `mi_ha` |`stroke`|
+|-|-|-|
+| **Label** | `Myocardial infarction or heart attack` |`Stroke`|
+| **Table name**  | `mi_ha` |`stroke`|
+| **Categories** | `0 = No`<br/>`1 = Yes` |`0 = NOT A stroke (cerebral vascular disease)`<br/>`1 = A stroke (cerebral vascular disease)`|
+| **Missings** | `997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing` |`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing` |
+| **Description** |  |  |
+
+```{r assign w1, echo=F}
+
+load(paste0(datafolder,"w1/mi_ha.RData"))
+SHARE_w1 <- tibble(id=mi_ha$id)
+SHARE_w1$mi_ha <- mi_ha$mi_ha
+rm(mi_ha)
+load(paste0(datafolder,"w1/stroke.RData"))
+SHARE_w1$stroke <- stroke$stroke
+rm(stroke)
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- SHARE_w1$mi_ha
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(SHARE_w1)[2])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(SHARE_w1, aes(x=factor(mi_ha))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w1$stroke
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(SHARE_w1)[3])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(SHARE_w1, aes(x=factor(stroke))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+To compute `cvd` from the study-specific variable it has to be recoded as follows:
+
+* `all 0 into 0`
+* `some 1 into 1`
+* `997 -> 997`
+* `998 -> 998`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo w1}
+
+# Categorical variable harmonization
+SHARE_ds_w1 <- tibble(id=SHARE_w1$id)
+SHARE_ds_w1$cvd <- rep(999,length(SHARE_w1$id))
+SHARE_ds_w1$cvd[which(SHARE_w1$mi_ha==998 | SHARE_w1$stroke==998)] <- 998
+SHARE_ds_w1$cvd[which(SHARE_w1$mi_ha==997 | SHARE_w1$stroke==997)] <- 997
+SHARE_ds_w1$cvd[which(SHARE_w1$mi_ha==0 & SHARE_w1$stroke==0)] <- 0
+SHARE_ds_w1$cvd[which(SHARE_w1$mi_ha==1 | SHARE_w1$stroke==1)] <- 1
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- SHARE_ds_w1$cvd
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SHARE_ds_w1, aes(x=factor(cvd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+
+AfterH <- table(SHARE_ds_w1$cvd)
+X <- c(
+  sum(SHARE_w1$mi_ha==0 & SHARE_w1$stroke==0,na.rm = T),
+  sum(SHARE_w1$mi_ha==1 | SHARE_w1$stroke==1,na.rm=T),
+  sum((SHARE_w1$mi_ha==997 | SHARE_w1$stroke==997),na.rm=T),
+  sum((SHARE_w1$mi_ha==998 | SHARE_w1$stroke==998),na.rm = T)
+)
+BeforeH <- c(X[1:4],length(SHARE_w1$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("all 0->0","some 1->1","997->997","998->998","otherwise -> 999")
+kable(C)
+
+```
+
+
+
+### Wave 2
+
+
+#### Study-specific variable description
+
+| **Name** | `mi_ha` |`stroke`|
+|-|-|-|
+| **Label** | `Myocardial infarction or heart attack` |`Stroke`|
+| **Table name**  | `mi_ha` |`stroke`|
+| **Categories** | `0 = No`<br/>`1 = Yes` |`0 = NOT A stroke (cerebral vascular disease)`<br/>`1 = A stroke (cerebral vascular disease)`|
+| **Missings** | `997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing` |`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing` |
+| **Description** |  |  |
+
+```{r assign w2, echo=F}
+
+load(paste0(datafolder,"w2/mi_ha.RData"))
+SHARE_w2 <- tibble(id=mi_ha$id)
+SHARE_w2$mi_ha <- mi_ha$mi_ha
+rm(mi_ha)
+load(paste0(datafolder,"w2/stroke.RData"))
+SHARE_w2$stroke <- stroke$stroke
+rm(stroke)
+
+```
+
+```{r local w2, echo=F}
+
+vbl <- SHARE_w2$mi_ha
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(SHARE_w2)[2])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(SHARE_w2, aes(x=factor(mi_ha))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w2$stroke
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(SHARE_w2)[3])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(SHARE_w2, aes(x=factor(stroke))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cvd` from the study-specific variable it has to be recoded as follows:
+
+* `all 0 into 0`
+* `some 1 into 1`
+* `997 -> 997`
+* `998 -> 998`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo w2}
+
+# Categorical variable harmonization
+SHARE_ds_w2 <- tibble(id=SHARE_w2$id)
+SHARE_ds_w2$cvd <- rep(999,length(SHARE_w2$id))
+SHARE_ds_w2$cvd[which(SHARE_w2$mi_ha==998 | SHARE_w2$stroke==998)] <- 998
+SHARE_ds_w2$cvd[which(SHARE_w2$mi_ha==997 | SHARE_w2$stroke==997)] <- 997
+SHARE_ds_w2$cvd[which(SHARE_w2$mi_ha==0 & SHARE_w2$stroke==0)] <- 0
+SHARE_ds_w2$cvd[which(SHARE_w2$mi_ha==1 | SHARE_w2$stroke==1)] <- 1
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w2, echo=F}
+
+vbl <- SHARE_ds_w2$cvd
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SHARE_ds_w2, aes(x=factor(cvd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w2, echo=F, results='asis'}
+
+AfterH <- table(SHARE_ds_w2$cvd)
+X <- c(
+  sum(SHARE_w2$mi_ha==0 & SHARE_w2$stroke==0,na.rm = T),
+  sum(SHARE_w2$mi_ha==1 | SHARE_w2$stroke==1,na.rm=T),
+  sum((SHARE_w2$mi_ha==997 | SHARE_w2$stroke==997),na.rm=T),
+  sum((SHARE_w2$mi_ha==998 | SHARE_w2$stroke==998),na.rm = T)
+)
+BeforeH <- c(X[1:4],length(SHARE_w2$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("all 0->0","some 1->1","997->997","998->998","otherwise -> 999")
+kable(C)
+
+```
+
+
+
+### Wave 3
+
+Not found.
+
+
+
+### Wave 4
+
+
+#### Study-specific variable description
+
+| **Name** | `mi_ha` |`stroke`|
+|-|-|-|
+| **Label** | `Myocardial infarction or heart attack` |`Stroke`|
+| **Table name**  | `mi_ha` |`stroke`|
+| **Categories** | `0 = No`<br/>`1 = Yes` |`0 = NOT A stroke (cerebral vascular disease)`<br/>`1 = A stroke (cerebral vascular disease)`|
+| **Missings** | `997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing` |`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing` |
+| **Description** |  |  |
+
+```{r assign w4, echo=F}
+
+load(paste0(datafolder,"w4/mi_ha.RData"))
+SHARE_w4 <- tibble(id=mi_ha$id)
+SHARE_w4$mi_ha <- mi_ha$mi_ha
+rm(mi_ha)
+load(paste0(datafolder,"w4/stroke.RData"))
+SHARE_w4$stroke <- stroke$stroke
+rm(stroke)
+
+```
+
+```{r local w4, echo=F}
+
+vbl <- SHARE_w4$mi_ha
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(SHARE_w4)[2])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(SHARE_w4, aes(x=factor(mi_ha))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w4$stroke
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(SHARE_w4)[3])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(SHARE_w4, aes(x=factor(stroke))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cvd` from the study-specific variable it has to be recoded as follows:
+
+* `all 0 into 0`
+* `some 1 into 1`
+* `997 -> 997`
+* `998 -> 998`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo w4}
+
+# Categorical variable harmonization
+SHARE_ds_w4 <- tibble(id=SHARE_w4$id)
+SHARE_ds_w4$cvd <- rep(999,length(SHARE_w4$id))
+SHARE_ds_w4$cvd[which(SHARE_w4$mi_ha==998 | SHARE_w4$stroke==998)] <- 998
+SHARE_ds_w4$cvd[which(SHARE_w4$mi_ha==997 | SHARE_w4$stroke==997)] <- 997
+SHARE_ds_w4$cvd[which(SHARE_w4$mi_ha==0 & SHARE_w4$stroke==0)] <- 0
+SHARE_ds_w4$cvd[which(SHARE_w4$mi_ha==1 | SHARE_w4$stroke==1)] <- 1
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w4, echo=F}
+
+vbl <- SHARE_ds_w4$cvd
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SHARE_ds_w4, aes(x=factor(cvd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w4, echo=F, results='asis'}
+
+AfterH <- table(SHARE_ds_w4$cvd)
+X <- c(
+  sum(SHARE_w4$mi_ha==0 & SHARE_w4$stroke==0,na.rm = T),
+  sum(SHARE_w4$mi_ha==1 | SHARE_w4$stroke==1,na.rm=T),
+  sum((SHARE_w4$mi_ha==997 | SHARE_w4$stroke==997),na.rm=T),
+  sum((SHARE_w4$mi_ha==998 | SHARE_w4$stroke==998),na.rm = T)
+)
+BeforeH <- c(X[1:4],length(SHARE_w4$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("all 0->0","some 1->1","997->997","998->998","otherwise -> 999")
+kable(C)
+
+```
+
+
+
+
+### Wave 5
+
+
+#### Study-specific variable description
+
+| **Name** | `mi_ha` |`stroke`|
+|-|-|-|
+| **Label** | `Myocardial infarction or heart attack` |`Stroke`|
+| **Table name**  | `mi_ha` |`stroke`|
+| **Categories** | `0 = No`<br/>`1 = Yes` |`0 = NOT A stroke (cerebral vascular disease)`<br/>`1 = A stroke (cerebral vascular disease)`|
+| **Missings** | `997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing` |`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing` |
+| **Description** |  |  |
+
+```{r assign w5, echo=F}
+
+load(paste0(datafolder,"w5/mi_ha.RData"))
+SHARE_w5 <- tibble(id=mi_ha$id)
+SHARE_w5$mi_ha <- mi_ha$mi_ha
+rm(mi_ha)
+load(paste0(datafolder,"w5/stroke.RData"))
+SHARE_w5$stroke <- stroke$stroke
+rm(stroke)
+
+```
+
+```{r local w5, echo=F}
+
+vbl <- SHARE_w5$mi_ha
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(SHARE_w5)[2])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(SHARE_w5, aes(x=factor(mi_ha))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SHARE_w5$stroke
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(SHARE_w5)[3])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(SHARE_w5, aes(x=factor(stroke))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cvd` from the study-specific variable it has to be recoded as follows:
+
+* `all 0 into 0`
+* `some 1 into 1`
+* `997 -> 997`
+* `998 -> 998`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo w5}
+
+# Categorical variable harmonization
+SHARE_ds_w5 <- tibble(id=SHARE_w5$id)
+SHARE_ds_w5$cvd <- rep(999,length(SHARE_w5$id))
+SHARE_ds_w5$cvd[which(SHARE_w5$mi_ha==998 | SHARE_w5$stroke==998)] <- 998
+SHARE_ds_w5$cvd[which(SHARE_w5$mi_ha==997 | SHARE_w5$stroke==997)] <- 997
+SHARE_ds_w5$cvd[which(SHARE_w5$mi_ha==0 & SHARE_w5$stroke==0)] <- 0
+SHARE_ds_w5$cvd[which(SHARE_w5$mi_ha==1 | SHARE_w5$stroke==1)] <- 1
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w5, echo=F}
+
+vbl <- SHARE_ds_w5$cvd
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SHARE_ds_w5, aes(x=factor(cvd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w5, echo=F, results='asis'}
+
+AfterH <- table(SHARE_ds_w5$cvd)
+X <- c(
+  sum(SHARE_w5$mi_ha==0 & SHARE_w5$stroke==0,na.rm = T),
+  sum(SHARE_w5$mi_ha==1 | SHARE_w5$stroke==1,na.rm=T),
+  sum((SHARE_w5$mi_ha==997 | SHARE_w5$stroke==997),na.rm=T),
+  sum((SHARE_w5$mi_ha==998 | SHARE_w5$stroke==998),na.rm = T)
+)
+BeforeH <- c(X[1:4],length(SHARE_w5$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("all 0->0","some 1->1","997->997","998->998","otherwise -> 999")
+kable(C)
+
+```
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
+
+**R script:**
+
+```{r summ}
+
+l.hds <- list(w1 = SHARE_ds_w1, w2 = SHARE_ds_w2, w4 = SHARE_ds_w4, w5 = SHARE_ds_w5)
+
+for(name in names(l.hds)) {
+  aux_object <- l.hds[[name]]
+  label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
+  l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  m_name <- paste0("SHARE_m_ds_",name)
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+for (i in seq_along(l.hds)){
+  t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+}
+t.hds[13,] <- c("n", "sample size", 
+             length(l.hds[[1]][[2]]), length(l.hds[[2]][[2]]) , length(l.hds[[3]][[2]]), length(l.hds[[4]][[2]])
+             )
+names(t.hds)<-c("val", "label", "w1", "w2", "w4", "w5")
+kable(t.hds)
+
+dbb <- merge(SHARE_m_ds_w1[,c("id","cvd")], SHARE_m_ds_w2[,c("id","cvd")], by="id", suffixes = c(".w1",".w2"), all=T)
+dbb <- merge(dbb,SHARE_m_ds_w4[,c("id","cvd")], by="id", all=T)
+dbb <- merge(dbb, SHARE_m_ds_w5[,c("id","cvd")], by="id", suffixes = c(".w4",".w5"), all=T)
+names(dbb) <- c("id", "w1", "w2","w4","w5")
+v.dbb <- paste(dbb[,2],dbb[,3],dbb[,4],dbb[,5],sep="")
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb[f.dbb[,3]>=0.3,])
+```
+
+
+
+# Quality estimation
+
+It contains information about myocardial infarction and stroke harmonized variables. 
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+for(index in seq_along(l.hds)){
+  cvd <- l.hds[[index]]
+  save(cvd, file = paste0(datafolder,names(l.hds)[index],"/cvd.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+
