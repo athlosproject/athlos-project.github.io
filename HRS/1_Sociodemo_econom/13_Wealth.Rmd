@@ -1,0 +1,3434 @@
+---
+title: "Wealth"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `wealth`
+* Variable label: `Total score based in all sources of income transformed into a comparable and normalized categoric variable.`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `categorical ordinal`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+1        | 1st quintile
+2        | 2nd quintile
+3        | 3rd quintile
+4        | 4th quintile
+5        | 5th quintile
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+* Comments: `Need to pay attention to specificities like: before/after taxes or contributions. People: HH income is prioritized. When not available individual/caregiver/informant/family income is caolected. Source: Pension/family/work/government/disablity/total. all sources are taken into account. For some studies, the maximum value can be compared (and crossed by sex and age to control biases) . Time-lapse: weekly, monthly, in the last 12 months. 'Many values are missing since not all respondents have all sources of income or, within the household there is not always more members, in these cases do not confuse missing data with missing values and mean a 0 should be added to the total sum in each case.`
+
+```{r lab, echo=FALSE}
+ds_label <- "Wealth"
+ds_label_all <- "Total score based in all sources of income transformed into a comparable and normalized categoric variable"
+```
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## HRS sub-sample
+
+### Wave 1 
+
+| **Name** | `H1ITOT`|
+|-|-|
+| **Label** | `W1 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-HRS-w1` |
+| **Description** |  |
+
+```{r assign_hrs1, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-HRS-w1',
+                         variables=list('H1ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_hrs1, echo=FALSE}
+vari <- HRS_wealth$H1ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H1ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_hrs1, echo=TRUE}
+qq <- quantile(HRS_wealth$H1ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_hrs_w1 <- tibble(id=HRS_wealth$id)
+HRS_ds_hrs_w1$wealth <- car::recode(HRS_wealth$H1ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_hrs_w1$wealth <- car::recode(HRS_ds_hrs_w1$wealth, "NA=999")
+HRS_ds_hrs_w1$wealth <- as.integer(HRS_ds_hrs_w1$wealth)
+HRS_ds_hrs_w1$wealth <- labelled(HRS_ds_hrs_w1$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_hrs1, echo=FALSE}
+vari <- HRS_ds_hrs_w1$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_hrs_w1, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_hrs1, echo=FALSE}
+```
+
+ 
+```{r imporOPAL_hrs1, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_hrs_w1', HRS_ds_hrs_w1)
+#opal.symbol_import(o,'HRS_ds_hrs_w1', project='_Athlos_Harm_Dataset')
+label(HRS_ds_hrs_w1$wealth) <- ds_label_all
+wealth <- HRS_ds_hrs_w1
+save(wealth, file = "../RData/hrs_w1/wealth.RData")
+rm(wealth)
+
+HRS_m_ds_hrs_w2 <- HRS_ds_hrs_w1
+HRS_m_ds_hrs_w2$wealth <- car::recode(HRS_m_ds_hrs_w2$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_hrs_w2', HRS_m_ds_hrs_w2)
+#opal.symbol_import(o,'HRS_m_ds_hrs_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+
+| **Name** | `H2ITOT`|
+|-|-|
+| **Label** | `W2 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-HRS-w2` |
+| **Description** |  |
+
+```{r assign_hrs2, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-HRS-w2',
+                         variables=list('H2ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_hrs2, echo=FALSE}
+vari <- HRS_wealth$H2ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H2ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_hrs2, echo=TRUE}
+qq <- quantile(HRS_wealth$H2ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_hrs_w2 <- tibble(id=HRS_wealth$id)
+HRS_ds_hrs_w2$wealth <- car::recode(HRS_wealth$H2ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_hrs_w2$wealth <- car::recode(HRS_ds_hrs_w2$wealth, "NA=999")
+HRS_ds_hrs_w2$wealth <- as.integer(HRS_ds_hrs_w2$wealth)
+HRS_ds_hrs_w2$wealth <- labelled(HRS_ds_hrs_w2$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_hrs2, echo=FALSE}
+vari <- HRS_ds_hrs_w2$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_hrs_w2, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_hrs2, echo=FALSE}
+```
+
+ 
+```{r imporOPAL_hrs2, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_hrs_w2', HRS_ds_hrs_w2)
+#opal.symbol_import(o,'HRS_ds_hrs_w2', project='_Athlos_Harm_Dataset')
+label(HRS_ds_hrs_w2$wealth) <- ds_label_all
+wealth <- HRS_ds_hrs_w2
+save(wealth, file = "../RData/hrs_w2/wealth.RData")
+rm(wealth)
+
+HRS_m_ds_hrs_w2 <- HRS_ds_hrs_w2
+HRS_m_ds_hrs_w2$wealth <- car::recode(HRS_m_ds_hrs_w2$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_hrs_w2', HRS_m_ds_hrs_w2)
+#opal.symbol_import(o,'HRS_m_ds_hrs_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 3 
+
+#### Study-specific variable description
+
+
+| **Name** | `H3ITOT`|
+|-|-|
+| **Label** | `W3 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-HRS-w3` |
+| **Description** |  |
+
+```{r assign_hrs3, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-HRS-w3',
+                         variables=list('H3ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_hrs3, echo=FALSE}
+vari <- HRS_wealth$H3ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H3ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_hrs3, echo=TRUE}
+qq <- quantile(HRS_wealth$H3ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_hrs_w3 <- tibble(id=HRS_wealth$id)
+HRS_ds_hrs_w3$wealth <- car::recode(HRS_wealth$H3ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_hrs_w3$wealth <- car::recode(HRS_ds_hrs_w3$wealth, "NA=999")
+HRS_ds_hrs_w3$wealth <- as.integer(HRS_ds_hrs_w3$wealth)
+HRS_ds_hrs_w3$wealth <- labelled(HRS_ds_hrs_w3$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_hrs3, echo=FALSE}
+vari <- HRS_ds_hrs_w3$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_hrs_w3, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_hrs3, echo=FALSE}
+```
+
+
+```{r importOPAL_hrs3, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_hrs_w3', HRS_ds_hrs_w3)
+#opal.symbol_import(o,'HRS_ds_hrs_w3', project='_Athlos_Harm_Dataset')
+label(HRS_ds_hrs_w3$wealth) <- ds_label_all
+wealth <- HRS_ds_hrs_w3
+save(wealth, file = "../RData/hrs_w3/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_hrs_w3 <- HRS_ds_hrs_w3
+HRS_m_ds_hrs_w3$wealth <- car::recode(HRS_m_ds_hrs_w3$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_hrs_w3', HRS_m_ds_hrs_w3)
+#opal.symbol_import(o,'HRS_m_ds_hrs_w3', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+
+### Wave 4 
+
+#### Study-specific variable description
+
+ 
+
+| **Name** | `H4ITOT`|
+|-|-|
+| **Label** | `W4 CESD score`|
+| **Table name** | `HRS-HRS-w4` |
+| **Description** |  |
+
+```{r assign_hrs4, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-HRS-w4',
+                         variables=list('H4ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_hrs4, echo=FALSE}
+vari <- HRS_wealth$H4ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H4ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_hrs4, echo=TRUE}
+qq <- quantile(HRS_wealth$H4ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_hrs_w4 <- tibble(id=HRS_wealth$id)
+HRS_ds_hrs_w4$wealth <- car::recode(HRS_wealth$H4ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_hrs_w4$wealth <- car::recode(HRS_ds_hrs_w4$wealth, "NA=999")
+HRS_ds_hrs_w4$wealth <- as.integer(HRS_ds_hrs_w4$wealth)
+HRS_ds_hrs_w4$wealth <- labelled(HRS_ds_hrs_w4$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_hrs4, echo=FALSE}
+vari <- HRS_ds_hrs_w4$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_hrs_w4, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_hrs4, echo=FALSE}
+```
+
+
+ 
+```{r importOPAL_hrs4, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_hrs_w4', HRS_ds_hrs_w4_hrs_w4)
+#opal.symbol_import(o,'HRS_ds_hrs_w4', project='_Athlos_Harm_Dataset')
+label(HRS_ds_hrs_w4$wealth) <- ds_label_all
+wealth <- HRS_ds_hrs_w4
+save(wealth, file = "../RData/hrs_w4/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_hrs_w4 <- HRS_ds_hrs_w4
+HRS_m_ds_hrs_w4$wealth <- car::recode(HRS_m_ds_hrs_w4$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_hrs_w4', HRS_m_ds_hrs_w4)
+#opal.symbol_import(o,'HRS_m_ds_hrs_w4', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 5
+
+#### Study-specific variable description
+
+ 
+
+| **Name** | `H5ITOT`|
+|-|-|
+| **Label** | `W5 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-HRS-w5` |
+| **Description** |  |
+
+```{r assign_hrs5, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-HRS-w5',
+                         variables=list('H5ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_hrs5, echo=FALSE}
+vari <- HRS_wealth$H5ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H5ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_hrs5, echo=TRUE}
+qq <- quantile(HRS_wealth$H5ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_hrs_w5 <- tibble(id=HRS_wealth$id)
+HRS_ds_hrs_w5$wealth <- car::recode(HRS_wealth$H5ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_hrs_w5$wealth <- car::recode(HRS_ds_hrs_w5$wealth, "NA=999")
+HRS_ds_hrs_w5$wealth <- as.integer(HRS_ds_hrs_w5$wealth)
+HRS_ds_hrs_w5$wealth <- labelled(HRS_ds_hrs_w5$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_hrs5, echo=FALSE}
+vari <- HRS_ds_hrs_w5$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_hrs_w5, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_hrs5, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_hrs5, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_hrs_w5', HRS_ds_hrs_w5)
+#opal.symbol_import(o,'HRS_ds_hrs_w5', project='_Athlos_Harm_Dataset')
+label(HRS_ds_hrs_w5$wealth) <- ds_label_all
+wealth <- HRS_ds_hrs_w5
+save(wealth, file = "../RData/hrs_w5/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_hrs_w5 <- HRS_ds_hrs_w5
+HRS_m_ds_hrs_w5$wealth <- car::recode(HRS_m_ds_hrs_w5$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_hrs_w5', HRS_m_ds_hrs_w5)
+#opal.symbol_import(o,'HRS_m_ds_hrs_w5', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 6
+
+#### Study-specific variable description
+
+| **Name** | `H6ITOT`|
+|-|-|
+| **Label** | `W6 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-HRS-w6` |
+| **Description** |  |
+
+```{r assign_hrs6, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-HRS-w6',
+                         variables=list('H6ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_hrs6, echo=FALSE}
+vari <- HRS_wealth$H6ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H6ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo_hrs6, echo=TRUE}
+qq <- quantile(HRS_wealth$H6ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_hrs_w6 <- tibble(id=HRS_wealth$id)
+HRS_ds_hrs_w6$wealth <- car::recode(HRS_wealth$H6ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_hrs_w6$wealth <- car::recode(HRS_ds_hrs_w6$wealth, "NA=999")
+HRS_ds_hrs_w6$wealth <- as.integer(HRS_ds_hrs_w6$wealth)
+HRS_ds_hrs_w6$wealth <- labelled(HRS_ds_hrs_w6$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_hrs6, echo=FALSE}
+vari <- HRS_ds_hrs_w6$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_hrs_w6, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_hrs6, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_hrs6, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_hrs_w6', HRS_ds_hrs_w6)
+#opal.symbol_import(o,'HRS_ds_hrs_w6', project='_Athlos_Harm_Dataset')
+label(HRS_ds_hrs_w6$wealth) <- ds_label_all
+wealth <- HRS_ds_hrs_w6
+save(wealth, file = "../RData/hrs_w6/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_hrs_w6 <- HRS_ds_hrs_w6
+HRS_m_ds_hrs_w6$wealth <- car::recode(HRS_m_ds_hrs_w6$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_hrs_w6', HRS_m_ds_hrs_w6)
+#opal.symbol_import(o,'HRS_m_ds_hrs_w6', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 7
+
+#### Study-specific variable description
+
+ 
+
+| **Name** | `H7ITOT`|
+|-|-|
+| **Label** | `W7 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-HRS-w7` |
+| **Description** |  |
+
+```{r assign_hrs7, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-HRS-w7',
+                         variables=list('H7ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_hrs7, echo=FALSE}
+vari <- HRS_wealth$H7ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H7ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_hrs7, echo=TRUE}
+qq <- quantile(HRS_wealth$H7ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_hrs_w7 <- tibble(id=HRS_wealth$id)
+HRS_ds_hrs_w7$wealth <- car::recode(HRS_wealth$H7ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_hrs_w7$wealth <- car::recode(HRS_ds_hrs_w7$wealth, "NA=999")
+HRS_ds_hrs_w7$wealth <- as.integer(HRS_ds_hrs_w7$wealth)
+HRS_ds_hrs_w7$wealth <- labelled(HRS_ds_hrs_w7$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_hrs7, echo=FALSE}
+vari <- HRS_ds_hrs_w7$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_hrs_w7, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_hrs7, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_hrs7, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_hrs_w7', HRS_ds_hrs_w7)
+#opal.symbol_import(o,'HRS_ds_hrs_w7', project='_Athlos_Harm_Dataset')
+label(HRS_ds_hrs_w7$wealth) <- ds_label_all
+wealth <- HRS_ds_hrs_w7
+save(wealth, file = "../RData/hrs_w7/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_hrs_w7 <- HRS_ds_hrs_w7
+HRS_m_ds_hrs_w7$wealth <- car::recode(HRS_m_ds_hrs_w7$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_hrs_w7', HRS_m_ds_hrs_w7)
+#opal.symbol_import(o,'HRS_m_ds_hrs_w7', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 8
+
+#### Study-specific variable description
+
+ 
+
+| **Name** | `H8ITOT`|
+|-|-|
+| **Label** | `W8 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-HRS-w8` |
+| **Description** |  |
+
+```{r assign_hrs8, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-HRS-w8',
+                         variables=list('H8ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_hrs8, echo=FALSE}
+vari <- HRS_wealth$H8ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H8ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_hrs8, echo=TRUE}
+qq <- quantile(HRS_wealth$H8ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_hrs_w8 <- tibble(id=HRS_wealth$id)
+HRS_ds_hrs_w8$wealth <- car::recode(HRS_wealth$H8ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_hrs_w8$wealth <- car::recode(HRS_ds_hrs_w8$wealth, "NA=999")
+HRS_ds_hrs_w8$wealth <- as.integer(HRS_ds_hrs_w8$wealth)
+HRS_ds_hrs_w8$wealth <- labelled(HRS_ds_hrs_w8$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_hrs8, echo=FALSE}
+vari <- HRS_ds_hrs_w8$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_hrs_w8, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_hrs8, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_hrs8, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_hrs_w8', HRS_ds_hrs_w8)
+#opal.symbol_import(o,'HRS_ds_hrs_w8', project='_Athlos_Harm_Dataset')
+label(HRS_ds_hrs_w8$wealth) <- ds_label_all
+wealth <- HRS_ds_hrs_w8
+save(wealth, file = "../RData/hrs_w8/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_hrs_w8 <- HRS_ds_hrs_w8
+HRS_m_ds_hrs_w8$wealth <- car::recode(HRS_m_ds_hrs_w8$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_hrs_w8', HRS_m_ds_hrs_w8)
+#opal.symbol_import(o,'HRS_m_ds_hrs_w8', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 9
+
+#### Study-specific variable description
+
+| **Name** | `H9ITOT`|
+|-|-|
+| **Label** | `W9 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-HRS-w8` |
+| **Description** |  |
+
+```{r assign_hrs9, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-HRS-w9',
+                         variables=list('H9ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_hrs9, echo=FALSE}
+vari <- HRS_wealth$H9ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H9ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_hrs9, echo=TRUE}
+qq <- quantile(HRS_wealth$H9ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_hrs_w9 <- tibble(id=HRS_wealth$id)
+HRS_ds_hrs_w9$wealth <- car::recode(HRS_wealth$H9ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_hrs_w9$wealth <- car::recode(HRS_ds_hrs_w9$wealth, "NA=999")
+HRS_ds_hrs_w9$wealth <- as.integer(HRS_ds_hrs_w9$wealth)
+HRS_ds_hrs_w9$wealth <- labelled(HRS_ds_hrs_w9$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_hrs9, echo=FALSE}
+vari <- HRS_ds_hrs_w9$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_hrs_w9, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_hrs9, echo=FALSE}
+```
+
+ 
+ 
+```{r importOPAL_hrs9, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_hrs_w9', HRS_ds_hrs_w9)
+#opal.symbol_import(o,'HRS_ds_hrs_w9', project='_Athlos_Harm_Dataset')
+label(HRS_ds_hrs_w9$wealth) <- ds_label_all
+wealth <- HRS_ds_hrs_w9
+save(wealth, file = "../RData/hrs_w9/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_hrs_w9 <- HRS_ds_hrs_w9
+HRS_m_ds_hrs_w9$wealth <- car::recode(HRS_m_ds_hrs_w9$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_hrs_w9', HRS_m_ds_hrs_w9)
+#opal.symbol_import(o,'HRS_m_ds_hrs_w9', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+### Wave 10
+
+#### Study-specific variable description
+
+| **Name** | `H10ITOT`|
+|-|-|
+| **Label** | `W10 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-HRS-w10` |
+| **Description** |  |
+
+```{r assign_hrs10, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-HRS-w10',
+                         variables=list('H10ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_hrs10, echo=FALSE}
+vari <- HRS_wealth$H10ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H10ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo_hrs10, echo=TRUE}
+qq <- quantile(HRS_wealth$H10ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_hrs_w10 <- tibble(id=HRS_wealth$id)
+HRS_ds_hrs_w10$wealth <- car::recode(HRS_wealth$H10ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_hrs_w10$wealth <- car::recode(HRS_ds_hrs_w10$wealth, "NA=999")
+HRS_ds_hrs_w10$wealth <- as.integer(HRS_ds_hrs_w10$wealth)
+HRS_ds_hrs_w10$wealth <- labelled(HRS_ds_hrs_w10$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_hrs10, echo=FALSE}
+vari <- HRS_ds_hrs_w10$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_hrs_w10, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_hrs10, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_hrs10, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_hrs_w10', HRS_ds_hrs_w10)
+#opal.symbol_import(o,'HRS_ds_hrs_w10', project='_Athlos_Harm_Dataset')
+label(HRS_ds_hrs_w10$wealth) <- ds_label_all
+wealth <- HRS_ds_hrs_w10
+save(wealth, file = "../RData/hrs_w10/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_hrs_w10 <- HRS_ds_hrs_w10
+HRS_m_ds_hrs_w10$wealth <- car::recode(HRS_m_ds_hrs_w10$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_hrs_w10', HRS_m_ds_hrs_w10)
+#opal.symbol_import(o,'HRS_m_ds_hrs_w10', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 11
+
+#### Study-specific variable description
+
+| **Name** | `H11ITOT`|
+|-|-|
+| **Label** | `W11 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-HRS-w11` |
+| **Description** |  |
+
+```{r assign_hrs11, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-HRS-w11',
+                         variables=list('H11ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_hrs11, echo=FALSE}
+vari <- HRS_wealth$H11ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H11ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_hrs11, echo=TRUE}
+qq <- quantile(HRS_wealth$H11ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_hrs_w11 <- tibble(id=HRS_wealth$id)
+HRS_ds_hrs_w11$wealth <- car::recode(HRS_wealth$H11ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_hrs_w11$wealth <- car::recode(HRS_ds_hrs_w11$wealth, "NA=999")
+HRS_ds_hrs_w11$wealth <- as.integer(HRS_ds_hrs_w11$wealth)
+HRS_ds_hrs_w11$wealth <- labelled(HRS_ds_hrs_w11$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_hrs11, echo=FALSE}
+vari <- HRS_ds_hrs_w11$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_hrs_w11, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_hrs11, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_hrs11, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_hrs_w11', HRS_ds_hrs_w11)
+#opal.symbol_import(o,'HRS_ds_hrs_w11', project='_Athlos_Harm_Dataset')
+label(HRS_ds_hrs_w11$wealth) <- ds_label_all
+wealth <- HRS_ds_hrs_w11
+save(wealth, file = "../RData/hrs_w11/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_hrs_w11 <- HRS_ds_hrs_w11
+HRS_m_ds_hrs_w11$wealth <- car::recode(HRS_m_ds_hrs_w11$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_hrs_w11', HRS_m_ds_hrs_w11)
+#opal.symbol_import(o,'HRS_m_ds_hrs_w11', project='_Athlos_Harm_Dataset')
+```
+
+
+
+## AHEAD sub-sample
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `H2ITOT`|
+|-|-|
+| **Label** | `W2 CESD score`|
+| **Table name** | `HRS-AHEAD-w2` |
+| **Description** |  |
+
+```{r assign_ahead2, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-AHEAD-w2',
+                         variables=list('H2ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_ahead2, echo=FALSE}
+vari <- HRS_wealth$H2ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H2ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_ahead2, echo=TRUE}
+qq <- quantile(HRS_wealth$H2ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_ahead_w2 <- tibble(id=HRS_wealth$id)
+HRS_ds_ahead_w2$wealth <- car::recode(HRS_wealth$H2ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_ahead_w2$wealth <- car::recode(HRS_ds_ahead_w2$wealth, "NA=999")
+HRS_ds_ahead_w2$wealth <- as.integer(HRS_ds_ahead_w2$wealth)
+HRS_ds_ahead_w2$wealth <- labelled(HRS_ds_ahead_w2$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_ahead2, echo=FALSE}
+vari <- HRS_ds_ahead_w2$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ahead_w2, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ahead2, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_ahead2, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_ahead_w2', HRS_ds_ahead_w2)
+#opal.symbol_import(o,'HRS_ds_ahead_w2', project='_Athlos_Harm_Dataset')
+label(HRS_ds_ahead_w2$wealth) <- ds_label_all
+wealth <- HRS_ds_ahead_w2
+save(wealth, file = "../RData/ahead_w2/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_ahead_w2 <- HRS_ds_ahead_w2
+HRS_m_ds_ahead_w2$wealth <- car::recode(HRS_m_ds_ahead_w2$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_ahead_w2', HRS_m_ds_ahead_w2)
+#opal.symbol_import(o,'HRS_m_ds_ahead_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 3 
+
+#### Study-specific variable description
+
+ 
+
+| **Name** | `H3ITOT`|
+|-|-|
+| **Label** | `W3 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-AHEAD-w3` |
+| **Description** |  |
+
+```{r assign_ahead3, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-AHEAD-w3',
+                         variables=list('H3ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_ahead3, echo=FALSE}
+vari <- HRS_wealth$H3ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H3ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_ahead3, echo=TRUE}
+qq <- quantile(HRS_wealth$H3ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_ahead_w3 <- tibble(id=HRS_wealth$id)
+HRS_ds_ahead_w3$wealth <- car::recode(HRS_wealth$H3ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_ahead_w3$wealth <- car::recode(HRS_ds_ahead_w3$wealth, "NA=999")
+HRS_ds_ahead_w3$wealth <- as.integer(HRS_ds_ahead_w3$wealth)
+HRS_ds_ahead_w3$wealth <- labelled(HRS_ds_ahead_w3$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_ahead3, echo=FALSE}
+vari <- HRS_ds_ahead_w3$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ahead_w3, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ahead3, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_ahead3, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_ahead_w3', HRS_ds_ahead_w3)
+#opal.symbol_import(o,'HRS_ds_ahead_w3', project='_Athlos_Harm_Dataset')
+label(HRS_ds_ahead_w3$wealth) <- ds_label_all
+wealth <- HRS_ds_ahead_w3
+save(wealth, file = "../RData/ahead_w3/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_ahead_w3 <- HRS_ds_ahead_w3
+HRS_m_ds_ahead_w3$wealth <- car::recode(HRS_m_ds_ahead_w3$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_ahead_w3', HRS_m_ds_ahead_w3)
+#opal.symbol_import(o,'HRS_m_ds_ahead_w3', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 4 
+
+#### Study-specific variable description
+
+ 
+| **Name** | `H4ITOT`|
+|-|-|
+| **Label** | `W4 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-AHEAD-w4` |
+| **Description** |  |
+
+```{r assign_ahead4, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-AHEAD-w4',
+                         variables=list('H4ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_ahead4, echo=FALSE}
+vari <- HRS_wealth$H4ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H4ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_ahead4, echo=TRUE}
+qq <- quantile(HRS_wealth$H4ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_ahead_w4 <- tibble(id=HRS_wealth$id)
+HRS_ds_ahead_w4$wealth <- car::recode(HRS_wealth$H4ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_ahead_w4$wealth <- car::recode(HRS_ds_ahead_w4$wealth, "NA=999")
+HRS_ds_ahead_w4$wealth <- as.integer(HRS_ds_ahead_w4$wealth)
+HRS_ds_ahead_w4$wealth <- labelled(HRS_ds_ahead_w4$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_ahead4, echo=FALSE}
+vari <- HRS_ds_ahead_w4$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ahead_w4, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ahead4, echo=FALSE}
+```
+
+ 
+```{r importOPAL_ahead4, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_ahead_w4', HRS_ds_ahead_w4)
+#opal.symbol_import(o,'HRS_ds_ahead_w4', project='_Athlos_Harm_Dataset')
+label(HRS_ds_ahead_w4$wealth) <- ds_label_all
+wealth <- HRS_ds_ahead_w4
+save(wealth, file = "../RData/ahead_w4/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_ahead_w4 <- HRS_ds_ahead_w4
+HRS_m_ds_ahead_w4$wealth <- car::recode(HRS_m_ds_ahead_w4$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_ahead_w4', HRS_m_ds_ahead_w4)
+#opal.symbol_import(o,'HRS_m_ds_ahead_w4', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 5 
+
+#### Study-specific variable description
+
+ 
+| **Name** | `H5ITOT`|
+|-|-|
+| **Label** | `W5 CESD score`|
+| **Table name** | `HRS-AHEAD-w5` |
+| **Description** |  |
+
+```{r assign_ahead5, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-AHEAD-w5',
+                         variables=list('H5ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_ahead5, echo=FALSE}
+vari <- HRS_wealth$H5ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H5ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_ahead5, echo=TRUE}
+qq <- quantile(HRS_wealth$H5ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_ahead_w5 <- tibble(id=HRS_wealth$id)
+HRS_ds_ahead_w5$wealth <- car::recode(HRS_wealth$H5ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_ahead_w5$wealth <- car::recode(HRS_ds_ahead_w5$wealth, "NA=999")
+HRS_ds_ahead_w5$wealth <- as.integer(HRS_ds_ahead_w5$wealth)
+HRS_ds_ahead_w5$wealth <- labelled(HRS_ds_ahead_w5$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_ahead5, echo=FALSE}
+vari <- HRS_ds_ahead_w5$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ahead_w5, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ahead5, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_ahead5, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_ahead_w5', HRS_ds_ahead_w5)
+#opal.symbol_import(o,'HRS_ds_ahead_w5', project='_Athlos_Harm_Dataset')
+label(HRS_ds_ahead_w5$wealth) <- ds_label_all
+wealth <- HRS_ds_ahead_w5
+save(wealth, file = "../RData/ahead_w5/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_ahead_w5 <- HRS_ds_ahead_w5
+HRS_m_ds_ahead_w5$wealth <- car::recode(HRS_m_ds_ahead_w5$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_ahead_w5', HRS_m_ds_ahead_w5)
+#opal.symbol_import(o,'HRS_m_ds_ahead_w5', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 6 
+
+#### Study-specific variable description
+
+| **Name** | `H6ITOT`|
+|-|-|
+| **Label** | `W6 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-AHEAD-w6` |
+| **Description** |  |
+
+```{r assign_ahead6, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-AHEAD-w6',
+                         variables=list('H6ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_ahead6, echo=FALSE}
+vari <- HRS_wealth$H6ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H6ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_ahead6, echo=TRUE}
+qq <- quantile(HRS_wealth$H6ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_ahead_w6 <- tibble(id=HRS_wealth$id)
+HRS_ds_ahead_w6$wealth <- car::recode(HRS_wealth$H6ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_ahead_w6$wealth <- car::recode(HRS_ds_ahead_w6$wealth, "NA=999")
+HRS_ds_ahead_w6$wealth <- as.integer(HRS_ds_ahead_w6$wealth)
+HRS_ds_ahead_w6$wealth <- labelled(HRS_ds_ahead_w6$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_ahead6, echo=FALSE}
+vari <- HRS_ds_ahead_w6$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ahead_w6, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ahead6, echo=FALSE}
+```
+
+
+```{r importOPAL_ahead6, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_ahead_w6', HRS_ds_ahead_w6)
+#opal.symbol_import(o,'HRS_ds_ahead_w6', project='_Athlos_Harm_Dataset')
+label(HRS_ds_ahead_w6$wealth) <- ds_label_all
+wealth <- HRS_ds_ahead_w6
+save(wealth, file = "../RData/ahead_w6/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_ahead_w6 <- HRS_ds_ahead_w6
+HRS_m_ds_ahead_w6$wealth <- car::recode(HRS_m_ds_ahead_w6$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_ahead_w6', HRS_m_ds_ahead_w6)
+#opal.symbol_import(o,'HRS_m_ds_ahead_w6', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+### Wave 7 
+
+#### Study-specific variable description
+
+| **Name** | `H7ITOT`|
+|-|-|
+| **Label** | `W7 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-AHEAD-w7` |
+| **Description** |  |
+
+```{r assign_ahead7, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-AHEAD-w7',
+                         variables=list('H7ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_ahead7, echo=FALSE}
+vari <- HRS_wealth$H7ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H7ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_ahead7, echo=TRUE}
+qq <- quantile(HRS_wealth$H7ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_ahead_w7 <- tibble(id=HRS_wealth$id)
+HRS_ds_ahead_w7$wealth <- car::recode(HRS_wealth$H7ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_ahead_w7$wealth <- car::recode(HRS_ds_ahead_w7$wealth, "NA=999")
+HRS_ds_ahead_w7$wealth <- as.integer(HRS_ds_ahead_w7$wealth)
+HRS_ds_ahead_w7$wealth <- labelled(HRS_ds_ahead_w7$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_ahead7, echo=FALSE}
+vari <- HRS_ds_ahead_w7$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ahead_w7, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ahead7, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_ahead7, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_ahead_w7', HRS_ds_ahead_w7)
+#opal.symbol_import(o,'HRS_ds_ahead_w7', project='_Athlos_Harm_Dataset')
+label(HRS_ds_ahead_w7$wealth) <- ds_label_all
+wealth <- HRS_ds_ahead_w7
+save(wealth, file = "../RData/ahead_w7/wealth.RData")
+rm(wealth)
+
+HRS_m_ds_ahead_w7 <- HRS_ds_ahead_w7
+HRS_m_ds_ahead_w7$wealth <- car::recode(HRS_m_ds_ahead_w7$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_ahead_w7', HRS_m_ds_ahead_w7)
+#opal.symbol_import(o,'HRS_m_ds_ahead_w7', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+### Wave 8 
+
+#### Study-specific variable description
+
+| **Name** | `H8ITOT`|
+|-|-|
+| **Label** | `W8 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-AHEAD-w8` |
+| **Description** |  |
+
+```{r assign_ahead8, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-AHEAD-w8',
+                         variables=list('H8ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_ahead8, echo=FALSE}
+vari <- HRS_wealth$H8ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H8ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_ahead8, echo=TRUE}
+qq <- quantile(HRS_wealth$H8ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_ahead_w8 <- tibble(id=HRS_wealth$id)
+HRS_ds_ahead_w8$wealth <- car::recode(HRS_wealth$H8ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_ahead_w8$wealth <- car::recode(HRS_ds_ahead_w8$wealth, "NA=999")
+HRS_ds_ahead_w8$wealth <- as.integer(HRS_ds_ahead_w8$wealth)
+HRS_ds_ahead_w8$wealth <- labelled(HRS_ds_ahead_w8$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_ahead8, echo=FALSE}
+vari <- HRS_ds_ahead_w8$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ahead_w8, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ahead8, echo=FALSE}
+```
+
+ 
+```{r importOPAL_ahead8, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_ahead_w8', HRS_ds_ahead_w8)
+#opal.symbol_import(o,'HRS_ds_ahead_w8', project='_Athlos_Harm_Dataset')
+label(HRS_ds_ahead_w8$wealth) <- ds_label_all
+wealth <- HRS_ds_ahead_w8
+save(wealth, file = "../RData/ahead_w8/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_ahead_w8 <- HRS_ds_ahead_w8
+HRS_m_ds_ahead_w8$wealth <- car::recode(HRS_m_ds_ahead_w8$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_ahead_w8', HRS_m_ds_ahead_w8)
+#opal.symbol_import(o,'HRS_m_ds_ahead_w8', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 9 
+
+#### Study-specific variable description
+
+| **Name** | `H9ITOT`|
+|-|-|
+| **Label** | `W9 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-AHEAD-w9` |
+| **Description** |  |
+
+```{r assign_ahead9, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-AHEAD-w9',
+                         variables=list('H9ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_ahead9, echo=FALSE}
+vari <- HRS_wealth$H9ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H9ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_ahead9, echo=TRUE}
+qq <- quantile(HRS_wealth$H9ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_ahead_w9 <- tibble(id=HRS_wealth$id)
+HRS_ds_ahead_w9$wealth <- car::recode(HRS_wealth$H9ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_ahead_w9$wealth <- car::recode(HRS_ds_ahead_w9$wealth, "NA=999")
+HRS_ds_ahead_w9$wealth <- as.integer(HRS_ds_ahead_w9$wealth)
+HRS_ds_ahead_w9$wealth <- labelled(HRS_ds_ahead_w9$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_ahead9, echo=FALSE}
+vari <- HRS_ds_ahead_w9$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ahead_w9, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ahead9, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_ahead9, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_ahead_w9', HRS_ds_ahead_w9)
+#opal.symbol_import(o,'HRS_ds_ahead_w9', project='_Athlos_Harm_Dataset')
+label(HRS_ds_ahead_w9$wealth) <- ds_label_all
+wealth <- HRS_ds_ahead_w9
+save(wealth, file = "../RData/ahead_w9/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_ahead_w9 <- HRS_ds_ahead_w9
+HRS_m_ds_ahead_w9$wealth <- car::recode(HRS_m_ds_ahead_w9$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_ahead_w9', HRS_m_ds_ahead_w9)
+#opal.symbol_import(o,'HRS_m_ds_ahead_w9', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+### Wave 10 
+
+#### Study-specific variable description
+
+ 
+
+| **Name** | `H10ITOT`|
+|-|-|
+| **Label** | `W10 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-AHEAD-w10` |
+| **Description** |  |
+
+```{r assign_ahead10, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-AHEAD-w10',
+                         variables=list('H10ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_ahead10, echo=FALSE}
+vari <- HRS_wealth$H10ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H10ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_ahead10, echo=TRUE}
+qq <- quantile(HRS_wealth$H10ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_ahead_w10 <- tibble(id=HRS_wealth$id)
+HRS_ds_ahead_w10$wealth <- car::recode(HRS_wealth$H10ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_ahead_w10$wealth <- car::recode(HRS_ds_ahead_w10$wealth, "NA=999")
+HRS_ds_ahead_w10$wealth <- as.integer(HRS_ds_ahead_w10$wealth)
+HRS_ds_ahead_w10$wealth <- labelled(HRS_ds_ahead_w10$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_ahead10, echo=FALSE}
+vari <- HRS_ds_ahead_w10$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ahead_w10, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ahead10, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_ahead10, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_ahead_w10', HRS_ds_ahead_w10)
+#opal.symbol_import(o,'HRS_ds_ahead_w10', project='_Athlos_Harm_Dataset')
+label(HRS_ds_ahead_w10$wealth) <- ds_label_all
+wealth <- HRS_ds_ahead_w10
+save(wealth, file = "../RData/ahead_w10/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_ahead_w10 <- HRS_ds_ahead_w10
+HRS_m_ds_ahead_w10$wealth <- car::recode(HRS_m_ds_ahead_w10$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_ahead_w10', HRS_m_ds_ahead_w10)
+#opal.symbol_import(o,'HRS_m_ds_ahead_w10', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 11 
+
+#### Study-specific variable description
+
+| **Name** | `H11ITOT`|
+|-|-|
+| **Label** | `W11 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-AHEAD-w11` |
+| **Description** |  |
+
+```{r assign_ahead11, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-AHEAD-w11',
+                         variables=list('H11ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_ahead11, echo=FALSE}
+vari <- HRS_wealth$H11ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H11ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_ahead11, echo=TRUE}
+qq <- quantile(HRS_wealth$H11ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_ahead_w11 <- tibble(id=HRS_wealth$id)
+HRS_ds_ahead_w11$wealth <- car::recode(HRS_wealth$H11ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_ahead_w11$wealth <- car::recode(HRS_ds_ahead_w11$wealth, "NA=999")
+HRS_ds_ahead_w11$wealth <- as.integer(HRS_ds_ahead_w11$wealth)
+HRS_ds_ahead_w11$wealth <- labelled(HRS_ds_ahead_w11$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_ahead11, echo=FALSE}
+vari <- HRS_ds_ahead_w11$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ahead_w11, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ahead11, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_ahead11, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_ahead_w11', HRS_ds_ahead_w11)
+#opal.symbol_import(o,'HRS_ds_ahead_w11', project='_Athlos_Harm_Dataset')
+label(HRS_ds_ahead_w11$wealth) <- ds_label_all
+wealth <- HRS_ds_ahead_w11
+save(wealth, file = "../RData/ahead_w11/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_ahead_w11 <- HRS_ds_ahead_w11
+HRS_m_ds_ahead_w11$wealth <- car::recode(HRS_m_ds_ahead_w11$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_ahead_w11', HRS_m_ds_ahead_w11)
+#opal.symbol_import(o,'HRS_m_ds_ahead_w11', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+### The Children of the Depression (CODA) sub-sample
+
+### Wave 4 
+
+#### Study-specific variable description
+
+| **Name** | `H4ITOT`|
+|-|-|
+| **Label** | `W4 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-CODA-w4` |
+| **Description** |  |
+
+```{r assign_coda4, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-CODA-w4',
+                         variables=list('H4ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_coda4, echo=FALSE}
+vari <- HRS_wealth$H4ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H4ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_coda4, echo=TRUE}
+qq <- quantile(HRS_wealth$H4ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_coda_w4 <- tibble(id=HRS_wealth$id)
+HRS_ds_coda_w4$wealth <- car::recode(HRS_wealth$H4ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_coda_w4$wealth <- car::recode(HRS_ds_coda_w4$wealth, "NA=999")
+HRS_ds_coda_w4$wealth <- as.integer(HRS_ds_coda_w4$wealth)
+HRS_ds_coda_w4$wealth <- labelled(HRS_ds_coda_w4$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_coda4, echo=FALSE}
+vari <- HRS_ds_coda_w4$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_coda_w4, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_coda4, echo=FALSE}
+```
+
+
+```{r importOPAL_coda4, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_coda_w4', HRS_ds_coda_w4)
+#opal.symbol_import(o,'HRS_ds_coda_w4', project='_Athlos_Harm_Dataset')
+label(HRS_ds_coda_w4$wealth) <- ds_label_all
+wealth <- HRS_ds_coda_w4
+save(wealth, file = "../RData/coda_w4/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_coda_w4 <- HRS_ds_coda_w4
+HRS_m_ds_coda_w4$wealth <- car::recode(HRS_m_ds_coda_w4$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_coda_w4', HRS_m_ds_coda_w4)
+#opal.symbol_import(o,'HRS_m_ds_coda_w4', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+### Wave 5 
+
+#### Study-specific variable description
+
+| **Name** | `H5ITOT`|
+|-|-|
+| **Label** | `W5 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-CODA-w5` |
+| **Description** |  |
+
+```{r assign_coda5, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-CODA-w5',
+                         variables=list('H5ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_coda5, echo=FALSE}
+vari <- HRS_wealth$H5ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H5ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_coda5, echo=TRUE}
+qq <- quantile(HRS_wealth$H5ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_coda_w5 <- tibble(id=HRS_wealth$id)
+HRS_ds_coda_w5$wealth <- car::recode(HRS_wealth$H5ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_coda_w5$wealth <- car::recode(HRS_ds_coda_w5$wealth, "NA=999")
+HRS_ds_coda_w5$wealth <- as.integer(HRS_ds_coda_w5$wealth)
+HRS_ds_coda_w5$wealth <- labelled(HRS_ds_coda_w5$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_coda5, echo=FALSE}
+vari <- HRS_ds_coda_w5$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_coda_w5, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_coda5, echo=FALSE}
+```
+
+
+```{r importOPAL_coda5, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_coda_w5', HRS_ds_coda_w5)
+#opal.symbol_import(o,'HRS_ds_coda_w5', project='_Athlos_Harm_Dataset')
+label(HRS_ds_coda_w5$wealth) <- ds_label_all
+wealth <- HRS_ds_coda_w5
+save(wealth, file = "../RData/coda_w5/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_coda_w5 <- HRS_ds_coda_w5
+HRS_m_ds_coda_w5$wealth <- car::recode(HRS_m_ds_coda_w5$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_coda_w5', HRS_m_ds_coda_w5)
+#opal.symbol_import(o,'HRS_m_ds_coda_w5', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 6 
+
+#### Study-specific variable description
+
+| **Name** | `H6ITOT`|
+|-|-|
+| **Label** | `W6 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-CODA-w6` |
+| **Description** |  |
+
+```{r assign_coda6, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-CODA-w6',
+                         variables=list('H6ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_coda6, echo=FALSE}
+vari <- HRS_wealth$H6ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H6ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_coda6, echo=TRUE}
+qq <- quantile(HRS_wealth$H6ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_coda_w6 <- tibble(id=HRS_wealth$id)
+HRS_ds_coda_w6$wealth <- car::recode(HRS_wealth$H6ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_coda_w6$wealth <- car::recode(HRS_ds_coda_w6$wealth, "NA=999")
+HRS_ds_coda_w6$wealth <- as.integer(HRS_ds_coda_w6$wealth)
+HRS_ds_coda_w6$wealth <- labelled(HRS_ds_coda_w6$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_coda6, echo=FALSE}
+vari <- HRS_ds_coda_w6$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_coda_w6, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_coda6, echo=FALSE}
+```
+
+
+```{r importOPAL_coda6, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_coda_w6', HRS_ds_coda_w6)
+#opal.symbol_import(o,'HRS_ds_coda_w6', project='_Athlos_Harm_Dataset')
+label(HRS_ds_coda_w6$wealth) <- ds_label_all
+wealth <- HRS_ds_coda_w6
+save(wealth, file = "../RData/coda_w6/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_coda_w6 <- HRS_ds_coda_w6
+HRS_m_ds_coda_w6$wealth <- car::recode(HRS_m_ds_coda_w6$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_coda_w6', HRS_m_ds_coda_w6)
+#opal.symbol_import(o,'HRS_m_ds_coda_w6', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 7 
+
+#### Study-specific variable description
+
+| **Name** | `H7ITOT`|
+|-|-|
+| **Label** | `W7 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-CODA-w7` |
+| **Description** |  |
+
+```{r assign_coda7, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-CODA-w7',
+                         variables=list('H7ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_coda7, echo=FALSE}
+vari <- HRS_wealth$H7ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H7ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_coda7, echo=TRUE}
+qq <- quantile(HRS_wealth$H7ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_coda_w7 <- tibble(id=HRS_wealth$id)
+HRS_ds_coda_w7$wealth <- car::recode(HRS_wealth$H7ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_coda_w7$wealth <- car::recode(HRS_ds_coda_w7$wealth, "NA=999")
+HRS_ds_coda_w7$wealth <- as.integer(HRS_ds_coda_w7$wealth)
+HRS_ds_coda_w7$wealth <- labelled(HRS_ds_coda_w7$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_coda7, echo=FALSE}
+vari <- HRS_ds_coda_w7$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_coda_w7, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_coda7, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_coda7, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_coda_w7', HRS_ds_coda_w7)
+#opal.symbol_import(o,'HRS_ds_coda_w7', project='_Athlos_Harm_Dataset')
+label(HRS_ds_coda_w7$wealth) <- ds_label_all
+wealth <- HRS_ds_coda_w7
+save(wealth, file = "../RData/coda_w7/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_coda_w7 <- HRS_ds_coda_w7
+HRS_m_ds_coda_w7$wealth <- car::recode(HRS_m_ds_coda_w7$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_coda_w7', HRS_m_ds_coda_w7)
+#opal.symbol_import(o,'HRS_m_ds_coda_w7', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 8 
+
+#### Study-specific variable description
+
+| **Name** | `H8ITOT`|
+|-|-|
+| **Label** | `W8 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-CODA-w8` |
+| **Description** |  |
+
+```{r assign_coda8, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-CODA-w8',
+                         variables=list('H8ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_coda8, echo=FALSE}
+vari <- HRS_wealth$H8ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H8ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_coda8, echo=TRUE}
+qq <- quantile(HRS_wealth$H8ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_coda_w8 <- tibble(id=HRS_wealth$id)
+HRS_ds_coda_w8$wealth <- car::recode(HRS_wealth$H8ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_coda_w8$wealth <- car::recode(HRS_ds_coda_w8$wealth, "NA=999")
+HRS_ds_coda_w8$wealth <- as.integer(HRS_ds_coda_w8$wealth)
+HRS_ds_coda_w8$wealth <- labelled(HRS_ds_coda_w8$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_coda8, echo=FALSE}
+vari <- HRS_ds_coda_w8$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_coda_w8, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_coda8, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_coda8, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_coda_w8', HRS_ds_coda_w8)
+#opal.symbol_import(o,'HRS_ds_coda_w8', project='_Athlos_Harm_Dataset')
+label(HRS_ds_coda_w8$wealth) <- ds_label_all
+wealth <- HRS_ds_coda_w8
+save(wealth, file = "../RData/coda_w8/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_coda_w8 <- HRS_ds_coda_w8
+HRS_m_ds_coda_w8$wealth <- car::recode(HRS_m_ds_coda_w8$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_coda_w8', HRS_m_ds_coda_w8)
+#opal.symbol_import(o,'HRS_m_ds_coda_w8', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+### Wave 9 
+
+#### Study-specific variable description
+
+| **Name** | `H9ITOT`|
+|-|-|
+| **Label** | `W9 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-CODA-w9` |
+| **Description** |  |
+
+```{r assign_coda9, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-CODA-w9',
+                         variables=list('H9ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_coda9, echo=FALSE}
+vari <- HRS_wealth$H9ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H9ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo_coda9, echo=TRUE}
+qq <- quantile(HRS_wealth$H9ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_coda_w9 <- tibble(id=HRS_wealth$id)
+HRS_ds_coda_w9$wealth <- car::recode(HRS_wealth$H9ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_coda_w9$wealth <- car::recode(HRS_ds_coda_w9$wealth, "NA=999")
+HRS_ds_coda_w9$wealth <- as.integer(HRS_ds_coda_w9$wealth)
+HRS_ds_coda_w9$wealth <- labelled(HRS_ds_coda_w9$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_coda9, echo=FALSE}
+vari <- HRS_ds_coda_w9$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_coda_w9, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_coda9, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_coda9, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_coda_w9', HRS_ds_coda_w9)
+#opal.symbol_import(o,'HRS_ds_coda_w9', project='_Athlos_Harm_Dataset')
+label(HRS_ds_coda_w9$wealth) <- ds_label_all
+wealth <- HRS_ds_coda_w9
+save(wealth, file = "../RData/coda_w9/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_coda_w9 <- HRS_ds_coda_w9
+HRS_m_ds_coda_w9$wealth <- car::recode(HRS_m_ds_coda_w9$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_coda_w9', HRS_m_ds_coda_w9)
+#opal.symbol_import(o,'HRS_m_ds_coda_w9', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 10 
+
+#### Study-specific variable description
+
+| **Name** | `H10ITOT`|
+|-|-|
+| **Label** | `W10 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-CODA-w10` |
+| **Description** |  |
+
+```{r assign_coda10, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-CODA-w10',
+                         variables=list('H10ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_coda10, echo=FALSE}
+vari <- HRS_wealth$H10ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H10ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_coda10, echo=TRUE}
+qq <- quantile(HRS_wealth$H10ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_coda_w10 <- tibble(id=HRS_wealth$id)
+HRS_ds_coda_w10$wealth <- car::recode(HRS_wealth$H10ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_coda_w10$wealth <- car::recode(HRS_ds_coda_w10$wealth, "NA=999")
+HRS_ds_coda_w10$wealth <- as.integer(HRS_ds_coda_w10$wealth)
+HRS_ds_coda_w10$wealth <- labelled(HRS_ds_coda_w10$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_coda10, echo=FALSE}
+vari <- HRS_ds_coda_w10$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_coda_w10, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_coda10, echo=FALSE}
+```
+
+ 
+```{r importOPAL_coda10, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_coda_w10', HRS_ds_coda_w10)
+#opal.symbol_import(o,'HRS_ds_coda_w10', project='_Athlos_Harm_Dataset')
+label(HRS_ds_coda_w10$wealth) <- ds_label_all
+wealth <- HRS_ds_coda_w10
+save(wealth, file = "../RData/coda_w10/wealth.RData")
+rm(wealth)
+
+HRS_m_ds_coda_w10 <- HRS_ds_coda_w10
+HRS_m_ds_coda_w10$wealth <- car::recode(HRS_m_ds_coda_w10$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_coda_w10', HRS_m_ds_coda_w10)
+#opal.symbol_import(o,'HRS_m_ds_coda_w10', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 11 
+
+#### Study-specific variable description
+
+| **Name** | `H11ITOT`|
+|-|-|
+| **Label** | `W11 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-CODA-w11` |
+| **Description** |  |
+
+```{r assign_coda11, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-CODA-w11',
+                         variables=list('H11ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_coda11, echo=FALSE}
+vari <- HRS_wealth$H11ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H11ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_coda11, echo=TRUE}
+qq <- quantile(HRS_wealth$H11ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_coda_w11 <- tibble(id=HRS_wealth$id)
+HRS_ds_coda_w11$wealth <- car::recode(HRS_wealth$H11ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_coda_w11$wealth <- car::recode(HRS_ds_coda_w11$wealth, "NA=999")
+HRS_ds_coda_w11$wealth <- as.integer(HRS_ds_coda_w11$wealth)
+HRS_ds_coda_w11$wealth <- labelled(HRS_ds_coda_w11$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_coda11, echo=FALSE}
+vari <- HRS_ds_coda_w11$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_coda_w11, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_coda11, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_coda11, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_coda_w11', HRS_ds_coda_w11)
+#opal.symbol_import(o,'HRS_ds_coda_w11', project='_Athlos_Harm_Dataset')
+label(HRS_ds_coda_w11$wealth) <- ds_label_all
+wealth <- HRS_ds_coda_w11
+save(wealth, file = "../RData/coda_w11/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_coda_w11 <- HRS_ds_coda_w11
+HRS_m_ds_coda_w11$wealth <- car::recode(HRS_m_ds_coda_w11$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_coda_w11', HRS_m_ds_coda_w11)
+#opal.symbol_import(o,'HRS_m_ds_coda_w11', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+## The War Baby (WB) sub-sample 
+
+### Wave 4  
+
+#### Study-specific variable description
+
+| **Name** | `H4ITOT`|
+|-|-|
+| **Label** | `W4 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-WB-w4` |
+| **Description** |  |
+
+```{r assign_wb4, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-WB-w4',
+                         variables=list('H4ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_wb4, echo=FALSE}
+vari <- HRS_wealth$H4ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H4ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_wb4, echo=TRUE}
+qq <- quantile(HRS_wealth$H4ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_wb_w4 <- tibble(id=HRS_wealth$id)
+HRS_ds_wb_w4$wealth <- car::recode(HRS_wealth$H4ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_wb_w4$wealth <- car::recode(HRS_ds_wb_w4$wealth, "NA=999")
+HRS_ds_wb_w4$wealth <- as.integer(HRS_ds_wb_w4$wealth)
+HRS_ds_wb_w4$wealth <- labelled(HRS_ds_wb_w4$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_wb4, echo=FALSE}
+vari <- HRS_ds_wb_w4$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_wb_w4, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_wb4, echo=FALSE}
+```
+
+ 
+```{r importOPAL_wb4, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_wb_w4', HRS_ds_wb_w4)
+#opal.symbol_import(o,'HRS_ds_wb_w4', project='_Athlos_Harm_Dataset')
+label(HRS_ds_wb_w4$wealth) <- ds_label_all
+wealth <- HRS_ds_wb_w4
+save(wealth, file = "../RData/wb_w4/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_wb_w4 <- HRS_ds_wb_w4
+HRS_m_ds_wb_w4$wealth <- car::recode(HRS_m_ds_wb_w4$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_wb_w4', HRS_m_ds_wb_w4)
+#opal.symbol_import(o,'HRS_m_ds_wb_w4', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 5  
+
+#### Study-specific variable description
+
+ 
+
+| **Name** | `H5ITOT`|
+|-|-|
+| **Label** | `W5 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-WB-w5` |
+| **Description** |  |
+
+```{r assign_wb5, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-WB-w5',
+                         variables=list('H5ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_wb5, echo=FALSE}
+vari <- HRS_wealth$H5ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H5ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_wb5, echo=TRUE}
+qq <- quantile(HRS_wealth$H5ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_wb_w5 <- tibble(id=HRS_wealth$id)
+HRS_ds_wb_w5$wealth <- car::recode(HRS_wealth$H5ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_wb_w5$wealth <- car::recode(HRS_ds_wb_w5$wealth, "NA=999")
+HRS_ds_wb_w5$wealth <- as.integer(HRS_ds_wb_w5$wealth)
+HRS_ds_wb_w5$wealth <- labelled(HRS_ds_wb_w5$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_wb5, echo=FALSE}
+vari <- HRS_ds_wb_w5$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_wb_w5, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_wb5, echo=FALSE}
+```
+
+
+ 
+```{r importOPAL_wb5, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_wb_w5', HRS_ds_wb_w5)
+#opal.symbol_import(o,'HRS_ds_wb_w5', project='_Athlos_Harm_Dataset')
+label(HRS_ds_wb_w5$wealth) <- ds_label_all
+wealth <- HRS_ds_wb_w5
+save(wealth, file = "../RData/wb_w5/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_wb_w5 <- HRS_ds_wb_w5
+HRS_m_ds_wb_w5$wealth <- car::recode(HRS_m_ds_wb_w5$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_wb_w5', HRS_m_ds_wb_w5)
+#opal.symbol_import(o,'HRS_m_ds_wb_w5', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 6  
+
+#### Study-specific variable description
+
+| **Name** | `H6ITOT`|
+|-|-|
+| **Label** | `W6 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-WB-w6` |
+| **Description** |  |
+
+```{r assign_wb6, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-WB-w6',
+                         variables=list('H6ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_wb6, echo=FALSE}
+vari <- HRS_wealth$H6ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H6ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_wb6, echo=TRUE}
+qq <- quantile(HRS_wealth$H6ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_wb_w6 <- tibble(id=HRS_wealth$id)
+HRS_ds_wb_w6$wealth <- car::recode(HRS_wealth$H6ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_wb_w6$wealth <- car::recode(HRS_ds_wb_w6$wealth, "NA=999")
+HRS_ds_wb_w6$wealth <- as.integer(HRS_ds_wb_w6$wealth)
+HRS_ds_wb_w6$wealth <- labelled(HRS_ds_wb_w6$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_wb6, echo=FALSE}
+vari <- HRS_ds_wb_w6$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_wb_w6, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_wb6, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_wb6, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_wb_w6', HRS_ds_wb_w6)
+#opal.symbol_import(o,'HRS_ds_wb_w6', project='_Athlos_Harm_Dataset')
+label(HRS_ds_wb_w6$wealth) <- ds_label_all
+wealth <- HRS_ds_wb_w6
+save(wealth, file = "../RData/wb_w6/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_wb_w6 <- HRS_ds_wb_w6
+HRS_m_ds_wb_w6$wealth <- car::recode(HRS_m_ds_wb_w6$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_wb_w6', HRS_m_ds_wb_w6)
+#opal.symbol_import(o,'HRS_m_ds_wb_w6', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+### Wave 7  
+
+#### Study-specific variable description
+
+| **Name** | `H7ITOT`|
+|-|-|
+| **Label** | `W7 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-WB-w7` |
+| **Description** |  |
+
+```{r assign_wb7, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-WB-w7',
+                         variables=list('H7ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_wb7, echo=FALSE}
+vari <- HRS_wealth$H7ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H7ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_wb7, echo=TRUE}
+qq <- quantile(HRS_wealth$H7ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_wb_w7 <- tibble(id=HRS_wealth$id)
+HRS_ds_wb_w7$wealth <- car::recode(HRS_wealth$H7ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_wb_w7$wealth <- car::recode(HRS_ds_wb_w7$wealth, "NA=999")
+HRS_ds_wb_w7$wealth <- as.integer(HRS_ds_wb_w7$wealth)
+HRS_ds_wb_w7$wealth <- labelled(HRS_ds_wb_w7$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_wb7, echo=FALSE}
+vari <- HRS_ds_wb_w7$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_wb_w7, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_wb7, echo=FALSE}
+```
+
+
+ 
+```{r importOPAL_wb7, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_wb_w7', HRS_ds_wb_w7)
+#opal.symbol_import(o,'HRS_ds_wb_w7', project='_Athlos_Harm_Dataset')
+label(HRS_ds_wb_w7$wealth) <- ds_label_all
+wealth <- HRS_ds_wb_w7
+save(wealth, file = "../RData/wb_w7/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_wb_w7 <- HRS_ds_wb_w7
+HRS_m_ds_wb_w7$wealth <- car::recode(HRS_m_ds_wb_w7$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_wb_w7', HRS_m_ds_wb_w7)
+#opal.symbol_import(o,'HRS_m_ds_wb_w7', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 8  
+
+#### Study-specific variable description
+
+| **Name** | `H8ITOT`|
+|-|-|
+| **Label** | `W8 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-WB-w8` |
+| **Description** |  |
+
+
+```{r assign_wb8, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-WB-w8',
+                         variables=list('H8ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_wb8, echo=FALSE}
+vari <- HRS_wealth$H8ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H8ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_wb8, echo=TRUE}
+qq <- quantile(HRS_wealth$H8ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_wb_w8 <- tibble(id=HRS_wealth$id)
+HRS_ds_wb_w8$wealth <- car::recode(HRS_wealth$H8ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_wb_w8$wealth <- car::recode(HRS_ds_wb_w8$wealth, "NA=999")
+HRS_ds_wb_w8$wealth <- as.integer(HRS_ds_wb_w8$wealth)
+HRS_ds_wb_w8$wealth <- labelled(HRS_ds_wb_w8$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_wb8, echo=FALSE}
+vari <- HRS_ds_wb_w8$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_wb_w8, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_wb8, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_wb8, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_wb_w8', HRS_ds_wb_w8)
+#opal.symbol_import(o,'HRS_ds_wb_w8', project='_Athlos_Harm_Dataset')
+label(HRS_ds_wb_w8$wealth) <- ds_label_all
+wealth <- HRS_ds_wb_w8
+save(wealth, file = "../RData/wb_w8/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_wb_w8 <- HRS_ds_wb_w8
+HRS_m_ds_wb_w8$wealth <- car::recode(HRS_m_ds_wb_w8$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_wb_w8', HRS_m_ds_wb_w8)
+#opal.symbol_import(o,'HRS_m_ds_wb_w8', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 9  
+
+#### Study-specific variable description
+
+| **Name** | `H9ITOT`|
+|-|-|
+| **Label** | `W9 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-WB-w9` |
+| **Description** |  |
+
+```{r assign_wb9, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-WB-w9',
+                         variables=list('H9ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_wb9, echo=FALSE}
+vari <- HRS_wealth$H9ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H9ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo_wb9, echo=TRUE}
+qq <- quantile(HRS_wealth$H9ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_wb_w9 <- tibble(id=HRS_wealth$id)
+HRS_ds_wb_w9$wealth <- car::recode(HRS_wealth$H9ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_wb_w9$wealth <- car::recode(HRS_ds_wb_w9$wealth, "NA=999")
+HRS_ds_wb_w9$wealth <- as.integer(HRS_ds_wb_w9$wealth)
+HRS_ds_wb_w9$wealth <- labelled(HRS_ds_wb_w9$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_wb9, echo=FALSE}
+vari <- HRS_ds_wb_w9$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_wb_w9, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_wb9, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_wb9, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_wb_w9', HRS_ds_wb_w9)
+#opal.symbol_import(o,'HRS_ds_wb_w9', project='_Athlos_Harm_Dataset')
+label(HRS_ds_wb_w9$wealth) <- ds_label_all
+wealth <- HRS_ds_wb_w9
+save(wealth, file = "../RData/wb_w9/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_wb_w9 <- HRS_ds_wb_w9
+HRS_m_ds_wb_w9$wealth <- car::recode(HRS_m_ds_wb_w9$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_wb_w9', HRS_m_ds_wb_w9)
+#opal.symbol_import(o,'HRS_m_ds_wb_w9', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 10  
+
+#### Study-specific variable description
+
+| **Name** | `H10ITOT`|
+|-|-|
+| **Label** | `W10 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-WB-w10` |
+| **Description** |  |
+
+```{r assign_wb10, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-WB-w10',
+                         variables=list('H10ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_wb10, echo=FALSE}
+vari <- HRS_wealth$H10ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H10ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_wb10, echo=TRUE}
+qq <- quantile(HRS_wealth$H10ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_wb_w10 <- tibble(id=HRS_wealth$id)
+HRS_ds_wb_w10$wealth <- car::recode(HRS_wealth$H10ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_wb_w10$wealth <- car::recode(HRS_ds_wb_w10$wealth, "NA=999")
+HRS_ds_wb_w10$wealth <- as.integer(HRS_ds_wb_w10$wealth)
+HRS_ds_wb_w10$wealth <- labelled(HRS_ds_wb_w10$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_wb10, echo=FALSE}
+vari <- HRS_ds_wb_w10$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_wb_w10, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_wb10, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_wb10, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_wb_w10', HRS_ds_wb_w10)
+#opal.symbol_import(o,'HRS_ds_wb_w10', project='_Athlos_Harm_Dataset')
+label(HRS_ds_wb_w10$wealth) <- ds_label_all
+wealth <- HRS_ds_wb_w10
+save(wealth, file = "../RData/wb_w10/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_wb_w10 <- HRS_ds_wb_w10
+HRS_m_ds_wb_w10$wealth <- car::recode(HRS_m_ds_wb_w10$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_wb_w10', HRS_m_ds_wb_w10)
+#opal.symbol_import(o,'HRS_m_ds_wb_w10', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 11  
+
+#### Study-specific variable description
+
+| **Name** | `H11ITOT`|
+|-|-|
+| **Label** | `W11 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-WB-w11` |
+| **Description** |  |
+
+```{r assign_wb11, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-WB-w11',
+                         variables=list('H11ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_wb11, echo=FALSE}
+vari <- HRS_wealth$H11ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H11ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo_wb11, echo=TRUE}
+qq <- quantile(HRS_wealth$H11ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_wb_w11 <- tibble(id=HRS_wealth$id)
+HRS_ds_wb_w11$wealth <- car::recode(HRS_wealth$H11ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_wb_w11$wealth <- car::recode(HRS_ds_wb_w11$wealth, "NA=999")
+HRS_ds_wb_w11$wealth <- as.integer(HRS_ds_wb_w11$wealth)
+HRS_ds_wb_w11$wealth <- labelled(HRS_ds_wb_w11$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_wb11, echo=FALSE}
+vari <- HRS_ds_wb_w11$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_wb_w11, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_wb11, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_wb11, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_wb_w11', HRS_ds_wb_w11)
+#opal.symbol_import(o,'HRS_ds_wb_w11', project='_Athlos_Harm_Dataset')
+label(HRS_ds_wb_w11$wealth) <- ds_label_all
+wealth <- HRS_ds_wb_w11
+save(wealth, file = "../RData/wb_w11/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_wb_w11 <- HRS_ds_wb_w11
+HRS_m_ds_wb_w11$wealth <- car::recode(HRS_m_ds_wb_w11$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_wb_w11', HRS_m_ds_wb_w11)
+#opal.symbol_import(o,'HRS_m_ds_wb_w11', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+## The Early Baby Boomer (EBB) sub-sample
+
+### Wave 7  
+
+#### Study-specific variable description
+
+| **Name** | `H7ITOT`|
+|-|-|
+| **Label** | `W7 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-EBB-w7` |
+| **Description** |  |
+
+```{r assign_ebb7, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-EBB-w7',
+                         variables=list('H7ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_ebb7, echo=FALSE}
+vari <- HRS_wealth$H7ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H7ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_ebb7, echo=TRUE}
+qq <- quantile(HRS_wealth$H7ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_ebb_w7 <- tibble(id=HRS_wealth$id)
+HRS_ds_ebb_w7$wealth <- car::recode(HRS_wealth$H7ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_ebb_w7$wealth <- car::recode(HRS_ds_ebb_w7$wealth, "NA=999")
+HRS_ds_ebb_w7$wealth <- as.integer(HRS_ds_ebb_w7$wealth)
+HRS_ds_ebb_w7$wealth <- labelled(HRS_ds_ebb_w7$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_ebb7, echo=FALSE}
+vari <- HRS_ds_ebb_w7$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ebb_w7, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ebb7, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_ebb7, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_ebb_w7', HRS_ds_ebb_w7)
+#opal.symbol_import(o,'HRS_ds_ebb_w7', project='_Athlos_Harm_Dataset')
+label(HRS_ds_ebb_w7$wealth) <- ds_label_all
+wealth <- HRS_ds_ebb_w7
+save(wealth, file = "../RData/ebb_w7/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_ebb_w7 <- HRS_ds_ebb_w7
+HRS_m_ds_ebb_w7$wealth <- car::recode(HRS_m_ds_ebb_w7$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_ebb_w7', HRS_m_ds_ebb_w7)
+#opal.symbol_import(o,'HRS_m_ds_ebb_w7', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 8  
+
+#### Study-specific variable description
+
+| **Name** | `H8ITOT`|
+|-|-|
+| **Label** | `W8 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-EBB-w8` |
+| **Description** |  |
+
+```{r assign_ebb8, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-EBB-w8',
+                         variables=list('H8ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_ebb8, echo=FALSE}
+vari <- HRS_wealth$H8ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H8ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_ebb8, echo=TRUE}
+qq <- quantile(HRS_wealth$H8ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_ebb_w8 <- tibble(id=HRS_wealth$id)
+HRS_ds_ebb_w8$wealth <- car::recode(HRS_wealth$H8ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_ebb_w8$wealth <- car::recode(HRS_ds_ebb_w8$wealth, "NA=999")
+HRS_ds_ebb_w8$wealth <- as.integer(HRS_ds_ebb_w8$wealth)
+HRS_ds_ebb_w8$wealth <- labelled(HRS_ds_ebb_w8$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_ebb8, echo=FALSE}
+vari <- HRS_ds_ebb_w8$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ebb_w8, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ebb8, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_ebb8, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_ebb_w8', HRS_ds_ebb_w8)
+#opal.symbol_import(o,'HRS_ds_ebb_w8', project='_Athlos_Harm_Dataset')
+label(HRS_ds_ebb_w8$wealth) <- ds_label_all
+wealth <- HRS_ds_ebb_w8
+save(wealth, file = "../RData/ebb_w8/wealth.RData")
+rm(wealth)
+
+HRS_m_ds_ebb_w8 <- HRS_ds_ebb_w8
+HRS_m_ds_ebb_w8$wealth <- car::recode(HRS_m_ds_ebb_w8$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_ebb_w8', HRS_m_ds_ebb_w8)
+#opal.symbol_import(o,'HRS_m_ds_ebb_w8', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 9  
+
+#### Study-specific variable description
+
+ 
+
+| **Name** | `H9ITOT`|
+|-|-|
+| **Label** | `W9 CESD score`|
+| **Table name** | `HRS-EBB-w9` |
+| **Description** |  |
+
+```{r assign_ebb9, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-EBB-w9',
+                         variables=list('H9ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_ebb9, echo=FALSE}
+vari <- HRS_wealth$H9ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H9ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_ebb9, echo=TRUE}
+qq <- quantile(HRS_wealth$H9ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_ebb_w9 <- tibble(id=HRS_wealth$id)
+HRS_ds_ebb_w9$wealth <- car::recode(HRS_wealth$H9ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_ebb_w9$wealth <- car::recode(HRS_ds_ebb_w9$wealth, "NA=999")
+HRS_ds_ebb_w9$wealth <- as.integer(HRS_ds_ebb_w9$wealth)
+HRS_ds_ebb_w9$wealth <- labelled(HRS_ds_ebb_w9$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_ebb9, echo=FALSE}
+vari <- HRS_ds_ebb_w9$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ebb_w9, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ebb9, echo=FALSE}
+```
+
+```{r importOPAL_ebb9, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_ebb_w9', HRS_ds_ebb_w9)
+#opal.symbol_import(o,'HRS_ds_ebb_w9', project='_Athlos_Harm_Dataset')
+label(HRS_ds_ebb_w9$wealth) <- ds_label_all
+wealth <- HRS_ds_ebb_w9
+save(wealth, file = "../RData/ebb_w9/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_ebb_w9 <- HRS_ds_ebb_w9
+HRS_m_ds_ebb_w9$wealth <- car::recode(HRS_m_ds_ebb_w9$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_ebb_w9', HRS_m_ds_ebb_w9)
+#opal.symbol_import(o,'HRS_m_ds_ebb_w9', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+### Wave 10  
+
+#### Study-specific variable description
+
+| **Name** | `H10ITOT`|
+|-|-|
+| **Label** | `W10 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-EBB-w10` |
+| **Description** |  |
+
+```{r assign_ebb10, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-EBB-w10',
+                         variables=list('H10ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_ebb10, echo=FALSE}
+vari <- HRS_wealth$H10ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H10ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_ebb10, echo=TRUE}
+qq <- quantile(HRS_wealth$H10ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_ebb_w10 <- tibble(id=HRS_wealth$id)
+HRS_ds_ebb_w10$wealth <- car::recode(HRS_wealth$H10ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_ebb_w10$wealth <- car::recode(HRS_ds_ebb_w10$wealth, "NA=999")
+HRS_ds_ebb_w10$wealth <- as.integer(HRS_ds_ebb_w10$wealth)
+HRS_ds_ebb_w10$wealth <- labelled(HRS_ds_ebb_w10$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_ebb10, echo=FALSE}
+vari <- HRS_ds_ebb_w10$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ebb_w10, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ebb10, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_ebb10, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_ebb_w10', HRS_ds_ebb_w10)
+#opal.symbol_import(o,'HRS_ds_ebb_w10', project='_Athlos_Harm_Dataset')
+label(HRS_ds_ebb_w10$wealth) <- ds_label_all
+wealth <- HRS_ds_ebb_w10
+save(wealth, file = "../RData/ebb_w10/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_ebb_w10 <- HRS_ds_ebb_w10
+HRS_m_ds_ebb_w10$wealth <- car::recode(HRS_m_ds_ebb_w10$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_ebb_w10', HRS_m_ds_ebb_w10)
+#opal.symbol_import(o,'HRS_m_ds_ebb_w10', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+### Wave 11  
+
+#### Study-specific variable description
+
+ 
+
+| **Name** | `H11ITOT`|
+|-|-|
+| **Label** | `W11 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-EBB-w11` |
+| **Description** |  |
+
+```{r assign_ebb11, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-EBB-w11',
+                         variables=list('H11ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_ebb11, echo=FALSE}
+vari <- HRS_wealth$H11ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H11ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_ebb11, echo=TRUE}
+qq <- quantile(HRS_wealth$H11ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_ebb_w11 <- tibble(id=HRS_wealth$id)
+HRS_ds_ebb_w11$wealth <- car::recode(HRS_wealth$H11ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_ebb_w11$wealth <- car::recode(HRS_ds_ebb_w11$wealth, "NA=999")
+HRS_ds_ebb_w11$wealth <- as.integer(HRS_ds_ebb_w11$wealth)
+HRS_ds_ebb_w11$wealth <- labelled(HRS_ds_ebb_w11$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_ebb11, echo=FALSE}
+vari <- HRS_ds_ebb_w11$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ebb_w11, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ebb11, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_ebb11, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_ebb_w11', HRS_ds_ebb_w11)
+#opal.symbol_import(o,'HRS_ds_ebb_w11', project='_Athlos_Harm_Dataset')
+label(HRS_ds_ebb_w11$wealth) <- ds_label_all
+wealth <- HRS_ds_ebb_w11
+save(wealth, file = "../RData/ebb_w11/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_ebb_w11 <- HRS_ds_ebb_w11
+HRS_m_ds_ebb_w11$wealth <- car::recode(HRS_m_ds_ebb_w11$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+opal.assign.data(o, 'HRS_m_ds_ebb_w11', HRS_m_ds_ebb_w11)
+#opal.symbol_import(o,'HRS_m_ds_ebb_w11', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+## The Mid Baby Boomer (MBB) sub-sample
+
+### Wave 10  
+
+#### Study-specific variable description
+
+ 
+
+| **Name** | `H10ITOT`|
+|-|-|
+| **Label** | `W10 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-MBB-w10` |
+| **Description** |  |
+
+```{r assign_mbb10, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-MBB-w10',
+                         variables=list('H10ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_mbb10, echo=FALSE}
+vari <- HRS_wealth$H10ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H10ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_mbb10, echo=TRUE}
+qq <- quantile(HRS_wealth$H10ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_mbb_w10 <- tibble(id=HRS_wealth$id)
+HRS_ds_mbb_w10$wealth <- car::recode(HRS_wealth$H10ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_mbb_w10$wealth <- car::recode(HRS_ds_mbb_w10$wealth, "NA=999")
+HRS_ds_mbb_w10$wealth <- as.integer(HRS_ds_mbb_w10$wealth)
+HRS_ds_mbb_w10$wealth <- labelled(HRS_ds_mbb_w10$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_mbb10, echo=FALSE}
+vari <- HRS_ds_mbb_w10$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_mbb_w10, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_mbb10, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_mbb10, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_mbb_w10', HRS_ds_mbb_w10)
+#opal.symbol_import(o,'HRS_ds_mbb_w10', project='_Athlos_Harm_Dataset')
+label(HRS_ds_mbb_w10$wealth) <- ds_label_all
+wealth <- HRS_ds_mbb_w10
+save(wealth, file = "../RData/mbb_w10/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_mbb_w10 <- HRS_ds_mbb_w10
+HRS_m_ds_mbb_w10$wealth <- car::recode(HRS_m_ds_mbb_w10$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_mbb_w10', HRS_m_ds_mbb_w10)
+#opal.symbol_import(o,'HRS_m_ds_mbb_w10', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+### Wave 11  
+
+#### Study-specific variable description
+
+| **Name** | `H11ITOT`|
+|-|-|
+| **Label** | `W11 Incm: Total HHold / R+Sp only`|
+| **Table name** | `HRS-MBB-w11` |
+| **Description** |  |
+
+```{r assign_mbb11, echo=FALSE}
+opal.assign.table.tibble(o, 'HRS_wealth','HRS.HRS-MBB-w11',
+                         variables=list('H11ITOT'), missings = TRUE)
+HRS_wealth <- opal.execute(o,'HRS_wealth')
+```
+
+```{r local_mbb11, echo=FALSE}
+vari <- HRS_wealth$H11ITOT
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = ds_label) 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wealth, aes(x=H11ITOT)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0, 60200)
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study specific varibale divide the population into 5 groups each containing 20$\%$ of the corresponding N and the missing values have to be recoded as follows: 
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_mbb11, echo=TRUE}
+qq <- quantile(HRS_wealth$H11ITOT, probs = seq(0, 1, .2), na.rm = TRUE)
+
+HRS_ds_mbb_w11 <- tibble(id=HRS_wealth$id)
+HRS_ds_mbb_w11$wealth <- car::recode(HRS_wealth$H11ITOT, "0:qq[2]=1; (qq[2]+1):qq[3]=2; (qq[3]+1):qq[4]=3; (qq[4]+1):qq[5]=4; (qq[5]+1):hi=5")
+HRS_ds_mbb_w11$wealth <- car::recode(HRS_ds_mbb_w11$wealth, "NA=999")
+HRS_ds_mbb_w11$wealth <- as.integer(HRS_ds_mbb_w11$wealth)
+HRS_ds_mbb_w11$wealth <- labelled(HRS_ds_mbb_w11$wealth, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript_mbb11, echo=FALSE}
+vari <- HRS_ds_mbb_w11$wealth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_mbb_w11, aes(x=factor(wealth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_mbb11, echo=FALSE}
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_mbb11, echo=FALSE}
+#opal.assign.data(o, 'HRS_ds_mbb_w11', HRS_ds_mbb_w11)
+#opal.symbol_import(o,'HRS_ds_mbb_w11', project='_Athlos_Harm_Dataset')
+label(HRS_ds_mbb_w11$wealth) <- ds_label_all
+wealth <- HRS_ds_mbb_w11
+save(wealth, file = "../RData/mbb_w11/wealth.RData")
+rm(wealth, HRS_dep)
+
+HRS_m_ds_mbb_w11 <- HRS_ds_mbb_w11
+HRS_m_ds_mbb_w11$wealth <- car::recode(HRS_m_ds_mbb_w11$wealth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'HRS_m_ds_mbb_w11', HRS_m_ds_mbb_w11)
+#opal.symbol_import(o,'HRS_m_ds_mbb_w11', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+# Quality estimation
+
+Quintiles were generated by dividing the population into 5 groups each containing 20% of the corresponding N.   
+Before taxes income from last calendar year from respondent and spouse was taken into account.
+Sources included were: earnings, pensions, and benefits*, asset income, and wealth variables. 
+HRS Also included five aggregate variables that however could not be found on the website 
+(main home equity, and second home equity, total assets, total net worth, and household income).
+
+
+
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```

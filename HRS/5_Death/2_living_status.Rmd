@@ -1,0 +1,3038 @@
+---
+title: "Living status"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+  
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_albert.r")
+```
+<!-- ########################################################## --> 
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `living_status`
+* Variable label: `Living status`
+* Variable description: `The individual is dead or alive?`
+* Domain: `Life expectancy`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | alive
+1        | dead
+2        | dropout
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+# Data process
+
+## HRS
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `R1IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-HRS-w1`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+    
+    
+```{r assign_hrs1, echo=F}
+opal.assign.table.tibble(o, 'HRS_hrs_w1_ls','HRS.HRS-HRS-w1', variables=list('R1IWSTAT'), missings = TRUE)
+HRS_hrs_w1_ls <- opal.execute(o,'HRS_hrs_w1_ls')
+
+```
+
+```{r local_hrs1, echo=F}
+vari <- HRS_hrs_w1_ls$R1IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R1IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_hrs_w1_ls, aes(factor(R1IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Interview Status") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+Values are recoded as follows:
+
+* Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive)
+* Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died)
+* Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout)
+* Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_hrs1}
+HRS_ds_hrs_w1 <- tibble(id=HRS_hrs_w1_ls$id)
+HRS_ds_hrs_w1$living_status <- car::recode(HRS_hrs_w1_ls$R1IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+
+HRS_ds_hrs_w1$living_status <- labelled(HRS_ds_hrs_w1$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_hrs1, echo=F}
+vari <- HRS_ds_hrs_w1$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_hrs_w1, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_hrs1, echo=F, results='asis'}
+kable(table(HRS_hrs_w1_ls$R1IWSTAT, HRS_ds_hrs_w1$living_status, useNA = "ifany"), align='c', caption ='R1IWSTAT vs living_status')
+#newT <- full_join( HRS_hrs_w1_ls, HRS_ds_hrs_w1, by="id")
+#flat_table(newT, living_status, R1IWSTAT)
+```
+
+```{r importOPAL_hrs1, echo=F}
+living_status <- HRS_ds_hrs_w1
+save(living_status, file = "../RData/hrs_w1/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `R2IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-HRS-w2`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_hrs2, echo=F}
+opal.assign.table.tibble(o,'HRS_hrs_w2_ls','HRS.HRS-HRS-w2', variables=list('R2IWSTAT'), missings = TRUE)
+```
+
+```{r local_hrs2, echo=F}
+HRS_hrs_w2_ls <- opal.execute(o,'HRS_hrs_w2_ls')
+vari <- HRS_hrs_w2_ls$R2IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R2IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_hrs_w2_ls, aes(factor(R2IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Interview Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows:
+
+* Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive)
+* Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died)
+* Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout)
+* Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_hrs2}
+HRS_ds_hrs_w2 <- tibble(id=HRS_hrs_w2_ls$id)
+HRS_ds_hrs_w2$living_status <- car::recode(HRS_hrs_w2_ls$R2IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_hrs_w2$living_status <- labelled(HRS_ds_hrs_w2$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_hrs2, echo=F}
+vari <- HRS_ds_hrs_w2$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_hrs_w2, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_hrs2, echo=F, results='asis'}
+kable(table(HRS_hrs_w2_ls$R2IWSTAT, HRS_ds_hrs_w2$living_status, useNA = "ifany"), align='c', caption ='R2IWSTAT vs living_status')
+```
+
+```{r importOPAL_hrs2, echo=F}
+living_status <- HRS_ds_hrs_w2
+save(living_status, file = "../RData/hrs_w2/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 3 
+
+#### Study-specific variable description
+
+| **Name** | `R3IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-HRS-w3`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+
+```{r assign_hrs3, echo=F}
+opal.assign.table.tibble(o,'HRS_hrs_w3_ls','HRS.HRS-HRS-w3', variables=list('R3IWSTAT'), missings = TRUE)
+```
+
+```{r local_hrs3, echo=F}
+HRS_hrs_w3_ls <- opal.execute(o,'HRS_hrs_w3_ls')
+vari <- HRS_hrs_w3_ls$R3IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R3IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_hrs_w3_ls, aes(factor(R3IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Interview Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows:
+
+* Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive)
+* Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died)
+* Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout)
+* Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_hrs3}
+HRS_ds_hrs_w3 <- tibble(id=HRS_hrs_w3_ls$id)
+HRS_ds_hrs_w3$living_status <- car::recode(HRS_hrs_w3_ls$R3IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_hrs_w3$living_status <- labelled(HRS_ds_hrs_w3$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_hrs3, echo=F}
+vari <- HRS_ds_hrs_w3$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_hrs_w3, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_hrs3, echo=F, results='asis'}
+kable(table(HRS_hrs_w3_ls$R3IWSTAT, HRS_ds_hrs_w3$living_status, useNA = "ifany"), align='c', caption ='R3IWSTAT vs living_status')
+```
+
+
+```{r importOPAL_hrs3, echo=F}
+living_status <- HRS_ds_hrs_w3
+save(living_status, file = "../RData/hrs_w3/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 4 
+
+#### Study-specific variable description
+
+| **Name** | `R4IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-HRS-w4`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_hrs4, echo=F}
+opal.assign.table.tibble(o, 'HRS_hrs_w4_ls','HRS.HRS-HRS-w4',
+                         variables=list('R4IWSTAT'), missings = TRUE)
+```
+
+```{r local_hrs4, echo=F}
+HRS_hrs_w4_ls <- opal.execute(o,'HRS_hrs_w4_ls')
+vari <- HRS_hrs_w4_ls$R4IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R4IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_hrs_w4_ls, aes(factor(R4IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+**R script:**
+
+```{r harmo_hrs4}
+HRS_ds_hrs_w4 <- tibble(id=HRS_hrs_w4_ls$id)
+HRS_ds_hrs_w4$living_status <- car::recode(HRS_hrs_w4_ls$R4IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_hrs_w4$living_status <- labelled(HRS_ds_hrs_w4$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_hrs4, echo=F}
+vari <- HRS_ds_hrs_w4$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_hrs_w4, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_hrs4, echo=F, results='asis'}
+kable(table(HRS_hrs_w4_ls$R4IWSTAT, HRS_ds_hrs_w4$living_status, useNA = "ifany"), align='c', caption ='R4IWSTAT vs living_status')
+```
+
+```{r importOPAL_hrs4, echo=F}
+living_status <- HRS_ds_hrs_w4
+save(living_status, file = "../RData/hrs_w4/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 5
+
+#### Study-specific variable description
+
+| **Name** | `R5IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-HRS-w5`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_hrs5, echo=F}
+opal.assign.table.tibble(o, 'HRS_hrs_w5_ls','HRS.HRS-HRS-w5',
+                         variables=list('R5IWSTAT'), missings = TRUE)
+```
+
+```{r local_hrs5, echo=F}
+HRS_hrs_w5_ls <- opal.execute(o,'HRS_hrs_w5_ls')
+vari <- HRS_hrs_w5_ls$R5IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R5IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_hrs_w5_ls, aes(factor(R5IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+
+**R script:**
+
+```{r harmo_hrs5}
+HRS_ds_hrs_w5 <- tibble(id=HRS_hrs_w5_ls$id)
+HRS_ds_hrs_w5$living_status <- car::recode(HRS_hrs_w5_ls$R5IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_hrs_w5$living_status <- labelled(HRS_ds_hrs_w5$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_hrs5, echo=F}
+vari <- HRS_ds_hrs_w2$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_hrs_w2, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_hrs5, echo=F, results='asis'}
+kable(table(HRS_hrs_w5_ls$R5IWSTAT, HRS_ds_hrs_w5$living_status, useNA = "ifany"), align='c', caption ='R5IWSTAT vs living_status')
+```
+
+
+```{r importOPAL_hrs5, echo=F}
+living_status <- HRS_ds_hrs_w5
+save(living_status, file = "../RData/hrs_w5/living_status.RData")
+rm(living_status)
+```
+
+
+
+
+
+
+### Wave 6
+
+#### Study-specific variable description
+
+
+
+| **Name** | `R6IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-HRS-w6`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_hrs6, echo=F}
+opal.assign.table.tibble(o, 'HRS_hrs_w6_ls','HRS.HRS-HRS-w6',
+                         variables=list('R6IWSTAT'), missings = TRUE)
+```
+
+```{r local_hrs6, echo=F}
+HRS_hrs_w6_ls <- opal.execute(o,'HRS_hrs_w6_ls')
+vari <- HRS_hrs_w6_ls$R6IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R6IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_hrs_w6_ls, aes(factor(R6IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_hrs6}
+HRS_ds_hrs_w6 <- tibble(id=HRS_hrs_w6_ls$id)
+HRS_ds_hrs_w6$living_status <- car::recode(HRS_hrs_w6_ls$R6IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_hrs_w6$living_status <- labelled(HRS_ds_hrs_w6$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_hrs6, echo=F}
+vari <- HRS_ds_hrs_w6$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_hrs_w6, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_hrs6, echo=F, results='asis'}
+kable(table(HRS_hrs_w6_ls$R6IWSTAT, HRS_ds_hrs_w6$living_status, useNA = "ifany"), align='c', caption ='R6IWSTAT vs living_status')
+```
+
+```{r importOPAL_hrs6, echo=F}
+living_status <- HRS_ds_hrs_w6
+save(living_status, file = "../RData/hrs_w6/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 7
+
+#### Study-specific variable description
+
+| **Name** | `R7IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-HRS-w7`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+
+```{r assign_hrs7, echo=F}
+opal.assign.table.tibble(o, 'HRS_hrs_w7_ls','HRS.HRS-HRS-w7',
+                         variables=list('R7IWSTAT'), missings = TRUE)
+```
+
+```{r local_hrs7, echo=F}
+HRS_hrs_w7_ls <- opal.execute(o,'HRS_hrs_w7_ls')
+vari <- HRS_hrs_w7_ls$R7IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R7IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_hrs_w7_ls, aes(factor(R7IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_hrs7}
+HRS_ds_hrs_w7 <- tibble(id=HRS_hrs_w7_ls$id)
+HRS_ds_hrs_w7$living_status <- car::recode(HRS_hrs_w7_ls$R7IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_hrs_w7$living_status <- labelled(HRS_ds_hrs_w7$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_hrs7, echo=F}
+vari <- HRS_ds_hrs_w7$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_hrs_w7, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_hrs7, echo=F, results='asis'}
+kable(table(HRS_hrs_w7_ls$R7IWSTAT, HRS_ds_hrs_w7$living_status, useNA = "ifany"), align='c', caption ='R7IWSTAT vs living_status')
+```
+
+```{r importOPAL_hrs7, echo=F}
+living_status <- HRS_ds_hrs_w7
+save(living_status, file = "../RData/hrs_w7/living_status.RData")
+rm(living_status)
+```
+
+### Wave 8
+
+#### Study-specific variable description
+
+| **Name** | `R8IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-HRS-w8`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_hrs8, echo=F}
+opal.assign.table.tibble(o, 'HRS_hrs_w8_ls','HRS.HRS-HRS-w8',
+                         variables=list('R8IWSTAT'), missings = TRUE)
+```
+
+```{r local_hrs8, echo=F}
+HRS_hrs_w8_ls <- opal.execute(o,'HRS_hrs_w8_ls')
+vari <- HRS_hrs_w8_ls$R8IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R8IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_hrs_w8_ls, aes(factor(R8IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+
+**R script:**
+
+```{r harmo_hrs8}
+HRS_ds_hrs_w8 <- tibble(id=HRS_hrs_w8_ls$id)
+HRS_ds_hrs_w8$living_status <- car::recode(HRS_hrs_w8_ls$R8IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_hrs_w8$living_status <- labelled(HRS_ds_hrs_w8$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_hrs8, echo=F}
+vari <- HRS_ds_hrs_w8$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_hrs_w8, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_hrs8, echo=F, results='asis'}
+kable(table(HRS_hrs_w8_ls$R8IWSTAT, HRS_ds_hrs_w8$living_status, useNA = "ifany"), align='c', caption ='R8IWSTAT vs living_status')
+```
+
+```{r importOPAL_hrs8, echo=F}
+living_status <- HRS_ds_hrs_w8
+save(living_status, file = "../RData/hrs_w8/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 9
+
+#### Study-specific variable description
+
+
+
+| **Name** | `R9IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-HRS-w9`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_hrs9, echo=F}
+opal.assign.table.tibble(o, 'HRS_hrs_w9_ls','HRS.HRS-HRS-w9',
+                         variables=list('R9IWSTAT'), missings = TRUE)
+```
+
+```{r local_hrs9, echo=F}
+HRS_hrs_w9_ls <- opal.execute(o,'HRS_hrs_w9_ls')
+vari <- HRS_hrs_w9_ls$R9IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R9IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_hrs_w9_ls, aes(factor(R9IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_hrs9}
+HRS_ds_hrs_w9 <- tibble(id=HRS_hrs_w9_ls$id)
+HRS_ds_hrs_w9$living_status <- car::recode(HRS_hrs_w9_ls$R9IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_hrs_w9$living_status <- labelled(HRS_ds_hrs_w9$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_hrs9, echo=F}
+vari <- HRS_ds_hrs_w9$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_hrs_w9, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_hrs9, echo=F, results='asis'}
+kable(table(HRS_hrs_w9_ls$R9IWSTAT, HRS_ds_hrs_w9$living_status, useNA = "ifany"), align='c', caption ='R9IWSTAT vs living_status')
+```
+
+```{r importOPAL_hrs9, echo=F}
+living_status <- HRS_ds_hrs_w9
+save(living_status, file = "../RData/hrs_w9/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 10
+
+#### Study-specific variable description
+
+| **Name** | `R10IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-HRS-w10`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_hrs10, echo=F}
+opal.assign.table.tibble(o, 'HRS_hrs_w10_ls','HRS.HRS-HRS-w10', variables=list('R10IWSTAT'), missings = TRUE)
+```
+
+```{r local_hrs10, echo=F}
+HRS_hrs_w10_ls <- opal.execute(o,'HRS_hrs_w10_ls')
+vari <- HRS_hrs_w10_ls$R10IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R10IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_hrs_w10_ls, aes(factor(R10IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_hrs10}
+HRS_ds_hrs_w10 <- tibble(id=HRS_hrs_w10_ls$id)
+HRS_ds_hrs_w10$living_status <- car::recode(HRS_hrs_w10_ls$R10IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_hrs_w10$living_status <- labelled(HRS_ds_hrs_w10$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_hrs10, echo=F}
+vari <- HRS_ds_hrs_w10$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_hrs_w10, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_hrs10, echo=F, results='asis'}
+kable(table(HRS_hrs_w10_ls$R10IWSTAT, HRS_ds_hrs_w10$living_status, useNA = "ifany"), align='c', caption ='R10IWSTAT vs living_status')
+```
+
+```{r importOPAL_hrs10, echo=F}
+living_status <- HRS_ds_hrs_w10
+save(living_status, file = "../RData/hrs_w10/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 11
+
+#### Study-specific variable description
+
+| **Name** | `R11IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-HRS-w11`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+
+```{r assign_hrs11, echo=F}
+opal.assign.table.tibble(o, 'HRS_hrs_w11_ls','HRS.HRS-HRS-w11',
+                         variables=list('R11IWSTAT'), missings = TRUE)
+```
+
+
+```{r local_hrs11, echo=F}
+HRS_hrs_w11_ls <- opal.execute(o,'HRS_hrs_w11_ls')
+vari <- HRS_hrs_w11_ls$R11IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R11IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_hrs_w11_ls, aes(factor(R11IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_hrs11}
+HRS_ds_hrs_w11 <- tibble(id=HRS_hrs_w11_ls$id)
+HRS_ds_hrs_w11$living_status <- car::recode(HRS_hrs_w11_ls$R11IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_hrs_w11$living_status <- labelled(HRS_ds_hrs_w11$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_hrs11, echo=F}
+vari <- HRS_ds_hrs_w11$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_hrs_w11, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_hrs11, echo=F, results='asis'}
+kable(table(HRS_hrs_w11_ls$R11IWSTAT, HRS_ds_hrs_w11$living_status, useNA = "ifany"), align='c', caption ='R11IWSTAT vs living_status')
+```
+
+```{r importOPAL_hrs11, echo=F}
+living_status <- HRS_ds_hrs_w11
+save(living_status, file = "../RData/hrs_w11/living_status.RData")
+rm(living_status)
+```
+
+### Validation throughout waves
+
+```{r valid_ws_hrs, echo=F}
+dbb <- merge(HRS_ds_hrs_w1, HRS_ds_hrs_w2, by = "id", suffixes = c(".w1", ".w2"), all = T)
+dbb <- merge(dbb, HRS_ds_hrs_w3, by = "id", all = T)
+dbb <- merge(dbb, HRS_ds_hrs_w4, by = "id", suffixes = c(".w3", ".w4"), all = T)
+dbb <- merge(dbb, HRS_ds_hrs_w5, by = "id", all = T)
+dbb <- merge(dbb, HRS_ds_hrs_w6, by = "id", suffixes = c(".w5", ".w6"), all = T)
+dbb <- merge(dbb, HRS_ds_hrs_w7, by = "id", all = T)
+dbb <- merge(dbb, HRS_ds_hrs_w8, by = "id", suffixes = c(".w7", ".w8"), all = T)
+dbb <- merge(dbb, HRS_ds_hrs_w9, by = "id", all = T)
+dbb <- merge(dbb, HRS_ds_hrs_w10, by = "id", suffixes = c(".w9", ".w10"), all = T)
+dbb <- merge(dbb, HRS_ds_hrs_w11, by = "id", all = T)
+#dbb <- dbb[,-1]
+dbb[dbb == 996] <- NA
+names(dbb) <- c("id", "w1", "w2", "w3", "w4", "w5", "w6", "w7", "w8", "w9", "w10", "w11")
+v.dbb <- paste(dbb[, 2], dbb[, 3], dbb[, 4], dbb[, 5], dbb[, 6], dbb[, 7], dbb[, 8], dbb[, 9], dbb[, 10], dbb[, 11], dbb[, 12], sep = "")
+f.dbb <- frq(v.dbb)[[1]][, c(1, 2, 4)]
+kable(f.dbb)
+#kable(f.dbb[f.dbb[, 3] >= 0.3, ])
+```
+
+
+## AHEAD
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `R2IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-AHEAD-w2`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_ahead2, echo=F}
+opal.assign.table.tibble(o, 'HRS_ahead_w2_ls','HRS.HRS-AHEAD-w2', variables=list('R2IWSTAT'), missings = TRUE)
+```
+
+```{r local_ahead2, echo=F}
+HRS_ahead_w2_ls <- opal.execute(o,'HRS_ahead_w2_ls')
+vari <- HRS_ahead_w2_ls$R2IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R2IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ahead_w2_ls, aes(factor(R2IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_ahead2}
+HRS_ds_ahead_w2 <- tibble(id=HRS_ahead_w2_ls$id)
+HRS_ds_ahead_w2$living_status <- car::recode(HRS_ahead_w2_ls$R2IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_ahead_w2$living_status <- labelled(HRS_ds_ahead_w2$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_ahead2, echo=F}
+vari <- HRS_ds_ahead_w2$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ahead_w2, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ahead2, echo=F, results='asis'}
+kable(table(HRS_ahead_w2_ls$R2IWSTAT, HRS_ds_ahead_w2$living_status, useNA = "ifany"), align='c', caption ='R2IWSTAT vs living_status')
+```
+
+```{r importOPAL_ahead2, echo=F}
+living_status <- HRS_ds_ahead_w2
+save(living_status, file = "../RData/ahead_w2/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 3 
+
+#### Study-specific variable description
+
+| **Name** | `R3IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-AHEAD-w3`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_ahead3, echo=F}
+opal.assign.table.tibble(o, 'HRS_ahead_w3_ls','HRS.HRS-AHEAD-w3', variables=list('R3IWSTAT'), missings = TRUE)
+```
+
+```{r local_ahead3, echo=F}
+HRS_ahead_w3_ls <- opal.execute(o,'HRS_ahead_w3_ls')
+vari <- HRS_ahead_w3_ls$R3IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R3IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ahead_w3_ls, aes(factor(R3IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+
+**R script:**
+
+```{r harmo_ahead3}
+HRS_ds_ahead_w3 <- tibble(id=HRS_ahead_w3_ls$id)
+HRS_ds_ahead_w3$living_status <- car::recode(HRS_ahead_w3_ls$R3IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_ahead_w3$living_status <- labelled(HRS_ds_ahead_w3$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_ahead3, echo=F}
+vari <- HRS_ds_ahead_w3$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ahead_w3, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ahead3, echo=F, results='asis'}
+kable(table(HRS_ahead_w3_ls$R3IWSTAT, HRS_ds_ahead_w3$living_status, useNA = "ifany"), align='c', caption ='R3IWSTAT vs living_status')
+```
+
+```{r importOPAL_ahead3, echo=F}
+living_status <- HRS_ds_ahead_w3
+save(living_status, file = "../RData/ahead_w3/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 4 
+
+#### Study-specific variable description
+
+| **Name** | `R4IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-AHEAD-w4`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_ahead4, echo=F}
+opal.assign.table.tibble(o, 'HRS_ahead_w4_ls','HRS.HRS-AHEAD-w4',
+                         variables=list('R4IWSTAT'), missings = TRUE)
+```
+
+```{r local_ahead4, echo=F}
+HRS_ahead_w4_ls <- opal.execute(o,'HRS_ahead_w4_ls')
+vari <- HRS_ahead_w4_ls$R4IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R4IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ahead_w4_ls, aes(factor(R4IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_ahead4}
+HRS_ds_ahead_w4 <- tibble(id=HRS_ahead_w4_ls$id)
+HRS_ds_ahead_w4$living_status <- car::recode(HRS_ahead_w4_ls$R4IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_ahead_w4$living_status <- labelled(HRS_ds_ahead_w4$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_ahead4, echo=F}
+vari <- HRS_ds_ahead_w4$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ahead_w4, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ahead4, echo=F, results='asis'}
+kable(table(HRS_ahead_w4_ls$R4IWSTAT, HRS_ds_ahead_w4$living_status, useNA = "ifany"), align='c', caption ='R4IWSTAT vs living_status')
+```
+
+
+```{r importOPAL_ahead4, echo=F}
+living_status <- HRS_ds_ahead_w4
+save(living_status, file = "../RData/ahead_w4/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 5 
+
+#### Study-specific variable description
+
+| **Name** | `R5IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-AHEAD-w5`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_ahead5, echo=F}
+opal.assign.table.tibble(o, 'HRS_ahead_w5_ls','HRS.HRS-AHEAD-w5',  variables=list('R5IWSTAT'), missings = TRUE)
+```
+
+```{r local_ahead5, echo=F}
+HRS_ahead_w5_ls <- opal.execute(o,'HRS_ahead_w5_ls')
+vari <- HRS_ahead_w5_ls$R5IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R5IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ahead_w5_ls, aes(factor(R5IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+
+**R script:**
+
+```{r harmo_ahead5}
+HRS_ds_ahead_w5 <- tibble(id=HRS_ahead_w5_ls$id)
+HRS_ds_ahead_w5$living_status <- car::recode(HRS_ahead_w5_ls$R5IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_ahead_w5$living_status <- labelled(HRS_ds_ahead_w5$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_ahead5, echo=F}
+vari <- HRS_ds_ahead_w5$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ahead_w5, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ahead5, echo=F, results='asis'}
+kable(table(HRS_ahead_w5_ls$R5IWSTAT, HRS_ds_ahead_w5$living_status, useNA = "ifany"), align='c', caption ='R5IWSTAT vs living_status')
+```
+
+```{r importOPAL_ahead5, echo=F}
+living_status <- HRS_ds_ahead_w5
+save(living_status, file = "../RData/ahead_w5/living_status.RData")
+rm(living_status)
+```
+
+
+
+### Wave 6 
+
+#### Study-specific variable description
+
+| **Name** | `R6IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-AHEAD-w6`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_ahead6, echo=F}
+opal.assign.table.tibble(o, 'HRS_ahead_w6_ls','HRS.HRS-AHEAD-w6', variables=list('R6IWSTAT'), missings = TRUE)
+```
+
+```{r local_ahead6, echo=F}
+HRS_ahead_w6_ls <- opal.execute(o,'HRS_ahead_w6_ls')
+vari <- HRS_ahead_w6_ls$R6IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R6IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ahead_w6_ls, aes(factor(R6IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_ahead6}
+HRS_ds_ahead_w6 <- tibble(id=HRS_ahead_w6_ls$id)
+HRS_ds_ahead_w6$living_status <- car::recode(HRS_ahead_w6_ls$R6IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_ahead_w6$living_status <- labelled(HRS_ds_ahead_w6$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_ahead6, echo=F}
+vari <- HRS_ds_ahead_w6$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ahead_w6, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ahead6, echo=F, results='asis'}
+kable(table(HRS_ahead_w6_ls$R6IWSTAT, HRS_ds_ahead_w6$living_status, useNA = "ifany"), align='c', caption ='R6IWSTAT vs living_status')
+```
+
+```{r importOPAL_ahead6, echo=F}
+living_status <- HRS_ds_ahead_w6
+save(living_status, file = "../RData/ahead_w6/living_status.RData")
+rm(living_status)
+```
+
+
+
+### Wave 7 
+
+#### Study-specific variable description
+
+| **Name** | `R7IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-AHEAD-w7`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_ahead7, echo=F}
+opal.assign.table.tibble(o, 'HRS_ahead_w7_ls','HRS.HRS-AHEAD-w7', variables=list('R7IWSTAT'), missings = TRUE)
+```
+
+```{r local_ahead7, echo=F}
+HRS_ahead_w7_ls <- opal.execute(o,'HRS_ahead_w7_ls')
+vari <- HRS_ahead_w7_ls$R7IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R7IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ahead_w7_ls, aes(factor(R7IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_ahead7}
+HRS_ds_ahead_w7 <- tibble(id=HRS_ahead_w7_ls$id)
+HRS_ds_ahead_w7$living_status <- car::recode(HRS_ahead_w7_ls$R7IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_ahead_w7$living_status <- labelled(HRS_ds_ahead_w7$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_ahead7, echo=F}
+vari <- HRS_ds_ahead_w7$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ahead_w7, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ahead7, echo=F, results='asis'}
+kable(table(HRS_ahead_w7_ls$R7IWSTAT, HRS_ds_ahead_w7$living_status, useNA = "ifany"), align='c', caption ='R7IWSTAT vs living_status')
+```
+
+```{r importOPAL_ahead7, echo=F}
+living_status <- HRS_ds_ahead_w7
+save(living_status, file = "../RData/ahead_w7/living_status.RData")
+rm(living_status)
+```
+
+
+
+
+### Wave 8 
+
+#### Study-specific variable description
+
+| **Name** | `R8IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-AHEAD-w8`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_ahead8, echo=F}
+opal.assign.table.tibble(o, 'HRS_ahead_w8_ls','HRS.HRS-AHEAD-w8',  variables=list('R8IWSTAT'), missings = TRUE)
+```
+
+```{r local_ahead8, echo=F}
+HRS_ahead_w8_ls <- opal.execute(o,'HRS_ahead_w8_ls')
+vari <- HRS_ahead_w8_ls$R8IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R8IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ahead_w8_ls, aes(factor(R8IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_ahead8}
+HRS_ds_ahead_w8 <- tibble(id=HRS_ahead_w8_ls$id)
+HRS_ds_ahead_w8$living_status <- car::recode(HRS_ahead_w8_ls$R8IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_ahead_w8$living_status <- labelled(HRS_ds_ahead_w8$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_ahead8, echo=F}
+vari <- HRS_ds_ahead_w8$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ahead_w8, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ahead8, echo=F, results='asis'}
+kable(table(HRS_ahead_w8_ls$R8IWSTAT, HRS_ds_ahead_w8$living_status, useNA = "ifany"), align='c', caption ='R8IWSTAT vs living_status')
+```
+
+
+```{r importOPAL_ahead8, echo=F}
+living_status <- HRS_ds_ahead_w8
+save(living_status, file = "../RData/ahead_w8/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 9 
+
+#### Study-specific variable description
+
+| **Name** | `R9IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-AHEAD-w9`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_ahead9, echo=F}
+opal.assign.table.tibble(o, 'HRS_ahead_w9_ls','HRS.HRS-AHEAD-w9', variables=list('R9IWSTAT'), missings = TRUE)
+```
+
+```{r local_ahead9, echo=F}
+HRS_ahead_w9_ls <- opal.execute(o,'HRS_ahead_w9_ls')
+vari <- HRS_ahead_w9_ls$R9IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R9IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ahead_w9_ls, aes(factor(R9IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+
+**R script:**
+
+```{r harmo_ahead9}
+HRS_ds_ahead_w9 <- tibble(id=HRS_ahead_w9_ls$id)
+HRS_ds_ahead_w9$living_status <- car::recode(HRS_ahead_w9_ls$R9IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_ahead_w9$living_status <- labelled(HRS_ds_ahead_w9$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_ahead9, echo=F}
+vari <- HRS_ds_ahead_w9$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ahead_w9, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ahead9, echo=F, results='asis'}
+kable(table(HRS_ahead_w9_ls$R9IWSTAT, HRS_ds_ahead_w9$living_status, useNA = "ifany"), align='c', caption ='R9IWSTAT vs living_status')
+```
+
+
+```{r importOPAL_ahead9, echo=F}
+living_status <- HRS_ds_ahead_w9
+save(living_status, file = "../RData/ahead_w9/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 10 
+
+#### Study-specific variable description
+
+| **Name** | `R10IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-AHEAD-w10`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_ahead10, echo=F}
+opal.assign.table.tibble(o, 'HRS_ahead_w10_ls','HRS.HRS-AHEAD-w10', variables=list('R10IWSTAT'), missings = TRUE)
+```
+
+```{r local_ahead10, echo=F}
+HRS_ahead_w10_ls <- opal.execute(o,'HRS_ahead_w10_ls')
+vari <- HRS_ahead_w10_ls$R10IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R10IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ahead_w10_ls, aes(factor(R10IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_ahead10}
+HRS_ds_ahead_w10 <- tibble(id=HRS_ahead_w10_ls$id)
+HRS_ds_ahead_w10$living_status <- car::recode(HRS_ahead_w10_ls$R10IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_ahead_w10$living_status <- labelled(HRS_ds_ahead_w10$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_ahead10, echo=F}
+vari <- HRS_ds_ahead_w10$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ahead_w10, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ahead10, echo=F, results='asis'}
+kable(table(HRS_ahead_w10_ls$R10IWSTAT, HRS_ds_ahead_w10$living_status, useNA = "ifany"), align='c', caption ='R10IWSTAT vs living_status')
+```
+
+```{r importOPAL_ahead10, echo=F}
+living_status <- HRS_ds_ahead_w10
+save(living_status, file = "../RData/ahead_w10/living_status.RData")
+rm(living_status)
+```
+
+### Wave 11 
+
+#### Study-specific variable description
+
+| **Name** | `R11IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-AHEAD-w11`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+```{r assign_ahead11, echo=F}
+opal.assign.table.tibble(o, 'HRS_ahead_w11_ls','HRS.HRS-AHEAD-w11', variables=list('R11IWSTAT'), missings = TRUE)
+```
+
+```{r local_ahead11, echo=F}
+HRS_ahead_w11_ls <- opal.execute(o,'HRS_ahead_w11_ls')
+vari <- HRS_ahead_w11_ls$R11IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R11IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ahead_w11_ls, aes(factor(R11IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_ahead11}
+HRS_ds_ahead_w11 <- tibble(id=HRS_ahead_w11_ls$id)
+HRS_ds_ahead_w11$living_status <- car::recode(HRS_ahead_w11_ls$R11IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_ahead_w11$living_status <- labelled(HRS_ds_ahead_w11$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_ahead11, echo=F}
+vari <- HRS_ds_ahead_w11$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ahead_w11, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ahead11, echo=F, results='asis'}
+kable(table(HRS_ahead_w11_ls$R11IWSTAT, HRS_ds_ahead_w11$living_status, useNA = "ifany"), align='c', caption ='R11IWSTAT vs living_status')
+```
+
+```{r importOPAL_ahead11, echo=F}
+living_status <- HRS_ds_ahead_w11
+save(living_status, file = "../RData/ahead_w11/living_status.RData")
+rm(living_status)
+```
+
+### Validation throughout waves
+
+```{r valid_ws_head, echo=F}
+dbb <- merge(HRS_ds_ahead_w2, HRS_ds_ahead_w3, by = "id", suffixes = c(".w2", ".w3"), all = T)
+dbb <- merge(dbb, HRS_ds_ahead_w4, by = "id", all = T)
+dbb <- merge(dbb, HRS_ds_ahead_w5, by = "id", suffixes = c(".w4", ".w5"), all = T)
+dbb <- merge(dbb, HRS_ds_ahead_w6, by = "id", all = T)
+dbb <- merge(dbb, HRS_ds_ahead_w7, by = "id", suffixes = c(".w6", ".w7"), all = T)
+dbb <- merge(dbb, HRS_ds_ahead_w8, by = "id", all = T)
+dbb <- merge(dbb, HRS_ds_ahead_w9, by = "id", suffixes = c(".w8", ".w9"), all = T)
+dbb <- merge(dbb, HRS_ds_ahead_w10, by = "id", all = T)
+dbb <- merge(dbb, HRS_ds_ahead_w11, by = "id", suffixes = c(".w10", ".w11"), all = T)
+dbb <- dbb[,-1]
+dbb[dbb == 996] <- NA
+names(dbb) <- c("w2", "w3", "w4", "w5", "w6", "w7", "w8", "w9", "w10", "w11")
+v.dbb <- paste(dbb[, 1], dbb[, 2], dbb[, 3], dbb[, 4], dbb[, 5], dbb[, 6], dbb[, 7], dbb[, 8], dbb[, 9], dbb[, 10], sep = "")
+f.dbb <- frq(v.dbb)[[1]][, c(1, 2, 4)]
+kable(f.dbb)
+```
+
+
+## CODA
+
+### Wave 4 
+
+#### Study-specific variable description
+
+| **Name** | `R4IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-CODA-w4`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+```{r assign_coda4, echo=F}
+opal.assign.table.tibble(o, 'HRS_coda_w4_ls','HRS.HRS-CODA-w4', variables=list('R4IWSTAT'), missings = TRUE)
+```
+
+```{r local_coda4, echo=F}
+HRS_coda_w4_ls <- opal.execute(o,'HRS_coda_w4_ls')
+vari <- HRS_coda_w4_ls$R4IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R4IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_coda_w4_ls, aes(factor(R4IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+**R script:**
+
+```{r harmo_coda4}
+HRS_ds_coda_w4 <- tibble(id=HRS_coda_w4_ls$id)
+HRS_ds_coda_w4$living_status <- car::recode(HRS_coda_w4_ls$R4IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_coda_w4$living_status <- labelled(HRS_ds_coda_w4$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_coda4, echo=F}
+vari <- HRS_ds_coda_w4$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_coda_w4, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_coda4, echo=F, results='asis'}
+kable(table(HRS_coda_w4_ls$R4IWSTAT, HRS_ds_coda_w4$living_status, useNA = "ifany"), align='c', caption ='R4IWSTAT vs living_status')
+```
+
+```{r importOPAL_coda4, echo=F}
+living_status <- HRS_ds_coda_w4
+save(living_status, file = "../RData/coda_w4/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 5 
+
+#### Study-specific variable description
+
+| **Name** | `R5IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-CODA-w5`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+```{r assign_coda5, echo=F}
+opal.assign.table.tibble(o, 'HRS_coda_w5_ls','HRS.HRS-CODA-w5', variables=list('R5IWSTAT'), missings = TRUE)
+```
+
+```{r local_coda5, echo=F}
+HRS_coda_w5_ls <- opal.execute(o,'HRS_coda_w5_ls')
+vari <- HRS_coda_w5_ls$R5IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R5IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_coda_w5_ls, aes(factor(R5IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_coda5}
+HRS_ds_coda_w5 <- tibble(id=HRS_coda_w5_ls$id)
+HRS_ds_coda_w5$living_status <- car::recode(HRS_coda_w5_ls$R5IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_coda_w5$living_status <- labelled(HRS_ds_coda_w5$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_coda5, echo=F}
+vari <- HRS_ds_coda_w5$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_coda_w5, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_coda5, echo=F, results='asis'}
+kable(table(HRS_coda_w5_ls$R5IWSTAT, HRS_ds_coda_w5$living_status, useNA = "ifany"), align='c', caption ='R5IWSTAT vs living_status')
+```
+
+```{r importOPAL_coda5, echo=F}
+living_status <- HRS_ds_coda_w5
+save(living_status, file = "../RData/coda_w5/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 6 
+
+#### Study-specific variable description
+
+| **Name** | `R6IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-CODA-w6`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_coda6, echo=F}
+opal.assign.table.tibble(o, 'HRS_coda_w6_ls','HRS.HRS-CODA-w6', variables=list('R6IWSTAT'), missings = TRUE)
+```
+
+```{r local_coda6, echo=F}
+HRS_coda_w6_ls <- opal.execute(o,'HRS_coda_w6_ls')
+vari <- HRS_coda_w6_ls$R6IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R6IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_coda_w6_ls, aes(factor(R6IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_coda6}
+HRS_ds_coda_w6 <- tibble(id=HRS_coda_w6_ls$id)
+HRS_ds_coda_w6$living_status <- car::recode(HRS_coda_w6_ls$R6IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_coda_w6$living_status <- labelled(HRS_ds_coda_w6$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_coda6, echo=F}
+vari <- HRS_ds_coda_w6$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_coda_w6, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_coda6, echo=F, results='asis'}
+kable(table(HRS_coda_w6_ls$R6IWSTAT, HRS_ds_coda_w6$living_status, useNA = "ifany"), align='c', caption ='R6IWSTAT vs living_status')
+```
+
+```{r importOPAL_coda6, echo=F}
+living_status <- HRS_ds_coda_w6
+save(living_status, file = "../RData/coda_w6/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 7 
+
+#### Study-specific variable description
+
+| **Name** | `R7IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-CODA-w7`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+```{r assign_coda7, echo=F}
+opal.assign.table.tibble(o, 'HRS_coda_w7_ls','HRS.HRS-CODA-w7', variables=list('R7IWSTAT'), missings = TRUE)
+```
+
+```{r local_coda7, echo=F}
+HRS_coda_w7_ls <- opal.execute(o,'HRS_coda_w7_ls')
+vari <- HRS_coda_w7_ls$R7IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R7IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_coda_w7_ls, aes(factor(R7IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_coda7}
+HRS_ds_coda_w7 <- tibble(id=HRS_coda_w7_ls$id)
+HRS_ds_coda_w7$living_status <- car::recode(HRS_coda_w7_ls$R7IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_coda_w7$living_status <- labelled(HRS_ds_coda_w7$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_coda7, echo=F}
+vari <- HRS_ds_coda_w7$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_coda_w7, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_coda7, echo=F, results='asis'}
+kable(table(HRS_coda_w7_ls$R7IWSTAT, HRS_ds_coda_w7$living_status, useNA = "ifany"), align='c', caption ='R7IWSTAT vs living_status')
+```
+
+```{r importOPAL_coda7, echo=F}
+living_status <- HRS_ds_coda_w7
+save(living_status, file = "../RData/coda_w7/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 8 
+
+#### Study-specific variable description
+
+| **Name** | `R8IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-CODA-w8`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_coda8, echo=F}
+opal.assign.table.tibble(o, 'HRS_coda_w8_ls','HRS.HRS-CODA-w8',
+                         variables=list('R8IWSTAT'), missings = TRUE)
+```
+
+```{r local_coda8, echo=F}
+HRS_coda_w8_ls <- opal.execute(o,'HRS_coda_w8_ls')
+vari <- HRS_coda_w8_ls$R8IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R8IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_coda_w8_ls, aes(factor(R8IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_coda8}
+HRS_ds_coda_w8 <- tibble(id=HRS_coda_w8_ls$id)
+HRS_ds_coda_w8$living_status <- car::recode(HRS_coda_w8_ls$R8IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_coda_w8$living_status <- labelled(HRS_ds_coda_w8$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_coda8, echo=F}
+vari <- HRS_ds_coda_w8$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_coda_w8, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_coda8, echo=F, results='asis'}
+kable(table(HRS_coda_w8_ls$R8IWSTAT, HRS_ds_coda_w8$living_status, useNA = "ifany"), align='c', caption ='R8IWSTAT vs living_status')
+```
+
+```{r importOPAL_coda8, echo=F}
+living_status <- HRS_ds_coda_w8
+save(living_status, file = "../RData/coda_w8/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 9 
+
+#### Study-specific variable description
+
+| **Name** | `R9IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-CODA-w9`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_coda9, echo=F}
+opal.assign.table.tibble(o, 'HRS_coda_w9_ls','HRS.HRS-CODA-w9', variables=list('R9IWSTAT'), missings = TRUE)
+```
+
+```{r local_coda9, echo=F}
+HRS_coda_w9_ls <- opal.execute(o,'HRS_coda_w9_ls')
+vari <- HRS_coda_w9_ls$R9IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R9IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_coda_w9_ls, aes(factor(R9IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_coda9}
+HRS_ds_coda_w9 <- tibble(id=HRS_coda_w9_ls$id)
+HRS_ds_coda_w9$living_status <- car::recode(HRS_coda_w9_ls$R9IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_coda_w9$living_status <- labelled(HRS_ds_coda_w9$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_coda9, echo=F}
+vari <- HRS_ds_coda_w9$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_coda_w9, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_coda9, echo=F, results='asis'}
+kable(table(HRS_coda_w9_ls$R9IWSTAT, HRS_ds_coda_w9$living_status, useNA = "ifany"), align='c', caption ='R9IWSTAT vs living_status')
+```
+
+```{r importOPAL_coda9, echo=F}
+living_status <- HRS_ds_coda_w9
+save(living_status, file = "../RData/coda_w9/living_status.RData")
+rm(living_status)
+```
+
+### Wave 10 
+
+#### Study-specific variable description
+
+| **Name** | `R10IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-CODA-w10`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_coda10, echo=F}
+opal.assign.table.tibble(o, 'HRS_coda_w10_ls','HRS.HRS-CODA-w10', variables=list('R10IWSTAT'), missings = TRUE)
+```
+
+```{r local_coda10, echo=F}
+HRS_coda_w10_ls <- opal.execute(o,'HRS_coda_w10_ls')
+vari <- HRS_coda_w10_ls$R10IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R10IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_coda_w10_ls, aes(factor(R10IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_coda10}
+HRS_ds_coda_w10 <- tibble(id=HRS_coda_w10_ls$id)
+HRS_ds_coda_w10$living_status <- car::recode(HRS_coda_w10_ls$R10IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_coda_w10$living_status <- labelled(HRS_ds_coda_w10$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_coda10, echo=F}
+vari <- HRS_ds_coda_w10$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_coda_w10, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_coda10, echo=F, results='asis'}
+kable(table(HRS_coda_w10_ls$R10IWSTAT, HRS_ds_coda_w10$living_status, useNA = "ifany"), align='c', caption ='R10IWSTAT vs living_status')
+```
+
+```{r importOPAL_coda10, echo=F}
+living_status <- HRS_ds_coda_w10
+save(living_status, file = "../RData/coda_w10/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 11 
+
+#### Study-specific variable description
+
+| **Name** | `R11IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-CODA-w11`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_coda11, echo=F}
+opal.assign.table.tibble(o, 'HRS_coda_w11_ls','HRS.HRS-CODA-w11', variables=list('R11IWSTAT'), missings = TRUE)
+```
+
+```{r local_coda11, echo=F}
+HRS_coda_w11_ls <- opal.execute(o,'HRS_coda_w11_ls')
+vari <- HRS_coda_w11_ls$R11IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R11IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_coda_w11_ls, aes(factor(R11IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_coda11}
+HRS_ds_coda_w11 <- tibble(id=HRS_coda_w11_ls$id)
+HRS_ds_coda_w11$living_status <- car::recode(HRS_coda_w11_ls$R11IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_coda_w11$living_status <- labelled(HRS_ds_coda_w11$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_coda11, echo=F}
+vari <- HRS_ds_coda_w11$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_coda_w11, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_coda11, echo=F, results='asis'}
+kable(table(HRS_coda_w11_ls$R11IWSTAT, HRS_ds_coda_w11$living_status, useNA = "ifany"), align='c', caption ='R11IWSTAT vs living_status')
+```
+
+```{r importOPAL_coda11, echo=F}
+living_status <- HRS_ds_coda_w11
+save(living_status, file = "../RData/coda_w11/living_status.RData")
+rm(living_status)
+```
+
+### Validation throughout waves
+
+```{r valid_ws_coda, echo=F}
+dbb <- merge(HRS_ds_coda_w4, HRS_ds_coda_w5, by = "id", suffixes = c(".w4", ".w5"), all = T)
+dbb <- merge(dbb, HRS_ds_coda_w6, by = "id", all = T)
+dbb <- merge(dbb, HRS_ds_coda_w7, by = "id", suffixes = c(".w6", ".w7"), all = T)
+dbb <- merge(dbb, HRS_ds_coda_w8, by = "id", all = T)
+dbb <- merge(dbb, HRS_ds_coda_w9, by = "id", suffixes = c(".w8", ".w9"), all = T)
+dbb <- merge(dbb, HRS_ds_coda_w10, by = "id", all = T)
+dbb <- merge(dbb, HRS_ds_coda_w11, by = "id", suffixes = c(".w10", ".w11"), all = T)
+dbb <- dbb[,-1]
+dbb[dbb == 996] <- NA
+names(dbb) <- c("w4", "w5", "w6", "w7", "w8", "w9", "w10", "w11")
+v.dbb <- paste(dbb[, 1], dbb[, 2], dbb[, 3], dbb[, 4], dbb[, 5], dbb[, 6], dbb[, 7], dbb[, 8], sep = "")
+f.dbb <- frq(v.dbb)[[1]][, c(1, 2, 4)]
+kable(f.dbb)
+```
+
+
+## WB
+
+### Wave 4  
+
+#### Study-specific variable description
+
+| **Name** | `R4IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-WB-w4`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+```{r assign_wb4, echo=F}
+opal.assign.table.tibble(o, 'HRS_wb_w4_ls','HRS.HRS-WB-w4', variables=list('R4IWSTAT'), missings = TRUE)
+```
+
+```{r local_wb4, echo=F}
+HRS_wb_w4_ls <- opal.execute(o,'HRS_wb_w4_ls')
+vari <- HRS_wb_w4_ls$R4IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R4IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_wb_w4_ls, aes(factor(R4IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+**R script:**
+
+```{r harmo_wb4}
+HRS_ds_wb_w4 <- tibble(id=HRS_wb_w4_ls$id)
+HRS_ds_wb_w4$living_status <- car::recode(HRS_wb_w4_ls$R4IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_wb_w4$living_status <- labelled(HRS_ds_wb_w4$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_wb4, echo=F}
+vari <- HRS_ds_wb_w4$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_wb_w4, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_wb4, echo=F, results='asis'}
+kable(table(HRS_wb_w4_ls$R4IWSTAT, HRS_ds_wb_w4$living_status, useNA = "ifany"), align='c', caption ='R4IWSTAT vs living_status')
+```
+
+```{r importOPAL_wb4, echo=F}
+living_status <- HRS_ds_wb_w4
+save(living_status, file = "../RData/wb_w4/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 5  
+
+#### Study-specific variable description
+
+| **Name** | `R5IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-WB-w5`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_wb5, echo=F}
+opal.assign.table.tibble(o, 'HRS_wb_w5_ls','HRS.HRS-WB-w5', variables=list('R5IWSTAT'), missings = TRUE)
+```
+
+```{r local_wb5, echo=F}
+HRS_wb_w5_ls <- opal.execute(o,'HRS_wb_w5_ls')
+vari <- HRS_wb_w5_ls$R5IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R5IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_wb_w5_ls, aes(factor(R5IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_wb5}
+HRS_ds_wb_w5 <- tibble(id=HRS_wb_w5_ls$id)
+HRS_ds_wb_w5$living_status <- car::recode(HRS_wb_w5_ls$R5IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_wb_w5$living_status <- labelled(HRS_ds_wb_w5$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_wb5, echo=F}
+vari <- HRS_ds_wb_w5$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_wb_w5, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_wb5, echo=F, results='asis'}
+kable(table(HRS_wb_w5_ls$R5IWSTAT, HRS_ds_wb_w5$living_status, useNA = "ifany"), align='c', caption ='R5IWSTAT vs living_status')
+```
+
+```{r importOPAL_wb5, echo=F}
+living_status <- HRS_ds_wb_w5
+save(living_status, file = "../RData/wb_w5/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 6  
+
+#### Study-specific variable description
+
+| **Name** | `R6IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-WB-w6`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_wb6, echo=F}
+opal.assign.table.tibble(o, 'HRS_wb_w6_ls','HRS.HRS-WB-w6', variables=list('R6IWSTAT'), missings = TRUE)
+```
+
+```{r local_wb6, echo=F}
+HRS_wb_w6_ls <- opal.execute(o,'HRS_wb_w6_ls')
+vari <- HRS_wb_w6_ls$R6IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R6IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_wb_w6_ls, aes(factor(R6IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+**R script:**
+
+```{r harmo_wb6}
+HRS_ds_wb_w6 <- tibble(id=HRS_wb_w6_ls$id)
+HRS_ds_wb_w6$living_status <- car::recode(HRS_wb_w6_ls$R6IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_wb_w6$living_status <- labelled(HRS_ds_wb_w6$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_wb6, echo=F}
+vari <- HRS_ds_wb_w6$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_wb_w6, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_wb6, echo=F, results='asis'}
+kable(table(HRS_wb_w6_ls$R6IWSTAT, HRS_ds_wb_w6$living_status, useNA = "ifany"), align='c', caption ='R6IWSTAT vs living_status')
+```
+
+```{r importOPAL_wb6, echo=F}
+living_status <- HRS_ds_wb_w6
+save(living_status, file = "../RData/wb_w6/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 7  
+
+#### Study-specific variable description
+
+| **Name** | `R7IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-WB-w7`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_wb7, echo=F}
+opal.assign.table.tibble(o, 'HRS_wb_w7_ls','HRS.HRS-WB-w7', variables=list('R7IWSTAT'), missings = TRUE)
+```
+
+```{r local_wb7, echo=F}
+HRS_wb_w7_ls <- opal.execute(o,'HRS_wb_w7_ls')
+vari <- HRS_wb_w7_ls$R7IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R7IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_wb_w7_ls, aes(factor(R7IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_wb7}
+HRS_ds_wb_w7 <- tibble(id=HRS_wb_w7_ls$id)
+HRS_ds_wb_w7$living_status <- car::recode(HRS_wb_w7_ls$R7IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_wb_w7$living_status <- labelled(HRS_ds_wb_w7$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_wb7, echo=F}
+vari <- HRS_ds_wb_w7$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_wb_w7, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_wb7, echo=F, results='asis'}
+kable(table(HRS_wb_w7_ls$R7IWSTAT, HRS_ds_wb_w7$living_status, useNA = "ifany"), align='c', caption ='R7IWSTAT vs living_status')
+```
+
+```{r importOPAL_wb7, echo=F}
+living_status <- HRS_ds_wb_w7
+save(living_status, file = "../RData/wb_w7/living_status.RData")
+rm(living_status)
+```
+
+
+
+### Wave 8  
+
+#### Study-specific variable description
+
+| **Name** | `R8IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-WB-w8`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_wb8, echo=F}
+opal.assign.table.tibble(o, 'HRS_wb_w8_ls','HRS.HRS-WB-w8', variables=list('R8IWSTAT'), missings = TRUE)
+```
+
+```{r local_wb8, echo=F}
+HRS_wb_w8_ls <- opal.execute(o,'HRS_wb_w8_ls')
+vari <- HRS_wb_w8_ls$R8IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R8IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_wb_w8_ls, aes(factor(R8IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_wb8}
+HRS_ds_wb_w8 <- tibble(id=HRS_wb_w8_ls$id)
+HRS_ds_wb_w8$living_status <- car::recode(HRS_wb_w8_ls$R8IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_wb_w8$living_status <- labelled(HRS_ds_wb_w8$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_wb8, echo=F}
+vari <- HRS_ds_wb_w8$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_wb_w8, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_wb8, echo=F, results='asis'}
+kable(table(HRS_wb_w8_ls$R8IWSTAT, HRS_ds_wb_w8$living_status, useNA = "ifany"), align='c', caption ='R8IWSTAT vs living_status')
+```
+
+```{r importOPAL_wb8, echo=F}
+living_status <- HRS_ds_wb_w8
+save(living_status, file = "../RData/wb_w8/living_status.RData")
+rm(living_status)
+```
+
+
+
+### Wave 9  
+
+#### Study-specific variable description
+
+| **Name** | `R9IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-WB-w9`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_wb9, echo=F}
+opal.assign.table.tibble(o, 'HRS_wb_w9_ls','HRS.HRS-WB-w9', variables=list('R9IWSTAT'), missings = TRUE)
+```
+
+```{r local_wb9, echo=F}
+HRS_wb_w9_ls <- opal.execute(o,'HRS_wb_w9_ls')
+vari <- HRS_wb_w9_ls$R9IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R9IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_wb_w9_ls, aes(factor(R9IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_wb9}
+HRS_ds_wb_w9 <- tibble(id=HRS_wb_w9_ls$id)
+HRS_ds_wb_w9$living_status <- car::recode(HRS_wb_w9_ls$R9IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_wb_w9$living_status <- labelled(HRS_ds_wb_w9$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_wb9, echo=F}
+vari <- HRS_ds_wb_w9$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_wb_w9, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_wb9, echo=F, results='asis'}
+kable(table(HRS_wb_w9_ls$R9IWSTAT, HRS_ds_wb_w9$living_status, useNA = "ifany"), align='c', caption ='R9IWSTAT vs living_status')
+```
+
+```{r importOPAL_wb9, echo=F}
+living_status <- HRS_ds_wb_w9
+save(living_status, file = "../RData/wb_w9/living_status.RData")
+rm(living_status)
+```
+
+
+
+### Wave 10  
+
+#### Study-specific variable description
+
+| **Name** | `R10IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-WB-w10`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_wb10, echo=F}
+opal.assign.table.tibble(o, 'HRS_wb_w10_ls','HRS.HRS-WB-w10', variables=list('R10IWSTAT'), missings = TRUE)
+```
+
+```{r local_wb10, echo=F}
+HRS_wb_w10_ls <- opal.execute(o,'HRS_wb_w10_ls')
+vari <- HRS_wb_w10_ls$R10IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R10IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_wb_w10_ls, aes(factor(R10IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_wb10}
+HRS_ds_wb_w10 <- tibble(id=HRS_wb_w10_ls$id)
+HRS_ds_wb_w10$living_status <- car::recode(HRS_wb_w10_ls$R10IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_wb_w10$living_status <- labelled(HRS_ds_wb_w10$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_wb10, echo=F}
+vari <- HRS_ds_wb_w10$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_wb_w10, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_wb10, echo=F, results='asis'}
+kable(table(HRS_wb_w10_ls$R10IWSTAT, HRS_ds_wb_w10$living_status, useNA = "ifany"), align='c', caption ='R10IWSTAT vs living_status')
+```
+
+```{r importOPAL_wb10, echo=F}
+living_status <- HRS_ds_wb_w10
+save(living_status, file = "../RData/wb_w10/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 11  
+
+#### Study-specific variable description
+
+| **Name** | `R11IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-WB-w11`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_wb11, echo=F}
+opal.assign.table.tibble(o, 'HRS_wb_w11_ls','HRS.HRS-WB-w11', variables=list('R11IWSTAT'), missings = TRUE)
+```
+
+```{r local_wb11, echo=F}
+HRS_wb_w11_ls <- opal.execute(o,'HRS_wb_w11_ls')
+vari <- HRS_wb_w11_ls$R11IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R11IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_wb_w11_ls, aes(factor(R11IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+
+**R script:**
+
+```{r harmo_wb11}
+HRS_ds_wb_w11 <- tibble(id=HRS_wb_w11_ls$id)
+HRS_ds_wb_w11$living_status <- car::recode(HRS_wb_w11_ls$R11IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_wb_w11$living_status <- labelled(HRS_ds_wb_w11$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_wb11, echo=F}
+vari <- HRS_ds_wb_w11$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_wb_w11, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_wb11, echo=F, results='asis'}
+kable(table(HRS_wb_w11_ls$R11IWSTAT, HRS_ds_wb_w11$living_status, useNA = "ifany"), align='c', caption ='R11IWSTAT vs living_status')
+```
+
+```{r importOPAL_wb11, echo=F}
+living_status <- HRS_ds_wb_w11
+save(living_status, file = "../RData/wb_w11/living_status.RData")
+rm(living_status)
+```
+
+### Validation throughout waves
+
+```{r valid_ws_wb, echo=F}
+dbb <- merge(HRS_ds_wb_w4, HRS_ds_wb_w5, by = "id", suffixes = c(".w4", ".w5"), all = T)
+dbb <- merge(dbb, HRS_ds_wb_w6, by = "id", all = T)
+dbb <- merge(dbb, HRS_ds_wb_w7, by = "id", suffixes = c(".w6", ".w7"), all = T)
+dbb <- merge(dbb, HRS_ds_wb_w8, by = "id", all = T)
+dbb <- merge(dbb, HRS_ds_wb_w9, by = "id", suffixes = c(".w8", ".w9"), all = T)
+dbb <- merge(dbb, HRS_ds_wb_w10, by = "id", all = T)
+dbb <- merge(dbb, HRS_ds_wb_w11, by = "id", suffixes = c(".w10", ".w11"), all = T)
+dbb <- dbb[,-1]
+dbb[dbb == 996] <- NA
+names(dbb) <- c("w4", "w5", "w6", "w7", "w8", "w9", "w10", "w11")
+v.dbb <- paste(dbb[, 1], dbb[, 2], dbb[, 3], dbb[, 4], dbb[, 5], dbb[, 6], dbb[, 7], dbb[, 8], sep = "")
+f.dbb <- frq(v.dbb)[[1]][, c(1, 2, 4)]
+kable(f.dbb)
+```
+
+
+## EBB
+
+### Wave 7  
+
+#### Study-specific variable description
+
+| **Name** | `R7IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-EBB-w7`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+```{r assign_ebb7, echo=F}
+opal.assign.table.tibble(o, 'HRS_ebb_w7_ls','HRS.HRS-EBB-w7', variables=list('R7IWSTAT'), missings = TRUE)
+```
+
+```{r local_ebb7, echo=F}
+HRS_ebb_w7_ls <- opal.execute(o,'HRS_ebb_w7_ls')
+vari <- HRS_ebb_w7_ls$R7IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R7IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ebb_w7_ls, aes(factor(R7IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+**R script:**
+
+```{r harmo_ebb7}
+HRS_ds_ebb_w7 <- tibble(id=HRS_ebb_w7_ls$id)
+HRS_ds_ebb_w7$living_status <- car::recode(HRS_ebb_w7_ls$R7IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_ebb_w7$living_status <- labelled(HRS_ds_ebb_w7$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_ebb7, echo=F}
+vari <- HRS_ds_ebb_w7$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ebb_w7, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ebb7, echo=F, results='asis'}
+kable(table(HRS_ebb_w7_ls$R7IWSTAT, HRS_ds_ebb_w7$living_status, useNA = "ifany"), align='c', caption ='R7IWSTAT vs living_status')
+```
+
+```{r importOPAL_ebb7, echo=F}
+living_status <- HRS_ds_ebb_w7
+save(living_status, file = "../RData/ebb_w7/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 8  
+
+#### Study-specific variable description
+
+| **Name** | `R8IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-EBB-w8`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_ebb8, echo=F}
+opal.assign.table.tibble(o, 'HRS_ebb_w8_ls','HRS.HRS-EBB-w8', variables=list('R8IWSTAT'), missings = TRUE)
+```
+
+```{r local_ebb8, echo=F}
+HRS_ebb_w8_ls <- opal.execute(o,'HRS_ebb_w8_ls')
+vari <- HRS_ebb_w8_ls$R8IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R8IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ebb_w8_ls, aes(factor(R8IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_ebb8}
+HRS_ds_ebb_w8 <- tibble(id=HRS_ebb_w8_ls$id)
+HRS_ds_ebb_w8$living_status <- car::recode(HRS_ebb_w8_ls$R8IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_ebb_w8$living_status <- labelled(HRS_ds_ebb_w8$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_ebb8, echo=F}
+vari <- HRS_ds_ebb_w8$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ebb_w8, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ebb8, echo=F, results='asis'}
+kable(table(HRS_ebb_w8_ls$R8IWSTAT, HRS_ds_ebb_w8$living_status, useNA = "ifany"), align='c', caption ='R8IWSTAT vs living_status')
+```
+
+```{r importOPAL_ebb8, echo=F}
+living_status <- HRS_ds_ebb_w8
+save(living_status, file = "../RData/ebb_w8/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 9  
+
+#### Study-specific variable description
+
+| **Name** | `R9IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-EBB-w9`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_ebb9, echo=F}
+opal.assign.table.tibble(o, 'HRS_ebb_w9_ls','HRS.HRS-EBB-w9', variables=list('R9IWSTAT'), missings = TRUE)
+```
+
+```{r local_ebb9, echo=F}
+HRS_ebb_w9_ls <- opal.execute(o,'HRS_ebb_w9_ls')
+vari <- HRS_ebb_w9_ls$R9IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R9IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ebb_w9_ls, aes(factor(R9IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+**R script:**
+
+```{r harmo_ebb9}
+HRS_ds_ebb_w9 <- tibble(id=HRS_ebb_w9_ls$id)
+HRS_ds_ebb_w9$living_status <- car::recode(HRS_ebb_w9_ls$R9IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_ebb_w9$living_status <- labelled(HRS_ds_ebb_w9$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_ebb9, echo=F}
+vari <- HRS_ds_ebb_w9$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ebb_w9, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ebb9, echo=F, results='asis'}
+kable(table(HRS_ebb_w9_ls$R9IWSTAT, HRS_ds_ebb_w9$living_status, useNA = "ifany"), align='c', caption ='R9IWSTAT vs living_status')
+```
+
+```{r importOPAL_ebb9, echo=F}
+living_status <- HRS_ds_ebb_w9
+save(living_status, file = "../RData/ebb_w9/living_status.RData")
+rm(living_status)
+```
+
+### Wave 10  
+
+#### Study-specific variable description
+
+| **Name** | `R10IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-EBB-w10`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_ebb10, echo=F}
+opal.assign.table.tibble(o, 'HRS_ebb_w10_ls','HRS.HRS-EBB-w10', variables=list('R10IWSTAT', 'RADMONTH'), missings = TRUE)
+```
+
+```{r local_ebb10, echo=F}
+HRS_ebb_w10_ls <- opal.execute(o,'HRS_ebb_w10_ls')
+vari <- HRS_ebb_w10_ls$R10IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R10IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ebb_w10_ls, aes(factor(R10IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+
+**R script:**
+
+```{r harmo_ebb10}
+HRS_ds_ebb_w10 <- tibble(id=HRS_ebb_w10_ls$id)
+HRS_ds_ebb_w10$living_status <- car::recode(HRS_ebb_w10_ls$R10IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_ebb_w10$living_status <- labelled(HRS_ds_ebb_w10$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_ebb10, echo=F}
+vari <- HRS_ds_ebb_w10$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ebb_w10, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ebb10, echo=F, results='asis'}
+kable(table(HRS_ebb_w10_ls$R10IWSTAT, HRS_ds_ebb_w10$living_status, useNA = "ifany"), align='c', caption ='R10IWSTAT vs living_status')
+```
+
+```{r importOPAL_ebb10, echo=F}
+living_status <- HRS_ds_ebb_w10
+save(living_status, file = "../RData/ebb_w10/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 11  
+
+#### Study-specific variable description
+
+| **Name** | `R11IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-EBB-w11`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_ebb11, echo=F}
+opal.assign.table.tibble(o, 'HRS_ebb_w11_ls','HRS.HRS-EBB-w11', variables=list('R11IWSTAT'), missings = TRUE)
+```
+
+```{r local_ebb11, echo=F}
+HRS_ebb_w11_ls <- opal.execute(o,'HRS_ebb_w11_ls')
+vari <- HRS_ebb_w11_ls$R11IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R11IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ebb_w11_ls, aes(factor(R11IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+
+
+**R script:**
+
+```{r harmo_ebb11}
+HRS_ds_ebb_w11 <- tibble(id=HRS_ebb_w11_ls$id)
+HRS_ds_ebb_w11$living_status <- car::recode(HRS_ebb_w11_ls$R11IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_ebb_w11$living_status <- labelled(HRS_ds_ebb_w11$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_ebb11, echo=F}
+vari <- HRS_ds_ebb_w11$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_ebb_w11, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ebb11, echo=F, results='asis'}
+kable(table(HRS_ebb_w11_ls$R11IWSTAT, HRS_ds_ebb_w11$living_status, useNA = "ifany"), align='c', caption ='R11IWSTAT vs living_status')
+```
+
+```{r importOPAL_ebb11, echo=F}
+living_status <- HRS_ds_ebb_w11
+save(living_status, file = "../RData/ebb_w11/living_status.RData")
+rm(living_status)
+```
+
+### Validation throughout waves
+
+```{r valid_ws_ebb, echo=F}
+dbb <- merge(HRS_ds_ebb_w7, HRS_ds_ebb_w8, by = "id", suffixes = c(".w7", ".w8"), all = T)
+dbb <- merge(dbb, HRS_ds_ebb_w9, by = "id", all = T)
+dbb <- merge(dbb, HRS_ds_ebb_w10, by = "id", suffixes = c(".w9", ".w10"), all = T)
+dbb <- merge(dbb, HRS_ds_ebb_w11, by = "id", all = T)
+dbb <- dbb[,-1]
+dbb[dbb == 996] <- NA
+names(dbb) <- c("w7", "w8", "w9", "w10", "w11")
+v.dbb <- paste(dbb[, 1], dbb[, 2], dbb[, 3], dbb[, 4], dbb[, 5], sep = "")
+f.dbb <- frq(v.dbb)[[1]][, c(1, 2, 4)]
+kable(f.dbb)
+```
+
+
+## MBB
+
+### Wave 10  
+
+#### Study-specific variable description
+
+| **Name** | `R10IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-MBB-w10`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+```{r assign_mbb10, echo=F}
+opal.assign.table.tibble(o, 'HRS_mbb_w10_ls','HRS.HRS-MBB-w10', variables=list('R10IWSTAT'), missings = TRUE)
+```
+
+```{r local_mbb10, echo=F}
+HRS_mbb_w10_ls <- opal.execute(o,'HRS_mbb_w10_ls')
+vari <- HRS_mbb_w10_ls$R10IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R10IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_mbb_w10_ls, aes(factor(R10IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+**R script:**
+
+```{r harmo_mbb10}
+HRS_ds_mbb_w10 <- tibble(id=HRS_mbb_w10_ls$id)
+HRS_ds_mbb_w10$living_status <- car::recode(HRS_mbb_w10_ls$R10IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_mbb_w10$living_status <- labelled(HRS_ds_mbb_w10$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_mbb10, echo=F}
+vari <- HRS_ds_mbb_w10$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_mbb_w10, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_mbb10, echo=F, results='asis'}
+kable(table(HRS_ebb_w11_ls$R11IWSTAT, HRS_ds_ebb_w11$living_status, useNA = "ifany"), align='c', caption ='R11IWSTAT vs living_status')
+```
+
+```{r importOPAL_mbb10, echo=F}
+living_status <- HRS_ds_mbb_w10
+save(living_status, file = "../RData/mbb_w10/living_status.RData")
+rm(living_status)
+```
+
+
+### Wave 11  
+
+#### Study-specific variable description
+
+| **Name** | `R11IWSTAT`|
+|-|-|
+| **Label** | `R Interview Status` |
+| **Table name** |`HRS-MBB-w11`|
+| **Categories** |`0 = Inap.; 1 = Resp, alive; 2 = Resp, died after IW; 3 = Resp(proxy), died; 4 = NR, alive; 5 = NR, died this wv; 6 = NR, died prev wv; 7 = NR, dropped from samp`|
+| **Missings** |`9 = NR, DK if alive or died`|
+| **Description** |  |
+
+
+```{r assign_mbb11, echo=F}
+opal.assign.table.tibble(o, 'HRS_mbb_w11_ls','HRS.HRS-MBB-w11', variables=list('R11IWSTAT'), missings = TRUE)
+```
+
+```{r local_mbb11, echo=F}
+HRS_mbb_w11_ls <- opal.execute(o,'HRS_mbb_w11_ls')
+vari <- HRS_mbb_w11_ls$R11IWSTAT
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "R11IWSTAT")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_mbb_w11_ls, aes(factor(R11IWSTAT))) + geom_histogram(stat="count", fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+Values are recoded as follows: 
+
+ * Values 1 (Resp, alive), 2 (Resp, died after IW) or 4 (NoResp, alive) are recoded as value 0 (alive) 
+ * Values 3 (Resp proxy, died), 5 (NR, died this wv) or 6 (NR, died prev wv) are recoded as value 1 (died) 
+ * Values 7 (NR, dropped) or 9 (NR, DK if alive or died) are recoded as value 2 (dropout) 
+ * Value 0 (Inappropriate) is recoded as value missing 996 (Not applicable) because these individuals are probably new spouses from following waves.
+
+**R script:**
+
+```{r harmo_mbb11}
+HRS_ds_mbb_w11 <- tibble(id=HRS_mbb_w11_ls$id)
+HRS_ds_mbb_w11$living_status <- car::recode(HRS_mbb_w11_ls$R11IWSTAT, "c(1,2,4)=0; c(3,5,6)=1; c(7,9)=2; 0=996")
+HRS_ds_mbb_w11$living_status <- labelled(HRS_ds_mbb_w11$living_status, labels = c("Alive"=0, "Dead"=1, "Dropout"=2, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+
+#### Statistics of the new harmonised variable
+```{r descript_mbb11, echo=F}
+vari <- HRS_ds_mbb_w11$living_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(HRS_ds_mbb_w11, aes(x=factor(living_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Living Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_mbb11, echo=F, results='asis'}
+kable(table(HRS_mbb_w11_ls$R11IWSTAT, HRS_ds_mbb_w11$living_status, useNA = "ifany"), align='c', caption ='R11IWSTAT vs living_status')
+```
+
+```{r importOPAL_mbb11, echo=F}
+living_status <- HRS_ds_mbb_w11
+save(living_status, file = "../RData/mbb_w11/living_status.RData")
+rm(living_status)
+```
+
+### Validation throughout waves
+
+```{r valid_ws_mbb, echo=F}
+dbb <- merge(HRS_ds_mbb_w10, HRS_ds_mbb_w11, by = "id", suffixes = c(".w10", ".w11"), all = T)
+dbb <- dbb[,-1]
+dbb[dbb == 996] <- NA
+names(dbb) <- c("w10", "w11")
+v.dbb <- paste(dbb[, 1], dbb[, 2], sep = "")
+f.dbb <- frq(v.dbb)[[1]][, c(1, 2, 4)]
+kable(f.dbb)
+```
+
+
+# Quality estimation
+
+Results in validations throughout waves show, in each population, that there are few people who 
+died in some wave and dropped out afterwards. This issue was already present in the original HRS 
+variable and we have not fixed it yet. Meanwhile, we should consider that a previous death prevails 
+upon a subsequent dropout.
+
+Moreover, we found two errors:
+
+* HRS sub-sample, individual with "id" = "63063010", was alive in wave 1, died in wave 2, and alive in waves 3 to 11.
+* AHEAD sub-sample, individual with "id" = "202147020", was alive in waves 2 to 9, died in wave 10, and alive in wave 11.
+
+These errors have not been corrected yet.
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
