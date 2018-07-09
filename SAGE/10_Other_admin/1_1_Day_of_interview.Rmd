@@ -1,0 +1,670 @@
+---
+title: "Day of interview"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/Rmds/setup_ania.r")
+```
+<!-- ########################################################## --> 
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `dintw`
+* Variable label: `day of interview`
+* Domain: `Other administrative variables`
+* Value type: `Continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+
+```{r, dataDirectory, echo=FALSE}
+datafolder <- "../RData"
+```
+
+
+
+### SAGE - South Africa - Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q0006_dd`
+* Label: `Date (DD)`
+* Type of variable: `countinous`
+
+
+```{r assign1}
+opal.assign.table.tibble(o, 'SAGE_SA_w1_id','SAGE.southAfricaINDdata',
+                         variables=list('q0002'), missings = TRUE)
+opal.assign.table.tibble(o, 'SAGE_SA_w1_dinter','SAGE.SAGE_SouthAfrica_di_la',
+                         variables=list('q0002','q0006_dd'), missings = TRUE)
+```
+
+```{r local1}
+SAGE_SA_w1_id <- opal.execute(o,'SAGE_SA_w1_id')
+SAGE_SA_w1_dinter <- opal.execute(o,'SAGE_SA_w1_dinter')
+
+#The table SAGE_SA_w1_minter has hhid and SAGE_SA_w1_id has a individual id
+#this function compute a table with the individuals id and year of interview
+#of each individual
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=4)
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$q0002)){
+    if(sum(new$q0002[i]==old$q0002)>=1){
+      new_2[i,] <- c(new$id[i],oldm[which(new$q0002[i]==old$q0002),])
+    } else {
+      new_2[i,] <- c(new$id[i],new$q0002[i], NA, NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], hhid=as.numeric(new_2[,2]), 
+                       q0002=as.numeric(new_2[,3]), q0006_dd=as.numeric(new_2[,4]))
+  new_22
+}
+
+SAGE_SA_w1_dinter2 <- Add_indiv(old = SAGE_SA_w1_dinter, new = SAGE_SA_w1_id)
+Continuous_summary(var = SAGE_SA_w1_dinter2$q0006_dd, missing_values = NA)
+ggplot(SAGE_SA_w1_dinter2, aes(q0006_dd)) + geom_histogram(stat="count", fill="steelblue") + xlab("Day of interview") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same of the study-specific variable but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+
+R code of the ALGORITHM:
+
+```{r harmo1}
+SAGE_SA_ds_w1 <- tibble(id=SAGE_SA_w1_dinter2$id)
+SAGE_SA_ds_w1$dintw <- car::recode(SAGE_SA_w1_dinter2$q0006_dd, "NA=999")
+SAGE_SA_ds_w1$dintw <- labelled(SAGE_SA_ds_w1$dintw, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1}
+Continuous_summary(var = SAGE_SA_ds_w1$dintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_SA_ds_w1, aes(dintw)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1,31)
+```
+
+#### Validation
+```{r crosstabulation1}
+BeforeH <- table(SAGE_SA_w1_dinter2$q0006_dd, useNA = "ifany")
+AfterH <- table(SAGE_SA_ds_w1$dintw)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:(length(AfterH)-1)], "NA->999")
+C
+```
+
+
+
+#### Import to OPAL
+```{r importOPAL1}
+val_labels(SAGE_SA_ds_w1) <- NULL
+#opal.assign.data(o, 'SAGE_SA_ds_w1', SAGE_SA_ds_w1)
+#opal.symbol_import(o,'SAGE_SA_ds_w1', project='_Athlos_Harm_Dataset')
+
+SAGE_SA_m_ds_w1 <- SAGE_SA_ds_w1
+SAGE_SA_m_ds_w1$dintw <- car::recode(SAGE_SA_m_ds_w1$dintw, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SAGE_SA_m_ds_w1', SAGE_SA_m_ds_w1)
+#opal.symbol_import(o,'SAGE_SA_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### SAGE - Ghana - Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q0006_dd`
+* Label: `Date (DD)`
+* Type of variable: `countinous`
+
+```{r assign_ghana}
+opal.assign.table.tibble(o, 'SAGE_ghana_w1_id','SAGE.ghanaINDData',
+                         variables=list('q0002'), missings = TRUE)
+opal.assign.table.tibble(o, 'SAGE_ghana_w1_dinter','SAGE.SAGE_Ghana_HHData_di_la',
+                         variables=list('q0002','q0006_dd'), missings = TRUE)
+```
+
+```{r local_ghana}
+SAGE_ghana_w1_id <- opal.execute(o,'SAGE_ghana_w1_id')
+SAGE_ghana_w1_dinter <- opal.execute(o,'SAGE_ghana_w1_dinter')
+
+#The table SAGE_SA_w1_minter has hhid and SAGE_SA_w1_id has a individual id
+#this function compute a table with the individuals id and year of interview
+#of each individual
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=4)
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$q0002)){
+    if(sum(new$q0002[i]==old$q0002)>=1){
+      new_2[i,] <- c(new$id[i],oldm[which(new$q0002[i]==old$q0002),])
+    } else {
+      new_2[i,] <- c(new$id[i],new$q0002[i], NA, NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], hhid=as.numeric(new_2[,2]), 
+                       q0002=as.numeric(new_2[,3]), q0006_dd=as.numeric(new_2[,4]))
+  new_22
+}
+
+SAGE_ghana_w1_dinter2 <- Add_indiv(old = SAGE_ghana_w1_dinter, new = SAGE_ghana_w1_id)
+Continuous_summary(var = SAGE_ghana_w1_dinter2$q0006_dd, missing_values = NA)
+ggplot(SAGE_ghana_w1_dinter2, aes(q0006_dd)) + geom_histogram(stat="count", fill="steelblue") + xlab("Day of interview") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same of the study-specific variable but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo_ghana}
+SAGE_ghana_ds_w1 <- tibble(id=SAGE_ghana_w1_dinter2$id)
+SAGE_ghana_ds_w1$dintw <- car::recode(SAGE_ghana_w1_dinter2$q0006_dd, "NA=999")
+SAGE_ghana_ds_w1$dintw <- labelled(SAGE_ghana_ds_w1$dintw, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_ghana}
+Continuous_summary(var = SAGE_ghana_ds_w1$dintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_ghana_ds_w1, aes(dintw)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1,31)
+```
+
+#### Validation
+```{r crosstabulation_ghana}
+BeforeH <- table(SAGE_ghana_w1_dinter2$q0006_dd, useNA = "ifany")
+AfterH <- table(SAGE_ghana_ds_w1$dintw)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:(length(AfterH)-1)], "NA->999")
+C
+```
+
+
+#### Import to OPAL
+```{r importOPAL_ghana}
+val_labels(SAGE_ghana_ds_w1) <- NULL
+#opal.assign.data(o, 'SAGE_ghana_ds_w1', SAGE_ghana_ds_w1)
+#opal.symbol_import(o,'SAGE_ghana_ds_w1', project='_Athlos_Harm_Dataset')
+
+SAGE_ghana_m_ds_w1 <- SAGE_ghana_ds_w1
+SAGE_ghana_m_ds_w1$dintw <- car::recode(SAGE_ghana_m_ds_w1$dintw, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SAGE_ghana_m_ds_w1', SAGE_ghana_m_ds_w1)
+#opal.symbol_import(o,'SAGE_ghana_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+### SAGE - China - Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q0006_dd`
+* Label: `Date (DD)`
+* Type of variable: `countinous`
+
+
+```{r assign_china}
+opal.assign.table.tibble(o, 'SAGE_china_w1_id','SAGE.chinaINDData',
+                         variables=list('q0002'), missings = TRUE)
+opal.assign.table.tibble(o, 'SAGE_china_w1_dinter','SAGE.SAGE_China_HH_di_la',
+                         variables=list('q0002','q0006_dd'), missings = TRUE)
+
+```
+
+```{r local_china}
+SAGE_china_w1_id <- opal.execute(o,'SAGE_china_w1_id')
+SAGE_china_w1_dinter <- opal.execute(o,'SAGE_china_w1_dinter')
+
+#The table SAGE_SA_w1_minter has hhid and SAGE_SA_w1_id has a individual id
+#this function compute a table with the individuals id and year of interview
+#of each individual
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=4)
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$q0002)){
+    if(sum(new$q0002[i]==old$q0002)>=1){
+      new_2[i,] <- c(new$id[i],oldm[which(new$q0002[i]==old$q0002),])
+    } else {
+      new_2[i,] <- c(new$id[i],new$q0002[i], NA, NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], hhid=as.numeric(new_2[,2]), 
+                       q0002=as.numeric(new_2[,3]), q0006_dd=as.numeric(new_2[,4]))
+  new_22
+}
+
+SAGE_china_w1_dinter2 <- Add_indiv(old = SAGE_china_w1_dinter, new = SAGE_china_w1_id)
+Continuous_summary(var = SAGE_china_w1_dinter2$q0006_dd, missing_values = NA)
+ggplot(SAGE_china_w1_dinter2, aes(q0006_dd)) + geom_histogram(stat="count", fill="steelblue") + xlab("Day of interview") + ylab("Frequency")
+```
+
+
+#### Harmonisation algorithm
+The harmonized variable is the same of the study-specific variable but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo_china}
+SAGE_china_ds_w1 <- tibble(id=SAGE_china_w1_dinter2$id)
+SAGE_china_ds_w1$dintw <- car::recode(SAGE_china_w1_dinter2$q0006_dd, "NA=999")
+SAGE_china_ds_w1$dintw <- labelled(SAGE_china_ds_w1$dintw, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_china}
+Continuous_summary(var = SAGE_china_ds_w1$dintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_china_ds_w1, aes(dintw)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1,31)
+```
+
+#### Validation
+```{r crosstabulation_china}
+BeforeH <- table(SAGE_china_w1_dinter2$q0006_dd, useNA = "ifany")
+AfterH <- table(SAGE_china_ds_w1$dintw)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:(length(AfterH)-1)], "NA->999")
+C
+```
+
+
+
+#### Import to OPAL
+```{r importOPAL_china}
+val_labels(SAGE_china_ds_w1) <- NULL
+#opal.assign.data(o, 'SAGE_china_ds_w1', SAGE_china_ds_w1)
+#opal.symbol_import(o,'SAGE_china_ds_w1', project='_Athlos_Harm_Dataset')
+
+SAGE_china_m_ds_w1 <- SAGE_china_ds_w1
+SAGE_china_m_ds_w1$dintw <- car::recode(SAGE_china_m_ds_w1$dintw, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SAGE_china_m_ds_w1', SAGE_china_m_ds_w1)
+#opal.symbol_import(o,'SAGE_china_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+
+### SAGE - India - Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q0006_dd`
+* Label: `Date (DD)`
+* Type of variable: `countinous`
+
+```{r assign_india}
+opal.assign.table.tibble(o, 'SAGE_india_w1_id','SAGE.indiaINDData',
+                         variables=list('q0002'), missings = TRUE)
+opal.assign.table.tibble(o, 'SAGE_india_w1_dinter','SAGE.SAGE_India_HHData_di_la',
+                         variables=list('q0002','q0006_dd'), missings = TRUE)
+```
+
+```{r local_india}
+SAGE_india_w1_id <- opal.execute(o,'SAGE_india_w1_id')
+SAGE_india_w1_dinter <- opal.execute(o,'SAGE_india_w1_dinter')
+
+#The table SAGE_SA_w1_minter has hhid and SAGE_SA_w1_id has a individual id
+#this function compute a table with the individuals id and year of interview
+#of each individual
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=4)
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$q0002)){
+    if(sum(new$q0002[i]==old$q0002)>=1){
+      new_2[i,] <- c(new$id[i],oldm[which(new$q0002[i]==old$q0002),])
+    } else {
+      new_2[i,] <- c(new$id[i],new$q0002[i], NA, NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], hhid=as.numeric(new_2[,2]), 
+                       q0002=as.numeric(new_2[,3]), q0006_dd=as.numeric(new_2[,4]))
+  new_22
+}
+
+SAGE_india_w1_dinter2 <- Add_indiv(old = SAGE_india_w1_dinter, new = SAGE_india_w1_id)
+Continuous_summary(var = SAGE_india_w1_dinter2$q0006_dd, missing_values = NA)
+ggplot(SAGE_india_w1_dinter2, aes(q0006_dd)) + geom_histogram(stat="count", fill="steelblue") + xlab("Day of interview") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same of the study-specific variable but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo_india}
+SAGE_india_ds_w1 <- tibble(id=SAGE_india_w1_dinter2$id)
+SAGE_india_ds_w1$dintw <- car::recode(SAGE_india_w1_dinter2$q0006_dd, "NA=999")
+SAGE_india_ds_w1$dintw <- labelled(SAGE_india_ds_w1$dintw, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_india}
+Continuous_summary(var = SAGE_india_ds_w1$dintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_india_ds_w1, aes(dintw)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1,31)
+```
+
+#### Validation
+```{r crosstabulation_india}
+BeforeH <- table(SAGE_india_w1_dinter2$q0006_dd, useNA = "ifany")
+AfterH <- table(SAGE_india_ds_w1$dintw)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:(length(AfterH)-1)], "NA->999")
+C
+```
+
+
+#### Import to OPAL
+```{r importOPAL_india}
+val_labels(SAGE_india_ds_w1) <- NULL
+#opal.assign.data(o, 'SAGE_india_ds_w1', SAGE_india_ds_w1)
+#opal.symbol_import(o,'SAGE_india_ds_w1', project='_Athlos_Harm_Dataset')
+
+SAGE_india_m_ds_w1 <- SAGE_india_ds_w1
+SAGE_india_m_ds_w1$dintw <- car::recode(SAGE_india_m_ds_w1$dintw, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SAGE_india_m_ds_w1', SAGE_india_m_ds_w1)
+#opal.symbol_import(o,'SAGE_india_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+### SAGE - Russia - Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q0006_dd`
+* Label: `Date (DD)`
+* Type of variable: `countinous`
+
+
+```{r assign_russia}
+opal.assign.table.tibble(o, 'SAGE_russia_w1_id','SAGE.russiaINDdata',
+                         variables=list('q0002'), missings = TRUE)
+opal.assign.table.tibble(o, 'SAGE_russia_w1_dinter','SAGE.SAGE_Russia_HH_di_la',
+                         variables=list('q0002','q0006_dd'), missings = TRUE)
+```
+
+```{r local_russia}
+SAGE_russia_w1_id <- opal.execute(o,'SAGE_russia_w1_id')
+SAGE_russia_w1_dinter <- opal.execute(o,'SAGE_russia_w1_dinter')
+
+#The table SAGE_SA_w1_minter has hhid and SAGE_SA_w1_id has a individual id
+#this function compute a table with the individuals id and year of interview
+#of each individual
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=4)
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$q0002)){
+    if(sum(new$q0002[i]==old$q0002)>=1){
+      new_2[i,] <- c(new$id[i],oldm[which(new$q0002[i]==old$q0002),])
+    } else {
+      new_2[i,] <- c(new$id[i],new$q0002[i], NA, NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], hhid=as.numeric(new_2[,2]), 
+                       q0002=as.numeric(new_2[,3]), q0006_dd=as.numeric(new_2[,4]))
+  new_22
+}
+
+SAGE_russia_w1_dinter2 <- Add_indiv(old = SAGE_russia_w1_dinter, new = SAGE_russia_w1_id)
+Continuous_summary(var = SAGE_russia_w1_dinter2$q0006_dd, missing_values = NA)
+ggplot(SAGE_russia_w1_dinter2, aes(q0006_dd)) + geom_histogram(stat="count", fill="steelblue") + xlab("Day of interview") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same of the study-specific variable but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo_russia}
+SAGE_russia_ds_w1 <- tibble(id=SAGE_russia_w1_dinter2$id)
+SAGE_russia_ds_w1$dintw <- car::recode(SAGE_russia_w1_dinter2$q0006_dd, "NA=999")
+SAGE_russia_ds_w1$dintw <- labelled(SAGE_russia_ds_w1$dintw, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_russia}
+Continuous_summary(var = SAGE_russia_ds_w1$dintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_russia_ds_w1, aes(dintw)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1,31)
+```
+
+#### Validation
+```{r crosstabulation_russia}
+BeforeH <- table(SAGE_russia_w1_dinter2$q0006_dd, useNA = "ifany")
+AfterH <- table(SAGE_russia_ds_w1$dintw)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:(length(AfterH)-1)], "NA->999")
+C
+```
+
+
+#### Import to OPAL
+```{r importOPAL_russia}
+val_labels(SAGE_russia_ds_w1) <- NULL
+#opal.assign.data(o, 'SAGE_russia_ds_w1', SAGE_russia_ds_w1)
+#opal.symbol_import(o,'SAGE_russia_ds_w1', project='_Athlos_Harm_Dataset')
+
+SAGE_russia_m_ds_w1 <- SAGE_russia_ds_w1
+SAGE_russia_m_ds_w1$dintw <- car::recode(SAGE_russia_m_ds_w1$dintw, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SAGE_russia_m_ds_w1', SAGE_russia_m_ds_w1)
+#opal.symbol_import(o,'SAGE_russia_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+
+### SAGE - Mexico - Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q0006_dd`
+* Label: `Date (DD)`
+* Type of variable: `countinous`
+
+```{r assign_Mexico}
+opal.assign.table.tibble(o, 'SAGE_mexico_w1_id','SAGE.mexicoINDdata',
+                         variables=list('q0002'), missings = TRUE)
+opal.assign.table.tibble(o, 'SAGE_mexico_w1_dinter','SAGE.SAGE_Mexico_HHData_di_la',
+                         variables=list('q0002','q0006_dd'), missings = TRUE)
+
+```
+
+```{r local_Mexico}
+SAGE_mexico_w1_id <- opal.execute(o,'SAGE_mexico_w1_id')
+SAGE_mexico_w1_dinter <- opal.execute(o,'SAGE_mexico_w1_dinter')
+
+#The table SAGE_SA_w1_minter has hhid and SAGE_SA_w1_id has a individual id
+#this function compute a table with the individuals id and year of interview
+#of each individual
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=4)
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$q0002)){
+    if(sum(new$q0002[i]==old$q0002)>=1){
+      new_2[i,] <- c(new$id[i],oldm[which(new$q0002[i]==old$q0002),])
+    } else {
+      new_2[i,] <- c(new$id[i],new$q0002[i], NA, NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], hhid=as.numeric(new_2[,2]), 
+                       q0002=as.numeric(new_2[,3]), q0006_dd=as.numeric(new_2[,4]))
+  new_22
+}
+
+SAGE_mexico_w1_dinter2 <- Add_indiv(old = SAGE_mexico_w1_dinter, new = SAGE_mexico_w1_id)
+Continuous_summary(var = SAGE_mexico_w1_dinter2$q0006_dd, missing_values = NA)
+ggplot(SAGE_mexico_w1_dinter2, aes(q0006_dd)) + geom_histogram(stat="count", fill="steelblue") + xlab("Day of interview") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same of the study-specific variable but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+R code of the ALGORITHM:
+
+```{r harmo_Mexico}
+SAGE_mexico_ds_w1 <- tibble(id=SAGE_mexico_w1_dinter2$id)
+SAGE_mexico_ds_w1$dintw <- car::recode(SAGE_mexico_w1_dinter2$q0006_dd, "NA=999")
+SAGE_mexico_ds_w1$dintw <- labelled(SAGE_mexico_ds_w1$dintw, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_Mexico}
+Continuous_summary(var = SAGE_mexico_ds_w1$dintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_mexico_ds_w1, aes(dintw)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency") + xlim(1,31)
+```
+
+#### Validation
+```{r crosstabulation_Mexico}
+BeforeH <- table(SAGE_mexico_w1_dinter2$q0006_dd, useNA = "ifany")
+AfterH <- table(SAGE_mexico_ds_w1$dintw)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:(length(AfterH)-1)], "NA->999")
+C
+```
+
+#### Quality estimation
+
+No comments.
+
+#### Import to OPAL
+```{r importOPAL_Mexico}
+val_labels(SAGE_mexico_ds_w1) <- NULL
+#opal.assign.data(o, 'SAGE_mexico_ds_w1', SAGE_mexico_ds_w1)
+#opal.symbol_import(o,'SAGE_mexico_ds_w1', project='_Athlos_Harm_Dataset')
+
+SAGE_mexico_m_ds_w1 <- SAGE_mexico_ds_w1
+SAGE_mexico_m_ds_w1$dintw <- car::recode(SAGE_mexico_m_ds_w1$dintw, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SAGE_mexico_m_ds_w1', SAGE_mexico_m_ds_w1)
+#opal.symbol_import(o,'SAGE_mexico_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+```{r,  echo=FALSE}
+dintw <- SAGE_SA_ds_w1
+save(dintw, file = paste0(datafolder, "/SA_w1/dintw.RData"))
+```
+
+```{r,  echo=FALSE}
+dintw <- SAGE_ghana_ds_w1
+save(dintw, file = paste0(datafolder, "/ghana_w1/dintw.RData"))
+```
+
+```{r,  echo=FALSE}
+dintw <- SAGE_china_ds_w1
+save(dintw, file = paste0(datafolder, "/china_w1/dintw.RData"))
+```
+
+```{r,  echo=FALSE}
+dintw <- SAGE_india_ds_w1
+save(dintw, file = paste0(datafolder, "/india_w1/dintw.RData"))
+```
+
+```{r,  echo=FALSE}
+dintw <- SAGE_russia_ds_w1
+save(dintw, file = paste0(datafolder, "/russia_w1/dintw.RData"))
+```
+
+```{r,  echo=FALSE}
+dintw <- SAGE_mexico_ds_w1
+save(dintw, file = paste0(datafolder, "/mexico_w1/dintw.RData"))
+```
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+

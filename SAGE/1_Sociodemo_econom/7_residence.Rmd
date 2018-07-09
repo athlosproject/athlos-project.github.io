@@ -1,0 +1,591 @@
+---
+title: "Residence"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `residence`
+* Variable label: `Current residence`
+* Variable description: `Current residence`
+* Domain: `Physical Measures`
+* Value type: `Categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | Community living
+1        | Institutions
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Current residence"
+```
+
+# Data process
+
+
+## South Africa
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q0414`
+* Label: `in institution?`
+* Categories: 
+    + `1 = yes`
+    + `2 = no`
+* Missings: 
+    + `8 = don't know`
+    + `9 = not applicable`
+ 
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'SAGE_SA_w1_resi','SAGE.southAfricaINDdata',
+                         variables=list('q0414'), missings = TRUE)
+```
+
+```{r local1, echo=F}
+SAGE_SA_w1_resi <- opal.execute(o,'SAGE_SA_w1_resi')
+vari <- SAGE_SA_w1_resi$q0414
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = 'q0414') 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_SA_w1_resi$q0414, missing_values = c(8,9))
+ggplot(SAGE_SA_w1_resi, aes(x=factor(q0414))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence in institution") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "yes" into 1`
+* `recode 2 "no" into 0`
+* `recode 8 "don't know" into 998`
+* `recode 9 "not applicable" into 996`
+
+**R script:**
+
+```{r harmo1}
+SAGE_SA_ds_w1 <- tibble(id=SAGE_SA_w1_resi$id)
+SAGE_SA_ds_w1$residence <- car::recode(SAGE_SA_w1_resi$q0414, "2=0; 8=998; 9=996; NA=999")
+SAGE_SA_ds_w1$residence <- labelled(SAGE_SA_ds_w1$residence, labels = c("Community living"=0, "Institutions"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=F}
+vari <- SAGE_SA_ds_w1$residence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_SA_ds_w1$residence, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_SA_ds_w1, aes(x=factor(residence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=F}
+BeforeH <- c(table(SAGE_SA_w1_resi$q0414), sum(is.na(SAGE_SA_w1_resi$q0414)))[c(2,1,3,4)]
+AfterH <- table(SAGE_SA_ds_w1$residence)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1", "8->998", "NA->999")
+kable(C)
+```
+
+
+
+
+
+```{r importOPAL1, echo=F}
+#opal.assign.data(o, 'SAGE_SA_ds_w1', SAGE_SA_ds_w1)
+#opal.symbol_import(o,'SAGE_SA_ds_w1', project='_Athlos_Harm_Dataset')
+residence <- SAGE_SA_ds_w1
+save(residence, file = "../RData/SA_w1/residence.RData")
+rm(residence)
+
+SAGE_SA_m_ds_w1 <- SAGE_SA_ds_w1
+SAGE_SA_m_ds_w1$residence <- car::recode(SAGE_SA_m_ds_w1$residence, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SAGE_SA_m_ds_w1', SAGE_SA_m_ds_w1)
+#opal.symbol_import(o,'SAGE_SA_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+## Ghana
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q0414`
+* Label: `in institution?`
+* Categories: 
+    + `1 = yes`
+    + `2 = no`
+* Missings: 
+    + `8 = don't know`
+    + `9 = not applicable`
+
+```{r assign_ghana, echo=F}
+opal.assign.table.tibble(o, 'SAGE_ghana_w1_resi','SAGE.ghanaINDData',
+                         variables=list('q0414'), missings = TRUE)
+```
+
+```{r local_ghana, echo=F}
+SAGE_ghana_w1_resi <- opal.execute(o,'SAGE_ghana_w1_resi')
+vari <- SAGE_ghana_w1_resi$q0414
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = 'q0414') 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_ghana_w1_resi$q0414, missing_values = c(8,9))
+ggplot(SAGE_ghana_w1_resi, aes(x=factor(q0414))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence in institution") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "yes" into 1`
+* `recode 2 "no" into 0`
+* `recode 8 "don't know" into 998`
+* `recode 9 "not applicable" into 996`
+
+**R script:**
+
+```{r harmo_ghana}
+SAGE_ghana_ds_w1 <- tibble(id=SAGE_ghana_w1_resi$id)
+SAGE_ghana_ds_w1$residence <- car::recode(SAGE_ghana_w1_resi$q0414, "2=0; 8=998; 9=996; NA=999")
+SAGE_ghana_ds_w1$residence <- labelled(SAGE_ghana_ds_w1$residence, labels = c("Community living"=0, "Institutions"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_ghana, echo=F}
+vari <- SAGE_ghana_ds_w1$residence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_ghana_ds_w1$residence, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_ghana_ds_w1, aes(x=factor(residence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_ghana, echo=F}
+BeforeH <- c(table(SAGE_ghana_w1_resi$q0414), sum(is.na(SAGE_ghana_w1_resi$q0414)))[c(2,1,3,4)]
+AfterH <- table(SAGE_ghana_ds_w1$residence)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1", "8->998", "NA->999")
+kable(C)
+```
+
+
+
+
+
+```{r importOPAL_ghana, echo=F}
+#opal.assign.data(o, 'SAGE_ghana_ds_w1', SAGE_ghana_ds_w1)
+#opal.symbol_import(o,'SAGE_ghana_ds_w1', project='_Athlos_Harm_Dataset')
+residence <- SAGE_ghana_ds_w1
+save(residence, file = "../RData/ghana_w1/residence.RData")
+rm(residence)
+
+SAGE_ghana_m_ds_w1 <- SAGE_ghana_ds_w1
+SAGE_ghana_m_ds_w1$residence <- car::recode(SAGE_ghana_m_ds_w1$residence, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SAGE_ghana_m_ds_w1', SAGE_ghana_m_ds_w1)
+#opal.symbol_import(o,'SAGE_ghana_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+## China
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q0414`
+* Label: `in institution?`
+* Categories: 
+    + `1 = yes`
+    + `2 = no`
+* Missings: 
+    + `8 = don't know`
+    + `9 = not applicable`
+
+```{r assign_china, echo=F}
+opal.assign.table.tibble(o, 'SAGE_china_w1_resi','SAGE.chinaINDData',
+                         variables=list('q0414'), missings = TRUE)
+```
+
+```{r local_china, echo=F}
+SAGE_china_w1_resi <- opal.execute(o,'SAGE_china_w1_resi')
+vari <- SAGE_china_w1_resi$q0414
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = 'q0414') 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_china_w1_resi$q0414, missing_values = c(8,9))
+ggplot(SAGE_china_w1_resi, aes(x=factor(q0414))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence in institution") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "yes" into 1`
+* `recode 2 "no" into 0`
+* `recode 8 "don't know" into 998`
+* `recode 9 "not applicable" into 996`
+
+**R script:**
+
+```{r harmo_china}
+SAGE_china_ds_w1 <- tibble(id=SAGE_china_w1_resi$id)
+SAGE_china_ds_w1$residence <- car::recode(SAGE_china_w1_resi$q0414, "2=0; 8=998; 9=996; NA=999")
+SAGE_china_ds_w1$residence <- labelled(SAGE_china_ds_w1$residence, labels = c("Community living"=0, "Institutions"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_china, echo=F}
+vari <- SAGE_china_ds_w1$residence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_china_ds_w1$residence, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_china_ds_w1, aes(x=factor(residence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_china, echo=F}
+BeforeH <- c(table(SAGE_china_w1_resi$q0414), sum(is.na(SAGE_china_w1_resi$q0414)))[c(2,1,3)]
+AfterH <- table(SAGE_china_ds_w1$residence)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1", "NA->999")
+kable(C)
+```
+
+
+
+
+
+```{r importOPAL_china, echo=F}
+#opal.assign.data(o, 'SAGE_china_ds_w1', SAGE_china_ds_w1)
+#opal.symbol_import(o,'SAGE_china_ds_w1', project='_Athlos_Harm_Dataset')
+residence <- SAGE_china_ds_w1
+save(residence, file = "../RData/china_w1/residence.RData")
+rm(residence)
+
+SAGE_china_m_ds_w1 <- SAGE_china_ds_w1
+SAGE_china_m_ds_w1$residence <- car::recode(SAGE_china_m_ds_w1$residence, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SAGE_china_m_ds_w1', SAGE_china_m_ds_w1)
+#opal.symbol_import(o,'SAGE_china_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+## India
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q0414`
+* Label: `in institution?`
+* Categories: 
+    + `1 = yes`
+    + `2 = no`
+* Missings: 
+    + `8 = don't know`
+    + `9 = not applicable`
+
+```{r assign_india, echo=F}
+opal.assign.table.tibble(o, 'SAGE_india_w1_resi','SAGE.indiaINDData',
+                         variables=list('q0414'), missings = TRUE)
+```
+
+```{r local_india, echo=F}
+SAGE_india_w1_resi <- opal.execute(o,'SAGE_india_w1_resi')
+vari <- SAGE_india_w1_resi$q0414
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = 'q0414') 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_india_w1_resi$q0414, missing_values = c(8,9))
+ggplot(SAGE_india_w1_resi, aes(x=factor(q0414))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence in institution") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "yes" into 1`
+* `recode 2 "no" into 0`
+* `recode 8 "don't know" into 998`
+* `recode 9 "not applicable" into 996`
+
+**R script:**
+
+```{r harmo_india}
+SAGE_india_ds_w1 <- tibble(id=SAGE_india_w1_resi$id)
+SAGE_india_ds_w1$residence <- car::recode(SAGE_india_w1_resi$q0414, "2=0; 8=998; 9=996; NA=999")
+SAGE_india_ds_w1$residence <- labelled(SAGE_india_ds_w1$residence, labels = c("Community living"=0, "Institutions"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_india, echo=F}
+vari <- SAGE_india_ds_w1$residence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_india_ds_w1$residence, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_india_ds_w1, aes(x=factor(residence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_india, echo=F}
+BeforeH <- c(table(SAGE_india_w1_resi$q0414), sum(is.na(SAGE_india_w1_resi$q0414)))[c(2,1,3)]
+AfterH <- table(SAGE_india_ds_w1$residence)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1", "NA->999")
+kable(C)
+```
+
+
+
+
+
+```{r importOPAL_india, echo=F}
+#opal.assign.data(o, 'SAGE_india_ds_w1', SAGE_india_ds_w1)
+#opal.symbol_import(o,'SAGE_india_ds_w1', project='_Athlos_Harm_Dataset')
+residence <- SAGE_india_ds_w1
+save(residence, file = "../RData/india_w1/residence.RData")
+rm(residence)
+
+SAGE_india_m_ds_w1 <- SAGE_india_ds_w1
+SAGE_india_m_ds_w1$residence <- car::recode(SAGE_india_m_ds_w1$residence, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SAGE_india_m_ds_w1', SAGE_india_m_ds_w1)
+#opal.symbol_import(o,'SAGE_india_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+## Russia
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q0414`
+* Label: `in institution?`
+* Categories: 
+    + `1 = yes`
+    + `2 = no`
+* Missings: 
+    + `8 = don't know`
+    + `9 = not applicable`
+
+```{r assign_russia, echo=F}
+opal.assign.table.tibble(o, 'SAGE_russia_w1_resi','SAGE.russiaINDdata',
+                         variables=list('q0414'), missings = TRUE)
+```
+
+```{r local_russia, echo=F}
+SAGE_russia_w1_resi <- opal.execute(o,'SAGE_russia_w1_resi')
+vari <- SAGE_russia_w1_resi$q0414
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = 'q0414') 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_russia_w1_resi$q0414, missing_values = c(8,9))
+ggplot(SAGE_russia_w1_resi, aes(x=factor(q0414))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence in institution") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "yes" into 1`
+* `recode 2 "no" into 0`
+* `recode 8 "don't know" into 998`
+* `recode 9 "not applicable" into 996`
+
+**R script:**
+
+```{r harmo_russia}
+SAGE_russia_ds_w1 <- tibble(id=SAGE_russia_w1_resi$id)
+SAGE_russia_ds_w1$residence <- car::recode(SAGE_russia_w1_resi$q0414, "2=0; 8=998; 9=996; NA=999")
+SAGE_russia_ds_w1$residence <- labelled(SAGE_russia_ds_w1$residence, labels = c("Community living"=0, "Institutions"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_russia, echo=F}
+vari <- SAGE_russia_ds_w1$residence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_russia_ds_w1$residence, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_russia_ds_w1, aes(x=factor(residence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_russia, echo=F}
+BeforeH <- c(table(SAGE_russia_w1_resi$q0414), sum(is.na(SAGE_russia_w1_resi$q0414)))[c(2,1,3,4)]
+AfterH <- table(SAGE_russia_ds_w1$residence)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1", "8->998", "NA->999")
+kable(C)
+```
+
+
+
+
+
+```{r importOPAL_russia, echo=F}
+#opal.assign.data(o, 'SAGE_russia_ds_w1', SAGE_russia_ds_w1)
+#opal.symbol_import(o,'SAGE_russia_ds_w1', project='_Athlos_Harm_Dataset')
+residence <- SAGE_russia_ds_w1
+save(residence, file = "../RData/russia_w1/residence.RData")
+rm(residence)
+
+SAGE_russia_m_ds_w1 <- SAGE_russia_ds_w1
+SAGE_russia_m_ds_w1$residence <- car::recode(SAGE_russia_m_ds_w1$residence, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SAGE_russia_m_ds_w1', SAGE_russia_m_ds_w1)
+#opal.symbol_import(o,'SAGE_russia_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+## Mexico
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q0414`
+* Label: `in institution?`
+* Categories: 
+    + `1 = yes`
+    + `2 = no`
+* Missings: 
+    + `8 = don't know`
+    + `9 = not applicable`
+
+```{r assign_Mexico, echo=F}
+opal.assign.table.tibble(o, 'SAGE_mexico_w1_resi','SAGE.mexicoINDdata',
+                         variables=list('q0414'), missings = TRUE)
+```
+
+```{r local_Mexico, echo=F}
+SAGE_mexico_w1_resi <- opal.execute(o,'SAGE_mexico_w1_resi')
+vari <- SAGE_mexico_w1_resi$q0414
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = 'q0414') 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_mexico_w1_resi$q0414, missing_values = c(8,9))
+ggplot(SAGE_mexico_w1_resi, aes(x=factor(q0414))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence in institution") + ylab("Frequency")
+```
+
+Is all missing. 
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "yes" into 1`
+* `recode 2 "no" into 0`
+* `recode 8 "don't know" into 998`
+* `recode 9 "not applicable" into 996`
+
+**R script:**
+
+```{r harmo_Mexico}
+SAGE_mexico_ds_w1 <- tibble(id=SAGE_mexico_w1_resi$id)
+SAGE_mexico_ds_w1$residence <- car::recode(SAGE_mexico_w1_resi$q0414, "2=0; 8=998; 9=996; NA=999")
+SAGE_mexico_ds_w1$residence <- labelled(SAGE_mexico_ds_w1$residence, labels = c("Community living"=0, "Institutions"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_Mexico, echo=F}
+vari <- SAGE_mexico_ds_w1$residence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_mexico_ds_w1$residence, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_mexico_ds_w1, aes(x=factor(residence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_Mexico, echo=F}
+BeforeH <- sum(is.na(SAGE_mexico_w1_resi$q0414))
+AfterH <- table(SAGE_mexico_ds_w1$residence)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("NA->999")
+kable(C)
+```
+
+
+
+
+
+```{r importOPAL_Mexico, echo=F}
+#opal.assign.data(o, 'SAGE_mexico_ds_w1', SAGE_mexico_ds_w1)
+#opal.symbol_import(o,'SAGE_mexico_ds_w1', project='_Athlos_Harm_Dataset')
+residence <- SAGE_mexico_ds_w1
+save(residence, file = "../RData/mexico_w1/residence.RData")
+rm(residence)
+
+SAGE_mexico_m_ds_w1 <- SAGE_mexico_ds_w1
+SAGE_mexico_m_ds_w1$residence <- car::recode(SAGE_mexico_m_ds_w1$residence, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'SAGE_mexico_m_ds_w1', SAGE_mexico_m_ds_w1)
+#opal.symbol_import(o,'SAGE_mexico_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+# Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

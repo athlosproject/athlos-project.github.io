@@ -1,0 +1,836 @@
+---
+title: "Alcohol drinking"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/alcoholDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/alcoholDS.R')
+```
+
+
+
+# Data process
+
+
+
+
+## South Africa
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `q3010` |`q3007`|
+|-|-|-|
+| **Label** | `q3010: drinking pattern`|`q3007: ever used alcohol?`|
+| **Table name**  | `southAfricaINDdata`| `southAfricaINDdata`|
+| **Categories** | `0 = no days`<br/>`1 = < 1 per month`<br/>`2 = 1-3 days per month`<br/>`3 = 1-4 days per week`<br/>`4 = 5+ days per week` |`1 = yes`<br/>`2 = no`|
+| **Missings** | `9 = not applicable`<br/>`8 = don't know`<br/>`NA` |`9 = not applicable`<br/>`8 = don't know`<br/>`NA` |
+| **Description** |  |  |
+
+```{r assign SA_w1, echo=F}
+
+opal.assign.table.tibble(o, 'SAGE_SA_w1','SAGE.southAfricaINDdata',variables=list('q3010','q3007'), missings = T)
+SAGE_SA_w1 <- opal.execute(o,'SAGE_SA_w1')
+
+```
+
+```{r local SA_w1, echo=F}
+
+vbl <- SAGE_SA_w1$q3010
+kable(Categorical_summary(vbl, missing_values = c(8,9))[3], caption = 'q3010')
+kable(Categorical_summary(vbl, missing_values = c(8,9))[1], caption = "Category")
+ggplot(SAGE_SA_w1, aes(x=factor(q3010))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SAGE_SA_w1$q3007
+kable(Categorical_summary(vbl, missing_values = c(8,9))[3], caption = 'q3007')
+kable(Categorical_summary(vbl, missing_values = c(8,9))[1], caption = "Category")
+ggplot(SAGE_SA_w1, aes(x=factor(q3007))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `current_oh` from the study-specific variable `q3010` it has to be recoded as follows:
+
+* `0 into 0`
+* `1 to 4 into 1`
+* `8 into 998`
+* `9 into 996`
+* `q3007 == 2 into 0`
+* `NA into 999`
+
+To compute `freq_oh` from the study-specific variable `q3010` it has to be recoded as follows:
+
+* `0 into 0`
+* `1,2 into 1`
+* `3,4 into 2`
+* `8 into 998`
+* `9 into 996`
+* `q3007 == 2 into 0`
+* `NA into 999`
+
+To compute `past_oh` from the study-specific variable it has to be recoded as follows:
+
+* `q3007 == 1 and q3010 != 1,2,3,4 into 1`
+* `q3007 == 2 into 0`
+* `q3007 == 1 and q3010 == 1,2,3,4 into 996`
+* `8 into 998`
+* `9 into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo SA_w1}
+
+# Categorical variable harmonization
+SAGE_ds_SA_w1 <- tibble(id=SAGE_SA_w1$id)
+SAGE_ds_SA_w1$current_oh <- car::recode(SAGE_SA_w1$q3010,"c(2,3,4)=1;8=998;9=996;NA=999")
+SAGE_ds_SA_w1$current_oh[which(SAGE_SA_w1$q3007==2)] <- 0
+SAGE_ds_SA_w1$freq_oh <- car::recode(SAGE_SA_w1$q3010,"c(3,4)=2; 2=1; 8=998;9=996;NA=999")
+SAGE_ds_SA_w1$freq_oh[which(SAGE_SA_w1$q3007==2)] <- 0
+SAGE_ds_SA_w1$past_oh <- car::recode(SAGE_SA_w1$q3007,"2=0;8=998;9=996;NA=999")
+SAGE_ds_SA_w1$past_oh[which(SAGE_SA_w1$q3007==1 & SAGE_SA_w1$q3010 %in% c(1,2,3,4))] <- 996
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript SA_w1, echo=F}
+
+vbl <- SAGE_ds_SA_w1$current_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_curr)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_SA_w1, aes(x=factor(current_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_curr) + ylab("Frequency")
+
+vbl <- SAGE_ds_SA_w1$freq_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_freq)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_SA_w1, aes(x=factor(freq_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_freq) + ylab("Frequency")
+
+vbl <- SAGE_ds_SA_w1$past_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_past)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_SA_w1, aes(x=factor(past_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_past) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation SA_w1, echo=F}
+
+```
+
+
+
+
+## Ghana
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `q3010` |`q3007`|
+|-|-|-|
+| **Label** | `q3010: drinking pattern`|`q3007: ever used alcohol?`|
+| **Table name**  | `ghanaINDData`| `ghanaINDData`|
+| **Categories** | `0 = no days`<br/>`1 = < 1 per month`<br/>`2 = 1-3 days per month`<br/>`3 = 1-4 days per week`<br/>`4 = 5+ days per week` |`1 = yes`<br/>`2 = no`|
+| **Missings** | `9 = not applicable`<br/>`8 = don't know`<br/>`NA` |`9 = not applicable`<br/>`8 = don't know`<br/>`NA` |
+| **Description** |  |  |
+
+```{r assign ghana_w1, echo=F}
+
+opal.assign.table.tibble(o, 'SAGE_ghana_w1','SAGE.ghanaINDData',variables=list('q3010','q3007'), missings = T)
+SAGE_ghana_w1 <- opal.execute(o,'SAGE_ghana_w1')
+
+```
+
+```{r local ghana_w1, echo=F}
+
+vbl <- SAGE_ghana_w1$q3010
+kable(Categorical_summary(vbl, missing_values = c(8,9))[3], caption = 'q3010')
+kable(Categorical_summary(vbl, missing_values = c(8,9))[1], caption = "Category")
+ggplot(SAGE_ghana_w1, aes(x=factor(q3010))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SAGE_ghana_w1$q3007
+kable(Categorical_summary(vbl, missing_values = c(8,9))[3], caption = 'q3007')
+kable(Categorical_summary(vbl, missing_values = c(8,9))[1], caption = "Category")
+ggplot(SAGE_ghana_w1, aes(x=factor(q3007))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `current_oh` from the study-specific variable `q3010` it has to be recoded as follows:
+
+* `0 into 0`
+* `1 to 4 into 1`
+* `8 into 998`
+* `9 into 996`
+* `q3007 == 2 into 0`
+* `NA into 999`
+
+To compute `freq_oh` from the study-specific variable `q3010` it has to be recoded as follows:
+
+* `0 into 0`
+* `1,2 into 1`
+* `3,4 into 2`
+* `8 into 998`
+* `9 into 996`
+* `q3007 == 2 into 0`
+* `NA into 999`
+
+To compute `past_oh` from the study-specific variable it has to be recoded as follows:
+
+* `q3007 == 1 and q3010 != 1,2,3,4 into 1`
+* `q3007 == 2 into 0`
+* `q3007 == 1 and q3010 == 1,2,3,4 into 996`
+* `8 into 998`
+* `9 into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo ghana_w1}
+
+# Categorical variable harmonization
+SAGE_ds_ghana_w1 <- tibble(id=SAGE_ghana_w1$id)
+SAGE_ds_ghana_w1$current_oh <- car::recode(SAGE_ghana_w1$q3010,"c(2,3,4)=1;8=998;9=996;NA=999")
+SAGE_ds_ghana_w1$current_oh[which(SAGE_ghana_w1$q3007==2)] <- 0
+SAGE_ds_ghana_w1$freq_oh <- car::recode(SAGE_ghana_w1$q3010,"c(3,4)=2; 2=1; 8=998;9=996;NA=999")
+SAGE_ds_ghana_w1$freq_oh[which(SAGE_ghana_w1$q3007==2)] <- 0
+SAGE_ds_ghana_w1$past_oh <- car::recode(SAGE_ghana_w1$q3007,"2=0;8=998;9=996;NA=999")
+SAGE_ds_ghana_w1$past_oh[which(SAGE_ghana_w1$q3007==1 & SAGE_ghana_w1$q3010 %in% c(1,2,3,4))] <- 996
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript ghana_w1, echo=F}
+
+vbl <- SAGE_ds_ghana_w1$current_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_curr)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_ghana_w1, aes(x=factor(current_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_curr) + ylab("Frequency")
+
+vbl <- SAGE_ds_ghana_w1$freq_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_freq)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_ghana_w1, aes(x=factor(freq_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_freq) + ylab("Frequency")
+
+vbl <- SAGE_ds_ghana_w1$past_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_past)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_ghana_w1, aes(x=factor(past_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_past) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation ghana_w1, echo=F}
+
+```
+
+
+
+
+
+## China
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `q3010` |`q3007`|
+|-|-|-|
+| **Label** | `q3010: drinking pattern`|`q3007: ever used alcohol?`|
+| **Table name**  | `chinaINDData`| `chinaINDData`|
+| **Categories** | `0 = no days`<br/>`1 = < 1 per month`<br/>`2 = 1-3 days per month`<br/>`3 = 1-4 days per week`<br/>`4 = 5+ days per week` |`1 = yes`<br/>`2 = no`|
+| **Missings** | `9 = not applicable`<br/>`8 = don't know`<br/>`NA` |`9 = not applicable`<br/>`8 = don't know`<br/>`NA` |
+| **Description** |  |  |
+
+```{r assign china_w1, echo=F}
+
+opal.assign.table.tibble(o, 'SAGE_china_w1','SAGE.chinaINDData',variables=list('q3010','q3007'), missings = T)
+SAGE_china_w1 <- opal.execute(o,'SAGE_china_w1')
+
+```
+
+```{r local china_w1, echo=F}
+
+vbl <- SAGE_china_w1$q3010
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'q3010')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(SAGE_china_w1, aes(x=factor(q3010))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SAGE_china_w1$q3007
+kable(Categorical_summary(vbl, missing_values = c(8,9))[3], caption = 'q3007')
+kable(Categorical_summary(vbl, missing_values = c(8,9))[1], caption = "Category")
+ggplot(SAGE_china_w1, aes(x=factor(q3007))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `current_oh` from the study-specific variable `q3010` it has to be recoded as follows:
+
+* `0 into 0`
+* `1 to 4 into 1`
+* `8 into 998`
+* `9 into 996`
+* `q3007 == 2 into 0`
+* `NA into 999`
+
+To compute `freq_oh` from the study-specific variable `q3010` it has to be recoded as follows:
+
+* `0 into 0`
+* `1,2 into 1`
+* `3,4 into 2`
+* `8 into 998`
+* `9 into 996`
+* `q3007 == 2 into 0`
+* `NA into 999`
+
+To compute `past_oh` from the study-specific variable it has to be recoded as follows:
+
+* `q3007 == 1 and q3010 != 1,2,3,4 into 1`
+* `q3007 == 2 into 0`
+* `q3007 == 1 and q3010 == 1,2,3,4 into 996`
+* `8 into 998`
+* `9 into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo china_w1}
+
+# Categorical variable harmonization
+SAGE_ds_china_w1 <- tibble(id=SAGE_china_w1$id)
+SAGE_ds_china_w1$current_oh <- car::recode(SAGE_china_w1$q3010,"c(2,3,4)=1;8=998;9=996;NA=999")
+SAGE_ds_china_w1$current_oh[which(SAGE_china_w1$q3007==2)] <- 0
+SAGE_ds_china_w1$freq_oh <- car::recode(SAGE_china_w1$q3010,"c(3,4)=2; 2=1; 8=998;9=996;NA=999")
+SAGE_ds_china_w1$freq_oh[which(SAGE_china_w1$q3007==2)] <- 0
+SAGE_ds_china_w1$past_oh <- car::recode(SAGE_china_w1$q3007,"2=0;8=998;9=996;NA=999")
+SAGE_ds_china_w1$past_oh[which(SAGE_china_w1$q3007==1 & SAGE_china_w1$q3010 %in% c(1,2,3,4))] <- 996
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript china_w1, echo=F}
+
+vbl <- SAGE_ds_china_w1$current_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_curr)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_china_w1, aes(x=factor(current_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_curr) + ylab("Frequency")
+
+vbl <- SAGE_ds_china_w1$freq_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_freq)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_china_w1, aes(x=factor(freq_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_freq) + ylab("Frequency")
+
+vbl <- SAGE_ds_china_w1$past_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_past)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_china_w1, aes(x=factor(past_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_past) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation china_w1, echo=F}
+
+```
+
+
+
+
+## India
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `q3010` |`q3007`|
+|-|-|-|
+| **Label** | `q3010: drinking pattern`|`q3007: ever used alcohol?`|
+| **Table name**  | `indiaINDData`| `indiaINDData`|
+| **Categories** | `0 = no days`<br/>`1 = < 1 per month`<br/>`2 = 1-3 days per month`<br/>`3 = 1-4 days per week`<br/>`4 = 5+ days per week` |`1 = yes`<br/>`2 = no`|
+| **Missings** | `9 = not applicable`<br/>`8 = don't know`<br/>`NA` |`9 = not applicable`<br/>`8 = don't know`<br/>`NA` |
+| **Description** |  |  |
+
+```{r assign india_w1, echo=F}
+
+opal.assign.table.tibble(o, 'SAGE_india_w1','SAGE.indiaINDData',variables=list('q3010','q3007'), missings = T)
+SAGE_india_w1 <- opal.execute(o,'SAGE_india_w1')
+
+```
+
+```{r local india_w1, echo=F}
+
+vbl <- SAGE_india_w1$q3010
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'q3010')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(SAGE_india_w1, aes(x=factor(q3010))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SAGE_india_w1$q3007
+kable(Categorical_summary(vbl, missing_values = c(8,9))[3], caption = 'q3007')
+kable(Categorical_summary(vbl, missing_values = c(8,9))[1], caption = "Category")
+ggplot(SAGE_india_w1, aes(x=factor(q3007))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `current_oh` from the study-specific variable `q3010` it has to be recoded as follows:
+
+* `0 into 0`
+* `1 to 4 into 1`
+* `8 into 998`
+* `9 into 996`
+* `q3007 == 2 into 0`
+* `NA into 999`
+
+To compute `freq_oh` from the study-specific variable `q3010` it has to be recoded as follows:
+
+* `0 into 0`
+* `1,2 into 1`
+* `3,4 into 2`
+* `8 into 998`
+* `9 into 996`
+* `q3007 == 2 into 0`
+* `NA into 999`
+
+To compute `past_oh` from the study-specific variable it has to be recoded as follows:
+
+* `q3007 == 1 and q3010 != 1,2,3,4 into 1`
+* `q3007 == 2 into 0`
+* `q3007 == 1 and q3010 == 1,2,3,4 into 996`
+* `8 into 998`
+* `9 into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo india_w1}
+
+# Categorical variable harmonization
+SAGE_ds_india_w1 <- tibble(id=SAGE_india_w1$id)
+SAGE_ds_india_w1$current_oh <- car::recode(SAGE_india_w1$q3010,"c(2,3,4)=1;8=998;9=996;NA=999")
+SAGE_ds_india_w1$current_oh[which(SAGE_india_w1$q3007==2)] <- 0
+SAGE_ds_india_w1$freq_oh <- car::recode(SAGE_india_w1$q3010,"c(3,4)=2; 2=1; 8=998;9=996;NA=999")
+SAGE_ds_india_w1$freq_oh[which(SAGE_india_w1$q3007==2)] <- 0
+SAGE_ds_india_w1$past_oh <- car::recode(SAGE_india_w1$q3007,"2=0;8=998;9=996;NA=999")
+SAGE_ds_india_w1$past_oh[which(SAGE_india_w1$q3007==1 & SAGE_india_w1$q3010 %in% c(1,2,3,4))] <- 996
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript india_w1, echo=F}
+
+vbl <- SAGE_ds_india_w1$current_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_curr)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_india_w1, aes(x=factor(current_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_curr) + ylab("Frequency")
+
+vbl <- SAGE_ds_india_w1$freq_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_freq)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_india_w1, aes(x=factor(freq_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_freq) + ylab("Frequency")
+
+vbl <- SAGE_ds_india_w1$past_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_past)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_india_w1, aes(x=factor(past_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_past) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation india_w1, echo=F}
+
+```
+
+
+
+
+
+## Russian Federation
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `q3010` |`q3007`|
+|-|-|-|
+| **Label** | `q3010: drinking pattern`|`q3007: ever used alcohol?`|
+| **Table name**  | `russiaINDdata`| `russiaINDdata`|
+| **Categories** | `0 = no days`<br/>`1 = < 1 per month`<br/>`2 = 1-3 days per month`<br/>`3 = 1-4 days per week`<br/>`4 = 5+ days per week` |`1 = yes`<br/>`2 = no`|
+| **Missings** | `9 = not applicable`<br/>`8 = don't know`<br/>`NA` |`9 = not applicable`<br/>`8 = don't know`<br/>`NA` |
+| **Description** |  |  |
+
+```{r assign russia_w1, echo=F}
+
+opal.assign.table.tibble(o, 'SAGE_russia_w1','SAGE.russiaINDdata',variables=list('q3010','q3007'), missings = T)
+SAGE_russia_w1 <- opal.execute(o,'SAGE_russia_w1')
+
+```
+
+```{r local russia_w1, echo=F}
+
+vbl <- SAGE_russia_w1$q3010
+kable(Categorical_summary(vbl, missing_values = c(9))[3], caption = 'q3010')
+kable(Categorical_summary(vbl, missing_values = c(9))[1], caption = "Category")
+ggplot(SAGE_russia_w1, aes(x=factor(q3010))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SAGE_russia_w1$q3007
+kable(Categorical_summary(vbl, missing_values = c(8,9))[3], caption = 'q3007')
+kable(Categorical_summary(vbl, missing_values = c(8,9))[1], caption = "Category")
+ggplot(SAGE_russia_w1, aes(x=factor(q3007))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `current_oh` from the study-specific variable `q3010` it has to be recoded as follows:
+
+* `0 into 0`
+* `1 to 4 into 1`
+* `8 into 998`
+* `9 into 996`
+* `q3007 == 2 into 0`
+* `NA into 999`
+
+To compute `freq_oh` from the study-specific variable `q3010` it has to be recoded as follows:
+
+* `0 into 0`
+* `1,2 into 1`
+* `3,4 into 2`
+* `8 into 998`
+* `9 into 996`
+* `q3007 == 2 into 0`
+* `NA into 999`
+
+To compute `past_oh` from the study-specific variable it has to be recoded as follows:
+
+* `q3007 == 1 and q3010 != 1,2,3,4 into 1`
+* `q3007 == 2 into 0`
+* `q3007 == 1 and q3010 == 1,2,3,4 into 996`
+* `8 into 998`
+* `9 into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo russia_w1}
+
+# Categorical variable harmonization
+SAGE_ds_russia_w1 <- tibble(id=SAGE_russia_w1$id)
+SAGE_ds_russia_w1$current_oh <- car::recode(SAGE_russia_w1$q3010,"c(2,3,4)=1;8=998;9=996;NA=999")
+SAGE_ds_russia_w1$current_oh[which(SAGE_russia_w1$q3007==2)] <- 0
+SAGE_ds_russia_w1$freq_oh <- car::recode(SAGE_russia_w1$q3010,"c(3,4)=2; 2=1; 8=998;9=996;NA=999")
+SAGE_ds_russia_w1$freq_oh[which(SAGE_russia_w1$q3007==2)] <- 0
+SAGE_ds_russia_w1$past_oh <- car::recode(SAGE_russia_w1$q3007,"2=0;8=998;9=996;NA=999")
+SAGE_ds_russia_w1$past_oh[which(SAGE_russia_w1$q3007==1 & SAGE_russia_w1$q3010 %in% c(1,2,3,4))] <- 996
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript russia_w1, echo=F}
+
+vbl <- SAGE_ds_russia_w1$current_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_curr)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_russia_w1, aes(x=factor(current_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_curr) + ylab("Frequency")
+
+vbl <- SAGE_ds_russia_w1$freq_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_freq)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_russia_w1, aes(x=factor(freq_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_freq) + ylab("Frequency")
+
+vbl <- SAGE_ds_russia_w1$past_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_past)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_russia_w1, aes(x=factor(past_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_past) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation russia_w1, echo=F}
+
+```
+
+
+
+
+## Mexico
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `q3010` |`q3007`|
+|-|-|-|
+| **Label** | `q3010: drinking pattern`|`q3007: ever used alcohol?`|
+| **Table name**  | `mexicoINDdata`| `mexicoINDdata`|
+| **Categories** | `0 = no days`<br/>`1 = < 1 per month`<br/>`2 = 1-3 days per month`<br/>`3 = 1-4 days per week`<br/>`4 = 5+ days per week` |`1 = yes`<br/>`2 = no`|
+| **Missings** | `9 = not applicable`<br/>`8 = don't know`<br/>`NA` |`9 = not applicable`<br/>`8 = don't know`<br/>`NA` |
+| **Description** |  |  |
+
+
+```{r assign mexico_w1, echo=F}
+
+opal.assign.table.tibble(o, 'SAGE_mexico_w1','SAGE.mexicoINDdata',variables=list('q3010','q3007'), missings = T)
+SAGE_mexico_w1 <- opal.execute(o,'SAGE_mexico_w1')
+
+```
+
+```{r local mexico_w1, echo=F}
+
+vbl <- SAGE_mexico_w1$q3010
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = 'q3010')
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(SAGE_mexico_w1, aes(x=factor(q3010))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- SAGE_mexico_w1$q3007
+kable(Categorical_summary(vbl, missing_values = c(8,9))[3], caption = 'q3007')
+kable(Categorical_summary(vbl, missing_values = c(8,9))[1], caption = "Category")
+ggplot(SAGE_mexico_w1, aes(x=factor(q3007))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `current_oh` from the study-specific variable `q3010` it has to be recoded as follows:
+
+* `0 into 0`
+* `1 to 4 into 1`
+* `8 into 998`
+* `9 into 996`
+* `q3007 == 2 into 0`
+* `NA into 999`
+
+To compute `freq_oh` from the study-specific variable `q3010` it has to be recoded as follows:
+
+* `0 into 0`
+* `1,2 into 1`
+* `3,4 into 2`
+* `8 into 998`
+* `9 into 996`
+* `q3007 == 2 into 0`
+* `NA into 999`
+
+To compute `past_oh` from the study-specific variable it has to be recoded as follows:
+
+* `q3007 == 1 and q3010 != 1,2,3,4 into 1`
+* `q3007 == 2 into 0`
+* `q3007 == 1 and q3010 == 1,2,3,4 into 996`
+* `8 into 998`
+* `9 into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo mexico_w1}
+
+# Categorical variable harmonization
+SAGE_ds_mexico_w1 <- tibble(id=SAGE_mexico_w1$id)
+SAGE_ds_mexico_w1$current_oh <- car::recode(SAGE_mexico_w1$q3010,"c(2,3,4)=1;8=998;9=996;NA=999")
+SAGE_ds_mexico_w1$current_oh[which(SAGE_mexico_w1$q3007==2)] <- 0
+SAGE_ds_mexico_w1$freq_oh <- car::recode(SAGE_mexico_w1$q3010,"c(3,4)=2; 2=1; 8=998;9=996;NA=999")
+SAGE_ds_mexico_w1$freq_oh[which(SAGE_mexico_w1$q3007==2)] <- 0
+SAGE_ds_mexico_w1$past_oh <- car::recode(SAGE_mexico_w1$q3007,"2=0;8=998;9=996;NA=999")
+SAGE_ds_mexico_w1$past_oh[which(SAGE_mexico_w1$q3007==1 & SAGE_mexico_w1$q3010 %in% c(1,2,3,4))] <- 996
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript mexico_w1, echo=F}
+
+vbl <- SAGE_ds_mexico_w1$current_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_curr)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_mexico_w1, aes(x=factor(current_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_curr) + ylab("Frequency")
+
+vbl <- SAGE_ds_mexico_w1$freq_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_freq)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_mexico_w1, aes(x=factor(freq_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_freq) + ylab("Frequency")
+
+vbl <- SAGE_ds_mexico_w1$past_oh
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label_past)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_mexico_w1, aes(x=factor(past_oh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_past) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation mexico_w1, echo=F}
+
+```
+
+
+
+
+
+## Descriptive statistics of the harmonised variable accross populations and waves
+
+Percentages of categories in each harmonised variable:
+
+
+**R script:**
+
+```{r summ}
+
+l.hds <- list(SA_w1 = SAGE_ds_SA_w1 , ghana_w1 = SAGE_ds_ghana_w1, china_w1 = SAGE_ds_china_w1, india_w1=SAGE_ds_india_w1, russia_w1=SAGE_ds_russia_w1, mexico_w1=SAGE_ds_mexico_w1)
+
+for(name in names(l.hds)) {
+  m_name <- paste0("SAGE_m_ds_",name)
+  aux_object <- l.hds[[name]]
+  label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label_curr # Text value assigned at the DS description, at the top
+  l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  label(l.hds[[name]][[3]]) <- label(aux_object[[3]]) <- ds_label_freq # Text value assigned at the DS description, at the top
+  l.hds[[name]][[3]] <- labelled(l.hds[[name]][[3]], labels = freq_label)
+  aux_object[[3]] <- car::recode(aux_object[[3]], "miss_values_vector=NA")
+  aux_object[[3]] <- labelled(aux_object[[3]], labels = freq_label[1:3])
+  label(l.hds[[name]][[4]]) <- label(aux_object[[4]]) <- ds_label_past # Text value assigned at the DS description, at the top
+  l.hds[[name]][[4]] <- labelled(l.hds[[name]][[4]], labels = cat_label)
+  aux_object[[4]] <- car::recode(aux_object[[4]], "miss_values_vector=NA")
+  aux_object[[4]] <- labelled(aux_object[[4]], labels = cat_label[1:2])
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+for (i in seq_along(l.hds)){
+  t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+}
+t.hds[13,] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]])) )
+names(t.hds)<-c("val", "label", "South_Africa_w1", "Ghana_W1", "China_W1", "India_W1", "Russia_W1", "Mexico_W1")
+kable(t.hds, caption = 'current_oh')
+
+t.hds <- frq(l.hds[[1]][3])[[1]][,c(1,2)] 
+for (i in seq_along(l.hds)){
+  t.hds[2+i] <- frq(l.hds[[i]][3])[[1]][,4] 
+}
+t.hds[14,] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]])) )
+names(t.hds)<-c("val", "label", "South_Africa_w1", "Ghana_W1", "China_W1", "India_W1", "Russia_W1", "Mexico_W1")
+kable(t.hds, caption = 'freq_oh')
+
+t.hds <- frq(l.hds[[1]][4])[[1]][,c(1,2)] 
+for (i in seq_along(l.hds)){
+  t.hds[2+i] <- frq(l.hds[[i]][4])[[1]][,4] 
+}
+t.hds[13,] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]])) )
+names(t.hds)<-c("val", "label", "South_Africa_w1", "Ghana_W1", "China_W1", "India_W1", "Russia_W1", "Mexico_W1")
+kable(t.hds, caption = 'past_oh')
+
+```
+
+
+
+# Quality estimation
+
+If an individual is current drinker, it is codified as not applicable since we do not know its past-drinking condition.
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+for(index in seq_along(l.hds)){
+  alcohol <- l.hds[[index]]
+  save(alcohol, file = paste0(datafolder,names(l.hds)[index],"/alcohol.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

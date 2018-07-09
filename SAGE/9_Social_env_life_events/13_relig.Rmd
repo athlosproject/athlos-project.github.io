@@ -1,0 +1,566 @@
+---
+title: "Any form of religious participation (religious services attendance, religious meetings, religious organization membership, etc.)"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_ania.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variables is the following:
+
+* Short name: `relig`
+* Variable label: `Any form of religious participation`
+* Domain: `Social environment`
+* Value type: `cathegorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## China
+
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q6008`
+* Label: `q6008: religious services`
+* Categories: 
+    + `1 = never`
+    + `2 = 1/2 x per year`
+    + `3 = 1/2 x per month`
+    + `4 = 1/2 x per week`
+    + `5 = daily`
+* Missings:
+    + `8 = don't know`
+    + `9 = not applicable`
+
+* Description: 
+```{r assign1 china}
+opal.assign.table.tibble(o, 'SAGE_china_w1_relig','SAGE.chinaINDData', variables=list('q6008'), missings = TRUE)
+```
+
+```{r local1 china}
+SAGE_china_w1_relig <- opal.execute(o,'SAGE_china_w1_relig')
+vari <- SAGE_china_w1_relig$q6008
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_china_w1_relig$q6008, missing_values = NA)
+ggplot(SAGE_china_w1_relig, aes(x=factor(q6008))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("religious services") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1,2 into 0`
+* `3,4,5 into 1`
+* `8 into 998`
+* `9 into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1 china, echo=TRUE}
+SAGE_china_ds_w1 <- tibble(id=SAGE_china_w1_relig$id)
+SAGE_china_ds_w1$relig <- car::recode(as.vector(SAGE_china_w1_relig$q6008), "1:2='0'; 3:5='1'; 8='998'; 9='996'; NA='999'")
+SAGE_china_ds_w1$relig <- labelled(SAGE_china_ds_w1$relig, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 china}
+vari <- SAGE_china_ds_w1$relig
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_china_ds_w1$relig, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_china_ds_w1, aes(x=factor(relig))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Any form of religious participation?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 china}
+AfterH <- table(SAGE_china_ds_w1$relig)
+BeforeH <- table(SAGE_china_w1_relig$q6008, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[1]] <- sum(BeforeH[c(1:2)])
+BeforeH1[[2]] <- sum(BeforeH[c(3:5)])
+BeforeH1[[3]] <- BeforeH[[6]]
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("1:2->0","3:5->1","NA->999")
+kable(C)
+```
+
+
+
+## Ghana
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q6008`
+* Label: `q6008: religious services`
+* Categories: 
+    + `1 = never`
+    + `2 = 1/2 x per year`
+    + `3 = 1/2 x per month`
+    + `4 = 1/2 x per week`
+    + `5 = daily`
+* Missings:
+    + `8 = don't know`
+    + `9 = not applicable`
+
+
+* Description: 
+```{r assign1 ghana}
+opal.assign.table.tibble(o, 'SAGE_ghana_w1_relig','SAGE.ghanaINDData',variables=list('q6008'), missings = TRUE)
+```
+
+
+```{r local1 ghana}
+SAGE_ghana_w1_relig <- opal.execute(o,'SAGE_ghana_w1_relig')
+vari <- SAGE_ghana_w1_relig$q6008
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_ghana_w1_relig$q6008, missing_values = NA)
+ggplot(SAGE_ghana_w1_relig, aes(x=factor(q6008))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Religious services") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1,2 into 0`
+* `3,4,5 into 1`
+* `8 into 998`
+* `9 into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1 ghana, echo=TRUE}
+SAGE_ghana_ds_w1 <- tibble(id=SAGE_ghana_w1_relig$id)
+SAGE_ghana_ds_w1$relig <- car::recode(as.vector(SAGE_ghana_w1_relig$q6008), "1:2='0'; 3:5='1'; 8='998'; 9='996'; NA='999'")
+SAGE_ghana_ds_w1$relig <- labelled(SAGE_ghana_ds_w1$relig, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 ghana}
+vari <- SAGE_ghana_ds_w1$relig
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_ghana_ds_w1$relig, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_ghana_ds_w1, aes(x=factor(relig))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Any form of religious participation?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 ghana}
+AfterH <- table(SAGE_ghana_ds_w1$relig)
+BeforeH <- table(SAGE_ghana_w1_relig$q6008, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[1]] <- sum(BeforeH[c(1:2)])
+BeforeH1[[2]] <- sum(BeforeH[c(3:5)])
+BeforeH1[[3]] <- BeforeH[[7]]
+BeforeH1[[4]] <- BeforeH[[6]]
+BeforeH1[[5]] <- BeforeH[[8]]
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("1:2->0","3:5->1","9->996","8->998","NA->999")
+kable(C)
+```
+
+
+## India
+
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q6008`
+* Label: `q6008: religious services`
+* Categories: 
+    + `1 = never`
+    + `2 = 1/2 x per year`
+    + `3 = 1/2 x per month`
+    + `4 = 1/2 x per week`
+    + `5 = daily`
+* Missings:
+    + `8 = don't know`
+    + `9 = not applicable`
+
+* Description: 
+```{r assign1 india}
+opal.assign.table.tibble(o, 'SAGE_india_w1_relig','SAGE.indiaINDData',variables=list('q6008'), missings = TRUE)
+```
+
+```{r local1 india}
+SAGE_india_w1_relig <- opal.execute(o,'SAGE_india_w1_relig')
+vari <- SAGE_india_w1_relig$q6008
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_india_w1_relig$q6008, missing_values = NA)
+ggplot(SAGE_india_w1_relig, aes(x=factor(q6008))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("religious services") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1,2 into 0`
+* `3,4,5 into 1`
+* `8 into 998`
+* `9 into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1 india, echo=TRUE}
+SAGE_india_ds_w1 <- tibble(id=SAGE_india_w1_relig$id)
+SAGE_india_ds_w1$relig <- car::recode(as.vector(SAGE_india_w1_relig$q6008), "1:2='0'; 3:5='1'; 8='998'; 9='996'; NA='999'")
+SAGE_india_ds_w1$relig <- labelled(SAGE_india_ds_w1$relig, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 india}
+vari <- SAGE_india_ds_w1$relig
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_india_ds_w1$relig, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_india_ds_w1, aes(x=factor(relig))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Any form of religious participation?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 india}
+AfterH <- table(SAGE_india_ds_w1$relig)
+BeforeH <- table(SAGE_india_w1_relig$q6008, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[1]] <- sum(BeforeH[c(1:2)])
+BeforeH1[[2]] <- sum(BeforeH[c(3:5)])
+BeforeH1[[3]] <- BeforeH[[6]]
+BeforeH1[[4]] <- BeforeH[[7]]
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("1:2->0","3:5->1","9->996","NA->999")
+kable(C)
+```
+
+
+
+
+## Mexico
+
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q6008`
+* Label: `q6008: religious services`
+* Categories: 
+    + `1 = never`
+    + `2 = 1/2 x per year`
+    + `3 = 1/2 x per month`
+    + `4 = 1/2 x per week`
+    + `5 = daily`
+* Missings:
+    + `8 = don't know`
+    + `9 = not applicable`
+
+* Description: 
+```{r assign1 mex}
+opal.assign.table.tibble(o, 'SAGE_mexico_w1_relig','SAGE.mexicoINDdata',variables=list('q6008'), missings = TRUE)
+```
+
+```{r local1 mex}
+SAGE_mexico_w1_relig <- opal.execute(o,'SAGE_mexico_w1_relig')
+vari <- SAGE_mexico_w1_relig$q6008
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_mexico_w1_relig$q6008, missing_values = NA)
+ggplot(SAGE_mexico_w1_relig, aes(x=factor(q6008))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("religious services") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1,2 into 0`
+* `3,4,5 into 1`
+* `8 into 998`
+* `9 into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1 mex, echo=TRUE}
+SAGE_mexico_ds_w1 <- tibble(id=SAGE_mexico_w1_relig$id)
+SAGE_mexico_ds_w1$relig <- car::recode(as.vector(SAGE_mexico_w1_relig$q6008), "1:2='0'; 3:5='1'; 8='998'; 9='996'; NA='999'")
+SAGE_mexico_ds_w1$relig <- labelled(SAGE_mexico_ds_w1$relig, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 mex}
+vari <- SAGE_mexico_ds_w1$relig
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_mexico_ds_w1$relig, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_mexico_ds_w1, aes(x=factor(relig))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Any form of religious participation?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 mex}
+AfterH <- table(SAGE_mexico_ds_w1$relig)
+BeforeH <- table(SAGE_mexico_w1_relig$q6008, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[1]] <- sum(BeforeH[c(1:2)])
+BeforeH1[[2]] <- sum(BeforeH[c(3:5)])
+BeforeH1[[3]] <- BeforeH[[6]]
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("1:2->0","3:5->1","NA->999")
+kable(C)
+```
+
+
+
+## Russia
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q6008`
+* Label: `q6008: religious services`
+* Categories: 
+    + `1 = never`
+    + `2 = 1/2 x per year`
+    + `3 = 1/2 x per month`
+    + `4 = 1/2 x per week`
+    + `5 = daily`
+* Missings:
+    + `8 = don't know`
+    + `9 = not applicable`
+
+
+* Description: 
+```{r assign1 russia}
+opal.assign.table.tibble(o, 'SAGE_russia_w1_relig','SAGE.russiaINDdata', variables=list('q6008'), missings = TRUE)
+```
+
+```{r local1 russia}
+SAGE_russia_w1_relig <- opal.execute(o,'SAGE_russia_w1_relig')
+vari <- SAGE_russia_w1_relig$q6008
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_russia_w1_relig$q6008, missing_values = NA)
+ggplot(SAGE_russia_w1_relig, aes(x=factor(q6008))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("religious services") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1,2 into 0`
+* `3,4,5 into 1`
+* `8 into 998`
+* `9 into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1 russia, echo=TRUE}
+SAGE_russia_ds_w1 <- tibble(id=SAGE_russia_w1_relig$id)
+SAGE_russia_ds_w1$relig <- car::recode(as.vector(SAGE_russia_w1_relig$q6008), "1:2='0'; 3:5='1'; 8='998'; 9='996'; NA='999'")
+SAGE_russia_ds_w1$relig <- labelled(SAGE_russia_ds_w1$relig, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 russia}
+vari <- SAGE_russia_ds_w1$relig
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_russia_ds_w1$relig, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_russia_ds_w1, aes(x=factor(relig))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Any form of religious participation?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 russia}
+AfterH <- table(SAGE_russia_ds_w1$relig)
+BeforeH <- table(SAGE_russia_w1_relig$q6008, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[1]] <- sum(BeforeH[c(1:2)])
+BeforeH1[[2]] <- sum(BeforeH[c(3:5)])
+BeforeH1[[3]] <- BeforeH[[7]]
+BeforeH1[[4]] <- BeforeH[[6]]
+BeforeH1[[5]] <- BeforeH[[8]]
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("1:2->0","3:5->1","9->996","8->998","NA->999")
+kable(C)
+```
+
+
+
+## South Africa
+
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q6008`
+* Label: `q6008: religious services`
+* Categories: 
+    + `1 = never`
+    + `2 = 1/2 x per year`
+    + `3 = 1/2 x per month`
+    + `4 = 1/2 x per week`
+    + `5 = daily`
+* Missings:
+    + `8 = don't know`
+    + `9 = not applicable`
+
+
+* Description: 
+```{r assign1 SA}
+opal.assign.table.tibble(o, 'SAGE_SA_w1_relig','SAGE.southAfricaINDdata',variables=list('q6008'), missings = TRUE)
+```
+
+```{r local1 SA}
+SAGE_SA_w1_relig <- opal.execute(o,'SAGE_SA_w1_relig')
+vari <- SAGE_SA_w1_relig$q6008
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(8,9))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_SA_w1_relig$q6008, missing_values = NA)
+ggplot(SAGE_SA_w1_relig, aes(x=factor(q6008))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("religious services") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1,2 into 0`
+* `3,4,5 into 1`
+* `8 into 998`
+* `9 into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1 SA, echo=TRUE}
+SAGE_SA_ds_w1 <- tibble(id=SAGE_SA_w1_relig$id)
+SAGE_SA_ds_w1$relig <- car::recode(as.vector(SAGE_SA_w1_relig$q6008), "1:2='0'; 3:5='1'; 8='998'; 9='996'; NA='999'")
+SAGE_SA_ds_w1$relig <- labelled(SAGE_SA_ds_w1$relig, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 SA}
+vari <- SAGE_SA_ds_w1$relig
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = SAGE_SA_ds_w1$relig, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_SA_ds_w1, aes(x=factor(relig))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Any form of religious participation?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 SA}
+AfterH <- table(SAGE_SA_ds_w1$relig)
+BeforeH <- table(SAGE_SA_w1_relig$q6008, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[1]] <- sum(BeforeH[c(1:2)])
+BeforeH1[[2]] <- sum(BeforeH[c(3:5)])
+BeforeH1[[3]] <- BeforeH[[7]]
+BeforeH1[[4]] <- BeforeH[[6]]
+BeforeH1[[5]] <- BeforeH[[8]]
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("1:2->0","3:5->1","9->996","8->998","NA->999")
+kable(C)
+```
+
+
+```{r save, echo=FALSE}
+relig <- SAGE_SA_ds_w1
+save(relig, file = "../RData/SA_w1/relig.RData")
+rm(relig)
+
+relig <- SAGE_china_ds_w1
+save(relig, file = "../RData/china_w1/relig.RData")
+rm(relig)
+
+relig <- SAGE_ghana_ds_w1
+save(relig, file = "../RData/ghana_w1/relig.RData")
+rm(relig)
+
+relig <- SAGE_india_ds_w1
+save(relig, file = "../RData/india_w1/relig.RData")
+rm(relig)
+
+relig <- SAGE_mexico_ds_w1
+save(relig, file = "../RData/mexico_w1/relig.RData")
+rm(relig)
+
+relig <- SAGE_russia_ds_w1
+save(relig, file = "../RData/russia_w1/relig.RData")
+rm(relig)
+
+
+
+```
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+

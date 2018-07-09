@@ -1,0 +1,629 @@
+---
+title: "Chronic pulmonary disorders"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `h_cpd`
+* Variable label: `History of chronic pulmonary disorders`
+* Variable description: `history of chronic pulmonary disease`
+* Domain: `Diseases`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | NO chronic pulmonary disease
+1        | chronic pulmonary disease
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+<!-- # Global variables -->
+```{r global, include=FALSE, echo=F}
+miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
+ds_label <- "History of chronic pulmonary disorders"
+cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
+cont_label <- cat_label[3:11]
+datafolder <- "../RData/"
+#sing_idlist <- c()
+```
+<!-- ########################################################## --> 
+
+
+
+# Data process
+
+
+
+
+## South Africa
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `q4025` |
+|-|-|
+| **Label** | `q4025: chronic lung disease`|
+| **Table name**  | `southAfricaINDdata`| 
+| **Categories** | `1 = yes`<br/>`2 = no` |
+| **Missings** | `NA`<br/>`8 = don't know` |
+| **Description** |  |
+
+```{r assign SA_w1, echo=F}
+
+opal.assign.table.tibble(o, 'SAGE_SA_w1','SAGE.southAfricaINDdata',variables=list('q4025'), missings = T)
+SAGE_SA_w1 <- opal.execute(o,'SAGE_SA_w1')
+
+```
+
+```{r local SA_w1, echo=F}
+
+vbl <- SAGE_SA_w1$q4025
+kable(Categorical_summary(vbl, missing_values = c(8))[3], caption = names(SAGE_SA_w1)[2])
+kable(Categorical_summary(vbl, missing_values = c(8))[1], caption = "Category")
+ggplot(SAGE_SA_w1, aes(x=factor(q4025))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_cpd` from the study-specific variable it has to be recoded as follows:
+
+* `2 into 0`
+* `1 into 1`
+* `8 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo SA_w1}
+
+# Categorical variable harmonization
+SAGE_ds_SA_w1 <- tibble(id=SAGE_SA_w1$id)
+SAGE_ds_SA_w1$h_cpd <- car::recode(SAGE_SA_w1$q4025,"2=0;8=998;NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript SA_w1, echo=F}
+
+vbl <- SAGE_ds_SA_w1$h_cpd
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_SA_w1, aes(x=factor(h_cpd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation SA_w1, echo=F}
+
+AfterH <- table(SAGE_ds_SA_w1$h_cpd)
+BeforeH <- table(SAGE_SA_w1$q4025,useNA = "ifany")[c(2,1,3,4)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","8->998","NA->999")
+kable(C)
+
+```
+
+
+
+
+## Ghana
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `q4025` |
+|-|-|
+| **Label** | `q4025: chronic lung disease`|
+| **Table name**  | `ghanaINDData`|
+| **Categories** | `1 = yes`<br/>`2 = no` |
+| **Missings** | `NA`<br/>`8 = don't know` |
+| **Description** |  |
+
+```{r assign ghana_w1, echo=F}
+
+opal.assign.table.tibble(o, 'SAGE_ghana_w1','SAGE.ghanaINDData',variables=list('q4025'), missings = T)
+SAGE_ghana_w1 <- opal.execute(o,'SAGE_ghana_w1')
+
+```
+
+```{r local ghana_w1, echo=F}
+
+vbl <- SAGE_ghana_w1$q4025
+kable(Categorical_summary(vbl, missing_values = c(8))[3], caption = names(SAGE_ghana_w1)[2])
+kable(Categorical_summary(vbl, missing_values = c(8))[1], caption = "Category")
+ggplot(SAGE_ghana_w1, aes(x=factor(q4025))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_cpd` from the study-specific variable it has to be recoded as follows:
+
+* `2 into 0`
+* `1 into 1`
+* `8 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo ghana_w1}
+
+# Categorical variable harmonization
+SAGE_ds_ghana_w1 <- tibble(id=SAGE_ghana_w1$id)
+SAGE_ds_ghana_w1$h_cpd <- car::recode(SAGE_ghana_w1$q4025,"2=0;8=998;NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript ghana_w1, echo=F}
+
+vbl <- SAGE_ds_ghana_w1$h_cpd
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_ghana_w1, aes(x=factor(h_cpd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation ghana_w1, echo=F}
+
+AfterH <- table(SAGE_ds_ghana_w1$h_cpd)
+BeforeH <- table(SAGE_ghana_w1$q4025,useNA = "ifany")[c(2,1,3,4)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","8->998","NA->999")
+kable(C)
+
+```
+
+
+
+
+
+## China
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `q4025` |
+|-|-|
+| **Label** | `q4025: chronic lung disease`|
+| **Table name**  | `chinaINDData`|
+| **Categories** | `1 = yes`<br/>`2 = no` |
+| **Missings** | `NA`|
+| **Description** |  |
+
+```{r assign china_w1, echo=F}
+
+opal.assign.table.tibble(o, 'SAGE_china_w1','SAGE.chinaINDData',variables=list('q4025'), missings = T)
+SAGE_china_w1 <- opal.execute(o,'SAGE_china_w1')
+
+```
+
+```{r local china_w1, echo=F}
+
+vbl <- SAGE_china_w1$q4025
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(SAGE_china_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(SAGE_china_w1, aes(x=factor(q4025))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_cpd` from the study-specific variable it has to be recoded as follows:
+
+* `2 into 0`
+* `1 into 1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo china_w1}
+
+# Categorical variable harmonization
+SAGE_ds_china_w1 <- tibble(id=SAGE_china_w1$id)
+SAGE_ds_china_w1$h_cpd <- car::recode(SAGE_china_w1$q4025,"2=0;NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript china_w1, echo=F}
+
+vbl <- SAGE_ds_china_w1$h_cpd
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_china_w1, aes(x=factor(h_cpd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation china_w1, echo=F}
+
+AfterH <- table(SAGE_ds_china_w1$h_cpd)
+BeforeH <- table(SAGE_china_w1$q4025,useNA = "ifany")[c(2,1,3)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","NA->999")
+kable(C)
+
+```
+
+
+
+
+## India
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `q4025` |
+|-|-|
+| **Label** | `Q4025: Chronic lung disease`|
+| **Table name**  | `indiaINDData`|
+| **Categories** | `1 = Yes`<br/>`2 = No` |
+| **Missings** | `9 = Not applicable`<br/>`NA` |
+| **Description** |  |
+
+```{r assign india_w1, echo=F}
+
+opal.assign.table.tibble(o, 'SAGE_india_w1','SAGE.indiaINDData',variables=list('q4025'), missings = T)
+SAGE_india_w1 <- opal.execute(o,'SAGE_india_w1')
+
+```
+
+```{r local india_w1, echo=F}
+
+vbl <- SAGE_india_w1$q4025
+kable(Categorical_summary(vbl, missing_values = c(9))[3], caption = names(SAGE_india_w1)[2])
+kable(Categorical_summary(vbl, missing_values = c(9))[1], caption = "Category")
+ggplot(SAGE_india_w1, aes(x=factor(q4025))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_cpd` from the study-specific variable it has to be recoded as follows:
+
+* `2 into 0`
+* `1 into 1`
+* `9 into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo india_w1}
+
+# Categorical variable harmonization
+SAGE_ds_india_w1 <- tibble(id=SAGE_india_w1$id)
+SAGE_ds_india_w1$h_cpd <- car::recode(SAGE_india_w1$q4025,"2=0;9=996;NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript india_w1, echo=F}
+
+vbl <- SAGE_ds_india_w1$h_cpd
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_india_w1, aes(x=factor(h_cpd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation india_w1, echo=F}
+
+AfterH <- table(SAGE_ds_india_w1$h_cpd)
+BeforeH <- table(SAGE_india_w1$q4025,useNA = "ifany")[c(2,1,3,4)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","9->996","NA->999")
+kable(C)
+
+```
+
+
+
+
+
+## Russian Federation
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `q4025` |
+|-|-|
+| **Label** | `q4025: chronic lung disease`|
+| **Table name**  | `russiaINDdata`|
+| **Categories** | `1 = yes`<br/>`2 = no` |
+| **Missings** | `NA`<br/>`8 = don't know`<br/>`9 = Not applicable` |
+| **Description** |  |
+
+```{r assign russia_w1, echo=F}
+
+opal.assign.table.tibble(o, 'SAGE_russia_w1','SAGE.russiaINDdata',variables=list('q4025'), missings = T)
+SAGE_russia_w1 <- opal.execute(o,'SAGE_russia_w1')
+
+```
+
+```{r local russia_w1, echo=F}
+
+vbl <- SAGE_russia_w1$q4025
+kable(Categorical_summary(vbl, missing_values = c(8,9))[3], caption = names(SAGE_russia_w1)[2])
+kable(Categorical_summary(vbl, missing_values = c(9,8))[1], caption = "Category")
+ggplot(SAGE_russia_w1, aes(x=factor(q4025))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_cpd` from the study-specific variable it has to be recoded as follows:
+
+* `2 into 0`
+* `1 into 1`
+* `8 into 998`
+* `9 into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo russia_w1}
+
+# Categorical variable harmonization
+SAGE_ds_russia_w1 <- tibble(id=SAGE_russia_w1$id)
+SAGE_ds_russia_w1$h_cpd <- car::recode(SAGE_russia_w1$q4025,"2=0;8=998;9=996;NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript russia_w1, echo=F}
+
+vbl <- SAGE_ds_russia_w1$h_cpd
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_russia_w1, aes(x=factor(h_cpd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation russia_w1, echo=F}
+
+AfterH <- table(SAGE_ds_russia_w1$h_cpd)
+BeforeH <- table(SAGE_russia_w1$q4025,useNA = "ifany")[c(2,1,4,3,5)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","9->996","8->998","NA->999")
+kable(C)
+
+```
+
+
+
+
+## Mexico
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `q4025` |
+|-|-|
+| **Label** | `q4025: chronic lung disease`|
+| **Table name**  | `mexicoINDdata`|
+| **Categories** | `1 = yes`<br/>`2 = no` |
+| **Missings** | `NA` |
+| **Description** |  |
+
+
+```{r assign mexico_w1, echo=F}
+
+opal.assign.table.tibble(o, 'SAGE_mexico_w1','SAGE.mexicoINDdata',variables=list('q4025'), missings = T)
+SAGE_mexico_w1 <- opal.execute(o,'SAGE_mexico_w1')
+
+```
+
+```{r local mexico_w1, echo=F}
+
+vbl <- SAGE_mexico_w1$q4025
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(SAGE_mexico_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(SAGE_mexico_w1, aes(x=factor(q4025))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_cpd` from the study-specific variable it has to be recoded as follows:
+
+* `2 into 0`
+* `1 into 1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo mexico_w1}
+
+# Categorical variable harmonization
+SAGE_ds_mexico_w1 <- tibble(id=SAGE_mexico_w1$id)
+SAGE_ds_mexico_w1$h_cpd <- car::recode(SAGE_mexico_w1$q4025,"2=0;NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript mexico_w1, echo=F}
+
+vbl <- SAGE_ds_mexico_w1$h_cpd
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(SAGE_ds_mexico_w1, aes(x=factor(h_cpd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation mexico_w1, echo=F}
+
+AfterH <- table(SAGE_ds_mexico_w1$h_cpd)
+BeforeH <- table(SAGE_mexico_w1$q4025,useNA = "ifany")[c(2,1,3)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","NA->999")
+kable(C)
+
+```
+
+
+
+
+
+## Descriptive statistics of the harmonised variable accross populations and waves
+
+Percentages of categories in each harmonised variable:
+
+
+**R script:**
+
+```{r summ}
+
+l.hds <- list(SA_w1 = SAGE_ds_SA_w1 , ghana_w1 = SAGE_ds_ghana_w1, china_w1 = SAGE_ds_china_w1, india_w1=SAGE_ds_india_w1, russia_w1=SAGE_ds_russia_w1, mexico_w1=SAGE_ds_mexico_w1)
+
+for(name in names(l.hds)) {
+  m_name <- paste0("SAGE_m_ds_",name)
+  aux_object <- l.hds[[name]]
+  label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+for (i in seq_along(l.hds)){
+  t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+}
+t.hds[13,] <- c("n", "sample size", 
+             length(l.hds[[1]][[2]]), length(l.hds[[2]][[2]]) , length(l.hds[[3]][[2]]), length(l.hds[[4]][[2]]), length(l.hds[[5]][[2]]), length(l.hds[[6]][[2]]) )
+names(t.hds)<-c("val", "label", "South_Africa_w1", "Ghana_W1", "China_W1", "India_W1", "Russia_W1", "Mexico_W1")
+kable(t.hds)
+
+```
+
+
+
+# Quality estimation
+
+Includes information about emphysema, bronchitis and COPD
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+for(index in seq_along(l.hds)){
+  h_cpd <- l.hds[[index]]
+  save(h_cpd, file = paste0(datafolder,names(l.hds)[index],"/h_cpd.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

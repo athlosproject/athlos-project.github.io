@@ -1,0 +1,750 @@
+---
+title: "Diastolic"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `dbp`
+* Variable label: `Diastolic blood pressure of participantat at each wave`
+* Variable description: `Means of all diastolic blood pressure measures`
+* Domain: `Physical measures`
+* Value type: `continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+# Data process
+
+
+
+### SAGE - South Africa - Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q2501_d`
+* Label: `diastolic (1)`
+* Type of variable: `countinous`
+* Missings
+    + `-9 = refused`
+    + `-8 = don't know`
+
+* Name: `q2502_d`
+* Label: `diastolic (2)`
+* Type of variable: `countinous`
+* Missings
+    + `-9 = refused`
+    + `-8 = don't know`
+
+* Name: `q2503_d`
+* Label: `diastolic (3)`
+* Type of variable: `countinous`
+* Missings
+    + `-9 = refused`
+    + `-8 = don't know`
+
+```{r assign1}
+opal.assign.table.tibble(o, 'SAGE_SA_w1_dbp','SAGE.southAfricaINDdata',
+                         variables=list('q2501_d', 'q2502_d', 'q2503_d'), missings = TRUE)
+```
+
+```{r local1}
+SAGE_SA_w1_dbp <- opal.execute(o,'SAGE_SA_w1_dbp')
+
+Continuous_summary(var = SAGE_SA_w1_dbp$q2501_d, missing_values = c(-9,-8))
+ggplot(SAGE_SA_w1_dbp, aes(q2501_d)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+
+Continuous_summary(var = SAGE_SA_w1_dbp$q2502_d, missing_values = c(-9,-8))
+ggplot(SAGE_SA_w1_dbp, aes(q2502_d)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+
+Continuous_summary(var = SAGE_SA_w1_dbp$q2503_d, missing_values = c(-9,-8))
+ggplot(SAGE_SA_w1_dbp, aes(q2503_d)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the mean value between the first, second and third measurement of the study-specific variables, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+* `-9 into 997`
+* `-8 into 998`
+
+R code of the ALGORITHM:
+
+```{r harmo1}
+SAGE_SA_w1_dbp$mean_dbp <- apply(X = SAGE_SA_w1_dbp[,c(2,3,4)], MARGIN = 1, FUN = mean)
+
+### -8 only in the first one
+id8_only01 <- which(SAGE_SA_w1_dbp$q2501_d==-8 & SAGE_SA_w1_dbp$q2502_d!=-8 & SAGE_SA_w1_dbp$q2503_d!=-8)
+
+SAGE_SA_w1_dbp$mean_dbp[id8_only01] <- apply(X = SAGE_SA_w1_dbp[id8_only01,c(3,4)], MARGIN = 1, FUN = mean)
+
+### -8 only in the second one
+id8_only02 <- which(SAGE_SA_w1_dbp$q2501_d!=-8 & SAGE_SA_w1_dbp$q2502_d==-8 & SAGE_SA_w1_dbp$q2503_d!=-8)
+
+SAGE_SA_w1_dbp$mean_dbp[id8_only02] <- apply(X = SAGE_SA_w1_dbp[id8_only02,c(2,4)], MARGIN = 1, FUN = mean)
+
+### -8 only in the third one
+id8_only03 <- which(SAGE_SA_w1_dbp$q2501_d!=-8 & SAGE_SA_w1_dbp$q2502_d!=-8 & SAGE_SA_w1_dbp$q2503_d==-8)
+
+SAGE_SA_w1_dbp$mean_dbp[id8_only03] <- apply(X = SAGE_SA_w1_dbp[id8_only03,c(2,3)], MARGIN = 1, FUN = mean)
+
+### -8 in the first and second one
+id8_01_02 <- which(SAGE_SA_w1_dbp$q2501_d==-8 & SAGE_SA_w1_dbp$q2502_d==-8 & SAGE_SA_w1_dbp$q2503_d!=-8)
+
+SAGE_SA_w1_dbp$mean_dbp[id8_01_02] <- SAGE_SA_w1_dbp$q2503_d[id8_01_02]
+
+### -8 in the first and third one
+id8_01_03 <- which(SAGE_SA_w1_dbp$q2501_d==-8 & SAGE_SA_w1_dbp$q2502_d==-8 & SAGE_SA_w1_dbp$q2503_d!=-8)
+
+SAGE_SA_w1_dbp$mean_dbp[id8_01_02] <- SAGE_SA_w1_dbp$q2502_d[id8_01_02]
+
+### -8 in the second and third one
+id8_02_03 <- which(SAGE_SA_w1_dbp$q2501_d!=-8 & SAGE_SA_w1_dbp$q2502_d==-8 & SAGE_SA_w1_dbp$q2503_d==-8)
+
+SAGE_SA_w1_dbp$mean_dbp[id8_02_03] <- SAGE_SA_w1_dbp$q2501_d[id8_02_03]
+
+### NA in the second and third one
+idNA_02_03 <- which(!is.na(SAGE_SA_w1_dbp$q2501_d) & is.na(SAGE_SA_w1_dbp$q2502_d) & is.na(SAGE_SA_w1_dbp$q2503_d))
+
+SAGE_SA_w1_dbp$mean_dbp[idNA_02_03] <- SAGE_SA_w1_dbp$q2501_d[idNA_02_03]
+
+
+
+SAGE_SA_ds_w1 <- tibble(id=SAGE_SA_w1_dbp$id)
+SAGE_SA_ds_w1$dbp <- car::recode(SAGE_SA_w1_dbp$mean_dbp, "NA=999; -9=997; -8=998")
+SAGE_SA_ds_w1$dbp <- labelled(SAGE_SA_ds_w1$dbp, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1}
+Continuous_summary(var = SAGE_SA_ds_w1$dbp, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_SA_ds_w1, aes(dbp)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency") + xlim(20,160) 
+```
+
+#### Validation
+```{r crosstabulation1}
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+#### Import to OPAL
+```{r importOPAL1}
+#val_labels(SAGE_SA_ds_w1) <- NULL
+#opal.assign.data(o, 'SAGE_SA_ds_w1', SAGE_SA_ds_w1)
+#opal.symbol_import(o,'SAGE_SA_ds_w1', project='_Athlos_Harm_Dataset')
+dbp <- SAGE_SA_ds_w1
+save(dbp, file = "../RData/SA_w1/dbp.RData")
+rm(dbp)
+```
+
+
+
+
+### SAGE - Ghana - Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q2501_d`
+* Label: `diastolic (1)`
+* Type of variable: `countinous`
+* Missings
+    + `-9 = refused`
+    + `-8 = don't know`
+
+* Name: `q2502_d`
+* Label: `diastolic (2)`
+* Type of variable: `countinous`
+* Missings
+    + `-9 = refused`
+    + `-8 = don't know`
+
+* Name: `q2503_d`
+* Label: `diastolic (3)`
+* Type of variable: `countinous`
+* Missings
+    + `-9 = refused`
+    + `-8 = don't know`
+
+
+```{r assign_ghana}
+opal.assign.table.tibble(o, 'SAGE_ghana_w1_dbp','SAGE.ghanaINDData',
+                         variables=list('q2501_d', 'q2502_d', 'q2503_d'), missings = TRUE)
+```
+
+```{r local_ghana}
+SAGE_ghana_w1_dbp <- opal.execute(o,'SAGE_ghana_w1_dbp')
+
+Continuous_summary(var = SAGE_ghana_w1_dbp$q2501_d, missing_values = c(-9,-8))
+ggplot(SAGE_ghana_w1_dbp, aes(q2501_d)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+
+Continuous_summary(var = SAGE_ghana_w1_dbp$q2502_d, missing_values = c(-9,-8))
+ggplot(SAGE_ghana_w1_dbp, aes(q2502_d)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+
+Continuous_summary(var = SAGE_ghana_w1_dbp$q2503_d, missing_values = c(-9,-8))
+ggplot(SAGE_ghana_w1_dbp, aes(q2503_d)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the mean value between the first, second and third measurement of the study-specific variables, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+* `-9 into 997`
+* `-8 into 998`
+
+
+R code of the ALGORITHM:
+
+```{r harmo_ghana}
+SAGE_ghana_w1_dbp$mean_dbp <- apply(X = SAGE_ghana_w1_dbp[,c(2,3,4)], MARGIN = 1, FUN = mean)
+
+
+### -8 only in the first one
+id8_only01 <- which(SAGE_ghana_w1_dbp$q2501_d==-8 & SAGE_ghana_w1_dbp$q2502_d!=-8 & SAGE_ghana_w1_dbp$q2503_d!=-8)
+
+SAGE_ghana_w1_dbp$mean_dbp[id8_only01] <- apply(X = SAGE_ghana_w1_dbp[id8_only01,c(3,4)], MARGIN = 1, FUN = mean)
+
+### -8 only in the second one
+id8_only02 <- which(SAGE_ghana_w1_dbp$q2501_d!=-8 & SAGE_ghana_w1_dbp$q2502_d==-8 & SAGE_ghana_w1_dbp$q2503_d!=-8)
+
+SAGE_ghana_w1_dbp$mean_dbp[id8_only02] <- apply(X = SAGE_ghana_w1_dbp[id8_only02,c(2,4)], MARGIN = 1, FUN = mean)
+
+### -8 only in the third one
+id8_only03 <- which(SAGE_ghana_w1_dbp$q2501_d!=-8 & SAGE_ghana_w1_dbp$q2502_d!=-8 & SAGE_ghana_w1_dbp$q2503_d==-8)
+
+SAGE_ghana_w1_dbp$mean_dbp[id8_only03] <- apply(X = SAGE_ghana_w1_dbp[id8_only03,c(2,3)], MARGIN = 1, FUN = mean)
+
+### -8 in the second and third one
+id8_02_03 <- which(SAGE_ghana_w1_dbp$q2501_d!=-8 & SAGE_ghana_w1_dbp$q2502_d==-8 & SAGE_ghana_w1_dbp$q2503_d==-8)
+
+SAGE_ghana_w1_dbp$mean_dbp[id8_02_03] <- SAGE_ghana_w1_dbp$q2501_d[id8_02_03]
+
+
+
+SAGE_ghana_ds_w1 <- tibble(id=SAGE_ghana_w1_dbp$id)
+SAGE_ghana_ds_w1$dbp <- car::recode(SAGE_ghana_w1_dbp$mean_dbp, "NA=999; -9=997; -8=998")
+SAGE_ghana_ds_w1$dbp <- labelled(SAGE_ghana_ds_w1$dbp, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_ghana}
+Continuous_summary(var = SAGE_ghana_ds_w1$dbp, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_ghana_ds_w1, aes(dbp)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency") + xlim(20,160) 
+```
+
+#### Validation
+```{r crosstabulation_ghana}
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+#### Import to OPAL
+```{r importOPAL_ghana}
+#val_labels(SAGE_ghana_ds_w1) <- NULL
+#opal.assign.data(o, 'SAGE_ghana_ds_w1', SAGE_ghana_ds_w1)
+#opal.symbol_import(o,'SAGE_ghana_ds_w1', project='_Athlos_Harm_Dataset')
+dbp <- SAGE_ghana_ds_w1
+save(dbp, file = "../RData/ghana_w1/dbp.RData")
+rm(dbp)
+```
+
+
+
+
+
+### SAGE - China - Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q2501_d`
+* Label: `diastolic (1)`
+* Type of variable: `countinous`
+* Missings
+    + `-9 = refused`
+    + `-8 = don't know`
+
+* Name: `q2502_d`
+* Label: `diastolic (2)`
+* Type of variable: `countinous`
+* Missings
+    + `-9 = refused`
+    + `-8 = don't know`
+
+* Name: `q2503_d`
+* Label: `diastolic (3)`
+* Type of variable: `countinous`
+* Missings
+    + `-9 = refused`
+    + `-8 = don't know`
+
+```{r assign_china}
+opal.assign.table.tibble(o, 'SAGE_china_w1_dbp','SAGE.chinaINDData',
+                         variables=list('q2501_d', 'q2502_d', 'q2503_d'), missings = TRUE)
+```
+
+```{r local_china}
+SAGE_china_w1_dbp <- opal.execute(o,'SAGE_china_w1_dbp')
+
+Continuous_summary(var = SAGE_china_w1_dbp$q2501_d, missing_values = c(-9,-8))
+ggplot(SAGE_china_w1_dbp, aes(q2501_d)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+
+Continuous_summary(var = SAGE_china_w1_dbp$q2502_d, missing_values = c(-9,-8))
+ggplot(SAGE_china_w1_dbp, aes(q2502_d)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+
+Continuous_summary(var = SAGE_china_w1_dbp$q2503_d, missing_values = c(-9,-8))
+ggplot(SAGE_china_w1_dbp, aes(q2503_d)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+```
+
+
+#### Harmonisation algorithm
+The harmonized variable is the mean value between the first, second and third measurement of the study-specific variables, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+* `-9 into 997`
+* `-8 into 998`
+
+
+R code of the ALGORITHM:
+
+```{r harmo_china}
+SAGE_china_w1_dbp$mean_dbp <- apply(X = SAGE_china_w1_dbp[,c(2,3,4)], MARGIN = 1, FUN = mean)
+
+### NA only in the third one
+idNA_only03 <- which(!is.na(SAGE_china_w1_dbp$q2501_d) & !is.na(SAGE_china_w1_dbp$q2502_d) & is.na(SAGE_china_w1_dbp$q2503_d))
+
+SAGE_china_w1_dbp$mean_dbp[idNA_only03] <- apply(X = SAGE_china_w1_dbp[idNA_only03,c(2,3)], MARGIN = 1, FUN = mean)
+
+
+### NA in the second and third one
+idNA_02_03 <- which(!is.na(SAGE_china_w1_dbp$q2501_d) & is.na(SAGE_china_w1_dbp$q2502_d) & is.na(SAGE_china_w1_dbp$q2503_d))
+
+SAGE_china_w1_dbp$mean_dbp[idNA_02_03] <- SAGE_china_w1_dbp$q2501_d[idNA_02_03]
+
+
+SAGE_china_ds_w1 <- tibble(id=SAGE_china_w1_dbp$id)
+SAGE_china_ds_w1$dbp <- car::recode(SAGE_china_w1_dbp$mean_dbp, "NA=999; -9=997; -8=998")
+SAGE_china_ds_w1$dbp <- labelled(SAGE_china_ds_w1$dbp, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_china}
+Continuous_summary(var = SAGE_china_ds_w1$dbp, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_china_ds_w1, aes(dbp)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency") + xlim(20,160) 
+```
+
+#### Validation
+```{r crosstabulation_china}
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+#### Import to OPAL
+```{r importOPAL_china}
+#val_labels(SAGE_china_ds_w1) <- NULL
+#opal.assign.data(o, 'SAGE_china_ds_w1', SAGE_china_ds_w1)
+#opal.symbol_import(o,'SAGE_china_ds_w1', project='_Athlos_Harm_Dataset')
+dbp <- SAGE_china_ds_w1
+save(dbp, file = "../RData/china_w1/dbp.RData")
+rm(dbp)
+```
+
+
+
+
+
+
+### SAGE - India - Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q2501_d`
+* Label: `diastolic (1)`
+* Type of variable: `countinous`
+* Missings
+    + `-9 = refused`
+    + `-8 = don't know`
+
+* Name: `q2502_d`
+* Label: `diastolic (2)`
+* Type of variable: `countinous`
+* Missings
+    + `-9 = refused`
+    + `-8 = don't know`
+
+* Name: `q2503_d`
+* Label: `diastolic (3)`
+* Type of variable: `countinous`
+* Missings
+    + `-9 = refused`
+    + `-8 = don't know`
+
+```{r assign_india}
+opal.assign.table.tibble(o, 'SAGE_india_w1_dbp','SAGE.indiaINDData',
+                         variables=list('q2501_d', 'q2502_d', 'q2503_d'), missings = TRUE)
+```
+
+```{r local_india}
+SAGE_india_w1_dbp <- opal.execute(o,'SAGE_india_w1_dbp')
+
+Continuous_summary(var = SAGE_india_w1_dbp$q2501_d, missing_values = c(-9,-8))
+ggplot(SAGE_india_w1_dbp, aes(q2501_d)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+
+Continuous_summary(var = SAGE_india_w1_dbp$q2502_d, missing_values = c(-9,-8))
+ggplot(SAGE_india_w1_dbp, aes(q2502_d)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+
+Continuous_summary(var = SAGE_india_w1_dbp$q2503_d, missing_values = c(-9,-8))
+ggplot(SAGE_india_w1_dbp, aes(q2503_d)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the mean value between the first, second and third measurement of the study-specific variables, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+* `-9 into 997`
+* `-8 into 998`
+
+R code of the ALGORITHM:
+
+```{r harmo_india}
+SAGE_india_w1_dbp$mean_dbp <- apply(X = SAGE_india_w1_dbp[,c(2,3,4)], MARGIN = 1, FUN = mean)
+
+### -8 only in the third one
+id8_only03 <- which(SAGE_india_w1_dbp$q2501_d!=-8 & SAGE_india_w1_dbp$q2502_d!=-8 & SAGE_india_w1_dbp$q2503_d==-8)
+
+SAGE_india_w1_dbp$mean_dbp[id8_only03] <- apply(X = SAGE_india_w1_dbp[id8_only03,c(2,3)], MARGIN = 1, FUN = mean)
+
+### -8 in the second and third one
+id8_02_03 <- which(SAGE_india_w1_dbp$q2501_d!=-8 & SAGE_india_w1_dbp$q2502_d==-8 & SAGE_india_w1_dbp$q2503_d==-8)
+
+SAGE_india_w1_dbp$mean_dbp[id8_02_03] <- SAGE_india_w1_dbp$q2501_d[id8_02_03]
+
+
+### -9 only in the first one
+id8_only01 <- which(SAGE_india_w1_dbp$q2501_d==-9 & SAGE_india_w1_dbp$q2502_d!=-9 & SAGE_india_w1_dbp$q2503_d!=-9)
+
+SAGE_india_w1_dbp$mean_dbp[id8_only01] <- apply(X = SAGE_india_w1_dbp[id8_only01,c(3,4)], MARGIN = 1, FUN = mean)
+
+### -9 only in the third one
+id8_only03 <- which(SAGE_india_w1_dbp$q2501_d!=-9 & SAGE_india_w1_dbp$q2502_d!=-9 & SAGE_india_w1_dbp$q2503_d==-9)
+
+SAGE_india_w1_dbp$mean_dbp[id8_only03] <- apply(X = SAGE_india_w1_dbp[id8_only03,c(2,3)], MARGIN = 1, FUN = mean)
+
+### -9 in the second and third one
+id8_02_03 <- which(SAGE_india_w1_dbp$q2501_d!=-9 & SAGE_india_w1_dbp$q2502_d==-9 & SAGE_india_w1_dbp$q2503_d==-9)
+
+SAGE_india_w1_dbp$mean_dbp[id8_02_03] <- SAGE_india_w1_dbp$q2501_d[id8_02_03]
+
+
+
+
+SAGE_india_ds_w1 <- tibble(id=SAGE_india_w1_dbp$id)
+SAGE_india_ds_w1$dbp <- car::recode(SAGE_india_w1_dbp$mean_dbp, "NA=999; -9=997; -8=998")
+SAGE_india_ds_w1$dbp <- labelled(SAGE_india_ds_w1$dbp, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_india}
+Continuous_summary(var = SAGE_india_ds_w1$dbp, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_india_ds_w1, aes(dbp)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency") + xlim(20,160) 
+```
+
+#### Validation
+```{r crosstabulation_india}
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+#### Import to OPAL
+```{r importOPAL_india}
+#val_labels(SAGE_india_ds_w1) <- NULL
+#opal.assign.data(o, 'SAGE_india_ds_w1', SAGE_india_ds_w1)
+#opal.symbol_import(o,'SAGE_india_ds_w1', project='_Athlos_Harm_Dataset')
+dbp <- SAGE_india_ds_w1
+save(dbp, file = "../RData/india_w1/dbp.RData")
+rm(dbp)
+```
+
+
+
+
+
+
+### SAGE - Russia - Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q2501_d`
+* Label: `diastolic (1)`
+* Type of variable: `countinous`
+* Missings
+    + `-9 = refused`
+    + `-8 = don't know`
+
+* Name: `q2502_d`
+* Label: `diastolic (2)`
+* Type of variable: `countinous`
+* Missings
+    + `-9 = refused`
+    + `-8 = don't know`
+
+* Name: `q2503_d`
+* Label: `diastolic (3)`
+* Type of variable: `countinous`
+* Missings
+    + `-9 = refused`
+    + `-8 = don't know`
+
+
+```{r assign_russia}
+opal.assign.table.tibble(o, 'SAGE_russia_w1_dbp','SAGE.russiaINDdata',
+                         variables=list('q2501_d', 'q2502_d', 'q2503_d'), missings = TRUE)
+```
+
+```{r local_russia}
+SAGE_russia_w1_dbp <- opal.execute(o,'SAGE_russia_w1_dbp')
+
+Continuous_summary(var = SAGE_russia_w1_dbp$q2501_d, missing_values = c(-9,-8))
+ggplot(SAGE_russia_w1_dbp, aes(q2501_d)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+
+Continuous_summary(var = SAGE_russia_w1_dbp$q2502_d, missing_values = c(-9,-8))
+ggplot(SAGE_russia_w1_dbp, aes(q2502_d)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+
+Continuous_summary(var = SAGE_russia_w1_dbp$q2503_d, missing_values = c(-9,-8))
+ggplot(SAGE_russia_w1_dbp, aes(q2503_d)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the mean value between the first, second and third measurement of the study-specific variables, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+* `-9 into 997`
+* `-8 into 998`
+
+R code of the ALGORITHM:
+
+```{r harmo_russia}
+SAGE_russia_w1_dbp$mean_dbp <- apply(X = SAGE_russia_w1_dbp[,c(2,3,4)], MARGIN = 1, FUN = mean)
+
+### -8 only in the first one
+id8_only01 <- which(SAGE_russia_w1_dbp$q2501_d==-8 & SAGE_russia_w1_dbp$q2502_d!=-8 & SAGE_russia_w1_dbp$q2503_d!=-8)
+
+SAGE_russia_w1_dbp$mean_dbp[id8_only01] <- apply(X = SAGE_russia_w1_dbp[id8_only01,c(3,4)], MARGIN = 1, FUN = mean)
+
+### -8 only in the third one
+id8_only03 <- which(SAGE_russia_w1_dbp$q2501_d!=-8 & SAGE_russia_w1_dbp$q2502_d!=-8 & SAGE_russia_w1_dbp$q2503_d==-8)
+
+SAGE_russia_w1_dbp$mean_dbp[id8_only03] <- apply(X = SAGE_russia_w1_dbp[id8_only03,c(2,3)], MARGIN = 1, FUN = mean)
+
+### -8 in the second and third one
+id8_02_03 <- which(SAGE_russia_w1_dbp$q2501_d!=-8 & SAGE_russia_w1_dbp$q2502_d==-8 & SAGE_russia_w1_dbp$q2503_d==-8)
+
+SAGE_russia_w1_dbp$mean_dbp[id8_02_03] <- SAGE_russia_w1_dbp$q2501_d[id8_02_03]
+
+
+### -9 only in the first one
+id9_only01 <- which(SAGE_russia_w1_dbp$q2501_d==-9 & SAGE_russia_w1_dbp$q2502_d!=-9 & SAGE_russia_w1_dbp$q2503_d!=-9)
+
+SAGE_russia_w1_dbp$mean_dbp[id9_only01] <- apply(X = SAGE_russia_w1_dbp[id9_only01,c(3,4)], MARGIN = 1, FUN = mean)
+
+### -9 only in the second one
+id9_only02 <- which(SAGE_russia_w1_dbp$q2501_d!=-9 & SAGE_russia_w1_dbp$q2502_d==-9 & SAGE_russia_w1_dbp$q2503_d!=-9)
+
+SAGE_russia_w1_dbp$mean_dbp[id9_only02] <- apply(X = SAGE_russia_w1_dbp[id9_only02,c(2,4)], MARGIN = 1, FUN = mean)
+
+### -9 only in the third one
+id9_only03 <- which(SAGE_russia_w1_dbp$q2501_d!=-9 & SAGE_russia_w1_dbp$q2502_d!=-9 & SAGE_russia_w1_dbp$q2503_d==-9)
+
+SAGE_russia_w1_dbp$mean_dbp[id9_only03] <- apply(X = SAGE_russia_w1_dbp[id9_only03,c(2,3)], MARGIN = 1, FUN = mean)
+
+### -9 in the second and third one
+id9_02_03 <- which(SAGE_russia_w1_dbp$q2501_d!=-9 & SAGE_russia_w1_dbp$q2502_d==-9 & SAGE_russia_w1_dbp$q2503_d==-9)
+
+SAGE_russia_w1_dbp$mean_dbp[id9_02_03] <- SAGE_russia_w1_dbp$q2501_d[id9_02_03]
+
+
+
+
+SAGE_russia_ds_w1 <- tibble(id=SAGE_russia_w1_dbp$id)
+SAGE_russia_ds_w1$dbp <- car::recode(SAGE_russia_w1_dbp$mean_dbp, "NA=999; -9=997; -8=998")
+SAGE_russia_ds_w1$dbp <- labelled(SAGE_russia_ds_w1$dbp, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_russia}
+Continuous_summary(var = SAGE_russia_ds_w1$dbp, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_russia_ds_w1, aes(dbp)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency") + xlim(20,160) 
+```
+
+#### Validation
+```{r crosstabulation_russia}
+```
+
+#### Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+#### Import to OPAL
+```{r importOPAL_russia}
+#val_labels(SAGE_russia_ds_w1) <- NULL
+#opal.assign.data(o, 'SAGE_russia_ds_w1', SAGE_russia_ds_w1)
+#opal.symbol_import(o,'SAGE_russia_ds_w1', project='_Athlos_Harm_Dataset')
+dbp <- SAGE_russia_ds_w1
+save(dbp, file = "../RData/russia_w1/dbp.RData")
+rm(dbp)
+```
+
+
+
+
+
+
+### SAGE - Mexico - Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q2501_d`
+* Label: `diastolic (1)`
+* Type of variable: `countinous`
+* Missings
+    + `-9 = refused`
+    + `-8 = don't know`
+
+* Name: `q2502_d`
+* Label: `diastolic (2)`
+* Type of variable: `countinous`
+* Missings
+    + `-9 = refused`
+    + `-8 = don't know`
+
+* Name: `q2503_d`
+* Label: `diastolic (3)`
+* Type of variable: `countinous`
+* Missings
+    + `-9 = refused`
+    + `-8 = don't know`
+
+```{r assign_Mexico}
+opal.assign.table.tibble(o, 'SAGE_mexico_w1_dbp','SAGE.mexicoINDdata',
+                         variables=list('q2501_d', 'q2502_d', 'q2503_d'), missings = TRUE)
+```
+
+```{r local_Mexico}
+SAGE_mexico_w1_dbp <- opal.execute(o,'SAGE_mexico_w1_dbp')
+
+Continuous_summary(var = SAGE_mexico_w1_dbp$q2501_d, missing_values = c(-9,-8))
+ggplot(SAGE_mexico_w1_dbp, aes(q2501_d)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+
+Continuous_summary(var = SAGE_mexico_w1_dbp$q2502_d, missing_values = c(-9,-8))
+ggplot(SAGE_mexico_w1_dbp, aes(q2502_d)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+
+Continuous_summary(var = SAGE_mexico_w1_dbp$q2503_d, missing_values = c(-9,-8))
+ggplot(SAGE_mexico_w1_dbp, aes(q2503_d)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency")
+```
+
+The third measurement is all missing. Therefore it won't take into account to compute the mean.
+
+#### Harmonisation algorithm
+The harmonized variable is the mean value between the first and second measurement of the study-specific variables, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+* `-9 into 997`
+* `-8 into 998`
+
+R code of the ALGORITHM:
+
+```{r harmo_Mexico}
+SAGE_mexico_w1_dbp$mean_dbp <- apply(X = SAGE_mexico_w1_dbp[,c(2,3)], MARGIN = 1, FUN = mean)
+
+### -8 in the first measurement
+id8_01_03 <- which(SAGE_mexico_w1_dbp$q2501_d==-8 & SAGE_mexico_w1_dbp$q2502_d!=-8 )
+
+SAGE_mexico_w1_dbp$mean_dbp[id8_01_03] <- SAGE_mexico_w1_dbp$q2502_d[id8_01_03]
+
+### -8 in the second and third measurement
+id8_02_03 <- which(SAGE_mexico_w1_dbp$q2501_d!=-8 & SAGE_mexico_w1_dbp$q2502_d==-8)
+
+SAGE_mexico_w1_dbp$mean_dbp[id8_02_03] <- SAGE_mexico_w1_dbp$q2501_d[id8_02_03]
+
+
+
+SAGE_mexico_ds_w1 <- tibble(id=SAGE_mexico_w1_dbp$id)
+SAGE_mexico_ds_w1$dbp <- car::recode(SAGE_mexico_w1_dbp$mean_dbp, "NA=999; -9=997; -8=998")
+SAGE_mexico_ds_w1$dbp <- labelled(SAGE_mexico_ds_w1$dbp, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_Mexico}
+Continuous_summary(var = SAGE_mexico_ds_w1$dbp, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SAGE_mexico_ds_w1, aes(dbp)) + geom_histogram(stat="count", fill="steelblue") + xlab("Diastolic Blood Pressure") + ylab("Frequency") + xlim(20,160) 
+```
+
+#### Validation
+```{r crosstabulation_Mexico}
+```
+
+#### Quality estimation
+The calculation of diastolic bp was reached by obtaining the mean value of the two variables available for this study.
+
+
+#### Import to OPAL
+```{r importOPAL_Mexico}
+#val_labels(SAGE_mexico_ds_w1) <- NULL
+#opal.assign.data(o, 'SAGE_mexico_ds_w1', SAGE_mexico_ds_w1)
+#opal.symbol_import(o,'SAGE_mexico_ds_w1', project='_Athlos_Harm_Dataset')
+dbp <- SAGE_mexico_ds_w1
+save(dbp, file = "../RData/mexico_w1/dbp.RData")
+rm(dbp)
+```
+
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
