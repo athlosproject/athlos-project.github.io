@@ -1,0 +1,659 @@
+---
+title: "Cardiac disorders"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `cd_all`
+* Variable label: `History of Cardiac disorders`
+* Variable description: `The participant has been diagnosed by one or more of the following conditions: angina, myocardial infarction, heart attack, coronary heart disease, congestive heart failure, heart murmur, valve disease`
+* Domain: `Diseases`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No, the participant has not been diagnosed of any of these conditions
+1        | Yes, the participant has been diagnosed by any of these conditions
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+<!-- ########################################################## --> 
+<!-- # Global variables -->
+```{r global, include=FALSE, echo=F}
+miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
+ds_label <- "History of Cardiac disorders"
+cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
+datafolder <- "../RData/"
+#sing_idlist <- c()
+```
+<!-- ########################################################## --> 
+
+
+
+# Data process
+
+
+
+## Australia
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `mi_ha` |
+|-|-|
+| **Label** | `Myocardial infarction or heart attack` |
+| **Table name**  | `mi_ha` |
+| **Categories** | `0 = No`<br/>`1 = Yes` |
+| **Description** |  |
+
+```{r assign w1, echo=F}
+
+load(paste0(datafolder,"w1/mi_ha.RData"))
+ALSA_w1 <- tibble(id=mi_ha$id)
+ALSA_w1$mi_ha <- mi_ha$mi_ha
+rm(mi_ha)
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- ALSA_w1$mi_ha
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(ALSA_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w1, aes(x=factor(mi_ha))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cd_all` from the study-specific variable it has to be recoded as follows:
+
+* `0 into 0`
+* `1 into 1`
+
+**R script:**
+
+```{r harmo w1}
+
+# Categorical variable harmonization
+ALSA_ds_w1 <- tibble(id=ALSA_w1$id)
+ALSA_ds_w1$cd_all <- rep(999,length(ALSA_w1$id))
+ALSA_ds_w1$cd_all[which(ALSA_w1$mi_ha==0)] <- 0
+ALSA_ds_w1$cd_all[which(ALSA_w1$mi_ha==1)] <- 1
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- ALSA_ds_w1$cd_all
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w1, aes(x=factor(cd_all))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+
+AfterH <- table(ALSA_ds_w1$cd_all, useNA = "ifany")
+X <- c(
+  sum(ALSA_w1$mi_ha==0,na.rm=T),
+  sum(ALSA_w1$mi_ha==1,na.rm=T)
+)
+BeforeH <- c(X[1:2])
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0->0","1->1")
+kable(C)
+
+```
+
+
+
+### Wave 2
+
+Not found.
+
+
+
+
+### Wave 3
+
+
+#### Study-specific variable description
+
+| **Name** | `mi_ha` |
+|-|-|
+| **Label** | `Myocardial infarction or heart attack` |
+| **Table name**  | `mi_ha` |
+| **Categories** | `0 = No`<br/>`1 = Yes` |
+| **Missings** |`999 = Missing`|
+| **Description** |  |
+
+```{r assign w3, echo=F}
+
+load(paste0(datafolder,"w3/mi_ha.RData"))
+ALSA_w3 <- tibble(id=mi_ha$id)
+ALSA_w3$mi_ha <- mi_ha$mi_ha
+rm(mi_ha)
+
+```
+
+```{r local w3, echo=F}
+
+vbl <- ALSA_w3$mi_ha
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(ALSA_w3)[2])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(ALSA_w3, aes(x=factor(mi_ha))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cd_all` from the study-specific variable it has to be recoded as follows:
+
+* `0 into 0`
+* `1 into 1`
+* `999 into 999`
+
+**R script:**
+
+```{r harmo w3}
+
+# Categorical variable harmonization
+ALSA_ds_w3 <- tibble(id=ALSA_w3$id)
+ALSA_ds_w3$cd_all <- rep(999,length(ALSA_w3$id))
+ALSA_ds_w3$cd_all[which(ALSA_w3$mi_ha==0)] <- 0
+ALSA_ds_w3$cd_all[which(ALSA_w3$mi_ha==1)] <- 1
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w3, echo=F}
+
+vbl <- ALSA_ds_w3$cd_all
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w3, aes(x=factor(cd_all))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w3, echo=F}
+
+AfterH <- table(ALSA_ds_w3$cd_all, useNA = "ifany")
+X <- c(
+  sum(ALSA_w3$mi_ha==0,na.rm=T),
+  sum(ALSA_w3$mi_ha==1,na.rm=T)
+)
+BeforeH <- c(X[1:2],length(ALSA_w3$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0->0","1->1","999->999")
+kable(C)
+
+```
+
+
+### Wave 4
+
+Not found.
+
+### Wave 5
+
+Not found.
+
+
+
+### Wave 6
+
+
+#### Study-specific variable description
+
+| **Name** | `mi_ha` |`h_angina`|
+|-|-|-|
+| **Label** | `Myocardial infarction or heart attack` |`History of angina`|
+| **Table name**  | `mi_ha` |`h_angina`|
+| **Categories** | `0 = No`<br/>`1 = Yes` |`0 = no history of angina`<br/>`1 = history of angina`|
+| **Missings** |`999 = Missing`|`999 = Missing`|
+| **Description** |  |  |
+
+```{r assign w6, echo=F}
+
+load(paste0(datafolder,"w6/mi_ha.RData"))
+ALSA_w6 <- tibble(id=mi_ha$id)
+ALSA_w6$mi_ha <- mi_ha$mi_ha
+rm(mi_ha)
+load(paste0(datafolder,"w6/h_angina.RData"))
+ALSA_w6$h_angina <- h_angina$h_angina
+rm(h_angina)
+
+```
+
+```{r local w6, echo=F}
+
+vbl <- ALSA_w6$mi_ha
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(ALSA_w6)[2])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(ALSA_w6, aes(x=factor(mi_ha))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- ALSA_w6$h_angina
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(ALSA_w6)[3])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(ALSA_w6, aes(x=factor(h_angina))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cd_all` from the study-specific variable it has to be recoded as follows:
+
+* `all 0 into 0`
+* `some 1 into 1`
+* `999 into 999`
+
+**R script:**
+
+```{r harmo w6}
+
+# Categorical variable harmonization
+ALSA_ds_w6 <- tibble(id=ALSA_w6$id)
+ALSA_ds_w6$cd_all <- rep(999,length(ALSA_w6$id))
+ALSA_ds_w6$cd_all[which(ALSA_w6$mi_ha==0 & ALSA_w6$h_angina==0)] <- 0
+ALSA_ds_w6$cd_all[which(ALSA_w6$mi_ha==1 | ALSA_w6$h_angina==1)] <- 1
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w6, echo=F}
+
+vbl <- ALSA_ds_w6$cd_all
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w6, aes(x=factor(cd_all))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w6, echo=F}
+
+AfterH <- table(ALSA_ds_w6$cd_all, useNA = "ifany")
+X <- c(
+  sum(ALSA_w6$mi_ha==0 & ALSA_w6$h_angina==0,na.rm=T),
+  sum(ALSA_w6$mi_ha==1 | ALSA_w6$h_angina==1,na.rm=T)
+)
+BeforeH <- c(X[2],length(ALSA_w6$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("some 1->1","999->999")
+kable(C)
+
+```
+
+
+
+### Wave 7
+
+
+Not found.
+
+
+
+### Wave 8
+
+Not found.
+
+
+
+### Wave 9
+
+Not found.
+
+
+### Wave 10
+
+Not found.
+
+
+
+### Wave 11
+
+
+#### Study-specific variable description
+
+| **Name** | `mi_ha` |`h_angina`|
+|-|-|-|
+| **Label** | `Myocardial infarction or heart attack` |`History of angina`|
+| **Table name**  | `mi_ha` |`h_angina`|
+| **Categories** | `0 = No`<br/>`1 = Yes` |`0 = no history of angina`<br/>`1 = history of angina`|
+| **Missings** |`999 = Missing`|`999 = Missing`|
+| **Description** |  |  |
+
+```{r assign w11, echo=F}
+
+load(paste0(datafolder,"w11/mi_ha.RData"))
+ALSA_w11 <- tibble(id=mi_ha$id)
+ALSA_w11$mi_ha <- mi_ha$mi_ha
+rm(mi_ha)
+load(paste0(datafolder,"w11/h_angina.RData"))
+ALSA_w11$h_angina <- h_angina$h_angina
+rm(h_angina)
+
+```
+
+```{r local w11, echo=F}
+
+vbl <- ALSA_w11$mi_ha
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(ALSA_w11)[2])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(ALSA_w11, aes(x=factor(mi_ha))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- ALSA_w11$h_angina
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(ALSA_w11)[3])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(ALSA_w11, aes(x=factor(h_angina))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cd_all` from the study-specific variable it has to be recoded as follows:
+
+* `all 0 into 0`
+* `some 1 into 1`
+* `999 into 999`
+
+**R script:**
+
+```{r harmo w11}
+
+# Categorical variable harmonization
+ALSA_ds_w11 <- tibble(id=ALSA_w11$id)
+ALSA_ds_w11$cd_all <- rep(999,length(ALSA_w11$id))
+ALSA_ds_w11$cd_all[which(ALSA_w11$mi_ha==0 & ALSA_w11$h_angina==0)] <- 0
+ALSA_ds_w11$cd_all[which(ALSA_w11$mi_ha==1 | ALSA_w11$h_angina==1)] <- 1
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w11, echo=F}
+
+vbl <- ALSA_ds_w11$cd_all
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w11, aes(x=factor(cd_all))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w11, echo=F}
+
+AfterH <- table(ALSA_ds_w11$cd_all, useNA = "ifany")
+X <- c(
+  sum(ALSA_w11$mi_ha==0 & ALSA_w11$h_angina==0,na.rm=T),
+  sum(ALSA_w11$mi_ha==1 | ALSA_w11$h_angina==1,na.rm=T)
+)
+BeforeH <- c(X[1:2],length(ALSA_w11$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("all 0->0","some 1->1","999->999")
+kable(C)
+
+```
+
+
+
+### Wave 12
+
+
+#### Study-specific variable description
+
+| **Name** | `mi_ha` |`h_angina`|
+|-|-|-|
+| **Label** | `Myocardial infarction or heart attack` |`History of angina`|
+| **Table name**  | `mi_ha` |`h_angina`|
+| **Categories** | `0 = No`<br/>`1 = Yes` | `0 = no history of angina`<br/>`1 = history of angina`|
+| **Missings** |`999 = Missing`|`999 = Missing`|
+| **Description** |  |  |
+
+```{r assign w12, echo=F}
+
+load(paste0(datafolder,"w12/mi_ha.RData"))
+ALSA_w12 <- tibble(id=mi_ha$id)
+ALSA_w12$mi_ha <- mi_ha$mi_ha
+rm(mi_ha)
+load(paste0(datafolder,"w12/h_angina.RData"))
+ALSA_w12$h_angina <- h_angina$h_angina
+rm(h_angina)
+
+```
+
+```{r local w12, echo=F}
+
+vbl <- ALSA_w12$mi_ha
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(ALSA_w12)[2])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(ALSA_w12, aes(x=factor(mi_ha))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- ALSA_w12$h_angina
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(ALSA_w12)[3])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(ALSA_w12, aes(x=factor(h_angina))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cd_all` from the study-specific variable it has to be recoded as follows:
+
+* `all 0 into 0`
+* `some 1 into 1`
+* `999 into 999`
+
+**R script:**
+
+```{r harmo w12}
+
+# Categorical variable harmonization
+ALSA_ds_w12 <- tibble(id=ALSA_w12$id)
+ALSA_ds_w12$cd_all <- rep(999,length(ALSA_w12$id))
+ALSA_ds_w12$cd_all[which(ALSA_w12$mi_ha==0 & ALSA_w12$h_angina==0)] <- 0
+ALSA_ds_w12$cd_all[which(ALSA_w12$mi_ha==1 | ALSA_w12$h_angina==1)] <- 1
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w12, echo=F}
+
+vbl <- ALSA_ds_w12$cd_all
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w12, aes(x=factor(cd_all))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w12, echo=F}
+
+AfterH <- table(ALSA_ds_w12$cd_all, useNA = "ifany")
+X <- c(
+  sum(ALSA_w12$mi_ha==0 & ALSA_w12$h_angina==0,na.rm=T),
+  sum(ALSA_w12$mi_ha==1 | ALSA_w12$h_angina==1,na.rm=T)
+)
+BeforeH <- c(X[1:2],length(ALSA_w12$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("all 0->0","some 1->1","999->999")
+kable(C)
+
+```
+
+
+### Wave 13
+
+Not found.
+
+
+<!--
+```{r summary, include=F, eval=F, echo=F}
+kable(ALSA_ds[ALSA_ds$id %in% strange_id,], align = 'c', caption = 'Individuals with discrepancies')
+```
+-->
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
+
+**R script:**
+
+```{r summ}
+ALSA_ds_w1$cd_all <- labelled(ALSA_ds_w1$cd_all, labels = cat_label)
+label(ALSA_ds_w1$cd_all) <- ds_label
+ALSA_ds_w3$cd_all <- labelled(ALSA_ds_w3$cd_all, labels = cat_label)
+label(ALSA_ds_w3$cd_all) <- ds_label
+ALSA_ds_w6$cd_all <- labelled(ALSA_ds_w6$cd_all, labels = cat_label)
+label(ALSA_ds_w6$cd_all) <- ds_label
+ALSA_ds_w11$cd_all <- labelled(ALSA_ds_w11$cd_all, labels = cat_label)
+label(ALSA_ds_w11$cd_all) <- ds_label
+ALSA_ds_w12$cd_all <- labelled(ALSA_ds_w12$cd_all, labels = cat_label)
+label(ALSA_ds_w12$cd_all) <- ds_label
+
+ALSA_m_ds_w1 <- ALSA_ds_w1
+ALSA_m_ds_w1$cd_all <- car::recode(ALSA_m_ds_w1$cd_all, "miss_values_vector=NA")
+ALSA_m_ds_w3 <- ALSA_ds_w3
+ALSA_m_ds_w3$cd_all <- car::recode(ALSA_m_ds_w3$cd_all, "miss_values_vector=NA")
+ALSA_m_ds_w6 <- ALSA_ds_w6
+ALSA_m_ds_w6$cd_all <- car::recode(ALSA_m_ds_w6$cd_all, "miss_values_vector=NA")
+ALSA_m_ds_w11 <- ALSA_ds_w11
+ALSA_m_ds_w11$cd_all <- car::recode(ALSA_m_ds_w11$cd_all, "miss_values_vector=NA")
+ALSA_m_ds_w12 <- ALSA_ds_w12
+ALSA_m_ds_w12$cd_all <- car::recode(ALSA_m_ds_w12$cd_all, "miss_values_vector=NA")
+
+tt <-    frq(ALSA_ds_w1$cd_all)[[1]][,c(1:2,4)]
+tt[4] <- frq(ALSA_ds_w3$cd_all)[[1]][,c(4)]
+tt[5] <- frq(ALSA_ds_w6$cd_all)[[1]][,c(4)]
+tt[6] <- frq(ALSA_ds_w11$cd_all)[[1]][,c(4)]
+tt[7] <- frq(ALSA_ds_w12$cd_all)[[1]][,c(4)]
+tt[13,] <- c("n", "sample size", 
+             length(ALSA_ds_w1$cd_all), length(ALSA_ds_w3$cd_all), length(ALSA_ds_w6$cd_all), 
+             length(ALSA_ds_w11$cd_all), length(ALSA_ds_w12$cd_all)
+             )
+names(tt)<-c("val", "label", "w1", "w3", "w6", "w11", "w12")
+kable(tt)
+
+dbb <- merge(ALSA_m_ds_w1[,c("id","cd_all")], ALSA_m_ds_w3[,c("id","cd_all")], by="id", suffixes = c(".w1",".w3"), all=T)
+dbb <- merge(dbb, ALSA_m_ds_w6[,c("id","cd_all")], by="id", all=T)
+dbb <- merge(dbb, ALSA_m_ds_w11[,c("id","cd_all")], by="id", suffixes = c(".w6",".w11"), all=T)
+dbb <- merge(dbb, ALSA_m_ds_w12[,c("id","cd_all")], by="id", all=T)
+names(dbb) <- c("id", "w1", "w3", "w6", "w11", "w12")
+v.dbb <- paste(dbb[,2],dbb[,3],dbb[,4],dbb[,5],dbb[,6],sep="")
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb[f.dbb[,3]>=0.3,])
+```
+
+
+
+# Quality estimation
+
+The harmonized variable contains information about angina and myocardial infarction. The harmonized variable has been built from the single disease variables. 
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+l.ALSA <- list(w1 = ALSA_ds_w1, w3 = ALSA_ds_w3, w6 = ALSA_ds_w6, w11 = ALSA_ds_w11, w12 = ALSA_ds_w12)
+
+for(index in seq_along(l.ALSA)){
+  cd_all <- l.ALSA[[index]]
+  save(cd_all, file = paste0(datafolder,names(l.ALSA)[index],"/cd_all.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

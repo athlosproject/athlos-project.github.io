@@ -1,0 +1,466 @@
+---
+title: "Grip strength"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `grip`
+* Variable label: `Grip strength in kg`
+* Variable description: `Grip strength`
+* Domain: `Physical measures`
+* Value type: `continuous`
+
+* Comments: `According to a systematic review (Roberts et al, 2011), there are some inconsistencies in the use of maximum or mean grip strength as a summary measure which limit comparison of results between epidemiological studies. With multiple attempts, the maximum grip strength will be greater than the mean value. 
+Even though for right handed people, there is a 10% stronger grip in the dominant hand, this is not true for left handed or ambidextrous people, whose grip strength are more or less equal in both hands (Roberts et al, 2011). 
+In light of the above, the harmonised variable "grip" is proposed to be the highest score (to the nearest kg) of all hand grip measurements in each study, regardless of hand dominance. This is following a protocol suggested by Roberts et al (2011), based on the American Society of Hand Therapists (ASHT) protocol.`
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Grip strength"
+```
+
+# Data process
+
+## ALSA
+
+### Wave 1 
+
+
+There is no variable.
+
+
+
+
+### Wave 2 
+
+There is no variable.ol
+
+
+
+
+### Wave 3 
+
+There is no variable. 
+
+
+
+
+### Wave 4 
+
+There is no variable.
+
+
+
+
+
+### Wave 5 
+
+There is no variable.
+
+
+
+
+
+
+### Wave 6 
+
+There is no variable.
+
+
+
+
+
+
+### Wave 7 
+
+#### Study-specific variable description
+
+| **Name** | `grip1w7`|`grip2w7`| `grip3w7` |
+|-|-|-|
+| **Label** | `Reading for grip strength (to nearest 0.5kg)-attempt 1` |`Reading for grip strength (to nearest 0.5kg)-attempt 2` | `Reading for grip strength (to nearest 0.5kg)-attempt 3` |
+| **Table name** | `ALSA-Wave7` |`ALSA-Wave7` | `ALSA-Wave7` |
+| **Categories** | `continuous` |`continuous` |`continuous` |
+| **Missing values** | `99.9 = not attempted/incomplete` | `99.9 = not attempted/incomplete` | `99.9 = not attempted/incomplete` | 
+| **Description** |  |  | |
+
+
+```{r assign7, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_gs','ALSA.ALSA-Wave7',
+                         variables=list('grip1w7', 'grip2w7', 'grip3w7'), missings = TRUE)
+ALSA_gs <- opal.execute(o,'ALSA_gs')
+```
+
+```{r local7, echo=FALSE}
+vari <- ALSA_gs$grip1w7
+kable(Continuous_summary(var = vari, missing_values = c(99.9))[3])
+kable(Continuous_summary(vari, missing_values = c(99.9))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(99.9))$summary, caption = "Summary")
+ggplot(ALSA_gs, aes(grip1w7)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100)
+
+vari <- ALSA_gs$grip2w7
+kable(Continuous_summary(var = vari, missing_values = c(99.9))[3])
+kable(Continuous_summary(vari, missing_values = c(99.9))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(99.9))$summary, caption = "Summary")
+ggplot(ALSA_gs, aes(grip2w7)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100)
+
+vari <- ALSA_gs$grip3w7
+kable(Continuous_summary(var = vari, missing_values = c(99.9))[3])
+kable(Continuous_summary(vari, missing_values = c(99.9))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(99.9))$summary, caption = "Summary")
+ggplot(ALSA_gs, aes(grip3w7)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100)
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the higest score of all measurements and the missing values have to be recoded as follows: 
+
+* `recode 99.9 "not attempted/incomplete" into 994`
+* `NA as 999`
+
+**R script:**
+
+```{r harmo7}
+ALSA_gs$grip1w7 <- car::recode(ALSA_gs$grip1w7, "99.9=-1")
+ALSA_gs$grip2w7 <- car::recode(ALSA_gs$grip2w7, "99.9=-1")
+ALSA_gs$grip3w7 <- car::recode(ALSA_gs$grip3w7, "99.9=-1")
+
+ALSA_ds_w7 <- tibble(id=ALSA_gs$id)
+ALSA_ds_w7$grip <- apply(ALSA_gs[,2:4], MARGIN = 1, FUN = function(x) max(x, na.rm = TRUE))
+ALSA_ds_w7$grip <- car::recode(ALSA_ds_w7$grip, "-Inf=999; -1=994")
+ALSA_ds_w7$grip <- as.integer(ALSA_ds_w7$grip)
+ALSA_ds_w7$grip <- labelled(ALSA_ds_w7$grip, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript7, echo=FALSE}
+vari <- ALSA_ds_w7$grip
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ALSA_ds_w7, aes(grip)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100) 
+```
+
+#### Validation
+```{r crosstabulation7, echo=FALSE}
+```
+
+```{r importOPAL7, echo=FALSE}
+#val_labels(ALSA_ds_w7) <- NULL
+#opal.assign.data(o, 'ALSA_ds_w7', ALSA_ds_w7)
+#opal.symbol_import(o,'ALSA_ds_w7', project='_Athlos_Harm_Dataset')
+grip <- ALSA_ds_w7
+save(grip, file = "../RData/w7/grip.RData")
+rm(grip)
+```
+
+
+### Wave 8 
+
+There is no variable.
+
+
+
+
+
+
+### Wave 9 
+
+#### Study-specific variable description
+
+
+| **Name** | `GRIP1W9`|`GRIP2W9`| `GRIP3W9` |
+|-|-|-|
+| **Label** | `Grip Strength 1` |`Grip Strength 2` | `Grip Strength 3` |
+| **Table name** | `ALSA-Wave9` |`ALSA-Wave9` | `ALSA-Wave9` |
+| **Categories** | `continuous` |`continuous` |`continuous` |
+| **Missing values** | `99.9 = not attempted/incomplete` | `99.9 = not attempted/incomplete` | `99.9 = not attempted/incomplete` | 
+| **Description** |  |  | |
+
+
+    
+```{r assign9, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_gs','ALSA.ALSA-Wave9',
+                         variables=list('GRIP1W9', 'GRIP2W9', 'GRIP3W9'), missings = TRUE)
+ALSA_gs <- opal.execute(o,'ALSA_gs')
+```
+
+```{r local9, echo=FALSE}
+vari <- ALSA_gs$GRIP1W9
+kable(Continuous_summary(var = vari, missing_values = c(99.9))[3])
+kable(Continuous_summary(vari, missing_values = c(99.9))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(99.9))$summary, caption = "Summary")
+ggplot(ALSA_gs, aes(GRIP1W9)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100)
+
+vari <- ALSA_gs$GRIP2W9
+kable(Continuous_summary(var = vari, missing_values = c(99.9))[3])
+kable(Continuous_summary(vari, missing_values = c(99.9))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(99.9))$summary, caption = "Summary")
+ggplot(ALSA_gs, aes(GRIP2W9)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100)
+
+vari <- ALSA_gs$GRIP3W9
+kable(Continuous_summary(var = vari, missing_values = c(99.9))[3])
+kable(Continuous_summary(vari, missing_values = c(99.9))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(99.9))$summary, caption = "Summary")
+ggplot(ALSA_gs, aes(GRIP3W9)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100)
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the higest score of all measurements and the missing values have to be recoded as follows: 
+
+* `recode 99.9 "not attempted/incomplete" into 994`
+* `NA as 999`
+
+**R script:**
+
+```{r harmo9}
+ALSA_gs$GRIP1W9 <- car::recode(ALSA_gs$GRIP1W9, "99.9=-1")
+ALSA_gs$GRIP2W9 <- car::recode(ALSA_gs$GRIP2W9, "99.9=-1")
+ALSA_gs$GRIP3W9 <- car::recode(ALSA_gs$GRIP3W9, "99.9=-1")
+
+ALSA_ds_w9 <- tibble(id=ALSA_gs$id)
+ALSA_ds_w9$grip <- apply(ALSA_gs[,2:4], MARGIN = 1, FUN = function(x) max(x, na.rm = TRUE))
+ALSA_ds_w9$grip <- car::recode(ALSA_ds_w9$grip, "-Inf=999; -1=994")
+ALSA_ds_w9$grip <- as.integer(ALSA_ds_w9$grip)
+ALSA_ds_w9$grip <- labelled(ALSA_ds_w9$grip, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript9, echo=FALSE}
+vari <- ALSA_ds_w9$grip
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ALSA_ds_w9, aes(grip)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100) 
+```
+
+#### Validation
+```{r crosstabulation9, echo=FALSE}
+```
+
+```{r importOPAL8, echo=FALSE}
+grip <- ALSA_ds_w9
+save(grip, file = "../RData/w9/grip.RData")
+rm(grip)
+```
+
+
+
+### Wave 10 
+
+There is no variable.
+
+
+
+
+
+### Wave 11 
+
+#### Study-specific variable description
+
+
+| **Name** | `grip1w7`|`GRIP2W11`| `GRIP3W11` |
+|-|-|-|
+| **Label** | `Grip Strength 1` |`Grip Strength 2` | `Grip Strength 3` |
+| **Table name** | `ALSA-Wave11` |`ALSA-Wave11` | `ALSA-Wave11` |
+| **Categories** | `continuous` |`continuous` |`continuous` |
+| **Missing values** | `99.9 = not attempted/incomplete` | `99.9 = not attempted/incomplete` | `99.9 = not attempted/incomplete` | 
+| **Description** |  |  | |
+
+
+    
+```{r assign11, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_gs','ALSA.ALSA-Wave11',
+                         variables=list('GRIP1W11', 'GRIP2W11', 'GRIP3W11'), missings = TRUE)
+ALSA_gs <- opal.execute(o,'ALSA_gs')
+```
+
+```{r local11, echo=FALSE}
+vari <- ALSA_gs$GRIP1W11
+kable(Continuous_summary(var = vari, missing_values = c(99.9))[3])
+kable(Continuous_summary(vari, missing_values = c(99.9))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(99.9))$summary, caption = "Summary")
+ggplot(ALSA_gs, aes(GRIP1W11)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100)
+
+vari <- ALSA_gs$GRIP2W11
+kable(Continuous_summary(var = vari, missing_values = c(99.9))[3])
+kable(Continuous_summary(vari, missing_values = c(99.9))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(99.9))$summary, caption = "Summary")
+ggplot(ALSA_gs, aes(GRIP2W11)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100)
+
+vari <- ALSA_gs$GRIP3W11
+kable(Continuous_summary(var = vari, missing_values = c(99.9))[3])
+kable(Continuous_summary(vari, missing_values = c(99.9))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(99.9))$summary, caption = "Summary")
+ggplot(ALSA_gs, aes(GRIP3W11)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100)
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the higest score of all measurements and the missing values have to be recoded as follows: 
+
+* `recode 99.9 "not attempted/incomplete" into 994`
+* `NA as 999`
+
+**R script:**
+
+
+```{r harmo11}
+ALSA_gs$GRIP1W11 <- car::recode(ALSA_gs$GRIP1W11, "99.9=-1")
+ALSA_gs$GRIP2W11 <- car::recode(ALSA_gs$GRIP2W11, "99.9=-1")
+ALSA_gs$GRIP3W11 <- car::recode(ALSA_gs$GRIP3W11, "99.9=-1")
+
+ALSA_ds_w11 <- tibble(id=ALSA_gs$id)
+ALSA_ds_w11$grip <- apply(ALSA_gs[,2:4], MARGIN = 1, FUN = function(x) max(x, na.rm = TRUE))
+ALSA_ds_w11$grip <- car::recode(ALSA_ds_w11$grip, "-Inf=999; -1=994")
+ALSA_ds_w11$grip <- as.integer(ALSA_ds_w11$grip)
+ALSA_ds_w11$grip <- labelled(ALSA_ds_w11$grip, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript11, echo=FALSE}
+vari <- ALSA_ds_w11$grip
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ALSA_ds_w11, aes(grip)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100) 
+```
+
+#### Validation
+```{r crosstabulation11, echo=FALSE}
+```
+
+```{r importOPAL10, echo=FALSE}
+grip <- ALSA_ds_w11
+save(grip, file = "../RData/w11/grip.RData")
+rm(grip)
+```
+
+
+### Wave 12 
+
+#### Study-specific variable description
+
+| **Name** | `GRIP1W12`|`GRIP2W12`| `grip3w7` |
+|-|-|-|
+| **Label** | `Grip Strength 1` |`Grip Strength 2` | `Reading for grip strength (to nearest 0.5kg)-attempt 3` |
+| **Table name** | `ALSA-Wave12` |`ALSA-Wave12` | `ALSA-Wave12` |
+| **Categories** | `continuous` |`continuous` |`continuous` |
+| **Missing values** | `99.9 = not attempted/incomplete` | `99.9 = not attempted/incomplete` | `99.9 = not attempted/incomplete` | 
+| **Description** |  |  | |
+
+    
+```{r assign12, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_gs','ALSA.ALSA-Wave12',
+                         variables=list('GRIP1W12', 'GRIP2W12', 'GRIP3W12'), missings = TRUE)
+ALSA_gs <- opal.execute(o,'ALSA_gs')
+```
+
+```{r local12, echo=FALSE}
+vari <- ALSA_gs$GRIP1W12
+kable(Continuous_summary(var = vari, missing_values = c(99.9))[3])
+kable(Continuous_summary(vari, missing_values = c(99.9))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(99.9))$summary, caption = "Summary")
+ggplot(ALSA_gs, aes(GRIP1W12)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100)
+
+vari <- ALSA_gs$GRIP2W12
+kable(Continuous_summary(var = vari, missing_values = c(99.9))[3])
+kable(Continuous_summary(vari, missing_values = c(99.9))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(99.9))$summary, caption = "Summary")
+ggplot(ALSA_gs, aes(GRIP2W12)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100)
+
+vari <- ALSA_gs$GRIP3W12
+kable(Continuous_summary(var = vari, missing_values = c(99.9))[3])
+kable(Continuous_summary(vari, missing_values = c(99.9))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(99.9))$summary, caption = "Summary")
+ggplot(ALSA_gs, aes(GRIP3W12)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100)
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the higest score of all measurements and the missing values have to be recoded as follows: 
+
+* `recode 99.9 "not attempted/incomplete" into 994`
+* `NA as 999`
+
+**R script:**
+
+
+```{r harmo12}
+ALSA_gs$GRIP1W12 <- car::recode(ALSA_gs$GRIP1W12, "99.9=-1")
+ALSA_gs$GRIP2W12 <- car::recode(ALSA_gs$GRIP2W12, "99.9=-1")
+ALSA_gs$GRIP3W12 <- car::recode(ALSA_gs$GRIP3W12, "99.9=-1")
+
+ALSA_ds_w12 <- tibble(id=ALSA_gs$id)
+ALSA_ds_w12$grip <- apply(ALSA_gs[,2:4], MARGIN = 1, FUN = function(x) max(x, na.rm = TRUE))
+ALSA_ds_w12$grip <- car::recode(ALSA_ds_w12$grip, "-Inf=999; -1=994")
+ALSA_ds_w12$grip <- as.integer(ALSA_ds_w12$grip)
+ALSA_ds_w12$grip <- labelled(ALSA_ds_w12$grip, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript12, echo=FALSE}
+vari <- ALSA_ds_w12$grip
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(ALSA_ds_w12, aes(grip)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100) 
+```
+
+#### Validation
+```{r crosstabulation12, echo=FALSE}
+```
+
+```{r importOPAL12, echo=FALSE}
+grip <- ALSA_ds_w12
+save(grip, file = "../RData/w12/grip.RData")
+rm(grip)
+```
+
+
+### Wave 13 
+
+There is no variable.
+
+#### Quality control
+No comments.
+
+
+
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```

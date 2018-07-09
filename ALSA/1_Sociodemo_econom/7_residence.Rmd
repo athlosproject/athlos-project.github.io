@@ -1,0 +1,1287 @@
+---
+title: "Residence"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable
+
+
+The description of harmonised variable is the following:
+
+* Short name: `residence`
+* Variable label: `Current residence`
+* Variable description: `Current residence`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | Community living
+1        | Institutions
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+# Data process 
+
+## ALSA
+
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `DOMICILE`
+* Label: `Domicile`
+* Categories: 
+    + `1 = Community living`
+    + `2 = Institution`
+* Missings: 
+    + `9 = Missing`
+    
+* Description: 
+```{r assign1,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w1_resi','ALSA.ALSA-Wave1',
+                         variables=list('DOMICILE'), missings = TRUE)
+```
+
+```{r local1,  echo=FALSE}
+ALSA_w1_resi <- opal.execute(o,'ALSA_w1_resi')
+vari <- ALSA_w1_resi$DOMICILE
+kable(Categorical_summary(vari, missing_values = c(9))[3]) 
+kable(Categorical_summary(vari, missing_values = c(9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(9))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_w1_resi$DOMICILE, missing_values = c(9))
+ggplot(ALSA_w1_resi, aes(x=factor(DOMICILE))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence in institution") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "Community living" into 0`
+* `recode 2 "Institution" into 1`
+* `recode 9 "Missing" into 999`
+
+ 
+
+**R script:** 
+```{r harmo1,   echo=TRUE}
+ALSA_ds_w1 <- tibble(id=ALSA_w1_resi$id)
+ALSA_ds_w1$residence <- car::recode(ALSA_w1_resi$DOMICILE, "1=0; 2=1; 9=999; NA=999")
+ALSA_ds_w1$residence <- labelled(ALSA_ds_w1$residence, labels = c("Community living"=0, "Institutions"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1,  echo=FALSE}
+vari <- ALSA_ds_w1$residence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w1$residence, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w1, aes(x=factor(residence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1,  echo=FALSE}
+BeforeH <- table(ALSA_w1_resi$DOMICILE)
+AfterH <- table(ALSA_ds_w1$residence)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1")
+kable(C)
+```
+
+
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `Q1B`
+* Label: `Type of accommodation`
+* Categories: 
+    + `1 = House`
+    + `2 = Home unit or flat`
+    + `3 = Granny flat with kitchen`
+    + `4 = Granny flat without kitchen`
+    + `5 = Non self contained unit`
+    + `6 = Bed sitter room`
+    + `7 = Other community living`
+    + `8 = Retirement village`
+    + `9 = Private rest home`
+    + `10 = Hostel`
+    + `11 = Nursing home`
+    + `12 = Hospital`
+    + `13 = Mental institution`
+    + `14 = Boarding house`
+    + `15 = Other institution`
+
+
+* Description: 
+```{r assign2,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w2_resi','ALSA.ALSA-Wave2',
+                         variables=list('Q1B'), missings = TRUE)
+
+```
+
+```{r local2,  echo=FALSE}
+ALSA_w2_resi <- opal.execute(o,'ALSA_w2_resi')
+vari <- ALSA_w2_resi$Q1B
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w2_resi$Q1B, missing_values = NA)
+ggplot(ALSA_w2_resi, aes(x=factor(Q1B))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence in institution") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "House" into 0`
+* `recode 2 "Home unit or flat" into 0`
+* `recode 3 "Granny flat with kitchen" into 0`
+* `recode 4 "Granny flat without kitchen" into 0`
+* `recode 5 "Non self contained unit" into 0`
+* `recode 6 "Bed sitter room" into 0`
+* `recode 7 "Other community living" into 0`
+* `recode 8 "Retirement village" into 0`
+* `recode 9 "Private rest home" into 1`
+* `recode 10 "Hostel" into 1`
+* `recode 11 "Nursing home" into 1`
+* `recode 12 "Hospital" into 1`
+* `recode 13 "Mental institution" into 1`
+* `recode 14 "Boarding house" into 1`
+* `recode 15 "Other institution" into 1`
+* `recode NA into 999`
+
+ 
+
+**R script:** 
+```{r harmo2,   echo=TRUE}
+ALSA_ds_w2 <- tibble(id=ALSA_w2_resi$id)
+ALSA_ds_w2$residence <- car::recode(ALSA_w2_resi$Q1B, "1:8=0; 9:15=1; NA=999")
+ALSA_ds_w2$residence <- labelled(ALSA_ds_w2$residence, labels = c("Community living"=0, "Institutions"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2,  echo=FALSE}
+vari <- ALSA_ds_w2$residence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w2$residence, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w2, aes(x=factor(residence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2,  echo=FALSE}
+BeforeH <- table(ALSA_w2_resi$Q1B)
+BeforeH <- c(sum(BeforeH[1:3]), sum(BeforeH[4:length(BeforeH)]), sum(is.na(ALSA_w2_resi$Q1B)))
+AfterH <- table(ALSA_ds_w2$residence)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("(1:7)->0","(8:15)->1", "NA->999")
+kable(C)
+```
+
+
+
+
+
+### Wave 3 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `DOMICW3`
+* Label: `DOMICILE`
+* Categories: 
+    + `1 = House`
+    + `2 = Home unit or flat`
+    + `3 = Granny flat with kitchen`
+    + `4 = Granny flat without kitchen`
+    + `5 = Non self contained unit`
+    + `6 = Bed sitter room`
+    + `7 = Other community living`
+    + `8 = Retirement village`
+    + `9 = Private rest home`
+    + `10 = Hostel`
+    + `11 = Nursing home`
+    + `12 = Hospital`
+    + `13 = Mental institution`
+    + `14 = Boarding house`
+    + `15 = Other institution`
+    
+    
+* Description: 
+```{r assign3,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w3_resi','ALSA.ALSA-Wave3',
+                         variables=list('DOMICW3'), missings = TRUE)
+```
+
+```{r local3,  echo=FALSE}
+ALSA_w3_resi <- opal.execute(o,'ALSA_w3_resi')
+vari <- ALSA_w3_resi$DOMICW3
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w3_resi$DOMICW3, missing_values = NA)
+ggplot(ALSA_w3_resi, aes(x=factor(DOMICW3))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence in institution") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "House" into 0`
+* `recode 2 "Home unit or flat" into 0`
+* `recode 3 "Granny flat with kitchen" into 0`
+* `recode 4 "Granny flat without kitchen" into 0`
+* `recode 5 "Non self contained unit" into 0`
+* `recode 6 "Bed sitter room" into 0`
+* `recode 7 "Other community living" into 0`
+* `recode 8 "Retirement village" into 0`
+* `recode 9 "Private rest home" into 1`
+* `recode 10 "Hostel" into 1`
+* `recode 11 "Nursing home" into 1`
+* `recode 12 "Hospital" into 1`
+* `recode 13 "Mental institution" into 1`
+* `recode 14 "Boarding house" into 1`
+* `recode 15 "Other institution" into 1`
+* `recode NA into 999`
+
+ 
+
+**R script:** 
+```{r harmo3,   echo=TRUE}
+ALSA_ds_w3 <- tibble(id=ALSA_w3_resi$id)
+ALSA_ds_w3$residence <- car::recode(ALSA_w3_resi$DOMICW3, "1:8=0; 9:15=1; NA=999")
+ALSA_ds_w3$residence <- labelled(ALSA_ds_w3$residence, labels = c("Community living"=0, "Institutions"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript3,  echo=FALSE}
+vari <- ALSA_ds_w3$residence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w3$residence, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w3, aes(x=factor(residence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation3,  echo=FALSE}
+BeforeH <- table(ALSA_w3_resi$DOMICW3)
+BeforeH <- c(sum(BeforeH[1:7]), sum(BeforeH[8:length(BeforeH)]))
+AfterH <- table(ALSA_ds_w3$residence)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("(1:7)->0","(8:15)->1")
+kable(C)
+```
+
+
+
+
+### Wave 4 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `ACCOM2W4`
+* Label: `TYPE OF ACCOMMODATION`
+* Categories: 
+    + `1 = House`
+    + `2 = Home unit or flat`
+    + `3 = Granny flat with kitchen`
+    + `4 = Granny flat without kitchen`
+    + `5 = Non self contained unit`
+    + `6 = Bed sitter room`
+    + `7 = Other community living`
+    + `8 = Retirement village`
+    + `9 = Private rest home`
+    + `10 = Hostel`
+    + `11 = Nursing home`
+    + `12 = Hospital`
+    + `13 = Mental institution`
+    + `14 = Boarding house`
+    + `15 = Other institution`
+    + `16 = House,home unit, flat`
+    + `17 = Nursing Home , Inst`
+    + `18 = Retirement Village`
+    + `19 = Hostel`
+    
+* Description: 
+```{r assign4,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w4_resi','ALSA.ALSA-Wave4',
+                         variables=list('ACCOM2W4'), missings = TRUE)
+
+```
+
+```{r local4,  echo=FALSE}
+ALSA_w4_resi <- opal.execute(o,'ALSA_w4_resi')
+vari <- ALSA_w4_resi$ACCOM2W4
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w4_resi$ACCOM2W4, missing_values = NA)
+ggplot(ALSA_w4_resi, aes(x=factor(ACCOM2W4))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "House" into 0`
+* `recode 2 "Home unit or flat" into 0`
+* `recode 3 "Granny flat with kitchen" into 0`
+* `recode 4 "Granny flat without kitchen" into 0`
+* `recode 5 "Non self contained unit" into 0`
+* `recode 6 "Bed sitter room" into 0`
+* `recode 7 "Other community living" into 0`
+* `recode 8 "Retirement village" into 0`
+* `recode 9 "Private rest home" into 1`
+* `recode 10 "Hostel" into 1`
+* `recode 11 "Nursing home" into 1`
+* `recode 12 "Hospital" into 1`
+* `recode 13 "Mental institution" into 1`
+* `recode 14 "Boarding house" into 1`
+* `recode 15 "Other institution" into 1`
+* `recode 16 "House,home unit, flat" into 0`
+* `recode 17 "Nursing Home , Inst" into 1`
+* `recode 18 "Retirement Village" into 1`
+* `recode 19 "Hostel" into 1`
+* `recode NA into 999`
+
+ 
+
+**R script:** 
+```{r harmo4,   echo=TRUE}
+ALSA_ds_w4 <- tibble(id=ALSA_w4_resi$id)
+ALSA_ds_w4$residence <- car::recode(ALSA_w4_resi$ACCOM2W4, "1:8=0; 9:15=1; 16=0; 17:19=1; NA=999")
+ALSA_ds_w4$residence <- labelled(ALSA_ds_w4$residence, labels = c("Community living"=0, "Institutions"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript4,  echo=FALSE}
+vari <- ALSA_ds_w4$residence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w4$residence, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w4, aes(x=factor(residence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation4,  echo=FALSE}
+BeforeH <- table(ALSA_w4_resi$ACCOM2W4)
+BeforeH <- c(sum(BeforeH[c(1:3,11)]), sum(BeforeH[c(4:10,12:14)]))
+AfterH <- table(ALSA_ds_w4$residence)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("(1:7, 16)->0","(8:15, 17:19)->1")
+kable(C)
+```
+
+
+
+
+
+
+### Wave 5 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `ACCOM1W5`
+* Label: `DO YOU (DOES HE/SHE) LIVE IN A: IN`
+* Categories: 
+    + `1 = House`
+    + `2 = Home unit or flat`
+    + `3 = Granny flat with kitchen`
+    + `4 = Granny flat without kitchen`
+    + `5 = Non self contained unit`
+    + `6 = Bed sitter room`
+    + `7 = Other community living (Please specify)`
+* Name: `ACCOM2W5`
+* Label: `WHAT TYPE OF INSTITUTION (DOES HE`
+* Categories: 
+    + `1 = Retirement village`
+    + `2 = Private rest home`
+    + `3 = Hostel`
+    + `4 = Nursing home`
+    + `5 = Hospital`
+    + `6 = Mental institution`
+    + `7 = Boarding house`
+    + `8 = Other institution (Please specify)`
+    
+* Description: 
+```{r assign5,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w5_resi','ALSA.ALSA-Wave5',
+                         variables=list('ACCOM1W5', 'ACCOM2W5'), missings = TRUE)
+```
+
+```{r local5,  echo=FALSE}
+ALSA_w5_resi <- opal.execute(o,'ALSA_w5_resi')
+
+vari <- ALSA_w5_resi$ACCOM1W5
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w5_resi$ACCOM1W5, missing_values = NA)
+ggplot(ALSA_w5_resi, aes(x=factor(ACCOM1W5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence in institution") + ylab("Frequency")
+
+vari <- ALSA_w5_resi$ACCOM2W5
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w5_resi$ACCOM2W5, missing_values = NA)
+ggplot(ALSA_w5_resi, aes(x=factor(ACCOM2W5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence in institution") + ylab("Frequency")
+
+```
+
+The varibale ACCOM1W5 has one value -1, It is going to consider a error, therefore is going to recode as 1. 
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variables they have to be recoded as follows:
+
+* `recode 1 "House" into 0`
+* `recode 2 "Home unit or flat" into 0`
+* `recode 3 "Granny flat with kitchen" into 0`
+* `recode 4 "Granny flat without kitchen" into 0`
+* `recode 5 "Non self contained unit" into 0`
+* `recode 6 "Bed sitter room" into 0`
+* `recode 7 "Other community living" into 0`
+* `recode 8 "Other community living (Please specify)" into 0`
+* `recode 1 "Retirement village" into 0`
+* `recode 2 "Private rest home" into 1`
+* `recode 3 "Hostel" into 1`
+* `recode 4 "Nursing home" into 1`
+* `recode 5 "Hospital" into 1`
+* `recode 6 "Mental institution" into 1`
+* `recode 7 "Boarding house" into 1`
+* `recode 8 "Other institution (Please specify)" into 1`
+* `recode NA into 999`
+
+
+ 
+
+**R script:** 
+```{r harmo5,   echo=TRUE}
+ALSA_w5_resi$ACCOM1W5_2 <- car::recode(ALSA_w5_resi$ACCOM1W5, "-1=1")
+ALSA_w5_resi$ACCOM2W5_2 <- car::recode(ALSA_w5_resi$ACCOM2W5, "1=8; 2=9; 3=10; 
+                                  4=11; 5=12; 6=13; 7=14; 8=15")
+
+ALSA_w5_resi$ACCOM12W5 <- ALSA_w5_resi$ACCOM1W5_2
+ALSA_w5_resi$ACCOM12W5[is.na(ALSA_w5_resi$ACCOM1W5_2)] <- 
+  ALSA_w5_resi$ACCOM2W5_2[is.na(ALSA_w5_resi$ACCOM1W5_2)]
+
+
+ALSA_ds_w5 <- tibble(id=ALSA_w5_resi$id)
+ALSA_ds_w5$residence <- car::recode(ALSA_w5_resi$ACCOM12W5, "1:8=0; 9:15=1; NA=999")
+ALSA_ds_w5$residence <- labelled(ALSA_ds_w5$residence, labels = c("Community living"=0, "Institutions"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript5,  echo=FALSE}
+vari <- ALSA_ds_w5$residence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w5$residence, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w5, aes(x=factor(residence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Validation
+First, we would like to know if the no missing values in ACCOM2W5 are missing in ACCOM1W5 and viceversa. 
+
+```{r crosstabulation5.1,  echo=FALSE}
+Nas_1 <- ALSA_w5_resi[is.na(ALSA_w5_resi$ACCOM1W5),]
+dim(Nas_1)
+CC_Nas_1 <- Nas_1[!is.na(Nas_1$ACCOM2W5),]
+dim(CC_Nas_1)
+sum(is.na(CC_Nas_1$ACCOM2W5))
+
+
+Nas_2 <- ALSA_w5_resi[is.na(ALSA_w5_resi$ACCOM2W5),]
+dim(Nas_2)
+CC_Nas_2 <- Nas_2[!is.na(Nas_2$ACCOM1W5),]
+dim(CC_Nas_2)
+sum(is.na(CC_Nas_2$ACCOM1W5))
+```
+
+
+```{r crosstabulation5,  echo=FALSE}
+BeforeH <- table(ALSA_w5_resi$ACCOM12W5)
+BeforeH <- c(sum(BeforeH[1:2]), sum(BeforeH[3:length(BeforeH)]), sum(is.na(ALSA_w5_resi$ACCOM12W5)))
+AfterH <- table(ALSA_ds_w5$residence)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("(1:7)->0","(8:15)->1", "NA->999")
+kable(C)
+```
+
+
+
+
+
+
+### Wave 6 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `DOMICW6`
+* Label: `type of domicile - W6`
+* Categories: 
+    + `1 = community living`
+    + `2 = institution`
+* Missings: 
+    + `0 = no answer`
+    
+* Description: 
+```{r assign6,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w6_resi','ALSA.ALSA-Wave6',
+                         variables=list('DOMICW6'), missings = TRUE)
+```
+
+```{r local6,  echo=FALSE}
+ALSA_w6_resi <- opal.execute(o,'ALSA_w6_resi')
+vari <- ALSA_w6_resi$DOMICW6
+kable(Categorical_summary(vari, missing_values = c(0))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(0))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(0))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_w6_resi$DOMICW6, missing_values = c(0))
+ggplot(ALSA_w6_resi, aes(x=factor(DOMICW6))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence in institution") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "community living" into 0`
+* `recode 2 "institution" into 1`
+* `recode 0 "no answer" into 995`
+* `recode NA into 999`
+
+ 
+
+**R script:** 
+```{r harmo6,   echo=TRUE}
+ALSA_ds_w6 <- tibble(id=ALSA_w6_resi$id)
+ALSA_ds_w6$residence <- car::recode(ALSA_w6_resi$DOMICW6, "1=0; 2=1; 0=995; NA=999")
+ALSA_ds_w6$residence <- labelled(ALSA_ds_w6$residence, labels = c("Community living"=0, "Institutions"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript6,  echo=FALSE}
+vari <- ALSA_ds_w6$residence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w6$residence, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w6, aes(x=factor(residence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation6,  echo=FALSE}
+BeforeH <- table(ALSA_w6_resi$DOMICW6)
+AfterH <- table(ALSA_ds_w6$residence)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1")
+kable(C)
+```
+
+
+
+
+
+
+### Wave 7 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `domicw7`
+* Label: `type of domicile-W7`
+* Categories: 
+    + `1 = Community living`
+    + `2 = Institution`
+
+    
+* Description: 
+```{r assign7,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w7_resi','ALSA.ALSA-Wave7',
+                         variables=list('domicw7'), missings = TRUE)
+```
+
+```{r local7,  echo=FALSE}
+ALSA_w7_resi <- opal.execute(o,'ALSA_w7_resi')
+vari <- ALSA_w7_resi$domicw7
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w7_resi$domicw7, missing_values = NA)
+ggplot(ALSA_w7_resi, aes(x=factor(domicw7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "community living" into 0`
+* `recode 2 "institution" into 1`
+* `recode NA into 999`
+
+ 
+
+**R script:** 
+```{r harmo7,   echo=TRUE}
+ALSA_ds_w7 <- tibble(id=ALSA_w7_resi$id)
+ALSA_ds_w7$residence <- car::recode(ALSA_w7_resi$domicw7,  "1=0; 2=1; NA=999")
+ALSA_ds_w7$residence <- labelled(ALSA_ds_w7$residence, labels = c("Community living"=0, "Institutions"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript7,  echo=FALSE}
+vari <- ALSA_ds_w7$residence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w7$residence, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w7, aes(x=factor(residence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation7,  echo=FALSE}
+BeforeH <- c(table(ALSA_w7_resi$domicw7),sum(is.na(ALSA_w7_resi$domicw7)))
+AfterH <- table(ALSA_ds_w7$residence)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1", "NA->999")
+kable(C)
+```
+
+
+
+
+
+### Wave 8 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `accom1w8`
+* Label: `Type of accommodation`
+* Categories: 
+    + `1 = House`
+    + `2 = Home unit or flat`
+    + `3 = Granny flat with kitchen`
+    + `4 = Granny flat without kitchen`
+    + `5 = Non self contained unit`
+    + `6 = bed sitter`
+    + `7 = other community`
+* Missings: 
+    + `0 = Not Answered`
+* Name: `accom2w8`
+* Label: `ACCOM2W8`
+* Categories: 
+    + `1 = Retirement village`
+    + `2 = Private rest home`
+    + `3 = Hostel`
+    + `4 = Nursing home`
+    + `5 = Hospital`
+    + `6 = Mental institution`
+    + `7 = Boarding house`
+    + `8 = Other institution (Please specify)`
+* Missings: 
+    + `0 = Not Answered`
+    
+    
+* Description: 
+```{r assign8,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w8_resi','ALSA.ALSA-Wave8',
+                         variables=list('accom1w8', 'accom2w8'), missings = TRUE)
+```
+
+```{r local8,  echo=FALSE}
+ALSA_w8_resi <- opal.execute(o,'ALSA_w8_resi')
+
+vari <- ALSA_w8_resi$accom1w8
+kable(Categorical_summary(vari, missing_values = c(0))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(0))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(0))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_w8_resi$accom1w8, missing_values = c(0))
+ggplot(ALSA_w8_resi, aes(x=factor(accom1w8))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence in institution") + ylab("Frequency")
+
+vari <- ALSA_w8_resi$accom2w8
+kable(Categorical_summary(vari, missing_values = c(0))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(0))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(0))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_w8_resi$accom2w8, missing_values = c(0))
+ggplot(ALSA_w8_resi, aes(x=factor(accom2w8))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence in institution") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variables they have to be recoded as follows:
+
+* `recode 0 "Not Answered" into 995`
+* `recode 1 "House" into 0`
+* `recode 2 "Home unit or flat" into 0`
+* `recode 3 "Granny flat with kitchen" into 0`
+* `recode 4 "Granny flat without kitchen" into 0`
+* `recode 5 "Non self contained unit" into 0`
+* `recode 6 "Bed sitter room" into 0`
+* `recode 7 "Other community living" into 0`
+* `recode 8 "Other community living (Please specify)" into 0`
+* `recode 0 "Not Answered" into 995`
+* `recode 1 "Retirement village" into 0`
+* `recode 2 "Private rest home" into 1`
+* `recode 3 "Hostel" into 1`
+* `recode 4 "Nursing home" into 1`
+* `recode 5 "Hospital" into 1`
+* `recode 6 "Mental institution" into 1`
+* `recode 7 "Boarding house" into 1`
+* `recode 8 "Other institution (Please specify)" into 1`
+* `recode NA into 999`
+
+ 
+
+**R script:** 
+```{r harmo8,   echo=TRUE}
+ALSA_w8_resi$ACCOM1W8_2 <- ALSA_w8_resi$accom1w8
+ALSA_w8_resi$ACCOM2W8_2 <- car::recode(ALSA_w8_resi$accom2w8, "0=16; 1=8; 2=9; 3=10; 4=11; 5=12; 6=13; 7=14; 8=15")
+
+ALSA_w8_resi$ACCOM12W8 <- ALSA_w8_resi$ACCOM1W8_2
+ALSA_w8_resi$ACCOM12W8[is.na(ALSA_w8_resi$ACCOM1W8_2)] <- 
+  ALSA_w8_resi$ACCOM2W8_2[is.na(ALSA_w8_resi$ACCOM1W8_2)]
+
+
+ALSA_ds_w8 <- tibble(id=ALSA_w8_resi$id)
+ALSA_ds_w8$residence <- car::recode(ALSA_w8_resi$ACCOM12W8, "1:8=0; 9:15=1; c(0,16)=995; NA=999")
+ALSA_ds_w8$residence <- labelled(ALSA_ds_w8$residence, labels = c("Community living"=0, "Institutions"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript8,  echo=FALSE}
+vari <- ALSA_ds_w8$residence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w8$residence, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w8, aes(x=factor(residence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Validation
+First, we would like to know if the no missing values in accom2w8 are missing in accom1w8 and viceversa. 
+
+```{r crosstabulation8.1,  echo=FALSE}
+Nas_1 <- ALSA_w8_resi[is.na(ALSA_w8_resi$accom1w8),]
+dim(Nas_1)
+CC_Nas_1 <- Nas_1[!is.na(Nas_1$accom2w8),]
+dim(CC_Nas_1)
+sum(is.na(CC_Nas_1$accom2w8))
+
+
+Nas_2 <- ALSA_w8_resi[is.na(ALSA_w8_resi$accom2w8),]
+dim(Nas_2)
+CC_Nas_2 <- Nas_2[!is.na(Nas_2$accom1w8),]
+dim(CC_Nas_2)
+sum(is.na(CC_Nas_2$accom1w8))
+```
+
+
+```{r crosstabulation8,  echo=FALSE}
+BeforeH <- table(ALSA_w8_resi$ACCOM12W8)
+BeforeH <- c(sum(BeforeH[2:4]), sum(BeforeH[5:7]), sum(BeforeH[c(1,8)]), sum(is.na(ALSA_w8_resi$ACCOM12W8)))
+AfterH <- table(ALSA_ds_w8$residence)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("(1:7)->0","(8:15)->1", "(0,16)->995", "NA->999")
+kable(C)
+```
+
+
+
+
+
+### Wave 9 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `DOMICW9`
+* Label: `type of domicile W9`
+* Categories: 
+    + `1 = Community living`
+    + `2 = Residential care facility`
+    
+* Description: 
+```{r assign9,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w9_resi','ALSA.ALSA-Wave9',
+                         variables=list('DOMICW9'), missings = TRUE)
+```
+
+```{r local9,  echo=FALSE}
+ALSA_w9_resi <- opal.execute(o,'ALSA_w9_resi')
+vari <- ALSA_w9_resi$DOMICW9
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w9_resi$DOMICW9, missing_values = NA)
+ggplot(ALSA_w9_resi, aes(x=factor(DOMICW9))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "community living" into 0`
+* `recode 2 "institution" into 1`
+* `recode NA into 999`
+
+ 
+
+**R script:** 
+```{r harmo9,   echo=TRUE}
+ALSA_ds_w9 <- tibble(id=ALSA_w9_resi$id)
+ALSA_ds_w9$residence <- car::recode(ALSA_w9_resi$DOMICW9,  "1=0; 2=1; NA=999")
+ALSA_ds_w9$residence <- labelled(ALSA_ds_w9$residence, labels = c("Community living"=0, "Institutions"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript9,  echo=FALSE}
+vari <- ALSA_ds_w9$residence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w9$residence, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w9, aes(x=factor(residence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation9,  echo=FALSE}
+BeforeH <- c(table(ALSA_w9_resi$DOMICW9),sum(is.na(ALSA_w9_resi$DOMICW9)))
+AfterH <- table(ALSA_ds_w9$residence)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1", "NA->999")
+kable(C)
+```
+
+
+
+
+### Wave 10 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `accom1w10`
+* Label: `What type of accommodation do you now live in?`
+* Categories: 
+    + `1 = House`
+    + `2 = Home unit or flat`
+    + `3 = Granny flat with kitchen`
+    + `4 = Granny flat without kitchen`
+    + `5 = Non self contained unit`
+    + `6 = Bed sitter room`
+    + `7 = Other community living (Please specify)`
+* Missings: 
+    + `99 = Not Answered`
+* Name: `accom2w10`
+* Label: `What type of accommodation do you now live in?`
+* Categories: 
+    + `8 = Retirement village`
+    + `9 = Private rest home`
+    + `10 = Hostel`
+    + `11 = Nursing home`
+    + `12 = Hospital`
+    + `13 = Mental institution`
+    + `14 = Boarding house`
+    + `15 = Other institution (Please specify)`
+* Missings: 
+    + `99 = Not Answered`
+
+    
+* Description: 
+```{r assign10,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w10_resi','ALSA.ALSA-Wave10',
+                         variables=list('accom1w10', 'accom2w10'), missings = TRUE)
+```
+
+```{r local10,  echo=FALSE}
+ALSA_w10_resi <- opal.execute(o,'ALSA_w10_resi')
+
+vari <- ALSA_w10_resi$accom1w10
+kable(Categorical_summary(vari, missing_values = c(99))[3], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = c(99))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(99))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_w10_resi$accom1w10, missing_values = c(99))
+ggplot(ALSA_w10_resi, aes(x=factor(accom1w10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence in institution") + ylab("Frequency")
+
+vari <- ALSA_w10_resi$accom2w10
+kable(Categorical_summary(vari, missing_values = c(99))[3], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = c(99))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(99))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_w10_resi$accom2w10, missing_values = c(99))
+ggplot(ALSA_w10_resi, aes(x=factor(accom2w10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence in institution") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variables they have to be recoded as follows:
+
+* `recode 1 "House" into 0`
+* `recode 2 "Home unit or flat" into 0`
+* `recode 3 "Granny flat with kitchen" into 0`
+* `recode 4 "Granny flat without kitchen" into 0`
+* `recode 5 "Non self contained unit" into 0`
+* `recode 6 "Bed sitter room" into 0`
+* `recode 7 "Other community living" into 0`
+* `recode 8 "Other community living (Please specify)" into 0`
+* `recode 99 "Not Answered" into 995`
+* `recode 1 "Retirement village" into 0`
+* `recode 2 "Private rest home" into 1`
+* `recode 3 "Hostel" into 1`
+* `recode 4 "Nursing home" into 1`
+* `recode 5 "Hospital" into 1`
+* `recode 6 "Mental institution" into 1`
+* `recode 7 "Boarding house" into 1`
+* `recode 8 "Other institution (Please specify)" into 1`
+* `recode NA into 999`
+* `recode 99 "Not Answered" into 995`
+
+ 
+
+**R script:** 
+```{r harmo10,   echo=TRUE}
+ALSA_w10_resi$ACCOM1W5_2 <- ALSA_w10_resi$accom1w10
+ALSA_w10_resi$ACCOM2W5_2 <- car::recode(ALSA_w10_resi$accom2w10, "2=NA")
+
+ALSA_w10_resi$ACCOM12W5 <- ALSA_w10_resi$ACCOM1W5_2
+ALSA_w10_resi$ACCOM12W5[is.na(ALSA_w10_resi$ACCOM1W5_2)] <- 
+  ALSA_w10_resi$ACCOM2W5_2[is.na(ALSA_w10_resi$ACCOM1W5_2)]
+
+ALSA_ds_w10 <- tibble(id=ALSA_w10_resi$id)
+ALSA_ds_w10$residence <- car::recode(ALSA_w10_resi$ACCOM12W5, "1:8=0; 9:15=1; NA=999")
+ALSA_ds_w10$residence <- labelled(ALSA_ds_w10$residence, labels = c("Community living"=0, "Institutions"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript10,  echo=FALSE}
+vari <- ALSA_ds_w10$residence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w10$residence, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w10, aes(x=factor(residence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation10.1,  echo=FALSE}
+Nas_1 <- ALSA_w10_resi[is.na(ALSA_w10_resi$accom1w10),]
+dim(Nas_1)
+CC_Nas_1 <- Nas_1[!is.na(Nas_1$accom2w10),]
+dim(CC_Nas_1)
+sum(is.na(CC_Nas_1$accom2w10))
+
+
+Nas_2 <- ALSA_w10_resi[is.na(ALSA_w10_resi$accom2w10),]
+dim(Nas_2)
+CC_Nas_2 <- Nas_2[!is.na(Nas_2$accom1w10),]
+dim(CC_Nas_2)
+sum(is.na(CC_Nas_2$accom1w10))
+```
+
+
+```{r crosstabulation10,  echo=FALSE}
+BeforeH <- table(ALSA_w10_resi$ACCOM12W5)
+BeforeH <- c(sum(BeforeH[1:3]), sum(BeforeH[4:length(BeforeH)]), sum(c(is.na(ALSA_w10_resi$ACCOM12W5))))
+AfterH <- table(ALSA_ds_w10$residence)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("(1:7)->0","(8:15)->1", "NA->999")
+kable(C)
+```
+
+
+
+
+### Wave 11 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `DOMICW11`
+* Label: `type of domicile W11`
+* Categories: 
+    + `1 = Community living`
+    + `2 = Institution`
+    
+* Description: 
+```{r assign11,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w11_resi','ALSA.ALSA-Wave11',
+                         variables=list('DOMICW11'), missings = TRUE)
+```
+
+```{r local11,  echo=FALSE}
+ALSA_w11_resi <- opal.execute(o,'ALSA_w11_resi')
+vari <- ALSA_w11_resi$DOMICW11
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w11_resi$DOMICW11, missing_values = NA)
+ggplot(ALSA_w11_resi, aes(x=factor(DOMICW11))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "community living" into 0`
+* `recode 2 "institution" into 1`
+* `recode NA into 999`
+
+ 
+
+**R script:** 
+```{r harmo11,   echo=TRUE}
+ALSA_ds_w11 <- tibble(id=ALSA_w11_resi$id)
+ALSA_ds_w11$residence <- car::recode(ALSA_w11_resi$DOMICW11,  "1=0; 2=1; NA=999")
+ALSA_ds_w11$residence <- labelled(ALSA_ds_w11$residence, labels = c("Community living"=0, "Institutions"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript11,  echo=FALSE}
+vari <- ALSA_ds_w11$residence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w11$residence, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w11, aes(x=factor(residence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation11,  echo=FALSE}
+BeforeH <- table(ALSA_w11_resi$DOMICW11)
+AfterH <- table(ALSA_ds_w11$residence)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1")
+kable(C)
+```
+
+
+
+
+### Wave 12 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `DOMICW12`
+* Label: `type of domicile-W7`
+* Categories: 
+    + `1 = Community living`
+    + `2 = Residential care facility`
+    
+* Description: 
+```{r assign12,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w12_resi','ALSA.ALSA-Wave12',
+                         variables=list('DOMICW12'), missings = TRUE)
+```
+
+```{r local12,  echo=FALSE}
+ALSA_w12_resi <- opal.execute(o,'ALSA_w12_resi')
+vari <-ALSA_w12_resi$DOMICW12 
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w12_resi$DOMICW12, missing_values = NA)
+ggplot(ALSA_w12_resi, aes(x=factor(DOMICW12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "community living" into 0`
+* `recode 2 "institution" into 1`
+* `recode NA into 999`
+
+ 
+
+**R script:** 
+```{r harmo12,   echo=TRUE}
+ALSA_ds_w12 <- tibble(id=ALSA_w12_resi$id)
+ALSA_ds_w12$residence <- car::recode(ALSA_w12_resi$DOMICW12,  "1=0; 2=1; NA=999")
+ALSA_ds_w12$residence <- labelled(ALSA_ds_w12$residence, labels = c("Community living"=0, "Institutions"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript12,  echo=FALSE}
+vari <- ALSA_ds_w12$residence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w12$residence, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w12, aes(x=factor(residence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation12,  echo=FALSE}
+BeforeH <- table(ALSA_w12_resi$DOMICW12)
+AfterH <- table(ALSA_ds_w12$residence)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1")
+kable(C)
+```
+
+
+
+
+
+### Wave 13 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `DOMICW13`
+* Label: `type of domicile-W7`
+* Categories: 
+    + `1 = Community living`
+    + `2 = Institution`
+    
+* Description: 
+```{r assign13,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w13_resi','ALSA.ALSA-Wave13',
+                         variables=list('DOMICW13'), missings = TRUE)
+```
+
+```{r local13,  echo=FALSE}
+ALSA_w13_resi <- opal.execute(o,'ALSA_w13_resi')
+vari <- ALSA_w13_resi$DOMICW13
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w13_resi$DOMICW13, missing_values = NA)
+ggplot(ALSA_w13_resi, aes(x=factor(DOMICW13))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "community living" into 0`
+* `recode 2 "institution" into 1`
+* `recode NA into 999`
+
+ 
+
+**R script:** 
+```{r harmo13,   echo=TRUE}
+ALSA_ds_w13 <- tibble(id=ALSA_w13_resi$id)
+ALSA_ds_w13$residence <- car::recode(ALSA_w13_resi$DOMICW13,  "1=0; 2=1; NA=999")
+ALSA_ds_w13$residence <- labelled(ALSA_ds_w13$residence, labels = c("Community living"=0, "Institutions"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript13,  echo=FALSE}
+vari <- ALSA_ds_w13$residence
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w13$residence, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w13, aes(x=factor(residence))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Residence") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation13,  echo=FALSE}
+BeforeH <- table(ALSA_w13_resi$DOMICW13)
+AfterH <- table(ALSA_ds_w13$residence)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1")
+kable(C)
+```
+
+# Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+```{r save, echo=FALSE,  echo=FALSE}
+residence <- ALSA_ds_w1
+save(residence, file = "../RData/w1/residence.RData")
+rm(residence)
+
+residence <- ALSA_ds_w2
+save(residence, file = "../RData/w2/residence.RData")
+rm(residence)
+
+residence <- ALSA_ds_w3
+save(residence, file = "../RData/w3/residence.RData")
+rm(residence)
+
+residence <- ALSA_ds_w4
+save(residence, file = "../RData/w4/residence.RData")
+rm(residence)
+
+residence <- ALSA_ds_w5
+save(residence, file = "../RData/w5/residence.RData")
+rm(residence)
+
+residence <- ALSA_ds_w6
+save(residence, file = "../RData/w6/residence.RData")
+rm(residence)
+
+residence <- ALSA_ds_w7
+save(residence, file = "../RData/w7/residence.RData")
+rm(residence)
+
+residence <- ALSA_ds_w8
+save(residence, file = "../RData/w8/residence.RData")
+rm(residence)
+
+residence <- ALSA_ds_w9
+save(residence, file = "../RData/w9/residence.RData")
+rm(residence)
+
+residence <- ALSA_ds_w10
+save(residence, file = "../RData/w10/residence.RData")
+rm(residence)
+
+residence <- ALSA_ds_w11
+save(residence, file = "../RData/w11/residence.RData")
+rm(residence)
+
+residence <- ALSA_ds_w12
+save(residence, file = "../RData/w12/residence.RData")
+rm(residence)
+
+residence <- ALSA_ds_w13
+save(residence, file = "../RData/w13/residence.RData")
+rm(residence)
+```
+
+```{r closeRsession, echo=FALSE,  echo=FALSE}
+opal.logout(o)
+```

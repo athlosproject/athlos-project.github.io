@@ -1,0 +1,1253 @@
+---
+title: "ADL- Moving around the home"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `adl_moving`
+* Variable label: `ADL-Difficulties for moving around the home`
+* Variable description: `ADL-Difficulties for moving around the home`
+* Domain: `Health status and functional limitations`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | Yes
+1        | No
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+```{r, dataDirectory, echo=FALSE}
+datafolder <- "../RData"
+```
+
+## Australian population
+### Wave 1
+
+#### Study-specific variable description
+
+ 
+
+
+* Name: `DIFFIC7`
+* Label: `Difficulty with: Moving about inside house`
+* Categories:
+    + `1 = No difficulty at all` 
+    + `2 = A little difficulty` 
+    + `3 = Some difficulty` 
+    + `4 = A lot of difficulty` 
+* Missings
+    + `NA`
+
+* Description: 
+```{r assign w1,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w1_adl_moving','ALSA.ALSA-Wave1', variables=list('DIFFIC7'), missings = TRUE)
+```
+
+```{r local w1,  echo=FALSE}
+ALSA_w1_adl_moving <- opal.execute(o,'ALSA_w1_adl_moving')
+vari <- ALSA_w1_adl_moving$DIFFIC7
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(ALSA_w1_adl_moving$DIFFIC7)
+ggplot(ALSA_w1_adl_moving, aes(x=factor(DIFFIC7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1`
+* `2 into 0` 
+* `3 into 0` 
+* `4 into 0` 
+* `NA into 999`
+
+**R script:** 
+```{r harmo w1,   echo=TRUE}
+ALSA_ds_w1 <- tibble(id=ALSA_w1_adl_moving$id)
+ALSA_ds_w1$adl_moving <- car::recode(ALSA_w1_adl_moving$DIFFIC7, "1 = '1';2 = '0';3 = '0';4 = '0';NA = '999' ")
+ALSA_ds_w1$adl_moving <- labelled(ALSA_ds_w1$adl_moving, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1,  echo=FALSE}
+vari <- ALSA_ds_w1$adl_moving # variable you want to descrive
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w1$adl_moving, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w1, aes(x=factor(adl_moving))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1,  echo=FALSE}
+AfterH <- table(ALSA_ds_w1$adl_moving)
+X<-table(ALSA_w1_adl_moving$DIFFIC7)
+BeforeH <- c(sum(X[c(2:4)]),X[1],sum(is.na(ALSA_w1_adl_moving$DIFFIC7)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2,3,4->0","1->1","NA->999") 
+kable(C)
+```
+
+ 
+ 
+
+
+ 
+```{r importOPAL w1, echo=FALSE,  echo=FALSE}
+val_labels(ALSA_ds_w1) <- NULL
+label(ALSA_ds_w1$adl_moving) <- "Difficulties for moving around the home"
+#opal.assign.data(o, 'ALSA_ds_w1', ALSA_ds_w1)
+#opal.symbol_import(o,'ALSA_ds_w1', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w1 <- ALSA_ds_w1
+ALSA_m_ds_w1$adl_moving <- car::recode(ALSA_m_ds_w1$adl_moving, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w1', ALSA_m_ds_w1)
+#opal.symbol_import(o,'ALSA_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+```{r,  echo=FALSE}
+adl_moving<- ALSA_ds_w1
+save(adl_moving, file = paste0(datafolder, "/w1/adl_moving.RData"))
+```
+
+### Wave 2
+
+#### Study-specific variable description
+
+ 
+
+
+* Name: `Q34.7`
+* Label: `Difficulties with:`
+* Categories:
+    + `1 = Bathing, sponge bath or shower ` 
+    + `2 = Personal grooming` 
+    + `3 = Dressing` 
+    + `4 = Eating`
+    + `5 = Using the toilet`
+    + `6 = Getting about away from home`
+    + `7 = Moving about inside the house`
+    + `8 = Getting from a bed to a chair`
+    + `9 = No difficulties with any of these`
+* Missings
+    + `NA`
+
+
+* Description: 
+```{r assign w2,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w2_adl_moving','ALSA.ALSA-Wave2', variables=list('Q34.7'), missings = TRUE)
+```
+
+```{r local w2,  echo=FALSE}
+ALSA_w2_adl_moving <- opal.execute(o,'ALSA_w2_adl_moving')
+vari <- ALSA_w2_adl_moving$Q34.7
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(ALSA_w2_adl_moving$Q34.7)
+ggplot(ALSA_w2_adl_moving, aes(x=factor(Q34.7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `7 into 0`
+* `8 into 1` 
+* `NA into 999`
+
+**R script:** 
+```{r harmo w2,   echo=TRUE}
+ALSA_ds_w2 <- tibble(id=ALSA_w2_adl_moving$id)
+ALSA_ds_w2$adl_moving <- car::recode(ALSA_w2_adl_moving$Q34.7, "7 = '0';8 = '1';NA = '999' ")
+ALSA_ds_w2$adl_moving <- labelled(ALSA_ds_w2$adl_moving, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w2,  echo=FALSE}
+vari <- ALSA_ds_w2$adl_moving # variable you want to descrive
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w2$adl_moving, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w2, aes(x=factor(adl_moving))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w2,  echo=FALSE}
+AfterH <- table(ALSA_ds_w2$adl_moving)
+X<-table(ALSA_w2_adl_moving$Q34.7)
+BeforeH <- c(X[1:2],sum(is.na(ALSA_w2_adl_moving$Q34.7)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("7->0","8->1","NA->999") 
+kable(C)
+```
+
+ 
+ 
+
+
+ 
+```{r importOPAL w2, echo=FALSE,  echo=FALSE}
+val_labels(ALSA_ds_w2) <- NULL
+label(ALSA_ds_w2$adl_moving) <- "Difficulties for moving around the home"
+#opal.assign.data(o, 'ALSA_ds_w2', ALSA_ds_w2)
+#opal.symbol_import(o,'ALSA_ds_w2', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w2 <- ALSA_ds_w2
+ALSA_m_ds_w2$adl_moving <- car::recode(ALSA_m_ds_w2$adl_moving, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w2', ALSA_m_ds_w2)
+#opal.symbol_import(o,'ALSA_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+```{r,  echo=FALSE}
+adl_moving<- ALSA_ds_w2
+save(adl_moving, file = paste0(datafolder, "/w2/adl_moving.RData"))
+```
+
+
+### Wave 3
+
+#### Study-specific variable description
+
+ 
+
+
+* Name: `ADLDF7W3`
+* Label: `INSIDE HOUSE DIFFICULTY`
+* Categories:
+    + `1 = No difficulty at all` 
+    + `2 = A little difficulty` 
+    + `3 = Some difficulty` 
+    + `4 = A lot of difficulty` 
+* Missings
+    + `9 = Missing`
+    + `NA`
+
+* Description: 
+```{r assign w3,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w3_adl_moving','ALSA.ALSA-Wave3', variables=list('ADLDF7W3'), missings = TRUE)
+```
+
+```{r local w3,  echo=FALSE}
+ALSA_w3_adl_moving <- opal.execute(o,'ALSA_w3_adl_moving')
+vari <- ALSA_w3_adl_moving$ADLDF7W3
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(ALSA_w3_adl_moving$ADLDF7W3)
+ggplot(ALSA_w3_adl_moving, aes(x=factor(ADLDF7W3))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1`
+* `2 into 0` 
+* `3 into 0` 
+* `4 into 0` 
+* `9 into 999`
+* `NA into 999`
+
+**R script:** 
+```{r harmo w3,   echo=TRUE}
+ALSA_ds_w3 <- tibble(id=ALSA_w3_adl_moving$id)
+ALSA_ds_w3$adl_moving <- car::recode(ALSA_w3_adl_moving$ADLDF7W3, "1 = '1';2 = '0';3 = '0';4 = '0';9 = '999'; NA = '999' ")
+ALSA_ds_w3$adl_moving <- labelled(ALSA_ds_w3$adl_moving, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w3,  echo=FALSE}
+vari <- ALSA_ds_w3$adl_moving # variable you want to descrive
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w3$adl_moving, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w3, aes(x=factor(adl_moving))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w3,  echo=FALSE}
+AfterH <- table(ALSA_ds_w3$adl_moving)
+X<-table(ALSA_w3_adl_moving$ADLDF7W3)
+BeforeH <- c(sum(X[c(2:4)]),X[1],X[5]+sum(is.na(ALSA_w3_adl_moving$ADLDF7W3)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2,3,4->0","1->1","9,NA->999") 
+kable(C)
+```
+
+ 
+ 
+
+
+ 
+```{r importOPAL w3, echo=FALSE,  echo=FALSE}
+val_labels(ALSA_ds_w3) <- NULL
+label(ALSA_ds_w3$adl_moving) <- "Difficulties for moving around the home"
+#opal.assign.data(o, 'ALSA_ds_w3', ALSA_ds_w3)
+#opal.symbol_import(o,'ALSA_ds_w3', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w3 <- ALSA_ds_w3
+ALSA_m_ds_w3$adl_moving <- car::recode(ALSA_m_ds_w3$adl_moving, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w3', ALSA_m_ds_w3)
+#opal.symbol_import(o,'ALSA_m_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+```{r,  echo=FALSE}
+adl_moving<- ALSA_ds_w3
+save(adl_moving, file = paste0(datafolder, "/w3/adl_moving.RData"))
+```
+
+### Wave 4
+
+#### Study-specific variable description
+
+ 
+
+
+* Name: `ADLND7W4`
+* Label: `Difficulties with:`
+* Categories:
+    + `0 = No`
+    + `1 = Bathing, sponge bath or shower ` 
+    + `2 = Personal grooming` 
+    + `3 = Dressing` 
+    + `4 = Eating`
+    + `5 = Using the toilet`
+    + `6 = Getting about away from home`
+    + `7 = Moving about inside the house`
+    + `8 = Getting from a bed to a chair`
+    + `9 = No difficulties with any of these`
+    + `10 = Not applicable/in institution`
+* Missings
+    + `NA`
+
+* Description: 
+```{r assign w4,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w4_adl_moving','ALSA.ALSA-Wave4', variables=list('ADLND7W4'), missings = TRUE)
+```
+
+```{r local w4,  echo=FALSE}
+ALSA_w4_adl_moving <- opal.execute(o,'ALSA_w4_adl_moving')
+vari <- ALSA_w4_adl_moving$ADLND7W4
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(ALSA_w4_adl_moving$ADLND7W4)
+ggplot(ALSA_w4_adl_moving, aes(x=factor(ADLND7W4))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `0 into 1`
+* `7 into 0` 
+* `NA into 999`
+
+**R script:** 
+```{r harmo w4,   echo=TRUE}
+ALSA_ds_w4 <- tibble(id=ALSA_w4_adl_moving$id)
+ALSA_ds_w4$adl_moving <- car::recode(ALSA_w4_adl_moving$ADLND7W4, "0 = '1';7 = '0';NA = '999' ")
+ALSA_ds_w4$adl_moving <- labelled(ALSA_ds_w4$adl_moving, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w4,  echo=FALSE}
+vari <- ALSA_ds_w4$adl_moving # variable you want to descrive
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w4$adl_moving, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w4, aes(x=factor(adl_moving))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w4,  echo=FALSE}
+AfterH <- table(ALSA_ds_w4$adl_moving)
+X<-table(ALSA_w4_adl_moving$ADLND7W4)
+BeforeH <- c(X[2:1],sum(is.na(ALSA_w4_adl_moving$ADLND7W4)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("7->0","0->1","NA->999") 
+kable(C)
+```
+
+ 
+ 
+
+
+ 
+```{r importOPAL w4, echo=FALSE,  echo=FALSE}
+val_labels(ALSA_ds_w4) <- NULL
+label(ALSA_ds_w4$adl_moving) <- "Difficulties for moving around the home"
+#opal.assign.data(o, 'ALSA_ds_w4', ALSA_ds_w4)
+#opal.symbol_import(o,'ALSA_ds_w4', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w4 <- ALSA_ds_w4
+ALSA_m_ds_w4$adl_moving <- car::recode(ALSA_m_ds_w4$adl_moving, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w4', ALSA_m_ds_w4)
+#opal.symbol_import(o,'ALSA_m_ds_w4', project='_Athlos_Harm_Dataset')
+```
+
+```{r,  echo=FALSE}
+adl_moving<- ALSA_ds_w4
+save(adl_moving, file = paste0(datafolder, "/w4/adl_moving.RData"))
+```
+
+### Wave 5
+
+#### Study-specific variable description
+
+* Name: `ADLND7W5`
+* Label: `Difficulties with:`
+* Categories:
+    + `0 = No`
+    + `1 = Bathing, sponge bath or shower ` 
+    + `2 = Personal grooming` 
+    + `3 = Dressing` 
+    + `4 = Eating`
+    + `5 = Using the toilet`
+    + `6 = Getting about away from home`
+    + `7 = Moving about inside the house`
+    + `8 = Getting from a bed to a chair`
+    + `9 = No difficulties with any of these`
+    + `10 = Not applicable/in institution`
+* Missings
+    + `NA`
+* Description: 
+```{r assign w5,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w5_adl_moving','ALSA.ALSA-Wave5', variables=list('ADLND7W5'), missings = TRUE)
+```
+
+```{r local w5,  echo=FALSE}
+ALSA_w5_adl_moving <- opal.execute(o,'ALSA_w5_adl_moving')
+vari <- ALSA_w5_adl_moving$ADLND7W5
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(ALSA_w5_adl_moving$ADLND7W5)
+ggplot(ALSA_w5_adl_moving, aes(x=factor(ADLND7W5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `0 into 1`
+* `7 into 0` 
+* `NA into 999`
+
+**R script:** 
+```{r harmo w5,   echo=TRUE}
+ALSA_ds_w5 <- tibble(id=ALSA_w5_adl_moving$id)
+ALSA_ds_w5$adl_moving <- car::recode(ALSA_w5_adl_moving$ADLND7W5, "0 = '1';7 = '0';NA = '999' ")
+ALSA_ds_w5$adl_moving <- labelled(ALSA_ds_w5$adl_moving, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w5,  echo=FALSE}
+vari <- ALSA_ds_w5$adl_moving # variable you want to descrive
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w5$adl_moving, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w5, aes(x=factor(adl_moving))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w5,  echo=FALSE}
+AfterH <- table(ALSA_ds_w5$adl_moving)
+X<-table(ALSA_w5_adl_moving$ADLND7W5)
+BeforeH <- c(X[2:1])
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("7->0","0->1") 
+kable(C)
+```
+
+ 
+ 
+
+
+ 
+```{r importOPAL w5, echo=FALSE,  echo=FALSE}
+val_labels(ALSA_ds_w5) <- NULL
+label(ALSA_ds_w5$adl_moving) <- "Difficulties for moving around the home"
+#opal.assign.data(o, 'ALSA_ds_w5', ALSA_ds_w5)
+#opal.symbol_import(o,'ALSA_ds_w5', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w5 <- ALSA_ds_w5
+ALSA_m_ds_w5$adl_moving <- car::recode(ALSA_m_ds_w5$adl_moving, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w5', ALSA_m_ds_w5)
+#opal.symbol_import(o,'ALSA_m_ds_w5', project='_Athlos_Harm_Dataset')
+```
+
+```{r,  echo=FALSE}
+adl_moving<- ALSA_ds_w5
+save(adl_moving, file = paste0(datafolder, "/w5/adl_moving.RData"))
+```
+
+### Wave 6
+
+#### Study-specific variable description
+
+ 
+
+
+* Name: `ADLDF7W6`
+* Label: `level of difficulty moving inside`
+* Categories:
+    + `1 = No difficulty at all` 
+    + `2 = A little difficulty` 
+    + `3 = Some difficulty` 
+    + `4 = A lot of difficulty` 
+* Missings
+    + `0 = No answer`
+    + `NA`
+
+* Description: 
+```{r assign w6,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w6_adl_moving','ALSA.ALSA-Wave6', variables=list('ADLDF7W6'), missings = TRUE)
+```
+
+```{r local w6,  echo=FALSE}
+ALSA_w6_adl_moving <- opal.execute(o,'ALSA_w6_adl_moving')
+vari <- ALSA_w6_adl_moving$ADLDF7W6
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(ALSA_w6_adl_moving$ADLDF7W6)
+ggplot(ALSA_w6_adl_moving, aes(x=factor(ADLDF7W6))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1`
+* `2 into 0` 
+* `3 into 0` 
+* `4 into 0`  
+* `0 into 995` 
+* `NA into 999`
+
+**R script:** 
+```{r harmo w6,   echo=TRUE}
+ALSA_ds_w6 <- tibble(id=ALSA_w6_adl_moving$id)
+ALSA_ds_w6$adl_moving <- car::recode(ALSA_w6_adl_moving$ADLDF7W6, "1 = '1';2 = '0';3 = '0';4 = '0';0 = '995';NA = '999' ")
+ALSA_ds_w6$adl_moving <- labelled(ALSA_ds_w6$adl_moving, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w6,  echo=FALSE}
+vari <- ALSA_ds_w6$adl_moving # variable you want to descrive
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w6$adl_moving, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w6, aes(x=factor(adl_moving))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w6,  echo=FALSE}
+AfterH <- table(ALSA_ds_w6$adl_moving)
+X<-table(ALSA_w6_adl_moving$ADLDF7W6)
+BeforeH <- c(sum(X[c(3:5)]),X[2],X[1],sum(is.na(ALSA_w6_adl_moving$ADLDF7W6)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2,3,4->0","1->1","0->995","NA->999") 
+kable(C)
+```
+
+ 
+ 
+
+
+ 
+```{r importOPAL w6, echo=FALSE,  echo=FALSE}
+val_labels(ALSA_ds_w6) <- NULL
+label(ALSA_ds_w6$adl_moving) <- "Difficulties for moving around the home"
+#opal.assign.data(o, 'ALSA_ds_w6', ALSA_ds_w6)
+#opal.symbol_import(o,'ALSA_ds_w6', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w6 <- ALSA_ds_w6
+ALSA_m_ds_w6$adl_moving <- car::recode(ALSA_m_ds_w6$adl_moving, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w6', ALSA_m_ds_w6)
+#opal.symbol_import(o,'ALSA_m_ds_w6', project='_Athlos_Harm_Dataset')
+```
+
+```{r,  echo=FALSE}
+adl_moving<- ALSA_ds_w6
+save(adl_moving, file = paste0(datafolder, "/w6/adl_moving.RData"))
+```
+
+### Wave 7
+
+#### Study-specific variable description
+
+ 
+
+
+* Name: `adldf7w7`
+* Label: `level of difficulty moving inside`
+* Categories:
+    + `1 = No difficulty at all` 
+    + `2 = A little difficulty` 
+    + `3 = Some difficulty` 
+    + `4 = A lot of difficulty` 
+* Missings
+    + `0 = No answer`
+    + `NA`
+
+* Description: 
+```{r assign w7,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w7_adl_moving','ALSA.ALSA-Wave7', variables=list('adldf7w7'), missings = TRUE)
+```
+
+```{r local w7,  echo=FALSE}
+ALSA_w7_adl_moving <- opal.execute(o,'ALSA_w7_adl_moving')
+vari <- ALSA_w7_adl_moving$adldf7w7
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(ALSA_w7_adl_moving$adldf7w7)
+ggplot(ALSA_w7_adl_moving, aes(x=factor(adldf7w7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1`
+* `2 into 0` 
+* `3 into 0` 
+* `4 into 0` 
+* `0 into 995` 
+* `NA into 999`
+
+**R script:** 
+```{r harmo w7,   echo=TRUE}
+ALSA_ds_w7 <- tibble(id=ALSA_w7_adl_moving$id)
+ALSA_ds_w7$adl_moving <- car::recode(ALSA_w7_adl_moving$adldf7w7 , "1 = '1';2 = '0';3 = '0';4 = '0';0 = '995';NA = '999' ")
+ALSA_ds_w7$adl_moving <- labelled(ALSA_ds_w7$adl_moving, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w7,  echo=FALSE}
+vari <- ALSA_ds_w7$adl_moving # variable you want to descrive
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w7$adl_moving, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w7, aes(x=factor(adl_moving))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w7,  echo=FALSE}
+AfterH <- table(ALSA_ds_w7$adl_moving)
+X<-table(ALSA_w7_adl_moving$adldf7w7)
+BeforeH <- c(sum(X[c(3:5)]),X[2],X[1],sum(is.na(ALSA_w7_adl_moving$adldf7w7)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2,3,4->0","1->1","0->995","NA->999") 
+kable(C)
+```
+
+ 
+ 
+
+
+ 
+```{r importOPAL w7, echo=FALSE,  echo=FALSE}
+val_labels(ALSA_ds_w7) <- NULL
+label(ALSA_ds_w7$adl_moving) <- "Difficulties for moving around the home"
+#opal.assign.data(o, 'ALSA_ds_w7', ALSA_ds_w7)
+#opal.symbol_import(o,'ALSA_ds_w7', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w7 <- ALSA_ds_w7
+ALSA_m_ds_w7$adl_moving <- car::recode(ALSA_m_ds_w7$adl_moving, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w7', ALSA_m_ds_w7)
+#opal.symbol_import(o,'ALSA_m_ds_w7', project='_Athlos_Harm_Dataset')
+```
+
+```{r,  echo=FALSE}
+adl_moving<- ALSA_ds_w7
+save(adl_moving, file = paste0(datafolder, "/w7/adl_moving.RData"))
+```
+
+### Wave 8
+
+#### Study-specific variable description
+
+* Name: `adlnd7w8`
+* Label: `Difficulty moving aroud the home`
+* Categories:
+    + `1 = Yes ` 
+    + `2 = No` 
+* Missings
+    + `NA`
+
+* Description: 
+```{r assign w8,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w8_adl_moving','ALSA.ALSA-Wave8', variables=list('adlnd7w8'), missings = TRUE)
+```
+
+```{r local w8,  echo=FALSE}
+ALSA_w8_adl_moving <- opal.execute(o,'ALSA_w8_adl_moving')
+vari <- ALSA_w8_adl_moving$adlnd7w8
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(ALSA_w8_adl_moving$adlnd7w8)
+ggplot(ALSA_w8_adl_moving, aes(x=factor(adlnd7w8))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 0`
+* `2 into 1` 
+* `NA into 999`
+
+**R script:** 
+```{r harmo w8,   echo=TRUE}
+ALSA_ds_w8 <- tibble(id=ALSA_w8_adl_moving$id)
+ALSA_ds_w8$adl_moving <- car::recode(ALSA_w8_adl_moving$adlnd7w8, "1 = '0';2 = '1';NA = '999' ")
+ALSA_ds_w8$adl_moving <- labelled(ALSA_ds_w8$adl_moving, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w8,  echo=FALSE}
+vari <- ALSA_ds_w8$adl_moving # variable you want to descrive
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w8$adl_moving, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w8, aes(x=factor(adl_moving))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w8,  echo=FALSE}
+AfterH <- table(ALSA_ds_w8$adl_moving)
+X<-table(ALSA_w8_adl_moving$adlnd7w8)
+BeforeH <- c(X[1:2],sum(is.na(ALSA_w8_adl_moving$adlnd7w8)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","2->1","NA->999") 
+kable(C)
+```
+
+ 
+ 
+
+
+ 
+```{r importOPAL w8, echo=FALSE,  echo=FALSE}
+val_labels(ALSA_ds_w8) <- NULL
+label(ALSA_ds_w8$adl_moving) <- "Difficulties for moving around the home"
+#opal.assign.data(o, 'ALSA_ds_w8', ALSA_ds_w8)
+#opal.symbol_import(o,'ALSA_ds_w8', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w8 <- ALSA_ds_w8
+ALSA_m_ds_w8$adl_moving <- car::recode(ALSA_m_ds_w8$adl_moving, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w8', ALSA_m_ds_w8)
+#opal.symbol_import(o,'ALSA_m_ds_w8', project='_Athlos_Harm_Dataset')
+```
+
+```{r,  echo=FALSE}
+adl_moving<- ALSA_ds_w8
+save(adl_moving, file = paste0(datafolder, "/w8/adl_moving.RData"))
+```
+
+### Wave 9
+
+#### Study-specific variable description
+
+ 
+
+
+* Name: `ADLDF7W9`
+* Label: `level of difficulty moving inside`
+* Categories:
+    + `1 = No difficulty at all` 
+    + `2 = A little difficulty` 
+    + `3 = Some difficulty` 
+    + `4 = A lot of difficulty` 
+* Missings
+    + `0 = No answer`
+    + `NA`
+
+* Description: 
+```{r assign w9,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w9_adl_moving','ALSA.ALSA-Wave9', variables=list('ADLDF7W9'), missings = TRUE)
+```
+
+```{r local w9,  echo=FALSE}
+ALSA_w9_adl_moving <- opal.execute(o,'ALSA_w9_adl_moving')
+vari <- ALSA_w9_adl_moving$ADLDF7W9
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(ALSA_w9_adl_moving$ADLDF7W9)
+ggplot(ALSA_w9_adl_moving, aes(x=factor(ADLDF7W9))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1`
+* `2 into 0` 
+* `3 into 0` 
+* `4 into 0` 
+* `0 into 995` 
+* `NA into 999`
+
+**R script:** 
+```{r harmo w9,   echo=TRUE}
+ALSA_ds_w9 <- tibble(id=ALSA_w9_adl_moving$id)
+ALSA_ds_w9$adl_moving <- car::recode(ALSA_w9_adl_moving$ADLDF7W9, "1 = '1';2 = '0';3 = '0';4 = '0';0 = '995';NA = '999' ")
+ALSA_ds_w9$adl_moving <- labelled(ALSA_ds_w9$adl_moving, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w9,  echo=FALSE}
+vari <- ALSA_ds_w9$adl_moving # variable you want to descrive
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w9$adl_moving, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w9, aes(x=factor(adl_moving))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w9,  echo=FALSE}
+AfterH <- table(ALSA_ds_w9$adl_moving)
+X<-table(ALSA_w9_adl_moving$ADLDF7W9)
+BeforeH <- c(sum(X[c(3:5)]),X[2:1],sum(is.na(ALSA_w9_adl_moving$ADLDF7W9)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2,3,4->0","1->1","0->995","NA->999") 
+kable(C)
+```
+
+ 
+ 
+
+
+ 
+```{r importOPAL w9, echo=FALSE,  echo=FALSE}
+val_labels(ALSA_ds_w9) <- NULL
+label(ALSA_ds_w9$adl_moving) <- "Difficulties for moving around the home"
+#opal.assign.data(o, 'ALSA_ds_w9', ALSA_ds_w9)
+#opal.symbol_import(o,'ALSA_ds_w9', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w9 <- ALSA_ds_w9
+ALSA_m_ds_w9$adl_moving <- car::recode(ALSA_m_ds_w9$adl_moving, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w9', ALSA_m_ds_w9)
+#opal.symbol_import(o,'ALSA_m_ds_w9', project='_Athlos_Harm_Dataset')
+```
+
+```{r,  echo=FALSE}
+adl_moving<- ALSA_ds_w9
+save(adl_moving, file = paste0(datafolder, "/w9/adl_moving.RData"))
+```
+
+### Wave 10
+
+#### Study-specific variable description
+
+ 
+
+
+* Name: `adlnd7w10`
+* Label: `Difficulties moving about inside the house?`
+* Categories:
+    + `0 = No` 
+    + `1 = Yes`
+* Missings
+    + `NA`
+
+* Description: 
+```{r assign w10,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w10_adl_moving','ALSA.ALSA-Wave10', variables=list('adlnd7w10'), missings = TRUE)
+```
+
+```{r local w10,  echo=FALSE}
+ALSA_w10_adl_moving <- opal.execute(o,'ALSA_w10_adl_moving')
+vari <- ALSA_w10_adl_moving$adlnd7w10
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(ALSA_w10_adl_moving$adlnd7w10)
+ggplot(ALSA_w10_adl_moving, aes(x=factor(adlnd7w10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 0`
+* `0 into 1` 
+* `NA into 999`
+
+**R script:** 
+```{r harmo w10,   echo=TRUE}
+ALSA_ds_w10 <- tibble(id=ALSA_w10_adl_moving$id)
+ALSA_ds_w10$adl_moving <- car::recode(ALSA_w10_adl_moving$adlnd7w10, "1 = '0';0 = '1';NA = '999' ")
+ALSA_ds_w10$adl_moving <- labelled(ALSA_ds_w10$adl_moving, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w10,  echo=FALSE}
+vari <- ALSA_ds_w10$adl_moving # variable you want to descrive
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w10$adl_moving, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w10, aes(x=factor(adl_moving))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w10,  echo=FALSE}
+AfterH <- table(ALSA_ds_w10$adl_moving)
+X<-table(ALSA_w10_adl_moving$adlnd7w10)
+BeforeH <- c(X[2:1],sum(is.na(ALSA_w10_adl_moving$adlnd7w10)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->0","0->1","NA->999") 
+kable(C)
+```
+
+ 
+ 
+
+
+ 
+```{r importOPAL w10, echo=FALSE,  echo=FALSE}
+val_labels(ALSA_ds_w10) <- NULL
+label(ALSA_ds_w10$adl_moving) <- "Difficulties for moving around the home"
+#opal.assign.data(o, 'ALSA_ds_w10', ALSA_ds_w10)
+#opal.symbol_import(o,'ALSA_ds_w10', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w10 <- ALSA_ds_w10
+ALSA_m_ds_w10$adl_moving <- car::recode(ALSA_m_ds_w10$adl_moving, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w10', ALSA_m_ds_w10)
+#opal.symbol_import(o,'ALSA_m_ds_w10', project='_Athlos_Harm_Dataset')
+```
+
+```{r,  echo=FALSE}
+adl_moving<- ALSA_ds_w10
+save(adl_moving, file = paste0(datafolder, "/w10/adl_moving.RData"))
+```
+
+### Wave 11
+
+#### Study-specific variable description
+
+ 
+
+
+* Name: `ADLDF7W11`
+* Label: `Difficulty moving around inside`
+* Categories:
+    + `1 = No difficulty at all` 
+    + `2 = A little difficulty` 
+    + `3 = Some difficulty` 
+    + `4 = A lot of difficulty`
+* Missings
+    + `NA`
+
+* Description: 
+```{r assign w11,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w11_adl_moving','ALSA.ALSA-Wave11', variables=list('ADLDF7W11'), missings = TRUE)
+```
+
+```{r local w11,  echo=FALSE}
+ALSA_w11_adl_moving <- opal.execute(o,'ALSA_w11_adl_moving')
+vari <- ALSA_w11_adl_moving$ADLDF7W11
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(ALSA_w11_adl_moving$ADLDF7W11)
+ggplot(ALSA_w11_adl_moving, aes(x=factor(ADLDF7W11))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1`
+* `2 into 0` 
+* `3 into 0` 
+* `4 into 0` 
+* `NA into 999`
+
+**R script:** 
+```{r harmo w11,   echo=TRUE}
+ALSA_ds_w11 <- tibble(id=ALSA_w11_adl_moving$id)
+ALSA_ds_w11$adl_moving <- car::recode(ALSA_w11_adl_moving$ADLDF7W11, "1 = '1';2 = '0';3 = '0';4 = '0';NA = '999' ")
+ALSA_ds_w11$adl_moving <- labelled(ALSA_ds_w11$adl_moving, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w11,  echo=FALSE}
+vari <- ALSA_ds_w11$adl_moving # variable you want to descrive
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w11$adl_moving, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w11, aes(x=factor(adl_moving))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w11,  echo=FALSE}
+AfterH <- table(ALSA_ds_w11$adl_moving)
+X<-table(ALSA_w11_adl_moving$ADLDF7W11)
+BeforeH <- c(sum(X[c(2:4)]),X[1],sum(is.na((ALSA_w11_adl_moving$ADLDF7W11))))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2,3,4->0","1->1","NA->999") 
+kable(C)
+```
+
+ 
+ 
+
+
+ 
+```{r importOPAL w11, echo=FALSE,  echo=FALSE}
+val_labels(ALSA_ds_w11) <- NULL
+label(ALSA_ds_w11$adl_moving) <- "Difficulties for moving around the home"
+#opal.assign.data(o, 'ALSA_ds_w11', ALSA_ds_w11)
+#opal.symbol_import(o,'ALSA_ds_w11', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w11 <- ALSA_ds_w11
+ALSA_m_ds_w11$adl_moving <- car::recode(ALSA_m_ds_w11$adl_moving, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w11', ALSA_m_ds_w11)
+#opal.symbol_import(o,'ALSA_m_ds_w11', project='_Athlos_Harm_Dataset')
+```
+
+```{r,  echo=FALSE}
+adl_moving<- ALSA_ds_w11
+save(adl_moving, file = paste0(datafolder, "/w11/adl_moving.RData"))
+```
+
+### Wave 12
+
+#### Study-specific variable description
+
+ 
+
+
+* Name: `ADLDF7W12`
+* Label: `Difficulty moving around inside`
+* Categories:
+    + `1 = No difficulty at all` 
+    + `2 = A little difficulty` 
+    + `3 = Some difficulty` 
+    + `4 = A lot of difficulty` 
+* Missings
+    + `NA`
+
+* Description: 
+```{r assign w12,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w12_adl_moving','ALSA.ALSA-Wave12', variables=list('ADLDF7W12'), missings = TRUE)
+```
+
+```{r local w12,  echo=FALSE}
+ALSA_w12_adl_moving <- opal.execute(o,'ALSA_w12_adl_moving')
+vari <- ALSA_w12_adl_moving$ADLDF7W12
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(ALSA_w12_adl_moving$ADLDF7W12)
+ggplot(ALSA_w12_adl_moving, aes(x=factor(ADLDF7W12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1`
+* `2 into 0` 
+* `3 into 0` 
+* `4 into 0`
+* `NA into 999`
+
+**R script:** 
+```{r harmo w12,   echo=TRUE}
+ALSA_ds_w12 <- tibble(id=ALSA_w12_adl_moving$id)
+ALSA_ds_w12$adl_moving <- car::recode(ALSA_w12_adl_moving$ADLDF7W12, "1 = '1';2 = '0';3 = '0';4 = '0';NA = '999' ")
+ALSA_ds_w12$adl_moving <- labelled(ALSA_ds_w12$adl_moving, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w12,  echo=FALSE}
+vari <- ALSA_ds_w12$adl_moving # variable you want to descrive
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w12$adl_moving, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w12, aes(x=factor(adl_moving))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w12,  echo=FALSE}
+AfterH <- table(ALSA_ds_w12$adl_moving)
+X<-table(ALSA_w12_adl_moving$ADLDF7W12)
+BeforeH <- c(sum(X[c(2:4)]),X[1],sum(is.na(ALSA_w12_adl_moving$ADLDF7W12)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2,3,4->0","1->1","NA->999") 
+kable(C)
+```
+
+ 
+ 
+
+
+ 
+```{r importOPAL w12, echo=FALSE,  echo=FALSE}
+val_labels(ALSA_ds_w12) <- NULL
+label(ALSA_ds_w12$adl_moving) <- "Difficulties for moving around the home"
+#opal.assign.data(o, 'ALSA_ds_w12', ALSA_ds_w12)
+#opal.symbol_import(o,'ALSA_ds_w12', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w12 <- ALSA_ds_w12
+ALSA_m_ds_w12$adl_moving <- car::recode(ALSA_m_ds_w12$adl_moving, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w12', ALSA_m_ds_w12)
+#opal.symbol_import(o,'ALSA_m_ds_w12', project='_Athlos_Harm_Dataset')
+```
+
+```{r,  echo=FALSE}
+adl_moving<- ALSA_ds_w12
+save(adl_moving, file = paste0(datafolder, "/w12/adl_moving.RData"))
+```
+  
+### Wave 13
+
+#### Study-specific variable description
+
+ 
+
+
+* Name: `ADLDF7W13`
+* Label: `Difficulty moving around inside`
+* Categories:
+    + `1 = No difficulty at all` 
+    + `2 = A little difficulty` 
+    + `3 = Some difficulty` 
+    + `4 = A lot of difficulty` 
+* Missings
+    + `NA`
+
+* Description: 
+```{r assign w13,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w13_adl_moving','ALSA.ALSA-Wave13', variables=list('ADLDF7W13'), missings = TRUE)
+```
+
+```{r local w13,  echo=FALSE}
+ALSA_w13_adl_moving <- opal.execute(o,'ALSA_w13_adl_moving')
+vari <- ALSA_w13_adl_moving$ADLDF7W13
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(ALSA_w13_adl_moving$ADLDF7W13)
+ggplot(ALSA_w13_adl_moving, aes(x=factor(ADLDF7W13))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1`
+* `2 into 0` 
+* `3 into 0` 
+* `4 into 0` 
+* `NA into 999`
+
+**R script:** 
+```{r harmo w13,   echo=TRUE}
+ALSA_ds_w13 <- tibble(id=ALSA_w13_adl_moving$id)
+ALSA_ds_w13$adl_moving <- car::recode(ALSA_w13_adl_moving$ADLDF7W13, "1 = '1';2 = '0';3 = '0';4 = '0';NA = '999' ")
+ALSA_ds_w13$adl_moving <- labelled(ALSA_ds_w13$adl_moving, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w13,  echo=FALSE}
+vari <- ALSA_ds_w13$adl_moving # variable you want to descrive
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w13$adl_moving, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w13, aes(x=factor(adl_moving))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Moving around the home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w13,  echo=FALSE}
+AfterH <- table(ALSA_ds_w13$adl_moving)
+X<-table(ALSA_w13_adl_moving$ADLDF7W13)
+BeforeH <- c(sum(X[c(2:4)]),X[1],sum(is.na(ALSA_w13_adl_moving$ADLDF7W13)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2,3,4->0","1->1","NA->999") 
+kable(C)
+```
+
+ 
+ 
+
+
+ 
+```{r importOPAL w13, echo=FALSE,  echo=FALSE}
+val_labels(ALSA_ds_w13) <- NULL
+label(ALSA_ds_w13$adl_moving) <- "Difficulties for moving around the home"
+#opal.assign.data(o, 'ALSA_ds_w13', ALSA_ds_w13)
+#opal.symbol_import(o,'ALSA_ds_w13', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w13 <- ALSA_ds_w13
+ALSA_m_ds_w13$adl_moving <- car::recode(ALSA_m_ds_w13$adl_moving, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w13', ALSA_m_ds_w13)
+#opal.symbol_import(o,'ALSA_m_ds_w13', project='_Athlos_Harm_Dataset')
+```
+
+```{r,  echo=FALSE}
+adl_moving<- ALSA_ds_w13
+save(adl_moving, file = paste0(datafolder, "/w13/adl_moving.RData"))
+```
+
+# Quality estimation
+Waves 2, 4, 5, 8 and 9 should be handled carefully because of controversies in the original variables.
+
+
+```{r closeRsession, echo=FALSE,  echo=FALSE}
+opal.logout(o)
+```

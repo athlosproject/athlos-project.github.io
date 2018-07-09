@@ -1,0 +1,1157 @@
+---
+title: "Recent falls"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+<!-- ########################################################## --> 
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `recent_falls`
+* Variable label: `Recent falls in the last 6-24 months`
+* Variable description: `Recent falls in the last 6-24 months`
+* Domain: `Health status and functional limitations`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Recent falls"
+ds_label_all <- "Recent falls in the last 6-24 months"
+```
+
+
+# Data process
+
+## ALSA
+
+### Wave 1
+
+#### Study-specific variable description
+
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `ACCDHA`
+* Label: `number of Falls in year`
+* Categories:
+   + `Continouos`
+* Missings
+   + `999 = Missing`
+   + `NA`
+
+```{r assign w1, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w1_recent_falls','ALSA.ALSA-Wave1', variables=list('ACCDHA'), missings = TRUE)
+ALSA_w1_recent_falls <- opal.execute(o,'ALSA_w1_recent_falls')
+```
+
+```{r local w1, echo=FALSE}
+vari <- ALSA_w1_recent_falls$ACCDHA
+kable(Categorical_summary(vari, missing_values = c(999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(999))[2], caption = "Type of missing")
+ggplot(ALSA_w1_recent_falls, aes(x=factor(ACCDHA))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `>=1 into 1` 
+* `0 into 0`
+* `999 into 999` 
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w1}
+ALSA_ds_w1 <- tibble(id=ALSA_w1_recent_falls$id)
+ALSA_ds_w1$recent_falls <- rep(888,length(ALSA_ds_w1$id))
+ALSA_ds_w1$recent_falls[which(ALSA_w1_recent_falls$ACCDHA==0)]<-0
+ALSA_ds_w1$recent_falls[which((is.na(ALSA_w1_recent_falls$ACCDHA))|(ALSA_w1_recent_falls$ACCDHA==999))]<-999
+ALSA_ds_w1$recent_falls[which((ALSA_w1_recent_falls$ACCDHA>=1)&(ALSA_w1_recent_falls$ACCDHA!=999))]<-1
+ALSA_ds_w1$recent_falls <- labelled(ALSA_ds_w1$recent_falls, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=FALSE}
+vari <- ALSA_ds_w1$recent_falls
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w1, aes(x=factor(recent_falls))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1, echo=FALSE}
+AfterH <- table(ALSA_ds_w1$recent_falls)
+BeforeH<-c(
+  length(which(ALSA_w1_recent_falls$ACCDHA==0)),
+  length(which((ALSA_w1_recent_falls$ACCDHA>=1)&(ALSA_w1_recent_falls$ACCDHA!=999))),
+  length(which((is.na(ALSA_w1_recent_falls$ACCDHA))|(ALSA_w1_recent_falls$ACCDHA==999)))
+)
+
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0->0",">=1->1","999,NA->999") 
+kable(C)
+```
+
+```{r importOPAL w1, echo=FALSE}
+label(ALSA_ds_w1$recent_falls) <- "Recent falls in the last 6-24 months"
+recent_falls <- ALSA_ds_w1
+save(recent_falls, file = "../RData/w1/recent_falls.RData")
+#opal.assign.data(o, 'ALSA_ds_w1', ALSA_ds_w1)
+#opal.symbol_import(o,'ALSA_ds_w1', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w1 <- ALSA_ds_w1
+ALSA_m_ds_w1$recent_falls <- car::recode(ALSA_m_ds_w1$recent_falls, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w1', ALSA_m_ds_w1)
+#opal.symbol_import(o,'ALSA_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `Q7A`
+* Label: `how many falls?`
+* Categories:
+   + `Continouos`
+* Missings
+   + `NA`
+
+```{r assign w2, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w2_recent_falls','ALSA.ALSA-Wave2', variables=list('Q7A'), missings = TRUE)
+ALSA_w2_recent_falls <- opal.execute(o,'ALSA_w2_recent_falls')
+```
+
+```{r local w2, echo=FALSE}
+vari <- ALSA_w2_recent_falls$Q7A
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w2_recent_falls, aes(x=factor(Q7A))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `>=1 into 1` 
+* `0 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w2}
+ALSA_ds_w2 <- tibble(id=ALSA_w2_recent_falls$id)
+ALSA_ds_w2$recent_falls <- rep(888,length(ALSA_ds_w2$id))
+#ALSA_ds_w2$recent_falls[which(ALSA_w2_recent_falls$Q7A==0)]<-0
+ALSA_ds_w2$recent_falls[which(is.na(ALSA_w2_recent_falls$Q7A))]<-999
+ALSA_ds_w2$recent_falls[which((ALSA_w2_recent_falls$Q7A>=1)&(ALSA_w2_recent_falls$Q7A!=999))]<-1
+ALSA_ds_w2$recent_falls <- labelled(ALSA_ds_w2$recent_falls, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w2, echo=FALSE}
+vari <- ALSA_ds_w2$recent_falls
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w2, aes(x=factor(recent_falls))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w2, echo=FALSE}
+AfterH <- table(ALSA_ds_w2$recent_falls)
+BeforeH<-c(
+  #length(which(ALSA_w2_recent_falls$Q7A==0)),
+  length(which((ALSA_w2_recent_falls$Q7A>=1)&(ALSA_w2_recent_falls$Q7A!=999))),
+  length(which(is.na(ALSA_w2_recent_falls$Q7A)))
+)
+
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(">=1->1","NA->999") 
+kable(C)
+```
+
+```{r importOPAL w2, echo=FALSE}
+label(ALSA_ds_w2$recent_falls) <- "Recent falls in the last 6-24 months"
+recent_falls <- ALSA_ds_w2
+save(recent_falls, file = "../RData/w2/recent_falls.RData")
+#opal.assign.data(o, 'ALSA_ds_w2', ALSA_ds_w2)
+#opal.symbol_import(o,'ALSA_ds_w2', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w2 <- ALSA_ds_w2
+ALSA_m_ds_w2$recent_falls <- car::recode(ALSA_m_ds_w2$recent_falls, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w2', ALSA_m_ds_w2)
+#opal.symbol_import(o,'ALSA_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 3
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `ACCDHAW3`
+* Label: `number of Falls in year`
+* Categories:
+   + `Continouos`
+* Missings
+   + `999 = Missing`
+   + `NA`
+
+```{r assign w3, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w3_recent_falls','ALSA.ALSA-Wave3', variables=list('ACCDHAW3'), missings = TRUE)
+ALSA_w3_recent_falls <- opal.execute(o,'ALSA_w3_recent_falls')
+```
+
+```{r local w3, echo=FALSE}
+vari <- ALSA_w3_recent_falls$ACCDHAW3
+kable(Categorical_summary(vari, missing_values = c(999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(999))[2], caption = "Type of missing")
+ggplot(ALSA_w3_recent_falls, aes(x=factor(ACCDHAW3))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `>=1 into 1` 
+* `0 into 0`
+* `999 into 999` 
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w3}
+ALSA_ds_w3 <- tibble(id=ALSA_w3_recent_falls$id)
+ALSA_ds_w3$recent_falls <- rep(888,length(ALSA_ds_w3$id))
+ALSA_ds_w3$recent_falls[which(ALSA_w3_recent_falls$ACCDHAW3==0)]<-0
+ALSA_ds_w3$recent_falls[which((is.na(ALSA_w3_recent_falls$ACCDHAW3))|(ALSA_w3_recent_falls$ACCDHAW3==999))]<-999
+ALSA_ds_w3$recent_falls[which((ALSA_w3_recent_falls$ACCDHAW3>=1)&(ALSA_w3_recent_falls$ACCDHAW3!=999))]<-1
+ALSA_ds_w3$recent_falls <- labelled(ALSA_ds_w3$recent_falls, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w3, echo=FALSE}
+vari <- ALSA_ds_w3$recent_falls
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w3, aes(x=factor(recent_falls))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w3, echo=FALSE}
+AfterH <- table(ALSA_ds_w3$recent_falls)
+BeforeH<-c(
+  length(which(ALSA_w3_recent_falls$ACCDHAW3==0)),
+  length(which((ALSA_w3_recent_falls$ACCDHAW3>=1)&(ALSA_w3_recent_falls$ACCDHAW3!=999))),
+  length(which((is.na(ALSA_w3_recent_falls$ACCDHAW3))|(ALSA_w3_recent_falls$ACCDHAW3==999)))
+)
+
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0->0",">=1->1","999,NA->999") 
+kable(C)
+```
+
+```{r importOPAL w3, echo=FALSE}
+label(ALSA_ds_w3$recent_falls) <- "Recent falls in the last 6-24 months"
+recent_falls <- ALSA_ds_w3
+save(recent_falls, file = "../RData/w3/recent_falls.RData")
+#opal.assign.data(o, 'ALSA_ds_w3', ALSA_ds_w3)
+#opal.symbol_import(o,'ALSA_ds_w3', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w3 <- ALSA_ds_w3
+ALSA_m_ds_w3$recent_falls <- car::recode(ALSA_m_ds_w3$recent_falls, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w3', ALSA_m_ds_w3)
+#opal.symbol_import(o,'ALSA_m_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 4
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `ACCDHAW4`
+* Label: `How many falls?`
+* Categories:
+   + `Continouos`
+   + `-1 = Had falls can't remember number`
+* Missings
+   + `NA`
+
+```{r assign w4, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w4_recent_falls','ALSA.ALSA-Wave4', variables=list('ACCDHAW4'), missings = TRUE)
+ALSA_w4_recent_falls <- opal.execute(o,'ALSA_w4_recent_falls')
+```
+
+```{r local w4, echo=FALSE}
+vari <- ALSA_w4_recent_falls$ACCDHAW4
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w4_recent_falls, aes(x=factor(ACCDHAW4))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `>=1 and -1 into 1` 
+* `0 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w4}
+ALSA_ds_w4 <- tibble(id=ALSA_w4_recent_falls$id)
+ALSA_ds_w4$recent_falls <- rep(888,length(ALSA_ds_w4$id))
+ALSA_ds_w4$recent_falls[which(ALSA_w4_recent_falls$ACCDHAW4==0)]<-0
+ALSA_ds_w4$recent_falls[which(is.na(ALSA_w4_recent_falls$ACCDHAW4))]<-999
+ALSA_ds_w4$recent_falls[which(((ALSA_w4_recent_falls$ACCDHAW4>=1)|(ALSA_w4_recent_falls$ACCDHAW4-1))&(ALSA_w4_recent_falls$ACCDHAW4!=999))]<-1
+ALSA_ds_w4$recent_falls <- labelled(ALSA_ds_w4$recent_falls, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w4, echo=FALSE}
+vari <- ALSA_ds_w4$recent_falls
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w4, aes(x=factor(recent_falls))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w4, echo=FALSE}
+AfterH <- table(ALSA_ds_w4$recent_falls)
+BeforeH<-c(
+ # length(which(ALSA_w4_recent_falls$ACCDHAW4==0)),
+  length(which(((ALSA_w4_recent_falls$ACCDHAW4>=1)|(ALSA_w4_recent_falls$ACCDHAW4-1))&(ALSA_w4_recent_falls$ACCDHAW4!=999))),
+  length(which((is.na(ALSA_w4_recent_falls$ACCDHAW4))))
+)
+
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(">=1&-1->1","999,NA->999") 
+kable(C)
+```
+
+```{r importOPAL w4, echo=FALSE}
+label(ALSA_ds_w4$recent_falls) <- "Recent falls in the last 6-24 months"
+recent_falls <- ALSA_ds_w4
+save(recent_falls, file = "../RData/w4/recent_falls.RData")
+#opal.assign.data(o, 'ALSA_ds_w4', ALSA_ds_w4)
+#opal.symbol_import(o,'ALSA_ds_w4', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w4 <- ALSA_ds_w4
+ALSA_m_ds_w4$recent_falls <- car::recode(ALSA_m_ds_w4$recent_falls, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w4', ALSA_m_ds_w4)
+#opal.symbol_import(o,'ALSA_m_ds_w4', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 5
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `ACCDHAW5`
+* Label: `How many falls?`
+* Categories:
+   + `Continouos`
+* Missings
+   + `-1 = Don't know`
+   + `NA`
+
+```{r assign w5, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w5_recent_falls','ALSA.ALSA-Wave5', variables=list('ACCDHAW5'), missings = TRUE)
+ALSA_w5_recent_falls <- opal.execute(o,'ALSA_w5_recent_falls')
+```
+
+```{r local w5, echo=FALSE}
+vari <- ALSA_w5_recent_falls$ACCDHAW5
+kable(Categorical_summary(vari, missing_values = c(-1))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(-1))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-1))[2], caption = "Type of missing")
+ggplot(ALSA_w5_recent_falls, aes(x=factor(ACCDHAW5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `>=1 into 1` 
+* `0 into 0`
+* `-1 into 999`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w5}
+ALSA_ds_w5 <- tibble(id=ALSA_w5_recent_falls$id)
+ALSA_ds_w5$recent_falls <- rep(888,length(ALSA_ds_w5$id))
+#ALSA_ds_w5$recent_falls[which(ALSA_w5_recent_falls$ACCDHAW5==0)]<-0
+ALSA_ds_w5$recent_falls[which((is.na(ALSA_w5_recent_falls$ACCDHAW5))|(ALSA_w5_recent_falls$ACCDHAW5==-1))]<-999
+ALSA_ds_w5$recent_falls[which(ALSA_w5_recent_falls$ACCDHAW5>=1)]<-1
+ALSA_ds_w5$recent_falls <- labelled(ALSA_ds_w5$recent_falls, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w5, echo=FALSE}
+vari <- ALSA_ds_w5$recent_falls
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w5, aes(x=factor(recent_falls))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w5, echo=FALSE}
+AfterH <- table(ALSA_ds_w5$recent_falls)
+BeforeH<-c(
+ # length(which(ALSA_w5_recent_falls$ACCDHAW5==0)),
+  length(which(ALSA_w5_recent_falls$ACCDHAW5>=1)),
+  length(which((is.na(ALSA_w5_recent_falls$ACCDHAW5))|(ALSA_w5_recent_falls$ACCDHAW5==-1)))
+)
+
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(">=1->1","-1,NA->999") 
+kable(C)
+```
+
+```{r importOPAL w5, echo=FALSE}
+label(ALSA_ds_w5$recent_falls) <- "Recent falls in the last 6-24 months"
+recent_falls <- ALSA_ds_w5
+save(recent_falls, file = "../RData/w5/recent_falls.RData")
+#opal.assign.data(o, 'ALSA_ds_w5', ALSA_ds_w5)
+#opal.symbol_import(o,'ALSA_ds_w5', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w5 <- ALSA_ds_w5
+ALSA_m_ds_w5$recent_falls <- car::recode(ALSA_m_ds_w5$recent_falls, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w5', ALSA_m_ds_w5)
+#opal.symbol_import(o,'ALSA_m_ds_w5', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 6
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `ACCDHAW6`
+* Label: `number of falls in last year`
+* Categories:
+   + `Continouos`
+* Missings
+   + `NA`
+
+```{r assign w6, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w6_recent_falls','ALSA.ALSA-Wave6', variables=list('ACCDHAW6'), missings = TRUE)
+ALSA_w6_recent_falls <- opal.execute(o,'ALSA_w6_recent_falls')
+```
+
+```{r local w6, echo=FALSE}
+vari <- ALSA_w6_recent_falls$ACCDHAW6
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w6_recent_falls, aes(x=factor(ACCDHAW6))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `>=1 into 1` 
+* `0 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w6}
+ALSA_ds_w6 <- tibble(id=ALSA_w6_recent_falls$id)
+ALSA_ds_w6$recent_falls <- rep(888,length(ALSA_ds_w6$id))
+ALSA_ds_w6$recent_falls[which(ALSA_w6_recent_falls$ACCDHAW6==0)]<-0
+ALSA_ds_w6$recent_falls[which((is.na(ALSA_w6_recent_falls$ACCDHAW6)))]<-999
+ALSA_ds_w6$recent_falls[which(ALSA_w6_recent_falls$ACCDHAW6>=1)]<-1
+ALSA_ds_w6$recent_falls <- labelled(ALSA_ds_w6$recent_falls, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w6, echo=FALSE}
+vari <- ALSA_ds_w6$recent_falls
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w6, aes(x=factor(recent_falls))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w6, echo=FALSE}
+AfterH <- table(ALSA_ds_w6$recent_falls)
+BeforeH<-c(
+  length(which(ALSA_w6_recent_falls$ACCDHAW6==0)),
+  length(which(ALSA_w6_recent_falls$ACCDHAW6>=1)),
+  length(which((is.na(ALSA_w6_recent_falls$ACCDHAW6))))
+)
+
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0->0",">=1->1","NA->999") 
+kable(C)
+```
+
+```{r importOPAL w6, echo=FALSE}
+label(ALSA_ds_w6$recent_falls) <- "Recent falls in the last 6-24 months"
+recent_falls <- ALSA_ds_w6
+save(recent_falls, file = "../RData/w6/recent_falls.RData")
+#opal.assign.data(o, 'ALSA_ds_w6', ALSA_ds_w6)
+#opal.symbol_import(o,'ALSA_ds_w6', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w6 <- ALSA_ds_w6
+ALSA_m_ds_w6$recent_falls <- car::recode(ALSA_m_ds_w6$recent_falls, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w6', ALSA_m_ds_w6)
+#opal.symbol_import(o,'ALSA_m_ds_w6', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 7
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `accdhaw7`
+* Label: `how many falls in past year`
+* Categories:
+   + `Continouos`
+* Missings
+   + `NA`
+
+```{r assign w7, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w7_recent_falls','ALSA.ALSA-Wave7', variables=list('accdhaw7'), missings = TRUE)
+ALSA_w7_recent_falls <- opal.execute(o,'ALSA_w7_recent_falls')
+```
+
+```{r local w7, echo=FALSE}
+vari <-ALSA_w7_recent_falls$accdhaw7
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w7_recent_falls, aes(x=factor(accdhaw7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `>=1 into 1` 
+* `0 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w7}
+ALSA_ds_w7 <- tibble(id=ALSA_w7_recent_falls$id)
+ALSA_ds_w7$recent_falls <- rep(888,length(ALSA_ds_w7$id))
+ALSA_ds_w7$recent_falls[which(ALSA_w7_recent_falls$accdhaw7==0)]<-0
+ALSA_ds_w7$recent_falls[which((is.na(ALSA_w7_recent_falls$accdhaw7)))]<-999
+ALSA_ds_w7$recent_falls[which(ALSA_w7_recent_falls$accdhaw7>=1)]<-1
+ALSA_ds_w7$recent_falls <- labelled(ALSA_ds_w7$recent_falls, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w7, echo=FALSE}
+vari <- ALSA_ds_w7$recent_falls
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w7, aes(x=factor(recent_falls))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w7, echo=FALSE}
+AfterH <- table(ALSA_ds_w7$recent_falls)
+BeforeH<-c(
+  length(which(ALSA_w7_recent_falls$accdhaw7==0)),
+  length(which(ALSA_w7_recent_falls$accdhaw7>=1)),
+  length(which((is.na(ALSA_w7_recent_falls$accdhaw7))))
+)
+
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0->0",">=1->1","NA->999") 
+kable(C)
+```
+
+```{r importOPAL w7, echo=FALSE}
+label(ALSA_ds_w7$recent_falls) <- "Recent falls in the last 6-24 months"
+recent_falls <- ALSA_ds_w7
+save(recent_falls, file = "../RData/w7/recent_falls.RData")
+#opal.assign.data(o, 'ALSA_ds_w7', ALSA_ds_w7)
+#opal.symbol_import(o,'ALSA_ds_w7', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w7 <- ALSA_ds_w7
+ALSA_m_ds_w7$recent_falls <- car::recode(ALSA_m_ds_w7$recent_falls, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w7', ALSA_m_ds_w7)
+#opal.symbol_import(o,'ALSA_m_ds_w7', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 8
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `accdhaw8`
+* Label: `How many falls?`
+* Categories:
+   + `Continouos`
+* Missings
+   + `NA`
+
+```{r assign w8, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w8_recent_falls','ALSA.ALSA-Wave8', variables=list('accdhaw8'), missings = TRUE)
+ALSA_w8_recent_falls <- opal.execute(o,'ALSA_w8_recent_falls')
+```
+
+```{r local w8, echo=FALSE}
+vari <- ALSA_w8_recent_falls$accdhaw8
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w8_recent_falls, aes(x=factor(accdhaw8))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `>=1 into 1` 
+* `0 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w8}
+ALSA_ds_w8 <- tibble(id=ALSA_w8_recent_falls$id)
+ALSA_ds_w8$recent_falls <- rep(888,length(ALSA_ds_w8$id))
+ALSA_ds_w8$recent_falls[which(ALSA_w8_recent_falls$accdhaw8==0)]<-0
+ALSA_ds_w8$recent_falls[which((is.na(ALSA_w8_recent_falls$accdhaw8)))]<-999
+ALSA_ds_w8$recent_falls[which(ALSA_w8_recent_falls$accdhaw8>=1)]<-1
+ALSA_ds_w8$recent_falls <- labelled(ALSA_ds_w8$recent_falls, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w8, echo=FALSE}
+vari <- ALSA_ds_w8$recent_falls
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w8, aes(x=factor(recent_falls))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w8, echo=FALSE}
+AfterH <- table(ALSA_ds_w8$recent_falls)
+BeforeH<-c(
+  length(which(ALSA_w8_recent_falls$accdhaw8==0)),
+  length(which(ALSA_w8_recent_falls$accdhaw8>=1)),
+  length(which((is.na(ALSA_w8_recent_falls$accdhaw8))))
+)
+
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0->0",">=1->1","NA->999") 
+kable(C)
+```
+
+```{r importOPAL w8, echo=FALSE}
+label(ALSA_ds_w8$recent_falls) <- "Recent falls in the last 6-24 months"
+recent_falls <- ALSA_ds_w8
+save(recent_falls, file = "../RData/w8/recent_falls.RData")
+#opal.assign.data(o, 'ALSA_ds_w8', ALSA_ds_w8)
+#opal.symbol_import(o,'ALSA_ds_w8', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w8 <- ALSA_ds_w8
+ALSA_m_ds_w8$recent_falls <- car::recode(ALSA_m_ds_w8$recent_falls, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w8', ALSA_m_ds_w8)
+#opal.symbol_import(o,'ALSA_m_ds_w8', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 9
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `ACCDHAW9`
+* Label: `how many falls in the past year`
+* Categories:
+   + `Continouos`
+* Missings
+   + `NA`
+
+```{r assign w9, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w9_recent_falls','ALSA.ALSA-Wave9', variables=list('ACCDHAW9'), missings = TRUE)
+ALSA_w9_recent_falls <- opal.execute(o,'ALSA_w9_recent_falls')
+```
+
+```{r local w9, echo=FALSE}
+vari <- ALSA_w9_recent_falls$ACCDHAW9
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w9_recent_falls, aes(x=factor(ACCDHAW9))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `>=1 into 1` 
+* `0 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w9}
+ALSA_ds_w9 <- tibble(id=ALSA_w9_recent_falls$id)
+ALSA_ds_w9$recent_falls <- rep(888,length(ALSA_ds_w9$id))
+ALSA_ds_w9$recent_falls[which(ALSA_w9_recent_falls$ACCDHAW9==0)]<-0
+ALSA_ds_w9$recent_falls[which((is.na(ALSA_w9_recent_falls$ACCDHAW9)))]<-999
+ALSA_ds_w9$recent_falls[which(ALSA_w9_recent_falls$ACCDHAW9>=1)]<-1
+ALSA_ds_w9$recent_falls <- labelled(ALSA_ds_w9$recent_falls, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w9, echo=FALSE}
+vari <- ALSA_ds_w9$recent_falls
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w9, aes(x=factor(recent_falls))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w9, echo=FALSE}
+AfterH <- table(ALSA_ds_w9$recent_falls)
+BeforeH<-c(
+  length(which(ALSA_w9_recent_falls$ACCDHAW9==0)),
+  length(which(ALSA_w9_recent_falls$ACCDHAW9>=1)),
+  length(which((is.na(ALSA_w9_recent_falls$ACCDHAW9))))
+)
+
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0->0",">=1->1","NA->999") 
+kable(C)
+```
+
+```{r importOPAL w9, echo=FALSE}
+label(ALSA_ds_w9$recent_falls) <- "Recent falls in the last 6-24 months"
+recent_falls <- ALSA_ds_w9
+save(recent_falls, file = "../RData/w9/recent_falls.RData")
+#opal.assign.data(o, 'ALSA_ds_w9', ALSA_ds_w9)
+#opal.symbol_import(o,'ALSA_ds_w9', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w9 <- ALSA_ds_w9
+ALSA_m_ds_w9$recent_falls <- car::recode(ALSA_m_ds_w9$recent_falls, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w9', ALSA_m_ds_w9)
+#opal.symbol_import(o,'ALSA_m_ds_w9', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 10
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `accdhaw10`
+* Label: `how many falls?`
+* Categories:
+   + `Continouos`
+* Missings
+   + `NA`
+
+```{r assign w10, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w10_recent_falls','ALSA.ALSA-Wave10', variables=list('accdhaw10'), missings = TRUE)
+ALSA_w10_recent_falls <- opal.execute(o,'ALSA_w10_recent_falls')
+```
+
+```{r local w10, echo=FALSE}
+vari <- ALSA_w10_recent_falls$accdhaw10
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w10_recent_falls, aes(x=factor(accdhaw10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `>=1 into 1` 
+* `0 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w10}
+ALSA_ds_w10 <- tibble(id=ALSA_w10_recent_falls$id)
+ALSA_ds_w10$recent_falls <- rep(888,length(ALSA_ds_w10$id))
+ALSA_ds_w10$recent_falls[which(ALSA_w10_recent_falls$accdhaw10==0)]<-0
+ALSA_ds_w10$recent_falls[which((is.na(ALSA_w10_recent_falls$accdhaw10)))]<-999
+ALSA_ds_w10$recent_falls[which(ALSA_w10_recent_falls$accdhaw10>=1)]<-1
+ALSA_ds_w10$recent_falls <- labelled(ALSA_ds_w10$recent_falls, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w10, echo=FALSE}
+vari <- ALSA_ds_w10$recent_falls
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w10, aes(x=factor(recent_falls))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w10, echo=FALSE}
+AfterH <- table(ALSA_ds_w10$recent_falls)
+BeforeH<-c(
+  length(which(ALSA_w10_recent_falls$accdhaw10==0)),
+  length(which(ALSA_w10_recent_falls$accdhaw10>=1)),
+  length(which((is.na(ALSA_w10_recent_falls$accdhaw10))))
+)
+
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0->0",">=1->1","NA->999") 
+kable(C)
+```
+
+```{r importOPAL w10, echo=FALSE}
+label(ALSA_ds_w10$recent_falls) <- "Recent falls in the last 6-24 months"
+recent_falls <- ALSA_ds_w10
+save(recent_falls, file = "../RData/w10/recent_falls.RData")
+#opal.assign.data(o, 'ALSA_ds_w10', ALSA_ds_w10)
+#opal.symbol_import(o,'ALSA_ds_w10', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w10 <- ALSA_ds_w10
+ALSA_m_ds_w10$recent_falls <- car::recode(ALSA_m_ds_w10$recent_falls, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w10', ALSA_m_ds_w10)
+#opal.symbol_import(o,'ALSA_m_ds_w10', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 11
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `ACCDHAW11`
+* Label: `how many falls in the past year`
+* Categories:
+   + `Continouos`
+* Missings
+   + `NA`
+
+```{r assign w11, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w11_recent_falls','ALSA.ALSA-Wave11', variables=list('ACCDHAW11'), missings = TRUE)
+ALSA_w11_recent_falls <- opal.execute(o,'ALSA_w11_recent_falls')
+```
+
+```{r local w11, echo=FALSE}
+vari <- ALSA_w11_recent_falls$ACCDHAW11
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w11_recent_falls, aes(x=factor(ACCDHAW11))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `>=1 into 1` 
+* `0 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w11}
+ALSA_ds_w11 <- tibble(id=ALSA_w11_recent_falls$id)
+ALSA_ds_w11$recent_falls <- rep(888,length(ALSA_ds_w11$id))
+ALSA_ds_w11$recent_falls[which(ALSA_w11_recent_falls$ACCDHAW11==0)]<-0
+ALSA_ds_w11$recent_falls[which((is.na(ALSA_w11_recent_falls$ACCDHAW11)))]<-999
+ALSA_ds_w11$recent_falls[which(ALSA_w11_recent_falls$ACCDHAW11>=1)]<-1
+ALSA_ds_w11$recent_falls <- labelled(ALSA_ds_w11$recent_falls, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w11, echo=FALSE}
+vari <- ALSA_ds_w11$recent_falls
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w11, aes(x=factor(recent_falls))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w11, echo=FALSE}
+AfterH <- table(ALSA_ds_w11$recent_falls)
+BeforeH<-c(
+  length(which(ALSA_w11_recent_falls$ACCDHAW11==0)),
+  length(which(ALSA_w11_recent_falls$ACCDHAW11>=1)),
+  length(which((is.na(ALSA_w11_recent_falls$ACCDHAW11))))
+)
+
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0->0",">=1->1","NA->999") 
+kable(C)
+```
+
+```{r importOPAL w11, echo=FALSE}
+label(ALSA_ds_w11$recent_falls) <- "Recent falls in the last 6-24 months"
+recent_falls <- ALSA_ds_w11
+save(recent_falls, file = "../RData/w11/recent_falls.RData")
+#opal.assign.data(o, 'ALSA_ds_w11', ALSA_ds_w11)
+#opal.symbol_import(o,'ALSA_ds_w11', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w11 <- ALSA_ds_w11
+ALSA_m_ds_w11$recent_falls <- car::recode(ALSA_m_ds_w11$recent_falls, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w11', ALSA_m_ds_w11)
+#opal.symbol_import(o,'ALSA_m_ds_w11', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 12
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `ACCDHAW12`
+* Label: `how many falls in the past year`
+* Categories:
+   + `Continouos`
+* Missings
+   + `NA`
+
+```{r assign w12, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w12_recent_falls','ALSA.ALSA-Wave12', variables=list('ACCDHAW12'), missings = TRUE)
+ALSA_w12_recent_falls <- opal.execute(o,'ALSA_w12_recent_falls')
+```
+
+```{r local w12, echo=FALSE}
+vari <- ALSA_w12_recent_falls$ACCDHAW12
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w12_recent_falls, aes(x=factor(ACCDHAW12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `>=1 into 1` 
+* `0 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w12}
+ALSA_ds_w12 <- tibble(id=ALSA_w12_recent_falls$id)
+ALSA_ds_w12$recent_falls <- rep(888,length(ALSA_ds_w12$id))
+ALSA_ds_w12$recent_falls[which(ALSA_w12_recent_falls$ACCDHAW12==0)]<-0
+ALSA_ds_w12$recent_falls[which((is.na(ALSA_w12_recent_falls$ACCDHAW12)))]<-999
+ALSA_ds_w12$recent_falls[which(ALSA_w12_recent_falls$ACCDHAW12>=1)]<-1
+ALSA_ds_w12$recent_falls <- labelled(ALSA_ds_w12$recent_falls, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w12, echo=FALSE}
+vari <- ALSA_ds_w12$recent_falls
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w12, aes(x=factor(recent_falls))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w12, echo=FALSE}
+AfterH <- table(ALSA_ds_w12$recent_falls)
+BeforeH<-c(
+  length(which(ALSA_w12_recent_falls$ACCDHAW12==0)),
+  length(which(ALSA_w12_recent_falls$ACCDHAW12>=1)),
+  length(which((is.na(ALSA_w12_recent_falls$ACCDHAW12))))
+)
+
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0->0",">=1->1","NA->999") 
+kable(C)
+```
+
+```{r importOPAL w12, echo=FALSE}
+label(ALSA_ds_w12$recent_falls) <- "Recent falls in the last 6-24 months"
+recent_falls <- ALSA_ds_w12
+save(recent_falls, file = "../RData/w12/recent_falls.RData")
+#opal.assign.data(o, 'ALSA_ds_w12', ALSA_ds_w12)
+#opal.symbol_import(o,'ALSA_ds_w12', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w12 <- ALSA_ds_w12
+ALSA_m_ds_w12$recent_falls <- car::recode(ALSA_m_ds_w12$recent_falls, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w12', ALSA_m_ds_w12)
+#opal.symbol_import(o,'ALSA_m_ds_w12', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 13
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `FALLSW13`
+* Label: `have you had any falls?`
+* Categories:
+   + `0 = No`
+   + `1 = Yes`
+* Missings
+   + `NA`
+
+```{r assign w13, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w13_recent_falls','ALSA.ALSA-Wave13', variables=list('FALLSW13'), missings = TRUE)
+ALSA_w13_recent_falls <- opal.execute(o,'ALSA_w13_recent_falls')
+```
+
+```{r local w13, echo=FALSE}
+vari <- ALSA_w13_recent_falls$FALLSW13
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w13_recent_falls, aes(x=factor(FALLSW13))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `0 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w13}
+ALSA_ds_w13 <- tibble(id=ALSA_w13_recent_falls$id)
+ALSA_ds_w13$recent_falls <- car::recode(ALSA_w13_recent_falls$FALLSW13, "1 = '1';0 = '0' ")
+ALSA_ds_w13$recent_falls <- labelled(ALSA_ds_w13$recent_falls, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w13, echo=FALSE}
+vari <- ALSA_ds_w13$recent_falls
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w13, aes(x=factor(recent_falls))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Recent Falls") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w13, echo=FALSE}
+AfterH <- table(ALSA_ds_w13$recent_falls)
+X<-table(ALSA_w13_recent_falls$FALLSW13)
+BeforeH<-X
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0->0","1->1") 
+kable(C)
+```
+
+
+```{r importOPAL w13, echo=FALSE}
+label(ALSA_ds_w13$recent_falls) <- "Recent falls in the last 6-24 months"
+recent_falls <- ALSA_ds_w13
+save(recent_falls, file = "../RData/w13/recent_falls.RData")
+#opal.assign.data(o, 'ALSA_ds_w13', ALSA_ds_w13)
+#opal.symbol_import(o,'ALSA_ds_w13', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w13 <- ALSA_ds_w13
+ALSA_m_ds_w13$recent_falls <- car::recode(ALSA_m_ds_w13$recent_falls, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w13', ALSA_m_ds_w13)
+#opal.symbol_import(o,'ALSA_m_ds_w13', project='_Athlos_Harm_Dataset')
+```
+
+
+
+# Quality estimation
+No comments.
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

@@ -1,0 +1,697 @@
+---
+title: "Myocardial infarction or heart attack"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `mi_ha`
+* Variable label: `Myocardial infarction or heart attack`
+* Variable description: `Myocardial infarction or heart attack since the last wave`
+* Domain: `Diseases`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+* Short name: `mi_ha_age`
+* Variable label: `Age of each episode of myocardial infarction or heart attack`
+* Variable description: `Age of each episode of myocardial infarction or heart attack`
+* Domain: `Diseases`
+* Value type: `Continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+<!-- # Global variables -->
+```{r global, include=FALSE, echo=F}
+miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
+ds_label <- "Myocardial infarction or heart attack"
+ds_label_age <- "Age of each episode of myocardial infarction or heart attack"
+cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
+cont_label <- cat_label[3:11]
+datafolder <- "../RData/"
+#sing_idlist <- c()
+```
+<!-- ########################################################## --> 
+
+
+
+# Data process
+
+
+
+## Australia
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `MORBID14` |`DIAGYR14`|`ybirth`|
+|-|-|-|-|
+| **Label** | `Heart attack` |`Year of diagnosis: Heart attack`|`Year of birth`|
+| **Table name**  | `ALSA-Wave1` | `ALSA-Wave1` |`ybirth`|
+| **Categories** | `0 = No`<br/>`1 = Yes` | `continuous` | `continuous` |
+| **Missings** |  | `NA` |   |
+| **Description** |  |  |  |
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'ALSA_w1','ALSA.ALSA-Wave1',variables=list('MORBID14','DIAGYR14'), missings = T)
+ALSA_w1 <- opal.execute(o,'ALSA_w1')
+load(paste0(datafolder,"w1/ybirth.RData"))
+ALSA_w1 <- left_join(ALSA_w1,ybirth, by="id")
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- ALSA_w1$MORBID14
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(ALSA_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w1, aes(x=factor(MORBID14))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- ALSA_w1$DIAGYR14
+kable(Continuous_summary(var = vbl, missing_values = NA)[3], caption = names(ALSA_w1)[3])
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA_w1, aes(DIAGYR14)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1915,1995)
+
+vbl <- ALSA_w1$ybirth
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(ALSA_w1)[4])
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(ALSA_w1, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1885,1930)
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `mi_ha` from the study-specific variable it has to be recoded as follows:
+
+* `keep up 0 into 0`
+* `keep up 1 into 1`
+
+To compute `mi_ha_age` from the study-specific variable it has to be recoded as follows:
+
+* `if mi_ha == 1, mi_ha_age = DIAGYR14 - ybirth`
+* `if mi_ha == 0, mi_ha_age = 996`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo w1}
+
+# Categorical variable harmonization
+ALSA_ds_w1 <- tibble(id=ALSA_w1$id)
+ALSA_ds_w1$mi_ha <- car::recode(ALSA_w1$MORBID14, "NA = 999")
+
+# Continuous variable harmonization
+mi_ha_age <- ALSA_w1$DIAGYR14[which(ALSA_ds_w1$mi_ha == 1)]-ALSA_w1$ybirth[which(ALSA_ds_w1$mi_ha == 1)]
+ALSA_ds_w1$mi_ha_age <- car::recode(ALSA_ds_w1$mi_ha, "0 = 996; 1 = mi_ha_age")
+ALSA_ds_w1$mi_ha_age <- car::recode(ALSA_ds_w1$mi_ha_age,"NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- ALSA_ds_w1$mi_ha
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w1, aes(x=factor(mi_ha))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- ALSA_ds_w1$mi_ha_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(ALSA_ds_w1, aes(mi_ha_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(5,95)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+
+continuous <- c(sum(ALSA_ds_w1$mi_ha_age==996,na.rm=T),sum(ALSA_ds_w1$mi_ha_age!=996,na.rm=T))
+X <- table(ALSA_ds_w1$mi_ha, useNA = "ifany")
+dichotomous <- c(X[1],sum(X[2:3],na.rm=T))
+C <- rbind(continuous,dichotomous)
+colnames(C) <- c("0<-->996","1<-->(possibly missing) age of diagnostic")
+kable(C,caption = "Continuous vs Dichotomous")
+
+```
+
+
+
+### Wave 2
+
+Not found.
+
+
+
+
+### Wave 3
+
+
+#### Study-specific variable description
+
+| **Name** | `W1CDN14` |
+|-|-|
+| **Label** | `HEART ATTACK` |
+| **Table name**  | `ALSA-Wave3` |
+| **Categories** | `1 = Yes`<br/>`2 = No` |
+| **Missings** | `9`<br/>`NA` |
+| **Description** |  |
+
+```{r assign w3, echo=F}
+
+opal.assign.table.tibble(o, 'ALSA_w3','ALSA.ALSA-Wave3',variables=list('W1CDN14'), missings = T)
+ALSA_w3 <- opal.execute(o,'ALSA_w3')
+
+```
+
+```{r local w3, echo=F}
+
+vbl <- ALSA_w3$W1CDN14
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(ALSA_w3)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w3, aes(x=factor(W1CDN14))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `mi_ha` from the study-specific variable it has to be recoded as follows:
+
+* `change 2 into 0`
+* `keep up 1 into 1`
+* `otherwise into 999`
+
+Age of diagnostic cannot be harmonized.
+
+**R script:**
+
+```{r harmo w3}
+
+ALSA_ds_w3 <- tibble(id=ALSA_w3$id)
+ALSA_ds_w3$mi_ha <- car::recode(ALSA_w3$W1CDN14, "2=0;9=999;NA = 999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w3, echo=F}
+
+vbl <- ALSA_ds_w3$mi_ha
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w3, aes(x=factor(mi_ha))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w3, echo=F, results='asis'}
+
+AfterH <- table(ALSA_ds_w3$mi_ha)
+X <- table(ALSA_w3$W1CDN14, useNA = "ifany")
+BeforeH <- c(X[2:1],sum(X[3:4]))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","9,NA->999")
+kable(C)
+
+```
+
+### Wave 4
+
+Not found.
+
+### Wave 5
+
+Not found.
+
+
+
+### Wave 6
+
+
+#### Study-specific variable description
+
+| **Name** | `CDN25_W6` |`DIA25_W6`|`ybirth`|
+|-|-|-|-|
+| **Label** | `Heart attack` |`year told of condition: Heart attack`|`Year of birth`|
+| **Table name**  | `ALSA-Wave6` | `ALSA-Wave6` |`ybirth`|
+| **Categories** | `0 = no`<br/>`1 = yes` |`continuous`|`continuous`|
+| **Missings** | `NA` |`NA`|  |
+| **Description** |  |  |  |
+
+```{r assign w6, echo=F}
+
+opal.assign.table.tibble(o, 'ALSA_w6','ALSA.ALSA-Wave6',variables=list('CDN25_W6','DIA25_W6'), missings = T)
+ALSA_w6 <- opal.execute(o,'ALSA_w6')
+ALSA_w6$DIA25_W6 <- as.numeric(ALSA_w6$DIA25_W6)
+load(paste0(datafolder,"w6/ybirth.RData"))
+ALSA_w6 <- left_join(ALSA_w6,ybirth, by="id")
+
+```
+
+```{r local w6, echo=F}
+
+vbl <- ALSA_w6$CDN25_W6
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(ALSA_w6)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w6, aes(x=factor(CDN25_W6))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- ALSA_w6$DIA25_W6
+kable(Continuous_summary(var = vbl, missing_values = NA)[3], caption = names(ALSA_w6)[3])
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA_w6, aes(DIA25_W6)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1965,2005)
+
+vbl <- ALSA_w6$ybirth
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(ALSA_w6)[4])
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(ALSA_w6, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1895,1930)
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `mi_ha` from the study-specific variable it has to be recoded as follows:
+
+* `keep up 0 into 0`
+* `keep up 1, ensuring it does not correspond to previous waves, into 1`
+* `otherwise into 999`
+
+To compute `mi_ha_age` from the study-specific variable it has to be recoded as follows:
+
+* `if mi_ha == 1, mi_ha_age = DIA25_W6 - ybirth`
+* `if mi_ha == 0, mi_ha_age = 996`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo w6}
+
+ALSA_w6 <- left_join(ALSA_w6,ALSA_w1, by="id",suffix=c("","_w1"))
+ALSA_w6 <- left_join(ALSA_w6,ALSA_w3, by="id")
+
+ALSA_ds_w6 <- tibble(id=ALSA_w6$id)
+ALSA_ds_w6$mi_ha <- rep(999,length(ALSA_w6$id))
+ALSA_ds_w6$mi_ha[which(ALSA_w6$CDN25_W6==0)] <- 0
+# Individuals having mi_ha since wave 3, so their year of diagnostic is at least 1994 or missing but until later previous wave interviewed they had no mi_ha.
+ALSA_ds_w6$mi_ha[which(ALSA_w6$CDN25_W6==1 & (ALSA_w6$DIA25_W6>=1994 | ALSA_w6$W1CDN14==2 | (is.na(ALSA_w6$W1CDN14) & ALSA_w6$MORBID14==0)))] <- 1
+
+# Continuous variable harmonization
+ALSA_ds_w6$mi_ha_age <- rep(999,length(ALSA_w6$id))
+ALSA_ds_w6$mi_ha_age[which(ALSA_ds_w6$mi_ha==0)] <- 996
+ALSA_ds_w6$mi_ha_age[which(ALSA_ds_w6$mi_ha==1 & ALSA_w6$DIA25_W6>=1994)] <- ALSA_w6$DIA25_W6[which(ALSA_ds_w6$mi_ha == 1 & ALSA_w6$DIA25_W6>=1994)] - ALSA_w6$ybirth[which(ALSA_ds_w6$mi_ha == 1 & ALSA_w6$DIA25_W6>=1994)]
+ALSA_ds_w6$mi_ha_age <- car::recode(ALSA_ds_w6$mi_ha_age,"NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w6, echo=F}
+
+vbl <- ALSA_ds_w6$mi_ha
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w6, aes(x=factor(mi_ha))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- ALSA_ds_w6$mi_ha_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(ALSA_ds_w6, aes(mi_ha_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(70,95)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w6, echo=F, results='asis'}
+
+AfterH <- table(ALSA_ds_w6$mi_ha)
+X <- c(
+  sum(ALSA_w6$CDN25_W6==0,na.rm=T),
+  sum(ALSA_w6$CDN25_W6==1 & (ALSA_w6$DIA25_W6>=1994 | ALSA_w6$W1CDN14==2 | (is.na(ALSA_w6$W1CDN14) & ALSA_w6$MORBID14==0)),na.rm=T)
+)
+BeforeH <- c(X[2],length(ALSA_w6$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->1","NA->999")
+kable(C)
+
+cat("There are seven individuals which told they had myocardial infarction in the first and the present waves and in the last one give year of diagnosis previous to first wave. We harmonize as having myocardial infarction but keep missing age of diagnosis the individual which told in third wave did not have a heart attack.")
+kable(ALSA_w6[which(ALSA_w6$DIA25_W6<1994),], align = 'c')
+```
+
+
+
+### Wave 7
+
+
+Not found.
+
+
+
+### Wave 8
+
+Not found.
+
+
+
+### Wave 9
+
+Not found.
+
+
+### Wave 10
+
+Not found.
+
+
+
+### Wave 11
+
+
+#### Study-specific variable description
+
+| **Name** | `HCDN1W11` |
+|-|-|
+| **Label** | `Heart Attack` |
+| **Table name**  | `ALSA-Wave11` |
+| **Categories** | `0 = No`<br/>`1 = Yes` |
+| **Missings** |`NA`|
+| **Description** |  |
+
+```{r assign w11, echo=F}
+
+opal.assign.table.tibble(o, 'ALSA_w11','ALSA.ALSA-Wave11',variables=list('HCDN1W11'), missings = T)
+ALSA_w11 <- opal.execute(o,'ALSA_w11')
+
+```
+
+```{r local w11, echo=F}
+
+vbl <- ALSA_w11$HCDN1W11
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(ALSA_w11)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w11, aes(x=factor(HCDN1W11))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `mi_ha` from the study-specific variable it has to be recoded as follows:
+
+* `keep up 0 into 0`
+* `keep up 1 into 1`
+* `NA into 999`
+
+Age of diagnostic cannot be harmonized.
+
+**R script:**
+
+```{r harmo w11}
+
+ALSA_ds_w11 <- tibble(id=ALSA_w11$id)
+ALSA_ds_w11$mi_ha <- car::recode(ALSA_w11$HCDN1W11,"NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w11, echo=F}
+
+vbl <- ALSA_ds_w11$mi_ha
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w11, aes(x=factor(mi_ha))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w11, echo=F, results='asis'}
+
+AfterH <- table(ALSA_ds_w11$mi_ha)
+BeforeH <- table(ALSA_w11$HCDN1W11, useNA = "ifany")
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0->0","1->1","NA->999")
+kable(C)
+
+```
+
+
+
+### Wave 12
+
+
+#### Study-specific variable description
+
+| **Name** | `HCDN1W12` |
+|-|-|
+| **Label** | `Heart Attack`|
+| **Table name**  | `ALSA-Wave12` |
+| **Categories** |  `0 = No`<br/>`1 = Yes` |
+| **Description** |  |
+
+```{r assign w12, echo=F}
+
+opal.assign.table.tibble(o, 'ALSA_w12','ALSA.ALSA-Wave12',variables=list('HCDN1W12'), missings = T)
+ALSA_w12 <- opal.execute(o,'ALSA_w12')
+load(paste0(datafolder,"w12/age.RData"))
+ALSA_w12 <- left_join(ALSA_w12,age, by="id")
+
+```
+
+```{r local w12, echo=F}
+
+vbl <- ALSA_w12$HCDN1W12
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(ALSA_w12)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w12, aes(x=factor(HCDN1W12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `mi_ha` from the study-specific variable it has to be recoded as follows:
+
+* `keep up 0 into 0`
+* `keep up 1 into 1`
+* `NA into 999`
+
+Age of diagnostic cannot be harmonized.
+
+**R script:**
+
+```{r harmo w12}
+
+ALSA_ds_w12 <- tibble(id=ALSA_w12$id)
+ALSA_ds_w12$mi_ha <- car::recode(ALSA_w12$HCDN1W12,"NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w12, echo=F}
+
+vbl <- ALSA_ds_w12$mi_ha
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w12, aes(x=factor(mi_ha))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w12, echo=F, results='asis'}
+
+AfterH <- table(ALSA_ds_w12$mi_ha)
+BeforeH <- table(ALSA_w12$HCDN1W12, useNA = "ifany")
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0->0","1->1","NA->999")
+kable(C)
+
+```
+
+
+
+### Wave 13
+
+Not found.
+
+
+<!--
+```{r summary, include=F, eval=F, echo=F}
+kable(ALSA_ds[ALSA_ds$id %in% strange_id,], align = 'c', caption = 'Individuals with discrepancies')
+```
+-->
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
+
+**R script:**
+
+```{r summ}
+ALSA_ds_w1$mi_ha <- labelled(ALSA_ds_w1$mi_ha, labels = cat_label)
+label(ALSA_ds_w1$mi_ha) <- ds_label
+ALSA_ds_w1$mi_ha_age <- labelled(ALSA_ds_w1$mi_ha_age, labels = cont_label)
+label(ALSA_ds_w1$mi_ha_age) <- ds_label_age
+ALSA_ds_w3$mi_ha <- labelled(ALSA_ds_w3$mi_ha, labels = cat_label)
+label(ALSA_ds_w3$mi_ha) <- ds_label
+ALSA_ds_w6$mi_ha <- labelled(ALSA_ds_w6$mi_ha, labels = cat_label)
+label(ALSA_ds_w6$mi_ha) <- ds_label
+ALSA_ds_w6$mi_ha_age <- labelled(ALSA_ds_w6$mi_ha_age, labels = cont_label)
+label(ALSA_ds_w6$mi_ha_age) <- ds_label_age
+ALSA_ds_w11$mi_ha <- labelled(ALSA_ds_w11$mi_ha, labels = cat_label)
+label(ALSA_ds_w11$mi_ha) <- ds_label
+ALSA_ds_w12$mi_ha <- labelled(ALSA_ds_w12$mi_ha, labels = cat_label)
+label(ALSA_ds_w12$mi_ha) <- ds_label
+
+ALSA_m_ds_w1 <- ALSA_ds_w1
+ALSA_m_ds_w1$mi_ha <- car::recode(ALSA_m_ds_w1$mi_ha, "miss_values_vector=NA")
+ALSA_m_ds_w3 <- ALSA_ds_w3
+ALSA_m_ds_w3$mi_ha <- car::recode(ALSA_m_ds_w3$mi_ha, "miss_values_vector=NA")
+ALSA_m_ds_w6 <- ALSA_ds_w6
+ALSA_m_ds_w6$mi_ha <- car::recode(ALSA_m_ds_w6$mi_ha, "miss_values_vector=NA")
+ALSA_m_ds_w11 <- ALSA_ds_w11
+ALSA_m_ds_w11$mi_ha <- car::recode(ALSA_m_ds_w11$mi_ha, "miss_values_vector=NA")
+ALSA_m_ds_w12 <- ALSA_ds_w12
+ALSA_m_ds_w12$mi_ha <- car::recode(ALSA_m_ds_w12$mi_ha, "miss_values_vector=NA")
+
+tt <-    frq(ALSA_ds_w1$mi_ha)[[1]][,c(1:2,4)]
+tt[4] <- frq(ALSA_ds_w3$mi_ha)[[1]][,c(4)]
+tt[5] <- frq(ALSA_ds_w6$mi_ha)[[1]][,c(4)]
+tt[6] <- frq(ALSA_ds_w11$mi_ha)[[1]][,c(4)]
+tt[7] <- frq(ALSA_ds_w12$mi_ha)[[1]][,c(4)]
+tt[13,] <- c("n", "sample size", 
+             length(ALSA_ds_w1$mi_ha), length(ALSA_ds_w3$mi_ha), length(ALSA_ds_w6$mi_ha), 
+             length(ALSA_ds_w11$mi_ha), length(ALSA_ds_w12$mi_ha)
+             )
+names(tt)<-c("val", "label", "w1", "w3", "w6", "w11", "w12")
+kable(tt)
+
+dbb <- merge(ALSA_m_ds_w1[,c("id","mi_ha")], ALSA_m_ds_w3[,c("id","mi_ha")], by="id", suffixes = c(".w1",".w3"), all=T)
+dbb <- merge(dbb, ALSA_m_ds_w6[,c("id","mi_ha")], by="id", all=T)
+dbb <- merge(dbb, ALSA_m_ds_w11[,c("id","mi_ha")], by="id", suffixes = c(".w6",".w11"), all=T)
+dbb <- merge(dbb, ALSA_m_ds_w12[,c("id","mi_ha")], by="id", all=T)
+names(dbb) <- c("id", "w1", "w3", "w6", "w11", "w12")
+v.dbb <- paste(dbb[,2],dbb[,3],dbb[,4],dbb[,5],dbb[,6],sep="")
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb[f.dbb[,3]>=0.3,])
+```
+
+
+
+# Quality estimation
+
+No comments
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+l.ALSA <- list(w1 = ALSA_ds_w1, w3 = ALSA_ds_w3, w6 = ALSA_ds_w6, w11 = ALSA_ds_w11, w12 = ALSA_ds_w12)
+
+for(index in seq_along(l.ALSA)){
+  mi_ha <- l.ALSA[[index]]
+  save(mi_ha, file = paste0(datafolder,names(l.ALSA)[index],"/mi_ha.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

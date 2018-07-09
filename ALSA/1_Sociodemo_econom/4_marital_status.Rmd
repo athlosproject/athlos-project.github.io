@@ -1,0 +1,1160 @@
+---
+title: "Marital Status"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `marital_status`
+* Variable label: `The current marital status of the participant`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+1        | single
+2        | married-cohabitating
+3        | divorced-separated
+4        | widow
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Australian Population
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `MARITST`
+* Label: `Marital status`
+* Categories: 
+    + `1 = Married`
+    + `2 = De facto`
+    + `3 = Separated`
+    + `4 = Divorced`
+    + `5 = Widowed`
+    + `6 = Never married`
+* Missings: 
+    + `9 = Missing`
+
+* Description: 
+```{r assign1,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w1_ms','ALSA.ALSA-Wave1',
+                         variables=list('MARITST'), missings = TRUE)
+```
+
+```{r local1,  echo=FALSE}
+ALSA_w1_ms <- opal.execute(o,'ALSA_w1_ms')
+vari <- ALSA_w1_ms$MARITST
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(9))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_w1_ms$MARITST, missing_values = c(9))
+ggplot(ALSA_w1_ms, aes(x=factor(MARITST))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "Married" into 2`
+* `keep "De facto" into 2`
+* `keep "Separated" into 3`
+* `recode 4 "Divorced" into 3`
+* `recode 5 "Widowed" into 4`
+* `recode 6 "Never married" into 1`
+* `recode 9 "Missing" into 999`
+* `recode NA into 999`
+
+
+**R script:**
+
+```{r harmo1,   echo=TRUE}
+ALSA_ds_w1 <- tibble(id=ALSA_w1_ms$id)
+ALSA_ds_w1$marital_status <- car::recode(ALSA_w1_ms$MARITST, " 1=2; 4=3; 5=4; 6=1; 9=999; NA=999")
+ALSA_ds_w1$marital_status <- labelled(ALSA_ds_w1$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1,  echo=FALSE}
+vari <- ALSA_ds_w1$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w1$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w1, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("marital status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1,  echo=FALSE}
+BeforeH <- table(ALSA_w1_ms$MARITST)
+BeforeH <- c(BeforeH[6], sum(BeforeH[c(1, 2)]), sum(BeforeH[c(3, 4)]), BeforeH[5], BeforeH[7]) 
+AfterH <- table(ALSA_ds_w1$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("6->1","(1,2)->2", "(3,4)->3", "5->4", "(9,NA)->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `Q3`
+* Label: `Marital status`
+* Categories: 
+    + `1 = No (still married, defacto)`
+    + `2 = No (still single, separated)`
+    + `3 = Yes, married`
+    + `4 = Yes, defacto`
+    + `5 = Yes, separated`
+    + `6 = Yes, divorced`
+    + `7 = Yes, widowed`
+
+    
+* Description: 
+```{r assign2,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w2_ms','ALSA.ALSA-Wave2',
+                         variables=list('Q3'), missings = TRUE)
+```
+
+```{r local2,  echo=FALSE}
+ALSA_w2_ms <- opal.execute(o,'ALSA_w2_ms')
+vari <- ALSA_w2_ms$Q3
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w2_ms$Q3, missing_values = NA)
+ggplot(ALSA_w2_ms, aes(x=factor(Q3))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "No (still married, defacto)" into 2`
+* `recode 2 "No (still single, separated)" into 1`
+* `recode 3 "Yes, married" into 2`
+* `recode 4 "Yes, defacto" into 2`
+* `recode 5 "Yes, separated" into 3`
+* `recode 6 "Yes, divorced" into 3`
+* `recode 7 "Yes, widowed" into 4`
+* `recode NA into 999`
+
+
+**R script:**
+
+```{r harmo2,   echo=TRUE}
+ALSA_ds_w2 <- tibble(id=ALSA_w2_ms$id)
+ALSA_ds_w2$marital_status <- car::recode(ALSA_w2_ms$Q3, " 1=2; 2=1; 3=2; 4=2; 5=3; 6=3; 7=4; NA=999")
+ALSA_ds_w2$marital_status <- labelled(ALSA_ds_w2$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2,  echo=FALSE}
+vari <- ALSA_ds_w2$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w2$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w2, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("marital status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2,  echo=FALSE}
+BeforeH <- table(ALSA_w2_ms$Q3)
+BeforeH <- c(BeforeH[2], sum(BeforeH[c(1, 3)]),BeforeH[4], BeforeH[5]) 
+AfterH <- table(ALSA_ds_w2$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->1","(1,3,4)->2", "(5,6)->3", "7->4")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+
+### Wave 3 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `MARITW3`
+* Label: `Marital status`
+* Categories: 
+    + `1 = Married`
+    + `2 = De facto`
+    + `3 = Separated`
+    + `4 = Divorced`
+    + `5 = Widowed`
+    + `6 = Never married`
+* Missings: 
+    + `9 = Missing`
+    
+* Description: 
+```{r assign3,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w3_ms','ALSA.ALSA-Wave3',
+                         variables=list('MARITW3'), missings = TRUE)
+```
+
+```{r local3,  echo=FALSE}
+ALSA_w3_ms <- opal.execute(o,'ALSA_w3_ms')
+vari <- ALSA_w3_ms$MARITW3
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(9))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_w3_ms$MARITW3, missing_values = c(9))
+ggplot(ALSA_w3_ms, aes(x=factor(MARITW3))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "Married" into 2`
+* `keep "De facto" into 2`
+* `keep "Separated" into 3`
+* `recode 4 "Divorced" into 3`
+* `recode 5 "Widowed" into 4`
+* `recode 6 "Never married" into 1`
+* `recode NA into 999`
+
+**R script:**
+
+```{r harmo3,   echo=TRUE}
+ALSA_ds_w3 <- tibble(id=ALSA_w3_ms$id)
+ALSA_ds_w3$marital_status <- car::recode(ALSA_w3_ms$MARITW3, " 1=2; 4=3; 5=4; 6=1; 9=999; NA=999")
+ALSA_ds_w3$marital_status <- labelled(ALSA_ds_w3$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript3,  echo=FALSE}
+vari <- ALSA_ds_w3$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w3$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w3, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("marital status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation3,  echo=FALSE}
+BeforeH <- table(ALSA_w3_ms$MARITW3)
+BeforeH <- c(BeforeH[6], sum(BeforeH[c(1, 2)]), sum(BeforeH[c(3, 4)]), BeforeH[5], sum(BeforeH[7],sum(is.na(ALSA_w3_ms$MARITW3)))) 
+AfterH <- table(ALSA_ds_w3$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("6->1","(1,2)->2", "(3,4)->3", "5->4", "(9,NA)->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+
+
+### Wave 4 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `MARITW4`
+* Label: `MARITAL STATUS`
+* Categories: 
+    + `1 = Married`
+    + `2 = De facto`
+    + `3 = Separated`
+    + `4 = Divorced`
+    + `5 = Widowed`
+    + `6 = Never married`
+
+    
+* Description: 
+```{r assign4,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w4_ms','ALSA.ALSA-Wave4',
+                         variables=list('MARITW4'), missings = TRUE)
+```
+
+```{r local4,  echo=FALSE}
+ALSA_w4_ms <- opal.execute(o,'ALSA_w4_ms')
+vari <- ALSA_w4_ms$MARITW4
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w4_ms$MARITW4, missing_values = NA)
+ggplot(ALSA_w4_ms, aes(x=factor(MARITW4))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "Married" into 2`
+* `keep "De facto" into 2`
+* `keep "Separated" into 3`
+* `recode 4 "Divorced" into 3`
+* `recode 5 "Widowed" into 4`
+* `recode 6 "Never married" into 1`
+* `recode NA into 999`
+
+**R script:**
+
+```{r harmo4,   echo=TRUE}
+ALSA_ds_w4 <- tibble(id=ALSA_w4_ms$id)
+ALSA_ds_w4$marital_status <- car::recode(ALSA_w4_ms$MARITW4, " 1=2; 4=3; 5=4; 6=1; 9=999; NA=999")
+ALSA_ds_w4$marital_status <- labelled(ALSA_ds_w4$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript4,  echo=FALSE}
+vari <- ALSA_ds_w4$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w4$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w4, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("marital status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation4,  echo=FALSE}
+BeforeH <- table(ALSA_w4_ms$MARITW4)
+BeforeH <- c(BeforeH[6], sum(BeforeH[c(1, 2)]), sum(BeforeH[c(3, 4)]), BeforeH[5]) 
+AfterH <- table(ALSA_ds_w4$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("6->1","(1,2)->2", "(3,4)->3", "5->4")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+
+
+
+
+
+### Wave 5 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `MARITW5`
+* Label: `Q3 COULD YOU PLEASE TELL ME YOUR CURREN`
+* Categories: 
+    + `1 = Married`
+    + `2 = De facto`
+    + `3 = Separated`
+    + `4 = Divorced`
+    + `5 = Widowed`
+    + `6 = Never married`
+    + `7 = Refused (Do not read)`
+    + `8 = Other`
+
+    
+* Description: 
+```{r assign5,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w5_ms','ALSA.ALSA-Wave5',
+                         variables=list('MARITW5'), missings = TRUE)
+```
+
+```{r local5,  echo=FALSE}
+ALSA_w5_ms <- opal.execute(o,'ALSA_w5_ms')
+vari <- ALSA_w5_ms$MARITW5
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w5_ms$MARITW5, missing_values = NA)
+ggplot(ALSA_w5_ms, aes(x=factor(MARITW5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "Married" into 2`
+* `keep "De facto" into 2`
+* `keep "Separated" into 3`
+* `recode 4 "Divorced" into 3`
+* `recode 5 "Widowed" into 4`
+* `recode 6 "Never married" into 1`
+* `recode 7 "Refused (Do not read)" into 997`
+* `recode 8 "Other" into 999`
+* `recode NA into 999`
+
+
+**R script:**
+
+```{r harmo5,   echo=TRUE}
+ALSA_ds_w5 <- tibble(id=ALSA_w5_ms$id)
+ALSA_ds_w5$marital_status <- car::recode(ALSA_w5_ms$MARITW5, " 1=2; 4=3; 5=4; 6=1; 7=997; 8=999; 9=999; NA=999")
+ALSA_ds_w5$marital_status <- labelled(ALSA_ds_w5$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript5,  echo=FALSE}
+vari <- ALSA_ds_w5$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w5$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w5, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("marital status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation5,  echo=FALSE}
+BeforeH <- table(ALSA_w5_ms$MARITW5)
+BeforeH <- c(BeforeH[6], sum(BeforeH[c(1, 2)]), sum(BeforeH[c(3, 4)]), BeforeH[5], BeforeH[7]) 
+AfterH <- table(ALSA_ds_w5$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("6->1","(1,2)->2", "(3,4)->3", "5->4", "7->997")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+
+
+
+### Wave 6 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `MARITW6`
+* Label: `Marital status`
+* Categories: 
+    + `0 = no answer`
+    + `1 = Married`
+    + `2 = De facto`
+    + `3 = Separated`
+    + `4 = Divorced`
+    + `5 = Widowed`
+    + `6 = Never married`
+     
+* Description: 
+```{r assign6,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w6_ms','ALSA.ALSA-Wave6',
+                         variables=list('MARITW6'), missings = TRUE)
+```
+
+```{r local6,  echo=FALSE}
+ALSA_w6_ms <- opal.execute(o,'ALSA_w6_ms')
+vari <- ALSA_w6_ms$MARITW6
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w6_ms$MARITW6, missing_values = NA)
+ggplot(ALSA_w6_ms, aes(x=factor(MARITW6))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 0 "no answer" into 999`
+* `recode 1 "Married" into 2`
+* `keep "De facto" into 2`
+* `keep "Separated" into 3`
+* `recode 4 "Divorced" into 3`
+* `recode 5 "Widowed" into 4`
+* `recode 6 "Never married" into 1`
+* `recode NA into 999`
+
+**R script:**
+
+```{r harmo6,   echo=TRUE}
+ALSA_ds_w6 <- tibble(id=ALSA_w6_ms$id)
+ALSA_ds_w6$marital_status <- car::recode(ALSA_w6_ms$MARITW6, " 1=2; 4=3; 5=4; 6=1; 0=999; NA=999")
+ALSA_ds_w6$marital_status <- labelled(ALSA_ds_w6$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript6,  echo=FALSE}
+vari <- ALSA_ds_w6$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w6$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w6, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("marital status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation6,  echo=FALSE}
+BeforeH <- table(ALSA_w6_ms$MARITW6)
+BeforeH <- c( BeforeH[7], sum(BeforeH[c(2, 3)]), sum(BeforeH[c(4, 5)]), BeforeH[6], BeforeH[1] ) 
+AfterH <- table(ALSA_ds_w6$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("6->1","(1,2)->2", "(3,4)->3", "5->4", "7->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+
+
+
+
+### Wave 7 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `maritw7`
+* Label: `Marital status`
+* Categories: 
+    + `0 = no answer`
+    + `1 = Married`
+    + `2 = De facto`
+    + `3 = Separated`
+    + `4 = Divorced`
+    + `5 = Widowed`
+    + `6 = Never married`
+   
+* Description: 
+```{r assign7,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w7_ms','ALSA.ALSA-Wave7',
+                         variables=list('maritw7'), missings = TRUE)
+```
+
+```{r local7,  echo=FALSE}
+ALSA_w7_ms <- opal.execute(o,'ALSA_w7_ms')
+vari <- ALSA_w7_ms$maritw7
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w7_ms$maritw7, missing_values = NA)
+ggplot(ALSA_w7_ms, aes(x=factor(maritw7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 0 "no answer" into 999`
+* `recode 1 "Married" into 2`
+* `keep "De facto" into 2`
+* `keep "Separated" into 3`
+* `recode 4 "Divorced" into 3`
+* `recode 5 "Widowed" into 4`
+* `recode 6 "Never married" into 1`
+* `recode NA into 999`
+
+**R script:**
+
+```{r harmo7,   echo=TRUE}
+ALSA_ds_w7 <- tibble(id=ALSA_w7_ms$id)
+ALSA_ds_w7$marital_status <- car::recode(ALSA_w7_ms$maritw7, " 1=2; 4=3; 5=4; 6=1; 0=999; NA=999")
+ALSA_ds_w7$marital_status <- labelled(ALSA_ds_w7$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript7,  echo=FALSE}
+vari <- ALSA_ds_w7$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w7$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w7, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("marital status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation7,  echo=FALSE}
+BeforeH <- table(ALSA_w7_ms$maritw7)
+BeforeH <- c( BeforeH[6], BeforeH[2], sum(BeforeH[c(3, 4)]), BeforeH[5], sum(c(BeforeH[1],is.na(ALSA_w7_ms$maritw7)))) 
+
+AfterH <- table(ALSA_ds_w7$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("6->1","(1,2)->2", "(3,4)->3", "5->4", "(7,NA)->999")
+kable(C)
+
+```
+
+ 
+ 
+
+ 
+
+
+
+### Wave 8 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `maritw8`
+* Label: `Marital status`
+* Categories: 
+    + `0 = Not Answered`
+    + `1 = Married`
+    + `2 = De facto`
+    + `3 = Separated`
+    + `4 = Divorced`
+    + `5 = Widowed`
+    + `6 = Never married`
+    
+* Description: 
+```{r assign8,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w8_ms','ALSA.ALSA-Wave8',
+                         variables=list('maritw8'), missings = TRUE)
+```
+
+```{r local8,  echo=FALSE}
+ALSA_w8_ms <- opal.execute(o,'ALSA_w8_ms')
+vari <- ALSA_w8_ms$maritw8
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w8_ms$maritw8, missing_values = NA)
+ggplot(ALSA_w8_ms, aes(x=factor(maritw8))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 0 "no answer" into 999`
+* `recode 1 "Married" into 2`
+* `keep "De facto" into 2`
+* `keep "Separated" into 3`
+* `recode 4 "Divorced" into 3`
+* `recode 5 "Widowed" into 4`
+* `recode 6 "Never married" into 1`
+* `recode NA into 999`
+
+**R script:**
+
+```{r harmo8,   echo=TRUE}
+ALSA_ds_w8 <- tibble(id=ALSA_w8_ms$id)
+ALSA_ds_w8$marital_status <- car::recode(ALSA_w8_ms$maritw8, " 1=2; 4=3; 5=4; 6=1; 0=999; NA=999")
+ALSA_ds_w8$marital_status <- labelled(ALSA_ds_w8$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript8,  echo=FALSE}
+vari <- ALSA_ds_w8$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w8$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w8, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("marital status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation8,  echo=FALSE}
+BeforeH <- table(ALSA_w8_ms$maritw8)
+BeforeH <- c( BeforeH[6], BeforeH[2], sum(BeforeH[c(3, 4)]), BeforeH[5], BeforeH[1] ) 
+AfterH <- table(ALSA_ds_w8$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("6->1","(1,2)->2", "(3,4)->3", "5->4", "7->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+
+
+### Wave 9 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `MARITW9`
+* Label: `Marital status`
+* Categories: 
+    + `0 = Not Answered`
+    + `1 = Married`
+    + `2 = De facto`
+    + `3 = Separated`
+    + `4 = Divorced`
+    + `5 = Widowed`
+    + `6 = Never married`
+    
+* Description: 
+```{r assign9,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w9_ms','ALSA.ALSA-Wave9',
+                         variables=list('MARITW9'), missings = TRUE)
+```
+
+```{r local9,  echo=FALSE}
+ALSA_w9_ms <- opal.execute(o,'ALSA_w9_ms')
+vari <- ALSA_w9_ms$MARITW9
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w9_ms$MARITW9, missing_values = NA)
+ggplot(ALSA_w9_ms, aes(x=factor(MARITW9))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 0 "no answer" into 999`
+* `recode 1 "Married" into 2`
+* `keep "De facto" into 2`
+* `keep "Separated" into 3`
+* `recode 4 "Divorced" into 3`
+* `recode 5 "Widowed" into 4`
+* `recode 6 "Never married" into 1`
+* `recode NA into 999`
+
+**R script:**
+
+```{r harmo9,   echo=TRUE}
+ALSA_ds_w9 <- tibble(id=ALSA_w9_ms$id)
+ALSA_ds_w9$marital_status <- car::recode(ALSA_w9_ms$MARITW9, " 1=2; 4=3; 5=4; 6=1; 0=999; NA=999")
+ALSA_ds_w9$marital_status <- labelled(ALSA_ds_w9$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript9,  echo=FALSE}
+vari <- ALSA_ds_w9$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w9$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w9, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("marital status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation9,  echo=FALSE}
+BeforeH <- table(ALSA_w9_ms$MARITW9)
+BeforeH <- c( BeforeH[6], sum(BeforeH[c(2, 3)]), BeforeH[4], BeforeH[5], sum(BeforeH[1], sum(is.na(ALSA_w9_ms$MARITW9)) ) )
+AfterH <- table(ALSA_ds_w9$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("6->1","(1,2)->2", "(3,4)->3", "5->4", "(NA,7)->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+
+### Wave 10 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `maritw10`
+* Label: `Marital status`
+* Categories: 
+    + `1 = Married`
+    + `2 = De facto`
+    + `3 = Separated`
+    + `4 = Divorced`
+    + `5 = Widowed`
+    + `6 = Never married`
+    + `99 = Not Answered`
+    
+* Description: 
+```{r assign10,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w10_ms','ALSA.ALSA-Wave10',
+                         variables=list('maritw10'), missings = TRUE)
+```
+
+```{r local10,  echo=FALSE}
+ALSA_w10_ms <- opal.execute(o,'ALSA_w10_ms')
+vari <- ALSA_w10_ms$maritw10
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w10_ms$maritw10, missing_values = NA)
+ggplot(ALSA_w10_ms, aes(x=factor(maritw10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "Married" into 2`
+* `keep "De facto" into 2`
+* `keep "Separated" into 3`
+* `recode 4 "Divorced" into 3`
+* `recode 5 "Widowed" into 4`
+* `recode 6 "Never married" into 1`
+* `recode 99 "no answer" into 999`
+* `recode NA into 999`
+
+**R script:**
+
+```{r harmo10,   echo=TRUE}
+ALSA_ds_w10 <- tibble(id=ALSA_w10_ms$id)
+ALSA_ds_w10$marital_status <- car::recode(ALSA_w10_ms$maritw10, " 1=2; 4=3; 5=4; 6=1; 0=999; NA=999")
+ALSA_ds_w10$marital_status <- labelled(ALSA_ds_w10$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript10,  echo=FALSE}
+vari <- ALSA_ds_w10$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w10$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w10, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("marital status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation10,  echo=FALSE}
+BeforeH <- table(ALSA_w10_ms$maritw10)
+BeforeH <- c( BeforeH[5], sum(BeforeH[c(1,2)]), BeforeH[3], BeforeH[4], BeforeH[6] ) 
+AfterH <- table(ALSA_ds_w10$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("6->1","(1,2)->2", "(3,4)->3", "5->4", "99->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+
+### Wave 11 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `MARITW11`
+* Label: `Marital status`
+* Categories: 
+    + `1 = Married`
+    + `2 = De facto`
+    + `3 = Separated`
+    + `4 = Divorced`
+    + `5 = Widowed`
+    + `6 = Never married`
+    
+* Description: 
+```{r assign11,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w11_ms','ALSA.ALSA-Wave11',
+                         variables=list('MARITW11'), missings = TRUE)
+```
+
+```{r local11,  echo=FALSE}
+ALSA_w11_ms <- opal.execute(o,'ALSA_w11_ms')
+vari <- ALSA_w11_ms$MARITW11
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w11_ms$MARITW11, missing_values = NA)
+ggplot(ALSA_w11_ms, aes(x=factor(MARITW11))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "Married" into 2`
+* `keep "De facto" into 2`
+* `keep "Separated" into 3`
+* `recode 4 "Divorced" into 3`
+* `recode 5 "Widowed" into 4`
+* `recode 6 "Never married" into 1`
+* `recode NA into 999`
+
+**R script:**
+
+```{r harmo11,   echo=TRUE}
+ALSA_ds_w11 <- tibble(id=ALSA_w11_ms$id)
+ALSA_ds_w11$marital_status <- car::recode(ALSA_w11_ms$MARITW11, " 1=2; 4=3; 5=4; 6=1; NA=999")
+ALSA_ds_w11$marital_status <- labelled(ALSA_ds_w11$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript11,  echo=FALSE}
+vari <- ALSA_ds_w11$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w11$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w11, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("marital status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation11,  echo=FALSE}
+BeforeH <- table(ALSA_w11_ms$MARITW11)
+BeforeH <- c( BeforeH[5], sum(BeforeH[c(1,2)]), BeforeH[3], BeforeH[4]) 
+AfterH <- table(ALSA_ds_w11$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("6->1","(1,2)->2", "(3,4)->3", "5->4")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+
+### Wave 12 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `MARITW12`
+* Label: `Marital status`
+* Categories: 
+    + `1 = Married`
+    + `2 = De facto`
+    + `3 = Separated`
+    + `4 = Divorced`
+    + `5 = Widowed`
+    + `6 = Never married`
+    
+* Description: 
+```{r assign12,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w12_ms','ALSA.ALSA-Wave12',
+                         variables=list('MARITW12'), missings = TRUE)
+```
+
+```{r local12,  echo=FALSE}
+ALSA_w12_ms <- opal.execute(o,'ALSA_w12_ms')
+vari <- ALSA_w12_ms$MARITW12
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w12_ms$MARITW12, missing_values = NA)
+ggplot(ALSA_w12_ms, aes(x=factor(MARITW12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "Married" into 2`
+* `keep "De facto" into 2`
+* `keep "Separated" into 3`
+* `recode 4 "Divorced" into 3`
+* `recode 5 "Widowed" into 4`
+* `recode 6 "Never married" into 1`
+* `recode NA into 999`
+
+**R script:**
+
+```{r harmo12,   echo=TRUE}
+ALSA_ds_w12 <- tibble(id=ALSA_w12_ms$id)
+ALSA_ds_w12$marital_status <- car::recode(ALSA_w12_ms$MARITW12, " 1=2; 4=3; 5=4; 6=1; NA=999")
+ALSA_ds_w12$marital_status <- labelled(ALSA_ds_w12$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript12,  echo=FALSE}
+vari <- ALSA_ds_w12$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w12$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w12, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("marital status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation12,  echo=FALSE}
+BeforeH <- table(ALSA_w12_ms$MARITW12)
+BeforeH <- c( BeforeH[4], BeforeH[1], BeforeH[2], BeforeH[3]) 
+AfterH <- table(ALSA_ds_w12$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("6->1","(1,2)->2", "(3,4)->3", "5->4")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+
+### Wave 13 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `MARITW13`
+* Label: `Marital status`
+* Categories: 
+    + `1 = Married`
+    + `2 = De facto`
+    + `3 = Separated`
+    + `4 = Divorced`
+    + `5 = Widowed`
+    + `6 = Never married`
+    
+    
+* Description: 
+```{r assign13,  echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w13_ms','ALSA.ALSA-Wave13',
+                         variables=list('MARITW13'), missings = TRUE)
+```
+
+```{r local13,  echo=FALSE}
+ALSA_w13_ms <- opal.execute(o,'ALSA_w13_ms')
+vari <- ALSA_w13_ms$MARITW13
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w13_ms$MARITW13, missing_values = NA)
+ggplot(ALSA_w13_ms, aes(x=factor(MARITW13))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `recode 1 "Married" into 2`
+* `keep "De facto" into 2`
+* `keep "Separated" into 3`
+* `recode 4 "Divorced" into 3`
+* `recode 5 "Widowed" into 4`
+* `recode 6 "Never married" into 1`
+* `recode NA into 999`
+
+**R script:**
+
+```{r harmo13,   echo=TRUE}
+ALSA_ds_w13 <- tibble(id=ALSA_w13_ms$id)
+ALSA_ds_w13$marital_status <- car::recode(ALSA_w13_ms$MARITW13, " 1=2; 4=3; 5=4; 6=1; NA=999")
+ALSA_ds_w13$marital_status <- labelled(ALSA_ds_w13$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript13,  echo=FALSE}
+vari <- ALSA_ds_w13$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w13$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w13, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("marital status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation13,  echo=FALSE}
+BeforeH <- table(ALSA_w13_ms$MARITW13)
+BeforeH <- c( BeforeH[4], BeforeH[1], BeforeH[2], BeforeH[3]) 
+AfterH <- table(ALSA_ds_w13$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("6->1","(1,2)->2", "(3,4)->3", "5->4")
+kable(C)
+```
+
+ 
+ 
+
+ 
+
+# Quality estimation
+
+No comments
+
+
+```{r save, echo=FALSE}
+marital_status <- ALSA_ds_w1
+save(marital_status, file = "../RData/w1/marital_status.RData")
+rm(marital_status)
+
+marital_status <- ALSA_ds_w2
+save(marital_status, file = "../RData/w2/marital_status.RData")
+rm(marital_status)
+
+marital_status <- ALSA_ds_w3
+save(marital_status, file = "../RData/w3/marital_status.RData")
+rm(marital_status)
+
+marital_status <- ALSA_ds_w4
+save(marital_status, file = "../RData/w4/marital_status.RData")
+rm(marital_status)
+
+marital_status <- ALSA_ds_w5
+save(marital_status, file = "../RData/w5/marital_status.RData")
+rm(marital_status)
+
+marital_status <- ALSA_ds_w6
+save(marital_status, file = "../RData/w6/marital_status.RData")
+rm(marital_status)
+
+marital_status <- ALSA_ds_w7
+save(marital_status, file = "../RData/w7/marital_status.RData")
+rm(marital_status)
+
+marital_status <- ALSA_ds_w8
+save(marital_status, file = "../RData/w8/marital_status.RData")
+rm(marital_status)
+
+marital_status <- ALSA_ds_w9
+save(marital_status, file = "../RData/w9/marital_status.RData")
+rm(marital_status)
+
+marital_status <- ALSA_ds_w10
+save(marital_status, file = "../RData/w10/marital_status.RData")
+rm(marital_status)
+
+marital_status <- ALSA_ds_w11
+save(marital_status, file = "../RData/w11/marital_status.RData")
+rm(marital_status)
+
+marital_status <- ALSA_ds_w12
+save(marital_status, file = "../RData/w12/marital_status.RData")
+rm(marital_status)
+
+marital_status <- ALSA_ds_w13
+save(marital_status, file = "../RData/w13/marital_status.RData")
+rm(marital_status)
+```
+
+
+
+```{r closeRsession, echo=FALSE,  echo=FALSE} 
+opal.logout(o)
+```

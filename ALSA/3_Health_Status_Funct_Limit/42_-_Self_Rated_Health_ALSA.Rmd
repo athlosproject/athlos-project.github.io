@@ -1,0 +1,1164 @@
+---
+title: "Self Rated Health"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `srh`
+* Variable label: `Respondent's self-rated/self-reported health on a Likert-type scale`
+* Variable description: `Respondent's self-rated/self-reported health on a Likert-type scale`
+* Domain: `Health status and functional limitations`
+* Value type: `categorical`
+* Category coding:
+
+
+**Code** | **Category Label**
+-------- | ------------------
+1        | Good
+2        | Average/Fair/Moderate
+3        | Poor
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+
+```{r lab, echo=FALSE}
+ds_label <- "Self Rated Health"
+ds_label_all <- "Respondent's self-rated/self-reported health on a Likert-type scale"
+```
+
+# Data process
+
+## ALSA
+
+### Wave 1 
+
+#### Study-specific variable description
+
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `HLTHLIFE`
+* Label: `Self-rated health`
+* Categories:
+   + `1 = Excellent` 
+   + `2 = Very good`
+   + `3 = Good` 
+   + `4 = Fair`
+   + `5 = Poor` 
+* Missings
+   + `6 = Don't know`
+   + `9 = Missing`
+   + `NA`
+
+```{r assign w1, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w1_srh','ALSA.ALSA-Wave1', variables=list('HLTHLIFE'), missings = TRUE)
+ALSA_w1_srh <- opal.execute(o,'ALSA_w1_srh')
+```
+
+```{r local w1, echo=FALSE}
+vari <- ALSA_w1_srh$HLTHLIFE
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w1_srh, aes(x=factor(HLTHLIFE))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 1`
+* `3 into 1` 
+* `4 into 2`
+* `5 into 3` 
+* `6 into 998`
+* `9 into 999`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w1}
+ALSA_ds_w1 <- tibble(id=ALSA_w1_srh$id)
+ALSA_ds_w1$srh <- car::recode(ALSA_w1_srh$HLTHLIFE,"1 = '1';2 = '1';3 = '1';4 = '2';5 = '3';6 = '998';9 = '999';NA = '999' ")
+ALSA_ds_w1$srh <- labelled(ALSA_ds_w1$srh, labels = c("Good"=1, "Fair"=2, "Bad"=3,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=FALSE}
+vari <- ALSA_ds_w1$srh
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w1, aes(x=factor(srh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1, echo=FALSE}
+AfterH <- table(ALSA_ds_w1$srh)
+X<-table(ALSA_w1_srh$HLTHLIFE)
+BeforeH <- c(sum(X[c(1:3)]),X[4:6],X[7]+sum(is.na(ALSA_w1_srh$HLTHLIFE)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1,2,3->1","4->2","5->3","6->998","9,NA->999") 
+kable(C)
+```
+
+```{r importOPAL w1, echo=FALSE}
+label(ALSA_ds_w1$srh) <- "Respondent's self-rated/self-reported health on a Likert-type scale"
+srh <- ALSA_ds_w1
+save(srh, file = "../RData/w1/srh.RData")
+#opal.assign.data(o, 'ALSA_ds_w1', ALSA_ds_w1)
+#opal.symbol_import(o,'ALSA_ds_w1', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w1 <- ALSA_ds_w1
+ALSA_m_ds_w1$srh <- car::recode(ALSA_m_ds_w1$srh, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w1', ALSA_m_ds_w1)
+#opal.symbol_import(o,'ALSA_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+#### ALSA - Wave 2
+
+##### Study-specific variables
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `Q5`
+* Label: `Rate overall health`
+* Categories:
+   + `1 = Excellent` 
+   + `2 = Very good`
+   + `3 = Good` 
+   + `4 = Fair`
+   + `5 = Poor` 
+* Missings
+   + `NA`
+
+```{r assign w2, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w2_srh','ALSA.ALSA-Wave2', variables=list('Q5'), missings = TRUE)
+ALSA_w2_srh <- opal.execute(o,'ALSA_w2_srh')
+```
+
+```{r local w2, echo=FALSE}
+vari <- ALSA_w2_srh$Q5
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w2_srh, aes(x=factor(Q5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 1`
+* `3 into 1` 
+* `4 into 2`
+* `5 into 3` 
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w2}
+ALSA_ds_w2 <- tibble(id=ALSA_w2_srh$id)
+ALSA_ds_w2$srh <- car::recode(ALSA_w2_srh$Q5,"1 = '1';2 = '1';3 = '1';4 = '2';5 = '3';NA = '999' ")
+ALSA_ds_w2$srh <- labelled(ALSA_ds_w2$srh, labels = c("Good"=1, "Fair"=2, "Bad"=3,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w2, echo=FALSE}
+vari <- ALSA_ds_w2$srh
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w2, aes(x=factor(srh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w2, echo=FALSE}
+AfterH <- table(ALSA_ds_w2$srh)
+X<-table(ALSA_w2_srh$Q5)
+BeforeH <- c(sum(X[c(1:3)]),X[4:5])
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1,2,3->1","4->2","5->3") 
+kable(C)
+```
+
+```{r importOPAL w2, echo=FALSE}
+label(ALSA_ds_w2$srh) <- "Respondent's self-rated/self-reported health on a Likert-type scale"
+srh <- ALSA_ds_w2
+save(srh, file = "../RData/w2/srh.RData")
+#opal.assign.data(o, 'ALSA_ds_w2', ALSA_ds_w2)
+#opal.symbol_import(o,'ALSA_ds_w2', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w2 <- ALSA_ds_w2
+ALSA_m_ds_w2$srh <- car::recode(ALSA_m_ds_w2$srh, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w2', ALSA_m_ds_w2)
+#opal.symbol_import(o,'ALSA_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+#### ALSA - Wave 3
+
+##### Study-specific variables
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `SRHW3`
+* Label: `SELF-RATED HEALTH`
+* Categories:
+   + `1 = Excellent` 
+   + `2 = Very good`
+   + `3 = Good` 
+   + `4 = Fair`
+   + `5 = Poor` 
+* Missings
+   + `9 = Missing`
+   + `NA`
+
+```{r assign w3, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w3_srh','ALSA.ALSA-Wave3', variables=list('SRHW3'), missings = TRUE)
+ALSA_w3_srh <- opal.execute(o,'ALSA_w3_srh')
+```
+
+```{r local w3, echo=FALSE}
+vari <- ALSA_w3_srh$SRHW3
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w3_srh, aes(x=factor(SRHW3))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 1`
+* `3 into 1` 
+* `4 into 2`
+* `5 into 3` 
+* `9 into 999`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w3}
+ALSA_ds_w3 <- tibble(id=ALSA_w3_srh$id)
+ALSA_ds_w3$srh <- car::recode(ALSA_w3_srh$SRHW3,"1 = '1';2 = '1';3 = '1';4 = '2';5 = '3';9 = '999'; NA = '999' ")
+ALSA_ds_w3$srh <- labelled(ALSA_ds_w3$srh, labels = c("Good"=1, "Fair"=2, "Bad"=3,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w3, echo=FALSE}
+vari <- ALSA_ds_w3$srh
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w3, aes(x=factor(srh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w3, echo=FALSE}
+AfterH <- table(ALSA_ds_w3$srh)
+X<-table(ALSA_w3_srh$SRHW3)
+BeforeH <- c(sum(X[c(1:3)]),X[4:5],X[6]+sum(is.na(ALSA_w3_srh$SRHW3)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1,2,3->1","4->2","5->3","9,NA->999") 
+kable(C)
+```
+
+```{r importOPAL w3, echo=FALSE}
+label(ALSA_ds_w3$srh) <- "Respondent's self-rated/self-reported health on a Likert-type scale"
+srh <- ALSA_ds_w3
+save(srh, file = "../RData/w3/srh.RData")
+#opal.assign.data(o, 'ALSA_ds_w3', ALSA_ds_w3)
+#opal.symbol_import(o,'ALSA_ds_w3', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w3 <- ALSA_ds_w3
+ALSA_m_ds_w3$srh <- car::recode(ALSA_m_ds_w3$srh, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w3', ALSA_m_ds_w3)
+#opal.symbol_import(o,'ALSA_m_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+
+
+#### ALSA - Wave 4
+
+##### Study-specific variables
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `SRHLTHW4`
+* Label: `RATE OVERALL HEALTH`
+* Categories:
+   + `1 = Excellent` 
+   + `2 = Very good`
+   + `3 = Good` 
+   + `4 = Fair`
+   + `5 = Poor` 
+* Missings
+   + `NA`
+
+```{r assign w4, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w4_srh','ALSA.ALSA-Wave4', variables=list('SRHLTHW4'), missings = TRUE)
+ALSA_w4_srh <- opal.execute(o,'ALSA_w4_srh')
+```
+
+```{r local w4, echo=FALSE}
+vari <- ALSA_w4_srh$SRHLTHW4
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w4_srh, aes(x=factor(SRHLTHW4))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 1`
+* `3 into 1` 
+* `4 into 2`
+* `5 into 3` 
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w4}
+ALSA_ds_w4 <- tibble(id=ALSA_w4_srh$id)
+ALSA_ds_w4$srh <- car::recode(ALSA_w4_srh$SRHLTHW4,"1 = '1';2 = '1';3 = '1';4 = '2';5 = '3'; NA = '999' ")
+ALSA_ds_w4$srh <- labelled(ALSA_ds_w4$srh, labels = c("Good"=1, "Fair"=2, "Bad"=3,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w4, echo=FALSE}
+vari <- ALSA_ds_w4$srh
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w4, aes(x=factor(srh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w4, echo=FALSE}
+AfterH <- table(ALSA_ds_w4$srh)
+X<-table(ALSA_w4_srh$SRHLTHW4)
+BeforeH <- c(sum(X[c(1:3)]),X[4:5])
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1,2,3->1","4->2","5->3") 
+kable(C)
+```
+
+```{r importOPAL w4, echo=FALSE}
+label(ALSA_ds_w4$srh) <- "Respondent's self-rated/self-reported health on a Likert-type scale"
+srh <- ALSA_ds_w4
+save(srh, file = "../RData/w4/srh.RData")
+#opal.assign.data(o, 'ALSA_ds_w4', ALSA_ds_w4)
+#opal.symbol_import(o,'ALSA_ds_w4', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w4 <- ALSA_ds_w4
+ALSA_m_ds_w4$srh <- car::recode(ALSA_m_ds_w4$srh, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w4', ALSA_m_ds_w4)
+#opal.symbol_import(o,'ALSA_m_ds_w4', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 5 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `SRHLTHW5`
+* Label: `RATE OVERALL HEALTH`
+* Categories:
+   + `1 = Excellent` 
+   + `2 = Very good`
+   + `3 = Good` 
+   + `4 = Fair`
+   + `5 = Poor` 
+* Missings
+   + `6 = Refused`
+   + `NA`
+
+```{r assign w5, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w5_srh','ALSA.ALSA-Wave5', variables=list('SRHLTHW5'), missings = TRUE)
+ALSA_w5_srh <- opal.execute(o,'ALSA_w5_srh')
+```
+
+```{r local w5, echo=FALSE}
+vari <- ALSA_w5_srh$SRHLTHW5
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w5_srh, aes(x=factor(SRHLTHW5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 1`
+* `3 into 1` 
+* `4 into 2`
+* `5 into 3` 
+* `6 into 997`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w5}
+ALSA_ds_w5 <- tibble(id=ALSA_w5_srh$id)
+ALSA_ds_w5$srh <- car::recode(ALSA_w5_srh$SRHLTHW5,"1 = '1';2 = '1';3 = '1';4 = '2';5 = '3'; 6= '997';NA = '999' ")
+ALSA_ds_w5$srh <- labelled(ALSA_ds_w5$srh, labels = c("Good"=1, "Fair"=2, "Bad"=3,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w5, echo=FALSE}
+vari <- ALSA_ds_w5$srh
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w5, aes(x=factor(srh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w5, echo=FALSE}
+AfterH <- table(ALSA_ds_w5$srh)
+X<-table(ALSA_w5_srh$SRHLTHW5)
+BeforeH <- c(sum(X[c(1:3)]),X[4:6])
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1,2,3->1","4->2","5->3","6->997") 
+kable(C)
+```
+
+```{r importOPAL w5, echo=FALSE}
+label(ALSA_ds_w5$srh) <- "Respondent's self-rated/self-reported health on a Likert-type scale"
+srh <- ALSA_ds_w5
+save(srh, file = "../RData/w5/srh.RData")
+#opal.assign.data(o, 'ALSA_ds_w5', ALSA_ds_w5)
+#opal.symbol_import(o,'ALSA_ds_w5', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w5 <- ALSA_ds_w5
+ALSA_m_ds_w5$srh <- car::recode(ALSA_m_ds_w5$srh, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w5', ALSA_m_ds_w5)
+#opal.symbol_import(o,'ALSA_m_ds_w5', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 6 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `HLTHLIW6`
+* Label: `overall health rating`
+* Categories:
+   + `1 = Excellent` 
+   + `2 = Very good`
+   + `3 = Good` 
+   + `4 = Fair`
+   + `5 = Poor` 
+* Missings
+   + `NA`
+
+```{r assign w6, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w6_srh','ALSA.ALSA-Wave6', variables=list('HLTHLIW6'), missings = TRUE)
+ALSA_w6_srh <- opal.execute(o,'ALSA_w6_srh')
+```
+
+```{r local w6, echo=FALSE}
+vari <- ALSA_w6_srh$HLTHLIW6
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w6_srh, aes(x=factor(HLTHLIW6))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 1`
+* `3 into 1` 
+* `4 into 2`
+* `5 into 3` 
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w6}
+ALSA_ds_w6 <- tibble(id=ALSA_w6_srh$id)
+ALSA_ds_w6$srh <- car::recode(ALSA_w6_srh$HLTHLIW6,"1 = '1';2 = '1';3 = '1';4 = '2';5 = '3'; NA = '999' ")
+ALSA_ds_w6$srh <- labelled(ALSA_ds_w6$srh, labels = c("Good"=1, "Fair"=2, "Bad"=3,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w6, echo=FALSE}
+vari <- ALSA_ds_w6$srh
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w6, aes(x=factor(srh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w6, echo=FALSE}
+AfterH <- table(ALSA_ds_w6$srh)
+X<-table(ALSA_w6_srh$HLTHLIW6)
+BeforeH <- c(sum(X[c(1:3)]),X[4:5],sum(is.na(ALSA_w6_srh$HLTHLIW6)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1,2,3->1","4->2","5->3","NA->999") 
+kable(C)
+```
+
+```{r importOPAL w6, echo=FALSE}
+label(ALSA_ds_w6$srh) <- "Respondent's self-rated/self-reported health on a Likert-type scale"
+srh <- ALSA_ds_w6
+save(srh, file = "../RData/w6/srh.RData")
+#opal.assign.data(o, 'ALSA_ds_w6', ALSA_ds_w6)
+#opal.symbol_import(o,'ALSA_ds_w6', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w6 <- ALSA_ds_w6
+ALSA_m_ds_w6$srh <- car::recode(ALSA_m_ds_w6$srh, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w6', ALSA_m_ds_w6)
+#opal.symbol_import(o,'ALSA_m_ds_w6', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 7 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `hlthliw7`
+* Label: `rate your overall health`
+* Categories:
+   + `1 = Excellent` 
+   + `2 = Very good`
+   + `3 = Good` 
+   + `4 = Fair`
+   + `5 = Poor` 
+* Missings
+   + `NA`
+
+```{r assign w7, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w7_srh','ALSA.ALSA-Wave7', variables=list('hlthliw7'), missings = TRUE)
+ALSA_w7_srh <- opal.execute(o,'ALSA_w7_srh')
+```
+
+```{r local w7, echo=FALSE}
+vari <- ALSA_w7_srh$hlthliw7
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w7_srh, aes(x=factor(hlthliw7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 1`
+* `3 into 1` 
+* `4 into 2`
+* `5 into 3` 
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w7}
+ALSA_ds_w7 <- tibble(id=ALSA_w7_srh$id)
+ALSA_ds_w7$srh <- car::recode(ALSA_w7_srh$hlthliw7,"1 = '1';2 = '1';3 = '1';4 = '2';5 = '3'; NA = '999' ")
+ALSA_ds_w7$srh <- labelled(ALSA_ds_w7$srh, labels = c("Good"=1, "Fair"=2, "Bad"=3,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w7, echo=FALSE}
+vari <- ALSA_ds_w7$srh
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w7, aes(x=factor(srh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w7, echo=FALSE}
+AfterH <- table(ALSA_ds_w7$srh)
+X<-table(ALSA_w7_srh$hlthliw7)
+BeforeH <- c(sum(X[c(1:3)]),X[4:5],sum(is.na(ALSA_w7_srh$hlthliw7)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1,2,3->1","4->2","5->3","NA->999") 
+kable(C)
+```
+
+```{r importOPAL w7, echo=FALSE}
+label(ALSA_ds_w7$srh) <- "Respondent's self-rated/self-reported health on a Likert-type scale"
+srh <- ALSA_ds_w7
+save(srh, file = "../RData/w7/srh.RData")
+#opal.assign.data(o, 'ALSA_ds_w7', ALSA_ds_w7)
+#opal.symbol_import(o,'ALSA_ds_w7', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w7 <- ALSA_ds_w7
+ALSA_m_ds_w7$srh <- car::recode(ALSA_m_ds_w7$srh, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w7', ALSA_m_ds_w7)
+#opal.symbol_import(o,'ALSA_m_ds_w7', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 8 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `hlthw8`
+* Label: `Rate overall health`
+* Categories:
+   + `1 = Excellent` 
+   + `2 = Very good`
+   + `3 = Good` 
+   + `4 = Fair`
+   + `5 = Poor` 
+* Missings
+   + `0 = Not answered`
+   + `NA`
+
+```{r assign w8, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w8_srh','ALSA.ALSA-Wave8', variables=list('hlthw8'), missings = TRUE)
+ALSA_w8_srh <- opal.execute(o,'ALSA_w8_srh')
+```
+
+```{r local w8, echo=FALSE}
+vari <- ALSA_w8_srh$hlthw8
+kable(Categorical_summary(vari, missing_values = c(0))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(0))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(0))[2], caption = "Type of missing")
+ggplot(ALSA_w8_srh, aes(x=factor(hlthw8))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 1`
+* `3 into 1` 
+* `4 into 2`
+* `5 into 3` 
+* `0 into 995`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w8}
+ALSA_ds_w8 <- tibble(id=ALSA_w8_srh$id)
+ALSA_ds_w8$srh <- car::recode(ALSA_w8_srh$hlthw8,"1 = '1';2 = '1';3 = '1';4 = '2';5 = '3'; 0 = '995';NA = '999' ")
+ALSA_ds_w8$srh <- labelled(ALSA_ds_w8$srh, labels = c("Good"=1, "Fair"=2, "Bad"=3,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w8, echo=FALSE}
+vari <- ALSA_ds_w8$srh
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w8, aes(x=factor(srh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w8, echo=FALSE}
+AfterH <- table(ALSA_ds_w8$srh)
+X<-table(ALSA_w8_srh$hlthw8)
+BeforeH <- c(sum(X[c(2:4)]),X[c(5,6,1)])
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1,2,3->1","4->2","5->3","0->995") 
+kable(C)
+```
+
+```{r importOPAL w8, echo=FALSE}
+label(ALSA_ds_w8$srh) <- "Respondent's self-rated/self-reported health on a Likert-type scale"
+srh <- ALSA_ds_w8
+save(srh, file = "../RData/w8/srh.RData")
+#opal.assign.data(o, 'ALSA_ds_w8', ALSA_ds_w8)
+#opal.symbol_import(o,'ALSA_ds_w8', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w8 <- ALSA_ds_w8
+ALSA_m_ds_w8$srh <- car::recode(ALSA_m_ds_w8$srh, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w8', ALSA_m_ds_w8)
+#opal.symbol_import(o,'ALSA_m_ds_w8', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 9 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `HLTHLIW9`
+* Label: `rate your overall health`
+* Categories:
+   + `1 = Excellent` 
+   + `2 = Very good`
+   + `3 = Good` 
+   + `4 = Fair`
+   + `5 = Poor` 
+* Missings
+   + `NA`
+
+```{r assign w9, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w9_srh','ALSA.ALSA-Wave9', variables=list('HLTHLIW9'), missings = TRUE)
+ALSA_w9_srh <- opal.execute(o,'ALSA_w9_srh')
+```
+
+```{r local w9, echo=FALSE}
+vari <- ALSA_w9_srh$HLTHLIW9
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w9_srh, aes(x=factor(HLTHLIW9))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 1`
+* `3 into 1` 
+* `4 into 2`
+* `5 into 3` 
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w9}
+ALSA_ds_w9 <- tibble(id=ALSA_w9_srh$id)
+ALSA_ds_w9$srh <- car::recode(ALSA_w9_srh$HLTHLIW9,"1 = '1';2 = '1';3 = '1';4 = '2';5 = '3';NA = '999' ")
+ALSA_ds_w9$srh <- labelled(ALSA_ds_w9$srh, labels = c("Good"=1, "Fair"=2, "Bad"=3,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w9, echo=FALSE}
+vari <- ALSA_ds_w9$srh
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w9, aes(x=factor(srh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w9, echo=FALSE}
+AfterH <- table(ALSA_ds_w9$srh)
+X<-table(ALSA_w9_srh$HLTHLIW9)
+BeforeH <- c(sum(X[c(1:3)]),X[4:5],sum(is.na(ALSA_w9_srh$HLTHLIW9)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1,2,3->1","4->2","5->3","NA->999") 
+kable(C)
+```
+
+```{r importOPAL w9, echo=FALSE}
+label(ALSA_ds_w9$srh) <- "Respondent's self-rated/self-reported health on a Likert-type scale"
+srh <- ALSA_ds_w9
+save(srh, file = "../RData/w9/srh.RData")
+#opal.assign.data(o, 'ALSA_ds_w9', ALSA_ds_w9)
+#opal.symbol_import(o,'ALSA_ds_w9', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w9 <- ALSA_ds_w9
+ALSA_m_ds_w9$srh <- car::recode(ALSA_m_ds_w9$srh, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w9', ALSA_m_ds_w9)
+#opal.symbol_import(o,'ALSA_m_ds_w9', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 10 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `hlthw10`
+* Label: `Rate overall health`
+* Categories:
+   + `1 = Excellent` 
+   + `2 = Very good`
+   + `3 = Good` 
+   + `4 = Fair`
+   + `5 = Poor` 
+* Missings
+   + `NA`
+
+```{r assign w10, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w10_srh','ALSA.ALSA-Wave10', variables=list('hlthw10'), missings = TRUE)
+ALSA_w10_srh <- opal.execute(o,'ALSA_w10_srh')
+```
+
+```{r local w10, echo=FALSE}
+vari <- ALSA_w10_srh$hlthw10
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w10_srh, aes(x=factor(hlthw10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 1`
+* `3 into 1` 
+* `4 into 2`
+* `5 into 3` 
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w10}
+ALSA_ds_w10 <- tibble(id=ALSA_w10_srh$id)
+ALSA_ds_w10$srh <- car::recode(ALSA_w10_srh$hlthw10,"1 = '1';2 = '1';3 = '1';4 = '2';5 = '3';NA = '999' ")
+ALSA_ds_w10$srh <- labelled(ALSA_ds_w10$srh, labels = c("Good"=1, "Fair"=2, "Bad"=3,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w10, echo=FALSE}
+vari <- ALSA_ds_w10$srh
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w10, aes(x=factor(srh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w10, echo=FALSE}
+AfterH <- table(ALSA_ds_w10$srh)
+X<-table(ALSA_w10_srh$hlthw10)
+BeforeH <- c(sum(X[c(1:3)]),X[4:5],sum(is.na(ALSA_w10_srh$hlthw10)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1,2,3->1","4->2","5->3","NA->999") 
+kable(C)
+```
+
+```{r importOPAL w10, echo=FALSE}
+label(ALSA_ds_w10$srh) <- "Respondent's self-rated/self-reported health on a Likert-type scale"
+srh <- ALSA_ds_w10
+save(srh, file = "../RData/w10/srh.RData")
+#opal.assign.data(o, 'ALSA_ds_w10', ALSA_ds_w10)
+#opal.symbol_import(o,'ALSA_ds_w10', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w10 <- ALSA_ds_w10
+ALSA_m_ds_w10$srh <- car::recode(ALSA_m_ds_w10$srh, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w10', ALSA_m_ds_w10)
+#opal.symbol_import(o,'ALSA_m_ds_w10', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 11 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `HLTHLW11`
+* Label: `rate your overall health`
+* Categories:
+   + `1 = Excellent` 
+   + `2 = Very good`
+   + `3 = Good` 
+   + `4 = Fair`
+   + `5 = Poor` 
+* Missings
+   + `NA`
+
+```{r assign w11, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w11_srh','ALSA.ALSA-Wave11', variables=list('HLTHLW11'), missings = TRUE)
+ALSA_w11_srh <- opal.execute(o,'ALSA_w11_srh')
+```
+
+```{r local w11, echo=FALSE}
+vari <- ALSA_w11_srh$HLTHLW11
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w11_srh, aes(x=factor(HLTHLW11))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 1`
+* `3 into 1` 
+* `4 into 2`
+* `5 into 3` 
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w11}
+ALSA_ds_w11 <- tibble(id=ALSA_w11_srh$id)
+ALSA_ds_w11$srh <- car::recode(ALSA_w11_srh$HLTHLW11,"1 = '1';2 = '1';3 = '1';4 = '2';5 = '3';NA = '999' ")
+ALSA_ds_w11$srh <- labelled(ALSA_ds_w11$srh, labels = c("Good"=1, "Fair"=2, "Bad"=3,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w11, echo=FALSE}
+vari <- ALSA_ds_w11$srh
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w11, aes(x=factor(srh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w11, echo=FALSE}
+AfterH <- table(ALSA_ds_w11$srh)
+X<-table(ALSA_w11_srh$HLTHLW11)
+BeforeH <- c(sum(X[c(1:3)]),X[4:5],sum(is.na(ALSA_w11_srh$HLTHLW11)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1,2,3->1","4->2","5->3","NA->999") 
+kable(C)
+```
+
+```{r importOPAL w11, echo=FALSE}
+label(ALSA_ds_w11$srh) <- "Respondent's self-rated/self-reported health on a Likert-type scale"
+srh <- ALSA_ds_w11
+save(srh, file = "../RData/w11/srh.RData")
+#opal.assign.data(o, 'ALSA_ds_w11', ALSA_ds_w11)
+#opal.symbol_import(o,'ALSA_ds_w11', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w11 <- ALSA_ds_w11
+ALSA_m_ds_w11$srh <- car::recode(ALSA_m_ds_w11$srh, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w11', ALSA_m_ds_w11)
+#opal.symbol_import(o,'ALSA_m_ds_w11', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 12 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `HLTHLW12`
+* Label: `rate your overall health`
+* Categories:
+   + `1 = Excellent` 
+   + `2 = Very good`
+   + `3 = Good` 
+   + `4 = Fair`
+   + `5 = Poor` 
+* Missings
+   + `NA`
+
+```{r assign w12, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w12_srh','ALSA.ALSA-Wave12', variables=list('HLTHLW12'), missings = TRUE)
+ALSA_w12_srh <- opal.execute(o,'ALSA_w12_srh')
+```
+
+```{r local w12, echo=FALSE}
+vari <- ALSA_w12_srh$HLTHLW12
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w12_srh, aes(x=factor(HLTHLW12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 1`
+* `3 into 1` 
+* `4 into 2`
+* `5 into 3` 
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w12}
+ALSA_ds_w12 <- tibble(id=ALSA_w12_srh$id)
+ALSA_ds_w12$srh <- car::recode(ALSA_w12_srh$HLTHLW12,"1 = '1';2 = '1';3 = '1';4 = '2';5 = '3';NA = '999' ")
+ALSA_ds_w12$srh <- labelled(ALSA_ds_w12$srh, labels = c("Good"=1, "Fair"=2, "Bad"=3,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w12, echo=FALSE}
+vari <- ALSA_ds_w12$srh
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w12, aes(x=factor(srh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w12, echo=FALSE}
+AfterH <- table(ALSA_ds_w12$srh)
+X<-table(ALSA_w12_srh$HLTHLW12)
+BeforeH <- c(sum(X[c(1:3)]),X[4:5])
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1,2,3->1","4->2","5->3") 
+kable(C)
+```
+
+```{r importOPAL w12, echo=FALSE}
+label(ALSA_ds_w12$srh) <- "Respondent's self-rated/self-reported health on a Likert-type scale"
+srh <- ALSA_ds_w12
+save(srh, file = "../RData/w12/srh.RData")
+#opal.assign.data(o, 'ALSA_ds_w12', ALSA_ds_w12)
+#opal.symbol_import(o,'ALSA_ds_w12', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w12 <- ALSA_ds_w12
+ALSA_m_ds_w12$srh <- car::recode(ALSA_m_ds_w12$srh, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w12', ALSA_m_ds_w12)
+#opal.symbol_import(o,'ALSA_m_ds_w12', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 13 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `HLTHW13`
+* Label: `rate your overall health`
+* Categories:
+   + `1 = Excellent` 
+   + `2 = Very good`
+   + `3 = Good` 
+   + `4 = Fair`
+   + `5 = Poor` 
+* Missings
+   + `NA`
+
+```{r assign w13, echo=FALSE}
+opal.assign.table.tibble(o, 'ALSA_w13_srh','ALSA.ALSA-Wave13', variables=list('HLTHW13'), missings = TRUE)
+ALSA_w13_srh <- opal.execute(o,'ALSA_w13_srh')
+```
+
+```{r local w13, echo=FALSE}
+vari <- ALSA_w13_srh$HLTHW13
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w13_srh, aes(x=factor(HLTHW13))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 1`
+* `3 into 1` 
+* `4 into 2`
+* `5 into 3` 
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w13}
+ALSA_ds_w13 <- tibble(id=ALSA_w13_srh$id)
+ALSA_ds_w13$srh <- car::recode(ALSA_w13_srh$HLTHW13,"1 = '1';2 = '1';3 = '1';4 = '2';5 = '3';NA = '999' ")
+ALSA_ds_w13$srh <- labelled(ALSA_ds_w13$srh, labels = c("Good"=1, "Fair"=2, "Bad"=3,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w13, echo=FALSE}
+vari <- ALSA_ds_w13$srh
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ALSA_ds_w13, aes(x=factor(srh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Self Rated Health") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w13, echo=FALSE}
+AfterH <- table(ALSA_ds_w13$srh)
+X<-table(ALSA_w13_srh$HLTHW13)
+BeforeH <- c(sum(X[c(1:3)]),X[4:5])
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1,2,3->1","4->2","5->3") 
+kable(C)
+```
+
+```{r importOPAL w13, echo=FALSE}
+label(ALSA_ds_w13$srh) <- "Respondent's self-rated/self-reported health on a Likert-type scale"
+srh <- ALSA_ds_w13
+save(srh, file = "../RData/w13/srh.RData")
+#opal.assign.data(o, 'ALSA_ds_w13', ALSA_ds_w13)
+#opal.symbol_import(o,'ALSA_ds_w13', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w13 <- ALSA_ds_w13
+ALSA_m_ds_w13$srh <- car::recode(ALSA_m_ds_w13$srh, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w13', ALSA_m_ds_w13)
+#opal.symbol_import(o,'ALSA_m_ds_w13', project='_Athlos_Harm_Dataset')
+```
+
+
+
+# Quality estimation
+
+No comments
+
+[Comments on the quality of the new harmonised variable. This section can be done in a later stage, once all variables are harmonised.]
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

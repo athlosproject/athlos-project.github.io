@@ -1,0 +1,221 @@
+---
+title: "Any voluntary/charitable activity"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variables is the following:
+
+* Short name: `volun`
+* Variable label: `Any voluntary/charitable activity`
+* Domain: `Social environment`
+* Value type: `cathegorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Australia
+
+### Wave 1 
+
+Not found.
+
+
+### Wave 1 
+
+Not found.
+
+
+### Wave 3
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+    
+* Name: `MEMBER14`
+* Label: `Charity/Volunteer`
+* Categories:
+    + `0 = Not member`
+    + `1 = Member`
+
+* Name: `STIL14W3`
+* Label: `STILL MEMBER OF CHARITY GROUP?`
+* Categories:
+    + `1 = Yes`
+    + `2 = No`
+* Description:
+
+```{r assign3, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w3_volun','ALSA.ALSA-Wave3', variables=list('MEMBER14','STIL14W3'), missings = TRUE)
+```
+
+```{r local3, echo=F}
+ALSA_w3_volun <- opal.execute(o,'ALSA_w3_volun')
+vari <- ALSA_w3_volun$MEMBER14
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w3_volun$MEMBER14, missing_values = NA)
+ggplot(ALSA_w3_volun, aes(x=factor(MEMBER14))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Charity/Volunteer?") + ylab("Frequency")
+
+vari <- ALSA_w3_volun$STIL14W3
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = ALSA_w3_volun$STIL14W3, missing_values = NA)
+ggplot(ALSA_w3_volun, aes(x=factor(STIL14W3))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("STILL MEMBER OF CHARITY GROUP?") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any equals 1 then 1`
+* `else if member=0 or STIL then 0` 
+* `NA into 999`
+
+**R script:**
+
+```{r harmo3, echo=TRUE}
+ALSA_ds_w3 <- tibble(id=ALSA_w3_volun$id)
+
+ALSA_w3_volun$MEMBER14 <- car::recode(as.vector(ALSA_w3_volun$MEMBER14), "NA='-999'")
+ALSA_w3_volun$STIL14W3 <- car::recode(as.vector(ALSA_w3_volun$STIL14W3), "NA='-999'")
+
+ALSA_ds_w3$volun <- c(NA)
+for(i in 1:dim(ALSA_w3_volun)[1]){
+  if( ALSA_w3_volun$MEMBER14[i] == 1 | ALSA_w3_volun$STIL14W3[i] == 1 ) { 
+    ALSA_ds_w3$volun[i] = 1 }
+  else if( ALSA_w3_volun$MEMBER14[i] == 0 | ALSA_w3_volun$STIL14W3[i] == 2 ) { 
+    ALSA_ds_w3$volun[i] = 0 }
+}
+
+ALSA_ds_w3$volun <- car::recode(as.vector(ALSA_ds_w3$volun), "NA='999'")
+ALSA_ds_w3$volun <- labelled(ALSA_ds_w3$volun, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript3, echo=F}
+vari <- ALSA_ds_w3$volun
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = ALSA_ds_w3$volun, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w3, aes(x=factor(volun))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Any voluntary/charitable activity") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation3, echo=F}
+AfterH <- table(ALSA_ds_w3$volun)
+BeforeH <- table(ALSA_w3_volun$MEMBER14, ALSA_w3_volun$STIL14W3, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[2]] <- sum(BeforeH[2,])
+BeforeH1[[1]] <- sum(BeforeH[1,])
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("0","1")
+kable(C)
+```
+
+
+### Wave 4
+
+Not found.
+
+### Wave 5
+
+Not found.
+
+### Wave 6
+
+Not found.
+
+### Wave 7
+
+Not found.
+
+### Wave 8
+
+Not found.
+
+### Wave 9
+
+Not found.
+
+
+### Wave 10
+
+Not found.
+
+### Wave 11
+
+Not found.
+
+### Wave 12
+
+Not found.
+
+
+### Wave 13
+
+Not found.
+
+
+```{r save, echo=FALSE}
+volun <- ALSA_ds_w3
+save(volun, file = "../RData/w3/volun.RData")
+rm(volun)
+
+
+```
+
+# Quality estimation
+
+It is not clear if the study-specific variables refer to an ever or current condition.
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```

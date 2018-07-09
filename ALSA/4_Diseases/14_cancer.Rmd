@@ -1,0 +1,728 @@
+---
+title: "Cancer"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `cancer`
+* Variable label: `Any malignancy (C00-D48) / information about past or current neoplasm (benign, in situ, malignant)`
+* Variable description: `cancer diagnosis since the last interview`
+* Domain: `Diseases`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | no cancer
+1        | cancer
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+* Short name: `cancer_age`
+* Variable label: `Age of cancer diagnosis`
+* Variable description: `Age of each episode of cancer`
+* Domain: `Diseases`
+* Value type: `Continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+<!-- # Global variables -->
+```{r global, include=FALSE, echo=F}
+miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
+ds_label <- "Any malignancy (C00-D48) / information about past or current neoplasm (benign, in situ, malignant)"
+ds_label_age <- "Age of cancer diagnosis"
+cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
+cont_label <- cat_label[3:11]
+datafolder <- "../RData/"
+#sing_idlist <- c()
+```
+<!-- ########################################################## --> 
+
+
+
+# Data process
+
+
+
+## Australia
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `CANCER` |`WHENTOLD`|`ybirth`|
+|-|-|-|-|
+| **Label** | `Cancer` |`Year cancer diagnosed`|`Year of birth`|
+| **Table name**  | `ALSA-Wave1` | `ALSA-Wave1` |`ybirth`|
+| **Categories** | `2 = No`<br/>`1 = Yes` | `continuous` | `continuous` |
+| **Missings** | `9`<br/>`NA` | `9999`<br/>`NA`  |  |
+| **Description** |  |  |  |
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'ALSA_w1','ALSA.ALSA-Wave1',variables=list('CANCER','WHENTOLD'), missings = T)
+ALSA_w1 <- opal.execute(o,'ALSA_w1')
+load(paste0(datafolder,"w1/ybirth.RData"))
+ALSA_w1 <- left_join(ALSA_w1,ybirth, by="id")
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- ALSA_w1$CANCER
+kable(Categorical_summary(vbl, missing_values = c(9))[3], caption = names(ALSA_w1)[2])
+kable(Categorical_summary(vbl, missing_values = c(9))[1], caption = "Category")
+ggplot(ALSA_w1, aes(x=factor(CANCER))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- ALSA_w1$WHENTOLD
+kable(Continuous_summary(var = vbl, missing_values = c(9999))[3], caption = names(ALSA_w1)[3])
+pander(Continuous_summary(vbl, missing_values = c(9999))$summary, caption = "Summary")
+ggplot(ALSA_w1, aes(WHENTOLD)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1920,1995)
+
+vbl <- ALSA_w1$ybirth
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(ALSA_w1)[4])
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(ALSA_w1, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1885,1930)
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cancer` from the study-specific variable it has to be recoded as follows:
+
+* `change 2 into 0`
+* `keep up 1 into 1`
+* `9,NA into 999`
+
+To compute `cancer_age` from the study-specific variable it has to be recoded as follows:
+
+* `if cancer == 1, cancer_age = WHENTOLD - ybirth`
+* `if cancer == 0, cancer_age = 996`
+* `9999 into 999`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo w1}
+
+# Categorical variable harmonization
+ALSA_ds_w1 <- tibble(id=ALSA_w1$id)
+ALSA_ds_w1$cancer <- car::recode(ALSA_w1$CANCER, "2=0;9=999;NA = 999")
+
+# Continuous variable harmonization
+cancer_age <- ALSA_w1$WHENTOLD[which(ALSA_ds_w1$cancer == 1)]-ALSA_w1$ybirth[which(ALSA_ds_w1$cancer == 1)]
+ALSA_ds_w1$cancer_age <- car::recode(ALSA_ds_w1$cancer, "0 = 996; 1 = cancer_age")
+ALSA_ds_w1$cancer_age[which(ALSA_w1$WHENTOLD==9999)] <- 999
+ALSA_ds_w1$cancer_age <- car::recode(ALSA_ds_w1$cancer_age,"NA=999")
+
+ALSA_ds <- tibble(id=ALSA_w1$id)
+ALSA_ds$year_wave <- 1992
+ALSA_ds$past_cancer <- ALSA_ds_w1$cancer
+ALSA_ds$past_year <- rep(999,length(ALSA_ds_w1$id))
+ALSA_ds$past_year[which(ALSA_ds_w1$cancer == 1)] <- car::recode(ALSA_w1$WHENTOLD[which(ALSA_ds_w1$cancer == 1)],"9999=999;NA=999")
+row.names(ALSA_ds) <- ALSA_ds$id
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- ALSA_ds_w1$cancer
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w1, aes(x=factor(cancer))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- ALSA_ds_w1$cancer_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(ALSA_ds_w1, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(5,95)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+
+continuous <- c(sum(ALSA_ds_w1$cancer_age==996,na.rm=T),sum(ALSA_ds_w1$cancer_age!=996,na.rm=T))
+X <- table(ALSA_ds_w1$cancer, useNA = "ifany")
+dichotomous <- c(X[1],sum(X[2:3],na.rm=T))
+C <- rbind(continuous,dichotomous)
+colnames(C) <- c("0<-->996","1<-->(possibly missing) age of diagnostic")
+kable(C,caption = "Continuous vs Dichotomous")
+
+```
+
+
+
+### Wave 2
+
+Not found.
+
+
+
+
+### Wave 3
+
+Not found.
+
+
+### Wave 4
+
+Not found.
+
+### Wave 5
+
+Not found.
+
+
+
+### Wave 6
+
+
+#### Study-specific variable description
+
+| **Name** | `CANCEW6` |`WHENTOW6`|`ybirth`|
+|-|-|-|-|
+| **Label** | `doctor said you have cancer malignancy or tumour` |`year told had cancer`|`Year of birth`|
+| **Table name**  | `ALSA-Wave6` | `ALSA-Wave6` |`ybirth`|
+| **Categories** | `2 = no`<br/>`1 = yes` |`continuous`|`continuous`|
+| **Missings** | `0 = no answer`<br/>`NA` |`NA`|  |
+| **Description** |  |  |  |
+
+```{r assign w6, echo=F}
+
+opal.assign.table.tibble(o, 'ALSA_w6','ALSA.ALSA-Wave6',variables=list('CANCEW6','WHENTOW6'), missings = T)
+ALSA_w6 <- opal.execute(o,'ALSA_w6')
+ALSA_w6$WHENTOW6 <- as.numeric(ALSA_w6$WHENTOW6)
+load(paste0(datafolder,"w6/ybirth.RData"))
+ALSA_w6 <- left_join(ALSA_w6,ybirth, by="id")
+
+```
+
+```{r local w6, echo=F}
+
+vbl <- ALSA_w6$CANCEW6
+kable(Categorical_summary(vbl, missing_values = c(0))[3], caption = names(ALSA_w6)[2])
+kable(Categorical_summary(vbl, missing_values = c(0))[1], caption = "Category")
+ggplot(ALSA_w6, aes(x=factor(CANCEW6))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- ALSA_w6$WHENTOW6
+kable(Continuous_summary(var = vbl, missing_values = NA)[3], caption = names(ALSA_w6)[3])
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA_w6, aes(WHENTOW6)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1935,2005)
+
+vbl <- ALSA_w6$ybirth
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(ALSA_w6)[4])
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(ALSA_w6, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1895,1930)
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cancer` from the study-specific variable it has to be recoded as follows:
+
+* `change 2 into 0`
+* `keep up 1, ensuring it does not correspond to previous waves, into 1`
+* `0 into 995`
+* `otherwise into 999`
+
+To compute `cancer_age` from the study-specific variable it has to be recoded as follows:
+
+* `if cancer == 1, cancer_age = WHENTOW6 - ybirth`
+* `if cancer == 0, cancer_age = 996`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo w6}
+
+ALSA_w6 <- left_join(ALSA_w6,ALSA_w1, by="id",suffix=c("","_w1"))
+
+ALSA_ds_w6 <- tibble(id=ALSA_w6$id)
+ALSA_ds_w6$cancer <- rep(999,length(ALSA_w6$id))
+ALSA_ds_w6$cancer[which(ALSA_w6$CANCEW6==2)] <- 0
+ALSA_ds_w6$cancer[which(ALSA_w6$CANCEW6==0)] <- 995
+# Individuals having cancer since wave 1, so their year of diagnostic is at least 1992 or missing but until later previous wave interviewed they had no cancer.
+ALSA_ds_w6$cancer[which(ALSA_w6$CANCEW6==1 & (ALSA_w6$CANCER==2 | ALSA_w6$WHENTOW6>=1992 & (ALSA_w6$WHENTOW6>ALSA_w6$WHENTOLD | is.na(ALSA_w6$WHENTOLD))))] <- 1
+
+# Continuous variable harmonization
+ALSA_ds_w6$cancer_age <- rep(999,length(ALSA_w6$id))
+ALSA_ds_w6$cancer_age[which(ALSA_ds_w6$cancer==0)] <- 996
+ALSA_ds_w6$cancer_age[which(ALSA_ds_w6$cancer==1 & ALSA_w6$WHENTOW6>=1992 & (ALSA_w6$WHENTOW6>ALSA_w6$WHENTOLD | is.na(ALSA_w6$WHENTOLD)))] <- ALSA_w6$WHENTOW6[which(ALSA_ds_w6$cancer==1 & ALSA_w6$WHENTOW6>=1992 & (ALSA_w6$WHENTOW6>ALSA_w6$WHENTOLD | is.na(ALSA_w6$WHENTOLD)))] - ALSA_w6$ybirth[which(ALSA_ds_w6$cancer==1 & ALSA_w6$WHENTOW6>=1992 & (ALSA_w6$WHENTOW6>ALSA_w6$WHENTOLD | is.na(ALSA_w6$WHENTOLD)))]
+ALSA_ds_w6$cancer_age <- car::recode(ALSA_ds_w6$cancer_age,"NA=999")
+
+
+ALSA_ds[ALSA_ds_w6$id[which(ALSA_ds_w6$cancer!=999)],"past_cancer"] <- ALSA_ds_w6$cancer[which(ALSA_ds_w6$cancer!=999)]
+ALSA_ds[ALSA_ds_w6$id[which(ALSA_ds_w6$cancer==1)],"past_year"] <- car::recode(ALSA_w6$WHENTOW6[which(ALSA_ds_w6$cancer == 1)],"NA=999")
+ALSA_ds[ALSA_ds_w6$id[which(ALSA_ds_w6$cancer!=999)],"year_wave"] <- 2000
+
+```
+
+<!--
+ALTERNATIVE INSTRUCTIONS:
+#ALSA_w6 <- left_join(ALSA_w6,ALSA_ds, by="id")
+#The next two lines should be essentially the same.
+#ALSA_ds_w6$cancer[which(ALSA_w6$CANCEW6==1 & ((ALSA_w6$WHENTOW6>=ALSA_w6$year_wave & ALSA_w6$WHENTOW6>ALSA_w6$past_year) | ALSA_w6$past_cancer==0))] <- 1
+
+-->
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w6, echo=F}
+
+vbl <- ALSA_ds_w6$cancer
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w6, aes(x=factor(cancer))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- ALSA_ds_w6$cancer_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(ALSA_ds_w6, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(60,100)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w6, echo=F, results='asis'}
+
+AfterH <- table(ALSA_ds_w6$cancer)
+X <- c(table(ALSA_w6$CANCEW6, useNA = "ifany")[c(3,1)],sum(ALSA_w6$CANCEW6==1 & (ALSA_w6$CANCER==2 | ALSA_w6$WHENTOW6>=1992 & (ALSA_w6$WHENTOW6>ALSA_w6$WHENTOLD | is.na(ALSA_w6$WHENTOLD))),na.rm=T))
+BeforeH <- c(X[c(1,3,2)],length(ALSA_w6$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","0->995","NA->999")
+kable(C)
+
+cat("Individuals which in the first wave told they had no cancer and in the sixth wave told they had cancer and give year of diagnosis previous to the year of interview of first wave. We harmonize them as having cancer but keep missing ages of diagnosis.")
+kable(ALSA_w6[which(ALSA_w6$CANCER==2 & (ALSA_w6$WHENTOW6<1992 | ALSA_w6$WHENTOW6<=ALSA_w6$WHENTOLD)),c(1,5,6,2,3,4)], align = 'c')
+
+```
+
+
+
+### Wave 7
+
+#### Study-specific variable description
+
+
+| **Name** | `cancew7` |`whentow7`|`ybirth`|
+|-|-|-|-|
+| **Label** | `Did the doctor say you had cancer, malignancy or tumour` |`year told you had cancer`|`Year of birth`|
+| **Table name**  | `ALSA-Wave7` | `ALSA-Wave7` |`ybirth`|
+| **Categories** | `2 = No`<br/>`1 = Yes` |`continuous`|`continuous`|
+| **Missings** | `0 = Not Answered`<br/>`NA` |`NA`|  |
+| **Description** |  |  |  |
+
+```{r assign w7, echo=F}
+
+opal.assign.table.tibble(o, 'ALSA_w7','ALSA.ALSA-Wave7',variables=list('cancew7','whentow7'), missings = T)
+ALSA_w7 <- opal.execute(o,'ALSA_w7')
+ALSA_w7$whentow7 <- as.numeric(ALSA_w7$whentow7)
+load(paste0(datafolder,"w7/ybirth.RData"))
+ALSA_w7 <- left_join(ALSA_w7,ybirth, by="id")
+
+```
+
+```{r local w7, echo=F}
+
+vbl <- ALSA_w7$cancew7
+kable(Categorical_summary(vbl, missing_values = c(0))[3], caption = names(ALSA_w7)[2])
+kable(Categorical_summary(vbl, missing_values = c(0))[1], caption = "Category")
+ggplot(ALSA_w7, aes(x=factor(cancew7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- ALSA_w7$whentow7
+kable(Continuous_summary(var = vbl, missing_values = NA)[3], caption = names(ALSA_w7)[3])
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA_w7, aes(whentow7)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1940,2005)
+
+vbl <- ALSA_w7$ybirth
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(ALSA_w7)[4])
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(ALSA_w7, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1885,1930)
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cancer` from the study-specific variable it has to be recoded as follows:
+
+* `change 2 into 0`
+* `keep up 1, ensuring it does not correspond to previous waves, into 1`
+* `0 into 995`
+* `otherwise into 999`
+
+To compute `cancer_age` from the study-specific variable it has to be recoded as follows:
+
+* `if cancer == 1, cancer_age = whentow7 - ybirth`
+* `if cancer == 0, cancer_age = 996`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo w7}
+
+ALSA_w7 <- left_join(ALSA_w7,ALSA_ds, by="id")
+
+ALSA_ds_w7 <- tibble(id=ALSA_w7$id)
+ALSA_ds_w7$cancer <- rep(999,length(ALSA_w7$id))
+ALSA_ds_w7$cancer[which(ALSA_w7$cancew7==2)] <- 0
+ALSA_ds_w7$cancer[which(ALSA_w7$cancew7==0)] <- 995
+# Individuals having cancer since wave 6, so their year of diagnostic is at least 2000 or missing but until later previous wave interviewed they had no cancer.
+ALSA_ds_w7$cancer[which(ALSA_w7$cancew7==1 & ((ALSA_w7$whentow7>=ALSA_w7$year_wave & ALSA_w7$whentow7>ALSA_w7$past_year) | ALSA_w7$past_cancer==0))] <- 1
+
+# Continuous variable harmonization
+ALSA_ds_w7$cancer_age <- rep(999,length(ALSA_w7$id))
+ALSA_ds_w7$cancer_age[which(ALSA_ds_w7$cancer==0)] <- 996
+ALSA_ds_w7$cancer_age[which(ALSA_ds_w7$cancer==1 & ALSA_w7$whentow7>=ALSA_w7$year_wave & ALSA_w7$whentow7>ALSA_w7$past_year)] <- ALSA_w7$whentow7[which(ALSA_ds_w7$cancer==1 & ALSA_w7$whentow7>=ALSA_w7$year_wave & ALSA_w7$whentow7>ALSA_w7$past_year)] - ALSA_w7$ybirth[which(ALSA_ds_w7$cancer==1 & ALSA_w7$whentow7>=ALSA_w7$year_wave & ALSA_w7$whentow7>ALSA_w7$past_year)]
+ALSA_ds_w7$cancer_age <- car::recode(ALSA_ds_w7$cancer_age,"NA=999")
+
+ALSA_ds[ALSA_ds_w7$id[which(ALSA_ds_w7$cancer!=999)],"past_cancer"] <- ALSA_ds_w7$cancer[which(ALSA_ds_w7$cancer!=999)]
+ALSA_ds[ALSA_ds_w7$id[which(ALSA_ds_w7$cancer==1)],"past_year"] <- car::recode(ALSA_w7$whentow7[which(ALSA_ds_w7$cancer == 1)],"NA=999")
+ALSA_ds[ALSA_ds_w7$id[which(ALSA_ds_w7$cancer!=999)],"year_wave"] <- 2003
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w7, echo=F}
+
+vbl <- ALSA_ds_w7$cancer
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w7, aes(x=factor(cancer))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- ALSA_ds_w7$cancer_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(ALSA_ds_w7, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(70,95)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w7, echo=F, results='asis'}
+
+AfterH <- table(ALSA_ds_w7$cancer)
+X <- c(table(ALSA_w7$cancew7, useNA = "ifany")[c(3,1)],sum(ALSA_w7$cancew7==1 & ((ALSA_w7$whentow7>=ALSA_w7$year_wave & ALSA_w7$whentow7>ALSA_w7$past_year) | ALSA_w7$past_cancer==0),na.rm=T))
+BeforeH <- c(X[c(1,3,2)],length(ALSA_w7$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","0->995","NA->999")
+kable(C)
+
+cat("Individuals which in the previous interview told they had no cancer and in this wave told they had cancer and give year of diagnosis previous to the past interview. We harmonize them as having cancer but keep missing ages of diagnosis.")
+kable(ALSA_w7[which(ALSA_w7$cancew7==1 & ALSA_w7$past_cancer==0 & (ALSA_w7$whentow7<ALSA_w7$year_wave | ALSA_w7$whentow7<=ALSA_w7$past_year)),], align = 'c')
+
+```
+
+
+### Wave 8
+
+Not found.
+
+
+
+### Wave 9
+
+
+#### Study-specific variable description
+
+
+| **Name** | `CANCEW9` |`WHENTOW9`|`ybirth`|
+|-|-|-|-|
+| **Label** | `Did the doctor say you had cancer, malignancy or tumour` |`year told you had cancer`|`Year of birth`|
+| **Table name**  | `ALSA-Wave9` | `ALSA-Wave7` |`ybirth`|
+| **Categories** | `2 = No`<br/>`1 = Yes` |`continuous`|`continuous`|
+| **Missings** | `0 = Not Answered`<br/>`NA` |`NA`|  |
+| **Description** |  |  |  |
+
+```{r assign w9, echo=F}
+
+opal.assign.table.tibble(o, 'ALSA_w9','ALSA.ALSA-Wave9',variables=list('CANCEW9','WHENTOW9'), missings = T)
+ALSA_w9 <- opal.execute(o,'ALSA_w9')
+ALSA_w9$WHENTOW9 <- as.numeric(ALSA_w9$WHENTOW9)
+# We remove two id's which are not coincident with any other in the other waves of ALSA and whose data is empty.
+ALSA_w9 <- ALSA_w9[!ALSA_w9$id %in% c("3515","43202"),]
+load(paste0(datafolder,"w9/ybirth.RData"))
+ALSA_w9 <- left_join(ALSA_w9,ybirth, by="id")
+
+```
+
+```{r local w9, echo=F}
+
+vbl <- ALSA_w9$CANCEW9
+kable(Categorical_summary(vbl, missing_values = c(0))[3], caption = names(ALSA_w9)[2])
+kable(Categorical_summary(vbl, missing_values = c(0))[1], caption = "Category")
+ggplot(ALSA_w9, aes(x=factor(CANCEW9))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- ALSA_w9$WHENTOW9
+kable(Continuous_summary(var = vbl, missing_values = NA)[3], caption = names(ALSA_w9)[3])
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA_w9, aes(WHENTOW9)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1940,2005)
+
+vbl <- ALSA_w9$ybirth
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(ALSA_w9)[4])
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(ALSA_w9, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1885,1930)
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cancer` from the study-specific variable it has to be recoded as follows:
+
+* `change 2 into 0`
+* `keep up 1, ensuring it does not correspond to previous waves, into 1`
+* `0 into 995`
+* `otherwise into 999`
+
+To compute `cancer_age` from the study-specific variable it has to be recoded as follows:
+
+* `if cancer == 1, cancer_age = WHENTOW9 - ybirth`
+* `if cancer == 0, cancer_age = 996`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo w9}
+
+ALSA_w9 <- left_join(ALSA_w9,ALSA_ds, by="id")
+
+ALSA_ds_w9 <- tibble(id=ALSA_w9$id)
+ALSA_ds_w9$cancer <- rep(999,length(ALSA_w9$id))
+ALSA_ds_w9$cancer[which(ALSA_w9$CANCEW9==2)] <- 0
+ALSA_ds_w9$cancer[which(ALSA_w9$CANCEW9==0)] <- 995
+# Individuals having cancer since wave 7, so their year of diagnostic is at least 2003 or missing but until later previous wave interviewed they had no cancer.
+ALSA_ds_w9$cancer[which(ALSA_w9$CANCEW9==1 & ((ALSA_w9$WHENTOW9>=ALSA_w9$year_wave & ALSA_w9$WHENTOW9>ALSA_w9$past_year) | ALSA_w9$past_cancer==0))] <- 1
+
+# Continuous variable harmonization
+ALSA_ds_w9$cancer_age <- rep(999,length(ALSA_w9$id))
+ALSA_ds_w9$cancer_age[which(ALSA_ds_w9$cancer==0)] <- 996
+ALSA_ds_w9$cancer_age[which(ALSA_ds_w9$cancer==1 & ALSA_w9$WHENTOW9>=ALSA_w9$year_wave & ALSA_w9$WHENTOW9>ALSA_w9$past_year)] <- ALSA_w9$WHENTOW9[which(ALSA_ds_w9$cancer==1 & ALSA_w9$WHENTOW9>=ALSA_w9$year_wave & ALSA_w9$WHENTOW9>ALSA_w9$past_year)] - ALSA_w9$ybirth[which(ALSA_ds_w9$cancer==1 & ALSA_w9$WHENTOW9>=ALSA_w9$year_wave & ALSA_w9$WHENTOW9>ALSA_w9$past_year)]
+ALSA_ds_w9$cancer_age <- car::recode(ALSA_ds_w9$cancer_age,"NA=999")
+
+rm(ALSA_ds)
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w9, echo=F}
+
+vbl <- ALSA_ds_w9$cancer
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w9, aes(x=factor(cancer))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- ALSA_ds_w9$cancer_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(ALSA_ds_w9, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(70,95)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w9, echo=F, results='asis'}
+
+AfterH <- table(ALSA_ds_w9$cancer)
+X <- c(table(ALSA_w9$CANCEW9, useNA = "ifany")[c(3,1)],sum(ALSA_w9$CANCEW9==1 & ((ALSA_w9$WHENTOW9>=ALSA_w9$year_wave & ALSA_w9$WHENTOW9>ALSA_w9$past_year) | ALSA_w9$past_cancer==0),na.rm=T))
+BeforeH <- c(X[c(1,3,2)],length(ALSA_w7$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","0->995","NA->999")
+kable(C)
+
+cat("Individuals which in the previous interview told they had no cancer and in this wave told they had cancer and give year of diagnosis previous to the past interview. We harmonize them as having cancer but keep missing ages of diagnosis.")
+kable(ALSA_w9[which(ALSA_w9$CANCEW9==1 & ALSA_w9$past_cancer==0 & (ALSA_w9$WHENTOW9<ALSA_w9$year_wave | ALSA_w9$WHENTOW9<=ALSA_w9$past_year)),], align = 'c')
+
+```
+
+
+### Wave 10
+
+Not found.
+
+
+### Wave 11
+
+Not found.
+
+
+### Wave 12
+
+Not found.
+
+
+### Wave 13
+
+Not found.
+
+
+<!--
+```{r summary, include=F, eval=F, echo=F}
+kable(ALSA_ds[ALSA_ds$id %in% strange_id,], align = 'c', caption = 'Individuals with discrepancies')
+```
+-->
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
+
+**R script:**
+
+```{r summ}
+ALSA_ds_w1$cancer <- labelled(ALSA_ds_w1$cancer, labels = cat_label)
+label(ALSA_ds_w1$cancer) <- ds_label
+ALSA_ds_w1$cancer_age <- labelled(ALSA_ds_w1$cancer_age, labels = cont_label)
+label(ALSA_ds_w1$cancer_age) <- ds_label_age
+ALSA_ds_w6$cancer <- labelled(ALSA_ds_w6$cancer, labels = cat_label)
+label(ALSA_ds_w6$cancer) <- ds_label
+ALSA_ds_w6$cancer_age <- labelled(ALSA_ds_w6$cancer_age, labels = cont_label)
+label(ALSA_ds_w6$cancer_age) <- ds_label_age
+ALSA_ds_w7$cancer <- labelled(ALSA_ds_w7$cancer, labels = cat_label)
+label(ALSA_ds_w7$cancer) <- ds_label
+ALSA_ds_w7$cancer_age <- labelled(ALSA_ds_w7$cancer_age, labels = cont_label)
+label(ALSA_ds_w7$cancer_age) <- ds_label_age
+ALSA_ds_w9$cancer <- labelled(ALSA_ds_w9$cancer, labels = cat_label)
+label(ALSA_ds_w9$cancer) <- ds_label
+ALSA_ds_w9$cancer_age <- labelled(ALSA_ds_w9$cancer_age, labels = cont_label)
+label(ALSA_ds_w9$cancer_age) <- ds_label_age
+
+ALSA_m_ds_w1 <- ALSA_ds_w1
+ALSA_m_ds_w1$cancer <- car::recode(ALSA_m_ds_w1$cancer, "miss_values_vector=NA")
+ALSA_m_ds_w6 <- ALSA_ds_w6
+ALSA_m_ds_w6$cancer <- car::recode(ALSA_m_ds_w6$cancer, "miss_values_vector=NA")
+ALSA_m_ds_w7 <- ALSA_ds_w7
+ALSA_m_ds_w7$cancer <- car::recode(ALSA_m_ds_w7$cancer, "miss_values_vector=NA")
+ALSA_m_ds_w9 <- ALSA_ds_w9
+ALSA_m_ds_w9$cancer <- car::recode(ALSA_m_ds_w9$cancer, "miss_values_vector=NA")
+
+tt <-    frq(ALSA_ds_w1$cancer)[[1]][,c(1:2,4)]
+tt[4] <- frq(ALSA_ds_w6$cancer)[[1]][,c(4)]
+tt[5] <- frq(ALSA_ds_w7$cancer)[[1]][,c(4)]
+tt[6] <- frq(ALSA_ds_w9$cancer)[[1]][,c(4)]
+tt[13,] <- c("n", "sample size", 
+             length(ALSA_ds_w1$cancer), length(ALSA_ds_w6$cancer), length(ALSA_ds_w7$cancer), 
+             length(ALSA_ds_w9$cancer)
+             )
+names(tt)<-c("val", "label", "w1", "w6", "w7", "w9")
+kable(tt)
+
+dbb <- merge(ALSA_m_ds_w1[,c("id","cancer")], ALSA_m_ds_w6[,c("id","cancer")], by="id", suffixes = c(".w1",".w6"), all=T)
+dbb <- merge(dbb, ALSA_m_ds_w7[,c("id","cancer")], by="id", all=T)
+dbb <- merge(dbb, ALSA_m_ds_w9[,c("id","cancer")], by="id", suffixes = c(".w7",".w9"), all=T)
+names(dbb) <- c("id", "w1", "w6", "w7", "w9")
+v.dbb <- paste(dbb[,2],dbb[,3],dbb[,4],dbb[,5],sep="")
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb[f.dbb[,3]>=0.3,])
+```
+
+
+
+# Quality estimation
+
+In wave 3 we cannot harmonize because there are no study-specific variable for general cancer and the variables `W1CDN53` (`LUNG CANCER`), `W1CDN54` (`GYNAECOLOGICAL CANCER`), `W1CDN55` (`BREAST CANCER`), `W1CDN56` (`COLON/RECTAL/BOWEL CANCER`), `W1CDN60` (`PROSTATE CANCER`), `W1CDN61` (`BLADDER CANCER`), `W1CDN62` (`ANOTHER CANCER`), `W3OTH62` (`OTHER TYPE OF CANCER`) arehave all data missing.
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+l.ALSA <- list(w1 = ALSA_ds_w1, w6 = ALSA_ds_w6, w7 = ALSA_ds_w7, w9 = ALSA_ds_w9)
+
+for(index in seq_along(l.ALSA)){
+  cancer <- l.ALSA[[index]]
+  save(cancer, file = paste0(datafolder,names(l.ALSA)[index],"/cancer.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

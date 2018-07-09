@@ -1,0 +1,1286 @@
+---
+title: "Age"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+  
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+
+* Short name: `age`
+* Variable label: `age`
+* Variable description: `Age of participant at each wave`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+# Data process
+
+## ALSA
+
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `AGE` |
+|----------|------------|
+| **Label** | `Age` |
+| **Table name** | `ALSA-Wave1` |
+| **Missings** | `999 = Missing` |
+| **Description** |  |
+
+
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w1_age','ALSA.ALSA-Wave1',
+                         variables=list('AGE'), missings = TRUE)
+```
+
+```{r local1, echo=F}
+ALSA_w1_age <- opal.execute(o,'ALSA_w1_age')
+vari <- ALSA_w1_age$AGE
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`)
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_w1_age$AGE, missing_values = NA)
+ggplot(ALSA_w1_age, aes(AGE)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1}
+ALSA_ds_w1 <- tibble(id=ALSA_w1_age$id)
+ALSA_ds_w1$age <- car::recode(ALSA_w1_age$AGE, "NA=999")
+ALSA_ds_w1$age <- labelled(ALSA_ds_w1$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=F}
+vari <- ALSA_ds_w1$age
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_ds_w1$age, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w1, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") 
+```
+
+#### Validation
+```{r crosstabulation1, echo=F}
+```
+
+
+
+
+
+```{r importOPAL1, echo=F}
+
+#opal.assign.data(o, 'ALSA_ds_w1', ALSA_ds_w1)
+#opal.symbol_import(o,'ALSA_ds_w1', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w1 <- ALSA_ds_w1
+ALSA_m_ds_w1$age <- car::recode(ALSA_m_ds_w1$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w1', ALSA_m_ds_w1)
+#opal.symbol_import(o,'ALSA_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `AGE` |
+|----------|------------|
+| **Label** | `Age` |
+| **Table name** | `ALSA-Wave1` |
+| **Missings** | `999 = Missing` |
+| **Description** |  |
+
+
+```{r assign2, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w1_age','ALSA.ALSA-Wave1',
+                         variables=list('AGE'), missings = TRUE)
+opal.assign.table.tibble(o, 'ALSA_w2_id','ALSA.ALSA-Wave2',
+                         variables=list('DATE'), missings = TRUE)
+```
+
+```{r local2, echo=F}
+ALSA_w1_age <- opal.execute(o,'ALSA_w1_age')
+ALSA_w2_id <- opal.execute(o,'ALSA_w2_id')
+
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(rep(NA, dim(new)[1]*dim(new)[2] ), nrow = dim(new)[1])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], AGE=as.numeric(new_2[,2]))
+  new_22
+}
+
+ALSA_w2_age <- Add_indiv(old = ALSA_w1_age, new = ALSA_w2_id)
+
+vari <- ALSA_w2_age$AGE
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`)
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_w2_age$AGE, missing_values = NA)
+ggplot(ALSA_w2_age, aes(AGE)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable plus 1 years, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2}
+ALSA_ds_w2 <- tibble(id=ALSA_w2_age$id)
+ALSA_ds_w2$age <- car::recode(ALSA_w2_age$AGE+1, "NA=999")
+ALSA_ds_w2$age <- labelled(ALSA_ds_w2$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2, echo=F}
+vari <- ALSA_ds_w2$age
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_ds_w2$age, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w2, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") 
+```
+
+#### Validation
+```{r crosstabulation2, echo=F}
+```
+
+
+
+
+
+```{r importOPAL2, echo=F}
+
+#opal.assign.data(o, 'ALSA_ds_w2', ALSA_ds_w2)
+#opal.symbol_import(o,'ALSA_ds_w2', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w2 <- ALSA_ds_w2
+ALSA_m_ds_w2$age <- car::recode(ALSA_m_ds_w2$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w2', ALSA_m_ds_w2)
+#opal.symbol_import(o,'ALSA_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 3 
+
+#### Study-specific variable description
+
+| **Name** | `AGE` |
+|----------|------------|
+| **Label** | `Age` |
+| **Table name** | `ALSA-Wave1` |
+| **Missings** | `999 = Missing` |
+| **Description** |  |
+
+
+```{r assign3, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w1_age','ALSA.ALSA-Wave1',
+                         variables=list('AGE'), missings = TRUE)
+opal.assign.table.tibble(o, 'ALSA_w3_id','ALSA.ALSA-Wave3',
+                         variables=list('DOMICW3'), missings = TRUE)
+
+```
+
+```{r local3, echo=F}
+ALSA_w1_age <- opal.execute(o,'ALSA_w1_age')
+ALSA_w3_id <- opal.execute(o,'ALSA_w3_id')
+
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(rep(NA, dim(new)[1]*dim(new)[2] ), nrow = dim(new)[1])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], AGE=as.numeric(new_2[,2]))
+  new_22
+}
+
+ALSA_w3_age <- Add_indiv(old = ALSA_w1_age, new = ALSA_w3_id)
+
+vari <- ALSA_w3_age$AGE
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`)
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_w3_age$AGE, missing_values = NA)
+ggplot(ALSA_w1_age, aes(AGE)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable plus 2 years, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo3}
+ALSA_ds_w3 <- tibble(id=ALSA_w3_age$id)
+ALSA_ds_w3$age <- car::recode(ALSA_w3_age$AGE+2, "NA=999")
+ALSA_ds_w3$age <- labelled(ALSA_ds_w3$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript3, echo=F}
+vari <- ALSA_ds_w3$age
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_ds_w3$age, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w3, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") 
+```
+
+#### Validation
+```{r crosstabulation3, echo=F}
+```
+
+
+
+
+
+```{r importOPAL3, echo=F}
+
+#opal.assign.data(o, 'ALSA_ds_w3', ALSA_ds_w3)
+#opal.symbol_import(o,'ALSA_ds_w3', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w3 <- ALSA_ds_w3
+ALSA_m_ds_w3$age <- car::recode(ALSA_m_ds_w3$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w3', ALSA_m_ds_w3)
+#opal.symbol_import(o,'ALSA_m_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 4 
+
+#### Study-specific variable description
+
+| **Name** | `AGE` |
+|----------|------------|
+| **Label** | `Age` |
+| **Table name** | `ALSA-Wave1` |
+| **Missings** | `999 = Missing` |
+| **Description** |  |
+
+
+```{r assign4, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w1_age','ALSA.ALSA-Wave1',
+                         variables=list('AGE'), missings = TRUE)
+opal.assign.table.tibble(o, 'ALSA_w4_id','ALSA.ALSA-Wave4',
+                         variables=list('W4QUNO'), missings = TRUE)
+
+```
+
+```{r local4, echo=F}
+ALSA_w1_age <- opal.execute(o,'ALSA_w1_age')
+ALSA_w4_id <- opal.execute(o,'ALSA_w4_id')
+
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(rep(NA, dim(new)[1]*dim(new)[2] ), nrow = dim(new)[1])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], AGE=as.numeric(new_2[,2]))
+  new_22
+}
+
+ALSA_w4_age <- Add_indiv(old = ALSA_w1_age, new = ALSA_w4_id)
+
+vari <- ALSA_w4_age$AGE
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`)
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_w4_age$AGE, missing_values = NA)
+ggplot(ALSA_w4_age, aes(AGE)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable plus 3 years, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo4}
+ALSA_ds_w4 <- tibble(id=ALSA_w4_age$id)
+ALSA_ds_w4$age <- car::recode(ALSA_w4_age$AGE+3, "NA=999")
+ALSA_ds_w4$age <- labelled(ALSA_ds_w4$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript4, echo=F}
+vari <- ALSA_ds_w4$age
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_ds_w4$age, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w4, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") 
+```
+
+#### Validation
+```{r crosstabulation4, echo=F}
+```
+
+
+
+
+
+```{r importOPAL4, echo=F}
+
+#opal.assign.data(o, 'ALSA_ds_w4', ALSA_ds_w4)
+#opal.symbol_import(o,'ALSA_ds_w4', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w4 <- ALSA_ds_w4
+ALSA_m_ds_w4$age <- car::recode(ALSA_m_ds_w4$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w4', ALSA_m_ds_w4)
+#opal.symbol_import(o,'ALSA_m_ds_w4', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+### Wave 5 
+
+#### Study-specific variable description
+
+| **Name** | `AGE` |
+|----------|------------|
+| **Label** | `Age` |
+| **Table name** | `ALSA-Wave1` |
+| **Missings** | `999 = Missing` |
+| **Description** |  |
+
+
+```{r assign5, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w1_age','ALSA.ALSA-Wave1',
+                         variables=list('AGE'), missings = TRUE)
+opal.assign.table.tibble(o, 'ALSA_w5_id','ALSA.ALSA-Wave5',
+                         variables=list('INTTYPW5'), missings = TRUE)
+
+```
+
+```{r local5, echo=F}
+ALSA_w1_age <- opal.execute(o,'ALSA_w1_age')
+ALSA_w5_id <- opal.execute(o,'ALSA_w5_id')
+
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(rep(NA, dim(new)[1]*dim(new)[2] ), nrow = dim(new)[1])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], AGE=as.numeric(new_2[,2]))
+  new_22
+}
+
+ALSA_w5_age <- Add_indiv(old = ALSA_w1_age, new = ALSA_w5_id)
+
+vari <- ALSA_w5_age$AGE
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`)
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_w5_age$AGE, missing_values = NA)
+ggplot(ALSA_w5_age, aes(AGE)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable plus 4 years, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo5}
+ALSA_ds_w5 <- tibble(id=ALSA_w5_age$id)
+ALSA_ds_w5$age <- car::recode(ALSA_w5_age$AGE+4, "NA=999")
+ALSA_ds_w5$age <- labelled(ALSA_ds_w5$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript5, echo=F}
+vari <- ALSA_ds_w5$age
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_ds_w5$age, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w5, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") 
+```
+
+#### Validation
+```{r crosstabulation5, echo=F}
+```
+
+
+
+
+
+```{r importOPAL5, echo=F}
+
+#opal.assign.data(o, 'ALSA_ds_w5', ALSA_ds_w5)
+#opal.symbol_import(o,'ALSA_ds_w5', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w5 <- ALSA_ds_w5
+ALSA_m_ds_w5$age <- car::recode(ALSA_m_ds_w5$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w5', ALSA_m_ds_w5)
+#opal.symbol_import(o,'ALSA_m_ds_w5', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 6 
+
+#### Study-specific variable description
+
+| **Name** | `AGEW6` |
+|----------|------------|
+| **Label** | `Age at Wave6 interview` |
+| **Table name** | `ALSA-Wave6` |
+| **Description** |  |
+
+
+```{r assign6, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w6_age','ALSA.ALSA-Wave6',
+                         variables=list('AGEW6'), missings = TRUE)
+```
+
+```{r local6, echo=F}
+ALSA_w6_age <- opal.execute(o,'ALSA_w6_age')
+vari <- ALSA_w6_age$AGEW6
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`)
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_w6_age$AGEW6, missing_values = NA)
+ggplot(ALSA_w6_age, aes(AGEW6)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo6}
+ALSA_ds_w6 <- tibble(id=ALSA_w6_age$id)
+ALSA_ds_w6$age <- car::recode(ALSA_w6_age$AGEW6, "NA=999")
+ALSA_ds_w6$age <- labelled(ALSA_ds_w6$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript6, echo=F}
+vari <- ALSA_ds_w6$age
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_ds_w6$age, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w6, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") 
+```
+
+#### Validation
+```{r crosstabulation6, echo=F}
+```
+
+
+
+
+
+```{r importOPAL6, echo=F}
+
+#opal.assign.data(o, 'ALSA_ds_w6', ALSA_ds_w6)
+#opal.symbol_import(o,'ALSA_ds_w6', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w6 <- ALSA_ds_w6
+ALSA_m_ds_w6$age <- car::recode(ALSA_m_ds_w6$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w6', ALSA_m_ds_w6)
+#opal.symbol_import(o,'ALSA_m_ds_w6', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+### Wave 7 
+
+#### Study-specific variable description
+
+| **Name** | `AGE` |
+|----------|------------|
+| **Label** | `Age` |
+| **Table name** | `ALSA-Wave1` |
+| **Missings** | `999 = Missing` |
+| **Description** |  |
+
+
+    
+```{r assign7, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w1_age','ALSA.ALSA-Wave1',
+                         variables=list('AGE'), missings = TRUE)
+opal.assign.table.tibble(o, 'ALSA_w7_id','ALSA.ALSA-Wave7',
+                         variables=list('datew7'), missings = TRUE)
+```
+
+```{r local7, echo=F}
+ALSA_w1_age <- opal.execute(o,'ALSA_w1_age')
+ALSA_w7_id <- opal.execute(o,'ALSA_w7_id')
+
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(rep(NA, dim(new)[1]*dim(new)[2] ), nrow = dim(new)[1])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], AGE=as.numeric(new_2[,2]))
+  new_22
+}
+
+ALSA_w7_age <- Add_indiv(old = ALSA_w1_age, new = ALSA_w7_id)
+
+vari <- ALSA_w7_age$AGE
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`)
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_w7_age$AGE, missing_values = NA)
+ggplot(ALSA_w7_age, aes(AGE)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable plus 8 years, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo7}
+ALSA_ds_w7 <- tibble(id=ALSA_w7_age$id)
+ALSA_ds_w7$age <- car::recode(ALSA_w7_age$AGE+8, "NA=999")
+ALSA_ds_w7$age <- labelled(ALSA_ds_w7$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript7, echo=F}
+vari <- ALSA_ds_w7$age
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_ds_w7$age, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w7, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") 
+```
+
+#### Validation
+```{r crosstabulation7, echo=F}
+```
+
+
+
+
+
+```{r importOPAL7, echo=F}
+
+#opal.assign.data(o, 'ALSA_ds_w7', ALSA_ds_w7)
+#opal.symbol_import(o,'ALSA_ds_w7', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w7 <- ALSA_ds_w7
+ALSA_m_ds_w7$age <- car::recode(ALSA_m_ds_w7$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w7', ALSA_m_ds_w7)
+#opal.symbol_import(o,'ALSA_m_ds_w7', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+### Wave 8 
+
+#### Study-specific variable description
+
+| **Name** | `AGE` |
+|----------|------------|
+| **Label** | `Age` |
+| **Table name** | `ALSA-Wave1` |
+| **Missings** | `999 = Missing` |
+| **Description** |  |
+
+    
+```{r assign8, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w1_age','ALSA.ALSA-Wave1',
+                         variables=list('AGE'), missings = TRUE)
+opal.assign.table.tibble(o, 'ALSA_w8_id','ALSA.ALSA-Wave8',
+                         variables=list('Date'), missings = TRUE)
+```
+
+```{r local8, echo=F}
+ALSA_w1_age <- opal.execute(o,'ALSA_w1_age')
+ALSA_w8_id <- opal.execute(o,'ALSA_w8_id')
+
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(rep(NA, dim(new)[1]*dim(new)[2] ), nrow = dim(new)[1])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], AGE=as.numeric(new_2[,2]))
+  new_22
+}
+
+ALSA_w8_age <- Add_indiv(old = ALSA_w1_age, new = ALSA_w8_id)
+
+vari <- ALSA_w8_age$AGE
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`)
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_w8_age$AGE, missing_values = NA)
+ggplot(ALSA_w8_age, aes(AGE)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable plus 10 years, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo8}
+ALSA_ds_w8 <- tibble(id=ALSA_w8_age$id)
+ALSA_ds_w8$age <- car::recode(ALSA_w8_age$AGE+10, "NA=999")
+ALSA_ds_w8$age <- labelled(ALSA_ds_w8$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript8, echo=F}
+vari <- ALSA_ds_w8$age
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_ds_w8$age, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w8, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") 
+```
+
+#### Validation
+```{r crosstabulation8, echo=F}
+```
+
+
+
+
+
+```{r importOPAL8, echo=F}
+
+#opal.assign.data(o, 'ALSA_ds_w8', ALSA_ds_w8)
+#opal.symbol_import(o,'ALSA_ds_w8', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w8 <- ALSA_ds_w8
+ALSA_m_ds_w8$age <- car::recode(ALSA_m_ds_w8$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w8', ALSA_m_ds_w8)
+#opal.symbol_import(o,'ALSA_m_ds_w8', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 9 
+
+#### Study-specific variable description
+
+| **Name** | `AGE` |
+|----------|------------|
+| **Label** | `Age` |
+| **Table name** | `ALSA-Wave1` |
+| **Missings** | `999 = Missing` |
+| **Description** |  |
+
+
+```{r assign9, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w1_age','ALSA.ALSA-Wave1',
+                         variables=list('AGE'), missings = TRUE)
+opal.assign.table.tibble(o, 'ALSA_w9_id','ALSA.ALSA-Wave9',
+                         variables=list('sex'), missings = TRUE)
+
+```
+
+```{r local9, echo=F}
+ALSA_w1_age <- opal.execute(o,'ALSA_w1_age')
+ALSA_w9_id <- opal.execute(o,'ALSA_w9_id')
+
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(rep(NA, dim(new)[1]*dim(new)[2] ), nrow = dim(new)[1])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], AGE=as.numeric(new_2[,2]))
+  new_22
+}
+
+ALSA_w9_age <- Add_indiv(old = ALSA_w1_age, new = ALSA_w9_id)
+
+vari <- ALSA_w9_age$AGE
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`)
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_w9_age$AGE, missing_values = NA)
+ggplot(ALSA_w9_age, aes(AGE)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable plus 12 years, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo9}
+ALSA_ds_w9 <- tibble(id=ALSA_w9_age$id)
+ALSA_ds_w9$age <- car::recode(ALSA_w9_age$AGE+12, "NA=999")
+ALSA_ds_w9$age <- labelled(ALSA_ds_w9$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript9, echo=F}
+vari <- ALSA_ds_w9$age
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_ds_w9$age, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w9, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") + xlim(76,116) 
+```
+
+#### Validation
+```{r crosstabulation9, echo=F}
+```
+
+
+
+
+
+```{r importOPAL9, echo=F}
+
+#opal.assign.data(o, 'ALSA_ds_w9', ALSA_ds_w9)
+#opal.symbol_import(o,'ALSA_ds_w9', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w9 <- ALSA_ds_w9
+ALSA_m_ds_w9$age <- car::recode(ALSA_m_ds_w9$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w9', ALSA_m_ds_w9)
+#opal.symbol_import(o,'ALSA_m_ds_w9', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 10 
+
+#### Study-specific variable description
+
+| **Name** | `AGE` |
+|----------|------------|
+| **Label** | `Age` |
+| **Table name** | `ALSA-Wave1` |
+| **Missings** | `999 = Missing` |
+| **Description** |  |
+
+
+    
+```{r assign10, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w1_age','ALSA.ALSA-Wave1',
+                         variables=list('AGE'), missings = TRUE)
+opal.assign.table.tibble(o, 'ALSA_w10_id','ALSA.ALSA-Wave10',
+                         variables=list('Date'), missings = TRUE)
+```
+
+```{r local10, echo=F}
+ALSA_w1_age <- opal.execute(o,'ALSA_w1_age')
+ALSA_w10_id <- opal.execute(o,'ALSA_w10_id')
+
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(rep(NA, dim(new)[1]*dim(new)[2] ), nrow = dim(new)[1])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], AGE=as.numeric(new_2[,2]))
+  new_22
+}
+
+ALSA_w10_age <- Add_indiv(old = ALSA_w1_age, new = ALSA_w10_id)
+
+vari <- ALSA_w10_age$AGE
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`)
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_w10_age$AGE, missing_values = NA)
+ggplot(ALSA_w10_age, aes(AGE)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable plus 12.5 years, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo10}
+ALSA_ds_w10 <- tibble(id=ALSA_w10_age$id)
+ALSA_ds_w10$age <- car::recode(ALSA_w10_age$AGE+12.5, "NA=999")
+ALSA_ds_w10$age <- labelled(ALSA_ds_w10$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript10, echo=F}
+vari <- ALSA_ds_w10$age
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_ds_w10$age, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w10, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") + xlim(75,105)
+```
+
+#### Validation
+```{r crosstabulation10, echo=F}
+```
+
+
+
+
+
+```{r importOPAL10, echo=F}
+
+#opal.assign.data(o, 'ALSA_ds_w10', ALSA_ds_w10)
+#opal.symbol_import(o,'ALSA_ds_w10', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w10 <- ALSA_ds_w10
+ALSA_m_ds_w10$age <- car::recode(ALSA_m_ds_w10$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w10', ALSA_m_ds_w10)
+#opal.symbol_import(o,'ALSA_m_ds_w10', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 11 
+
+#### Study-specific variable description
+
+| **Name** | `AGEW11` |
+|----------|------------|
+| **Label** | `age w11` |
+| **Table name** | `ALSA-Wave11` |
+| **Description** |  |
+
+
+```{r assign11, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w11_age','ALSA.ALSA-Wave11',
+                         variables=list('AGEW11'), missings = TRUE)
+```
+
+```{r local11, echo=F}
+ALSA_w11_age <- opal.execute(o,'ALSA_w11_age')
+vari <- ALSA_w11_age$AGEW11
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`)
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_w11_age$AGEW11, missing_values = NA)
+ggplot(ALSA_w11_age, aes(AGEW11)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo11}
+ALSA_ds_w11 <- tibble(id=ALSA_w11_age$id)
+ALSA_ds_w11$age <- car::recode(ALSA_w11_age$AGEW11, "NA=999")
+ALSA_ds_w11$age <- labelled(ALSA_ds_w11$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript11, echo=F}
+vari <- ALSA_ds_w11$age
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_ds_w11$age, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w11, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") 
+```
+
+#### Validation
+```{r crosstabulation11, echo=F}
+```
+
+
+
+
+
+```{r importOPAL11, echo=F}
+
+#opal.assign.data(o, 'ALSA_ds_w11', ALSA_ds_w11)
+#opal.symbol_import(o,'ALSA_ds_w11', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w11 <- ALSA_ds_w11
+ALSA_m_ds_w11$age <- car::recode(ALSA_m_ds_w11$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w11', ALSA_m_ds_w11)
+#opal.symbol_import(o,'ALSA_m_ds_w11', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 12 
+
+#### Study-specific variable description
+
+| **Name** | `ageW12` |
+|----------|------------|
+| **Label** | `age w12` |
+| **Table name** | `ALSA-Wave12` |
+| **Description** |  |
+
+    
+```{r assign12, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w12_age','ALSA.ALSA-Wave12',
+                         variables=list('ageW12'), missings = TRUE)
+```
+
+```{r local12, echo=F}
+ALSA_w12_age <- opal.execute(o,'ALSA_w12_age')
+vari <- ALSA_w12_age$ageW12
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`)
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_w12_age$ageW12, missing_values = NA)
+ggplot(ALSA_w12_age, aes(ageW12)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo12}
+ALSA_ds_w12 <- tibble(id=ALSA_w12_age$id)
+ALSA_ds_w12$age <- car::recode(ALSA_w12_age$ageW12, "NA=999")
+ALSA_ds_w12$age <- labelled(ALSA_ds_w12$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript12, echo=F}
+vari <- ALSA_ds_w12$age
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_ds_w12$age, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w12, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") 
+```
+
+#### Validation
+```{r crosstabulation12, echo=F}
+```
+
+
+
+
+
+```{r importOPAL12, echo=F}
+
+#opal.assign.data(o, 'ALSA_ds_w12', ALSA_ds_w12)
+#opal.symbol_import(o,'ALSA_ds_w12', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w12 <- ALSA_ds_w12
+ALSA_m_ds_w12$age <- car::recode(ALSA_m_ds_w12$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w12', ALSA_m_ds_w12)
+#opal.symbol_import(o,'ALSA_m_ds_w12', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 13 
+
+#### Study-specific variable description
+
+| **Name** | `AGE` |
+|----------|------------|
+| **Label** | `Age` |
+| **Table name** | `ALSA-Wave1` |
+| **Missings** | `999 = Missing` |
+| **Description** |  |
+
+    
+```{r assign13, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w1_age','ALSA.ALSA-Wave1',
+                         variables=list('AGE'), missings = TRUE)
+opal.assign.table.tibble(o, 'ALSA_w13_id','ALSA.ALSA-Wave13',
+                         variables=list('proxy'), missings = TRUE)
+
+```
+
+```{r local13, echo=F}
+ALSA_w1_age <- opal.execute(o,'ALSA_w1_age')
+ALSA_w13_id <- opal.execute(o,'ALSA_w13_id')
+
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(rep(NA, dim(new)[1]*dim(new)[2] ), nrow = dim(new)[1])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], AGE=as.numeric(new_2[,2]))
+  new_22
+}
+
+ALSA_w13_age <- Add_indiv(old = ALSA_w1_age, new = ALSA_w13_id)
+
+vari <- ALSA_w13_age$AGE
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = attributes(vari)$`spss::shortName`)
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_w13_age$AGE, missing_values = NA)
+ggplot(ALSA_w13_age, aes(AGE)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable plus 17 years, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo13}
+ALSA_ds_w13 <- tibble(id=ALSA_w13_age$id)
+ALSA_ds_w13$age <- car::recode(ALSA_w13_age$AGE+17, "NA=999")
+ALSA_ds_w13$age <- labelled(ALSA_ds_w13$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript13, echo=F}
+vari <- ALSA_ds_w13$age
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+#Continuous_summary(var = ALSA_ds_w13$age, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(ALSA_ds_w13, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") + xlim(80,100)
+```
+
+#### Validation
+```{r crosstabulation13, echo=F}
+```
+
+
+
+
+
+```{r importOPAL13, echo=F}
+
+#opal.assign.data(o, 'ALSA_ds_w13', ALSA_ds_w13)
+#opal.symbol_import(o,'ALSA_ds_w13', project='_Athlos_Harm_Dataset')
+
+ALSA_m_ds_w13 <- ALSA_ds_w13
+ALSA_m_ds_w13$age <- car::recode(ALSA_m_ds_w13$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'ALSA_m_ds_w13', ALSA_m_ds_w13)
+#opal.symbol_import(o,'ALSA_m_ds_w13', project='_Athlos_Harm_Dataset')
+```
+
+
+
+# Quality estimation
+In all waves except 1, 6, 11 ad 12, age is imputed by adding the years in between waves.
+
+
+```{r save, echo=FALSE}
+age <- ALSA_ds_w1
+save(age, file = "../RData/w1/age.RData")
+rm(age)
+
+age <- ALSA_ds_w2
+save(age, file = "../RData/w2/age.RData")
+rm(age)
+
+age <- ALSA_ds_w3
+save(age, file = "../RData/w3/age.RData")
+rm(age)
+
+age <- ALSA_ds_w4
+save(age, file = "../RData/w4/age.RData")
+rm(age)
+
+age <- ALSA_ds_w5
+save(age, file = "../RData/w5/age.RData")
+rm(age)
+
+age <- ALSA_ds_w6
+save(age, file = "../RData/w6/age.RData")
+rm(age)
+
+age <- ALSA_ds_w7
+save(age, file = "../RData/w7/age.RData")
+rm(age)
+
+age <- ALSA_ds_w8
+save(age, file = "../RData/w8/age.RData")
+rm(age)
+
+age <- ALSA_ds_w9
+save(age, file = "../RData/w9/age.RData")
+rm(age)
+
+age <- ALSA_ds_w10
+save(age, file = "../RData/w10/age.RData")
+rm(age)
+
+age <- ALSA_ds_w11
+save(age, file = "../RData/w11/age.RData")
+rm(age)
+
+age <- ALSA_ds_w12
+save(age, file = "../RData/w12/age.RData")
+rm(age)
+
+age <- ALSA_ds_w13
+save(age, file = "../RData/w13/age.RData")
+rm(age)
+```
+
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
