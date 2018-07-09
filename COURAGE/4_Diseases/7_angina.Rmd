@@ -1,0 +1,682 @@
+---
+title: "Angina"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `h_angina`
+* Variable label: `History of angina`
+* Variable description: `history of angina`
+* Domain: `Diseases`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | no history of angina
+1        | history of angina
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+* Short name: `h_angina_age`
+* Variable label: `Age first diagnosed angina`
+* Variable description: `The age first told had angina diagnosis`
+* Domain: `Diseases`
+* Value type: `Continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+<!-- # Global variables -->
+```{r global, include=FALSE, echo=F}
+miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
+ds_label <- "History of angina"
+ds_label_age <- "Age first diagnosed angina"
+cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
+cont_label <- cat_label[3:11]
+datafolder <- "../RData/"
+#sing_idlist <- c()
+```
+<!-- ########################################################## --> 
+
+
+
+# Data process
+
+
+
+## Finland
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `q4014_angina` |
+|-|-|
+| **Label** | `Angina`|
+| **Table name**  | `Courage_Finland_w1`|
+| **Categories** | `1 = Yes`<br/>`2 = No` |
+| **Missings** | `NA`|
+| **Description** |  |
+
+```{r assign fin_w1, echo=F}
+
+opal.assign.table.tibble(o, 'COURAGE_fin_w1','Courage.Courage_Finland_w1',variables=list('q4014_angina'), missings = T)
+COURAGE_fin_w1 <- opal.execute(o,'COURAGE_fin_w1')
+
+```
+
+```{r local fin_w1, echo=F}
+
+vbl <- COURAGE_fin_w1$q4014_angina
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(COURAGE_fin_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(COURAGE_fin_w1, aes(x=factor(q4014_angina))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_angina` from the study-specific variable it has to be recoded as follows:
+
+* `change 2 into 0`
+* `keep up 1 into 1`
+* `NA into 999`
+
+Age of diagnosis cannot be harmonized.
+
+**R script:**
+
+```{r harmo fin_w1}
+
+# Categorical variable harmonization
+COURAGE_ds_fin_w1 <- tibble(id=COURAGE_fin_w1$id)
+COURAGE_ds_fin_w1$h_angina <- car::recode(COURAGE_fin_w1$q4014_angina, "2=0; NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript fin_w1, echo=F}
+
+vbl <- COURAGE_ds_fin_w1$h_angina
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(COURAGE_ds_fin_w1, aes(x=factor(h_angina))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation fin_w1, echo=F}
+
+AfterH <- table(COURAGE_ds_fin_w1$h_angina, useNA = "ifany")
+BeforeH <- table(COURAGE_fin_w1$q4014_angina, useNA = "ifany")[c(2,1,3)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","NA->999")
+kable(C)
+rm(COURAGE_fin_w1)
+
+```
+
+
+
+## Poland
+
+### Wave 1
+
+#### Study-specific variable description
+
+| **Name** | `q4014_angina` |
+|-|-|
+| **Label** | `Angina`|
+| **Table name**  | `Courage_Poland_w1`|
+| **Categories** | `1 = Yes`<br/>`2 = No` |
+| **Missings** |`8 = DK`|
+| **Description** |  |
+
+```{r assign pol_w1, echo=F}
+
+opal.assign.table.tibble(o, 'COURAGE_pol_w1','Courage.Courage_Poland_w1',variables=list('q4014_angina'), missings = T)
+COURAGE_pol_w1 <- opal.execute(o,'COURAGE_pol_w1')
+
+```
+
+```{r local pol_w1, echo=F}
+
+vbl <- COURAGE_pol_w1$q4014_angina
+kable(Categorical_summary(vbl, missing_values = c(8))[3], caption = names(COURAGE_pol_w1)[2])
+kable(Categorical_summary(vbl, missing_values = c(8))[1], caption = "Category")
+ggplot(COURAGE_pol_w1, aes(x=factor(q4014_angina))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_angina` from the study-specific variable it has to be recoded as follows:
+
+* `change 2 into 0`
+* `keep up 1 into 1`
+* `8 into 998`
+* `NA into 999`
+
+Age of diagnosis cannot be harmonized.
+
+**R script:**
+
+```{r harmo pol_w1}
+
+# Categorical variable harmonization
+COURAGE_ds_pol_w1 <- tibble(id=COURAGE_pol_w1$id)
+COURAGE_ds_pol_w1$h_angina <- car::recode(COURAGE_pol_w1$q4014_angina, "2=0; 8=998; NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript pol_w1, echo=F}
+
+vbl <- COURAGE_ds_pol_w1$h_angina
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(COURAGE_ds_pol_w1, aes(x=factor(h_angina))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation pol_w1, echo=F}
+
+AfterH <- table(COURAGE_ds_pol_w1$h_angina, useNA = "ifany")
+BeforeH <- table(COURAGE_pol_w1$q4014_angina, useNA = "ifany")[c(2,1,3)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","8->998")
+kable(C)
+rm(COURAGE_pol_w1)
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `q4014_angina_s1` |`age`|`yintw (pol_w1)`|`yintw (pol_w2)`|
+|-|-|-|-|-|
+| **Label** | `Angina`|`age`|`year of interview`|`year of interview`|
+| **Table name**  | `Courage_Poland_w2`|`age`|`yintw`|`yintw`|
+| **Categories** | `1 = Yes`<br/>`2 = No` |`continuous`|`continuous`|`continuous`|
+| **Missings** | `NA`|  |  |  |
+| **Description** |  |  |  |  |
+
+```{r assign pol_w2, echo=F}
+
+opal.assign.table.tibble(o, 'COURAGE_pol_w2','Courage.Courage_Poland_w2',variables=list('q4014_angina_s1'), missings = T)
+COURAGE_pol_w2 <- opal.execute(o,'COURAGE_pol_w2')
+load(paste0(datafolder,"pol_w2/age.RData"))
+COURAGE_pol_w2 <- left_join(COURAGE_pol_w2,age, by="id")
+load(paste0(datafolder,"pol_w1/yintw.RData"))
+COURAGE_pol_w2 <- left_join(COURAGE_pol_w2,yintw, by="id")
+names(COURAGE_pol_w2)[4] <- "yintw_pol_w1"
+rm(yintw)
+load(paste0(datafolder,"pol_w2/yintw.RData"))
+COURAGE_pol_w2 <- left_join(COURAGE_pol_w2,yintw, by="id")
+names(COURAGE_pol_w2)[5] <- "yintw_pol_w2"
+rm(yintw)
+
+```
+
+```{r local pol_w2, echo=F}
+
+vbl <- COURAGE_pol_w2$q4014_angina_s1
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(COURAGE_pol_w2)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(COURAGE_pol_w2, aes(x=factor(q4014_angina_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_pol_w2$age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(COURAGE_pol_w2)[3])
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(COURAGE_pol_w2, aes(age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(15,95)
+
+vbl <- COURAGE_pol_w2$yintw_pol_w1
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(COURAGE_pol_w2)[4])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(COURAGE_pol_w2, aes(x=factor(yintw_pol_w1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_pol_w2$yintw_pol_w2
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(COURAGE_pol_w2)[5])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(COURAGE_pol_w2, aes(x=factor(yintw_pol_w2))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_angina` from the study-specific variable it has to be recoded as follows:
+
+* `q4014_angina == 2 and q4014_angina_s1 == 2 into 0`
+* `q4014_angina == 1 or q4014_angina_s1 == 1 into 1`
+* `otherwise into 999`
+
+To compute `h_angina_age` from the study-specific variable it has to be recoded as follows:
+
+* `if h_angina == 1 in w2 and 0 in w1, h_angina_age = age-(year of interview w2-year of interview w1)/2`
+* `if h_angina == 0, h_angina_age = 996`
+* `h_angina == missing into 999`
+
+**R script:**
+
+```{r harmo pol_w2}
+
+COURAGE_pol_w2 <- left_join(COURAGE_pol_w2, COURAGE_ds_pol_w1, by = "id")
+
+# Categorical variable harmonization
+COURAGE_ds_pol_w2 <- tibble(id=COURAGE_pol_w2$id)
+COURAGE_ds_pol_w2$h_angina <- rep(999,length(COURAGE_pol_w2$id))
+COURAGE_ds_pol_w2$h_angina[which(COURAGE_pol_w2$q4014_angina_s1 == 2 & ((is.na(COURAGE_pol_w2$h_angina)) | COURAGE_pol_w2$h_angina != 1))] <- 0
+COURAGE_ds_pol_w2$h_angina[which(COURAGE_pol_w2$q4014_angina_s1 == 1 | ((!is.na(COURAGE_pol_w2$q4014_angina_s1)) & COURAGE_pol_w2$h_angina == 1))] <- 1
+
+# Continuous variable harmonization
+COURAGE_ds_pol_w2$h_angina_age <- rep(999,length(COURAGE_pol_w2$id))
+COURAGE_ds_pol_w2$h_angina_age[which(COURAGE_ds_pol_w2$h_angina == 0)] <- 996
+COURAGE_ds_pol_w2$h_angina_age[which(COURAGE_ds_pol_w2$h_angina == 1 & COURAGE_pol_w2$h_angina==0)] <- COURAGE_pol_w2$age[which(COURAGE_ds_pol_w2$h_angina == 1 & COURAGE_pol_w2$h_angina==0)]-(COURAGE_pol_w2$yintw_pol_w2[which(COURAGE_ds_pol_w2$h_angina == 1 & COURAGE_pol_w2$h_angina==0)]-COURAGE_pol_w2$yintw_pol_w1[which(COURAGE_ds_pol_w2$h_angina == 1 & COURAGE_pol_w2$h_angina==0)])/2
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript pol_w2, echo=F}
+
+vbl <- COURAGE_ds_pol_w2$h_angina
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(COURAGE_ds_pol_w2, aes(x=factor(h_angina))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- COURAGE_ds_pol_w2$h_angina_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(COURAGE_ds_pol_w2, aes(h_angina_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(15,90)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation pol_w2, echo=F, results='asis'}
+
+AfterH <- table(COURAGE_ds_pol_w2$h_angina, useNA = "ifany")
+X <- c(
+  sum(COURAGE_pol_w2$q4014_angina_s1 == 2 & ((is.na(COURAGE_pol_w2$h_angina)) | COURAGE_pol_w2$h_angina != 1),na.rm=T),
+  sum(COURAGE_pol_w2$q4014_angina_s1 == 1 | ((!is.na(COURAGE_pol_w2$q4014_angina_s1)) & COURAGE_pol_w2$h_angina == 1),na.rm=T)
+)
+BeforeH <- c(X[1:2],length(COURAGE_pol_w2$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","NA->999")
+kable(C)
+
+cat("There are 46 individuals who answered in the previous wave that they were diagnosed to have angina and in the second wave that they were not told to have it. We harmonize them as having it.")
+kable(frq(COURAGE_pol_w2$h_angina[which(COURAGE_pol_w2$q4014_angina_s1==2)]), align = 'c')
+#kable(COURAGE_pol_w2[which(COURAGE_pol_w2$id %in% COURAGE_pol_w2$id[which(COURAGE_pol_w2$q4014_angina_s1==2 & COURAGE_pol_w2$h_angina==1)]),], align = 'c')
+
+```
+
+
+
+## Spain
+
+### Wave 1
+
+#### Study-specific variable description
+
+| **Name** | `q4014_angina` |
+|-|-|
+| **Label** | `Angina`|
+| **Table name**  | `Courage_Spain_w1`|
+| **Categories** | `1 = Yes`<br/>`2 = No` |
+| **Missings** | `8 = DK` |
+| **Description** |  |
+
+```{r assign spain_w1, echo=F}
+
+opal.assign.table.tibble(o, 'COURAGE_spain_w1','Courage.Courage_Spain_w1',variables=list('q4014_angina'), missings = T)
+COURAGE_spain_w1 <- opal.execute(o,'COURAGE_spain_w1')
+
+```
+
+```{r local spain_w1, echo=F}
+
+vbl <- COURAGE_spain_w1$q4014_angina
+kable(Categorical_summary(vbl, missing_values = c(8))[3], caption = names(COURAGE_spain_w1)[2])
+kable(Categorical_summary(vbl, missing_values = c(8))[1], caption = "Category")
+ggplot(COURAGE_spain_w1, aes(x=factor(q4014_angina))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_angina` from the study-specific variable it has to be recoded as follows:
+
+* `change 2 into 0`
+* `keep up 1 into 1`
+* `NA into 999`
+* `8 into 998`
+
+Age of diagnosis cannot be harmonized.
+
+**R script:**
+
+```{r harmo spain_w1}
+
+# Categorical variable harmonization
+COURAGE_ds_spain_w1 <- tibble(id=COURAGE_spain_w1$id)
+COURAGE_ds_spain_w1$h_angina <- car::recode(COURAGE_spain_w1$q4014_angina, "2=0; NA=999; 8 = 998")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript spain_w1, echo=F}
+
+vbl <- COURAGE_ds_spain_w1$h_angina
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(COURAGE_ds_spain_w1, aes(x=factor(h_angina))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation spain_w1, echo=F}
+
+AfterH <- table(COURAGE_ds_spain_w1$h_angina, useNA = "ifany")
+BeforeH <- table(COURAGE_spain_w1$q4014_angina, useNA = "ifany")[c(2,1,3)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","8->998")
+kable(C)
+rm(COURAGE_spain_w1)
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `q4014_angina_s1` |`age`|`yintw (spain_w1)`|`yintw (spain_w2)`|
+|-|-|-|-|-|
+| **Label** | `Angina`|`age`|`year of interview`|`year of interview`|
+| **Table name**  | `Courage_Spain_w2_1`|`age`|`yintw`|`yintw`|
+| **Categories** | `1 = Yes`<br/>`2 = No` |`continuous`|`continuous`|`continuous`|
+| **Missings** | `NA`| `999 = Missing` |  |  |
+| **Description** |  |  |  |  |
+
+```{r assign spain_w2, echo=F}
+
+opal.assign.table.tibble(o, 'COURAGE_spain_w2','Courage.Courage_Spain_w2_1',variables=list('q4014_angina_s1'), missings = T)
+COURAGE_spain_w2 <- opal.execute(o,'COURAGE_spain_w2')
+load(paste0(datafolder,"spain_w2/age.RData"))
+COURAGE_spain_w2 <- left_join(COURAGE_spain_w2,age, by="id")
+load(paste0(datafolder,"spain_w1/yintw.RData"))
+COURAGE_spain_w2 <- left_join(COURAGE_spain_w2,yintw, by="id")
+names(COURAGE_spain_w2)[4] <- "yintw_spain_w1"
+rm(yintw)
+load(paste0(datafolder,"spain_w2/yintw.RData"))
+COURAGE_spain_w2 <- left_join(COURAGE_spain_w2,yintw, by="id")
+names(COURAGE_spain_w2)[5] <- "yintw_spain_w2"
+rm(yintw)
+
+```
+
+```{r local spain_w2, echo=F}
+
+vbl <- COURAGE_spain_w2$q4014_angina_s1
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(COURAGE_spain_w2)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(COURAGE_spain_w2, aes(x=factor(q4014_angina_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_spain_w2$age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(COURAGE_spain_w2)[3])
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(COURAGE_spain_w2, aes(age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(20,115)
+
+vbl <- COURAGE_spain_w2$yintw_spain_w1
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(COURAGE_spain_w2)[4])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(COURAGE_spain_w2, aes(x=factor(yintw_spain_w1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_spain_w2$yintw_spain_w2
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(COURAGE_spain_w2)[5])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(COURAGE_spain_w2, aes(x=factor(yintw_spain_w2))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_angina` from the study-specific variable it has to be recoded as follows:
+
+* `q4014_angina == 2 and q4014_angina_s1 == 2 into 0`
+* `q4014_angina == 1 or q4014_angina_s1 == 1 into 1`
+* `otherwise into 999`
+
+To compute `h_angina_age` from the study-specific variable it has to be recoded as follows:
+
+* `if h_angina == 1 in w2 and 0 in w1, h_angina_age = age-(year of interview w2-year of interview w1)/2`
+* `if h_angina == 0, h_angina_age = 996`
+* `h_angina == missing into 999`
+
+**R script:**
+
+```{r harmo spain_w2}
+
+# Categorical variable harmonization
+COURAGE_ds_spain_w2 <- tibble(id=COURAGE_spain_w2$id)
+
+COURAGE_spain_w2 <- left_join(COURAGE_spain_w2, COURAGE_ds_spain_w1, by = "id")
+COURAGE_ds_spain_w2$h_angina <- rep(999,length(COURAGE_spain_w2$id))
+COURAGE_ds_spain_w2$h_angina[which(COURAGE_spain_w2$q4014_angina_s1 == 2 & ((is.na(COURAGE_spain_w2$h_angina)) | COURAGE_spain_w2$h_angina != 1))] <- 0
+COURAGE_ds_spain_w2$h_angina[which(COURAGE_spain_w2$q4014_angina_s1 == 1 | ((!is.na(COURAGE_spain_w2$q4014_angina_s1)) & COURAGE_spain_w2$h_angina == 1))] <- 1
+
+# Continuous variable harmonization
+COURAGE_ds_spain_w2$h_angina_age <- rep(999,length(COURAGE_spain_w2$id))
+COURAGE_ds_spain_w2$h_angina_age[which(COURAGE_ds_spain_w2$h_angina == 0)] <- 996
+COURAGE_ds_spain_w2$h_angina_age[which(COURAGE_ds_spain_w2$h_angina == 1 & COURAGE_spain_w2$h_angina==0)] <- COURAGE_spain_w2$age[which(COURAGE_ds_spain_w2$h_angina == 1 & COURAGE_spain_w2$h_angina==0)]-(COURAGE_spain_w2$yintw_spain_w2[which(COURAGE_ds_spain_w2$h_angina == 1 & COURAGE_spain_w2$h_angina==0)]-COURAGE_spain_w2$yintw_spain_w1[which(COURAGE_ds_spain_w2$h_angina == 1 & COURAGE_spain_w2$h_angina==0)])/2
+
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript spain_w2, echo=F}
+
+vbl <- COURAGE_ds_spain_w2$h_angina
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(COURAGE_ds_spain_w2, aes(x=factor(h_angina))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- COURAGE_ds_spain_w2$h_angina_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(COURAGE_ds_spain_w2, aes(h_angina_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(25,90)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation spain_w2, echo=F,results='asis'}
+
+AfterH <- table(COURAGE_ds_spain_w2$h_angina, useNA = "ifany")
+X <- c(
+  sum(COURAGE_spain_w2$q4014_angina_s1 == 2 & ((is.na(COURAGE_spain_w2$h_angina)) | COURAGE_spain_w2$h_angina != 1),na.rm=T),
+  sum(COURAGE_spain_w2$q4014_angina_s1 == 1 | ((!is.na(COURAGE_spain_w2$q4014_angina_s1)) & COURAGE_spain_w2$h_angina == 1),na.rm=T)
+)
+BeforeH <- c(X[1:2],length(COURAGE_spain_w2$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","NA->999")
+kable(C)
+
+cat("There is 1 individual who answered in the previous wave it was diagnosed to have angina and in the second wave that it was not told to have it. We harmonize it as having angina")
+kable(frq(COURAGE_spain_w2$h_angina[which(COURAGE_spain_w2$q4014_angina_s1==2)]), align = 'c')
+
+```
+
+
+
+
+
+## Descriptive statistics of the harmonised variable accross populations and waves
+
+Percentages of categories in each harmonised variable by cohort:
+
+**R script:**
+
+```{r summ}
+
+lb.hds <- list(fin_w1 = COURAGE_ds_fin_w1, pol_w1 = COURAGE_ds_pol_w1, spain_w1 = COURAGE_ds_spain_w1)
+lf.hds <- list(pol_w2 = COURAGE_ds_pol_w2, spain_w2 = COURAGE_ds_spain_w2)
+
+for(name in names(lb.hds)) {
+  m_name <- paste0("COURAGE_m_ds_",name)
+  aux_object <- lb.hds[[name]]
+  label(lb.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
+  lb.hds[[name]][[2]] <- labelled(lb.hds[[name]][[2]], labels = cat_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+for(name in names(lf.hds)) {
+  m_name <- paste0("COURAGE_m_ds_",name)
+  aux_object <- lf.hds[[name]]
+  label(lf.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
+  lf.hds[[name]][[2]] <- labelled(lf.hds[[name]][[2]], labels = cat_label)
+  label(lf.hds[[name]][[3]]) <- label(aux_object[[3]]) <- ds_label_age # Text value assigned at the DS description, at the top
+  lf.hds[[name]][[3]] <- labelled(lf.hds[[name]][[3]], labels = cont_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+l.hds <- c(lb.hds,lf.hds)
+ln.hds <- c("fin_w1","pol_w1","pol_w2","spain_w1","spain_w2")
+
+t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+for (i in seq_along(ln.hds)){
+  t.hds[2+i] <- frq(l.hds[[ln.hds[i]]][2])[[1]][,4] 
+}
+t.hds[13,] <- c("n", "sample size", 
+             length(l.hds[["fin_w1"]][[2]]), length(l.hds[["pol_w1"]][[2]]) , length(l.hds[["pol_w2"]][[2]]), length(l.hds[["spain_w1"]][[2]]), length(l.hds[["spain_w2"]][[2]]))
+names(t.hds)<-c("val", "label", "Finland_w1", "Poland_W1", "Poland_W2", "Spain_W1", "Spain_W2")
+kable(t.hds)
+
+```
+
+
+
+# Quality estimation
+
+We assume that if an individual answers it has angina in one wave, it has for all the next waves. Individuals with discrepancies with respect to this criterium are specified at the end of the corresponding validations.
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+for(index in seq_along(l.hds)){
+  h_angina <- l.hds[[index]]
+  save(h_angina, file = paste0(datafolder,names(l.hds)[index],"/h_angina.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

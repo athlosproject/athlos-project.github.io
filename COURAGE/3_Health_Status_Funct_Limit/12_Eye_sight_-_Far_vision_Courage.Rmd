@@ -1,0 +1,480 @@
+---
+title: "Eye sight - Far vision"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+
+* Short name: `eye_far`
+* Variable label: `Eyesight - far vision`
+* Variable description: `Difficulties for far vision.`
+* Domain: `Health status and functional limitations`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | Yes
+1        | No
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+# Data process
+
+
+## Spain
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `q2023_vis_diff`
+* Label: `Visual difficulty far`
+* Categories:
+   + `1 = None` 
+   + `2 = Mild` 
+   + `3 = Moderate` 
+   + `4 = Severe`
+   + `5 = Extreme`
+* Missings
+   + `8 = Don't know`
+   + `9 = Not Applicable`
+   + `NA`
+
+```{r assign Spain w1, echo=F}
+opal.assign.table.tibble(o, 'COURAGE_Spain_w1_eye_far','Courage.Courage_Spain_w1', variables=list('q2023_vis_diff'), missings = TRUE)
+```
+
+```{r local Spain w1, echo=F}
+COURAGE_Spain_w1_eye_far <-opal.execute(o,'COURAGE_Spain_w1_eye_far')
+vari <- COURAGE_Spain_w1_eye_far$q2023_vis_diff
+kable(Categorical_summary(vari, missing_values = c(8,9))[3], caption = "q2023_vis_diff")
+kable(Categorical_summary(vari, missing_values = c(8,9))[1], caption = "Category")
+ggplot(COURAGE_Spain_w1_eye_far, aes(x=factor(q2023_vis_diff))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Eye Sight - Far Vision") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 0` 
+* `3 into 0` 
+* `4 into 0` 
+* `5 into 0`  
+* `8 into 998`
+* `9 into 996`
+* `NA into 999`
+
+```{r harmo Spain w1}
+COURAGE_ds_spain_w1 <- tibble(id=COURAGE_Spain_w1_eye_far$id)
+COURAGE_ds_spain_w1$eye_far <- car::recode(COURAGE_Spain_w1_eye_far$q2023_vis_diff, "1 = '1';2 = '0';3 = '0';4 = '0';5 = '0';8 = '998'; 9 = '996';NA = '999' ")
+COURAGE_ds_spain_w1$eye_far <- labelled(COURAGE_ds_spain_w1$eye_far, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript Spain w1, echo=F}
+vari <- COURAGE_ds_spain_w1$eye_far
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "eye_far")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(COURAGE_ds_spain_w1, aes(x=factor(eye_far))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Eye Sight - Far Vision") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation Spain w1, echo=F}
+AfterH <- table(COURAGE_ds_spain_w1$eye_far)
+X <- table(COURAGE_Spain_w1_eye_far$q2023_vis_diff)
+BeforeH<- c(sum(X[2:5]),X[c(1,7,6)])
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2,3,4,5->0","1->1","8->998","9->996") 
+kable(C)
+```
+
+```{r importOPAL Spain w1, echo=FALSE}
+label(COURAGE_ds_spain_w1$eye_far) <- "Eyesight - far vision"
+#opal.assign.data(o, 'COURAGE_ds_spain_w1', COURAGE_ds_spain_w1)
+#opal.symbol_import(o,'COURAGE_ds_spain_w1', project='_Athlos_Harm_Dataset')
+eye_far <- COURAGE_ds_spain_w1
+save(eye_far, file = "../RData/spain_w1/eye_far.RData")
+
+COURAGE_m_ds_spain_w1 <- COURAGE_ds_spain_w1
+COURAGE_m_ds_spain_w1$eye_far <- car::recode(COURAGE_m_ds_spain_w1$eye_far, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'COURAGE_m_ds_spain_w1', COURAGE_m_ds_spain_w1)
+#opal.symbol_import(o,'COURAGE_m_ds_spain_w1', project='_Athlos_Harm_Dataset')
+```
+
+### Wave 2
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `q2023_vis_diff_s1`
+* Label: `Visual difficulty far`
+* Categories:
+   + `1 = None` 
+   + `2 = Mild` 
+   + `3 = Moderate` 
+   + `4 = Severe`
+   + `5 = Extreme`
+* Missings
+   + `8 = Don't know`
+   + `NA`
+
+```{r assign Spain w2, echo=F}
+opal.assign.table.tibble(o, 'COURAGE_Spain_w2_eye_far','Courage.Courage_Spain_w2_1', variables=list('q2023_vis_diff_s1'), missings = TRUE)
+```
+
+```{r local Spain w2, echo=F}
+COURAGE_Spain_w2_eye_far <- opal.execute(o,'COURAGE_Spain_w2_eye_far')
+vari <- COURAGE_Spain_w2_eye_far$q2023_vis_diff_s1
+kable(Categorical_summary(vari, missing_values = c(8))[3], caption = "q2023_vis_diff_s1")
+kable(Categorical_summary(vari, missing_values = c(8))[1], caption = "Category")
+ggplot(COURAGE_Spain_w2_eye_far, aes(x=factor(q2023_vis_diff_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Eye Sight - Far Vision") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 0` 
+* `3 into 0` 
+* `4 into 0` 
+* `5 into 0`   
+* `8 into 998`
+* `NA into 999`
+
+```{r harmo Spain w2}
+COURAGE_ds_spain_w2 <- tibble(id=COURAGE_Spain_w2_eye_far$id)
+COURAGE_ds_spain_w2$eye_far <- car::recode(COURAGE_Spain_w2_eye_far$q2023_vis_diff_s1, "1 = '1';2 = '0';3 = '0';4 = '0';5 = '0'; 8 = '998'; NA = '999' ")
+COURAGE_ds_spain_w2$eye_far <- labelled(COURAGE_ds_spain_w2$eye_far, labels = c(Yes=0, No=1, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript Spain w2, echo=F}
+vari <- COURAGE_ds_spain_w2$eye_far
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "eye_far")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(COURAGE_ds_spain_w2, aes(x=factor(eye_far))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Eye Sight - Far Vision") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation Spain w2, echo=F}
+AfterH <- table(COURAGE_ds_spain_w2$eye_far)
+X <- table(COURAGE_Spain_w2_eye_far$q2023_vis_diff_s1)
+BeforeH<- c(sum(X[2:5]),X[c(1,6)],sum(is.na(COURAGE_Spain_w2_eye_far$q2023_vis_diff_s1)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2,3,4,5->0","1->1","8->998","NA->999") 
+kable(C)
+```
+
+
+```{r importOPAL Spain w2, echo=FALSE}
+label(COURAGE_ds_spain_w2$eye_far) <- "Eyesight - far vision"
+#opal.assign.data(o, 'COURAGE_ds_spain_w2', COURAGE_ds_spain_w2)
+#opal.symbol_import(o,'COURAGE_ds_spain_w2', project='_Athlos_Harm_Dataset')
+eye_far <- COURAGE_ds_spain_w2
+save(eye_far, file = "../RData/spain_w2/eye_far.RData")
+
+COURAGE_m_ds_spain_w2 <- COURAGE_ds_spain_w2
+COURAGE_m_ds_spain_w2$eye_far <- car::recode(COURAGE_m_ds_spain_w2$eye_far, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'COURAGE_m_ds_spain_w2', COURAGE_m_ds_spain_w2)
+#opal.symbol_import(o,'COURAGE_m_ds_spain_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+## Poland
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `q2023_vis_diff`
+* Label: `Visual difficulty far`
+* Categories:
+   + `1 = None` 
+   + `2 = Mild` 
+   + `3 = Moderate` 
+   + `4 = Severe`
+   + `5 = Extreme`
+* Missings
+   + `8 = Don't know`
+   + `NA`
+
+```{r assign Poland w1, echo=F}
+opal.assign.table.tibble(o, 'COURAGE_Poland_w1_eye_far','Courage.Courage_Poland_w1', variables=list('q2023_vis_diff'), missings = TRUE)
+```
+
+```{r local Poland w1, echo=F}
+COURAGE_Poland_w1_eye_far <- opal.execute(o,'COURAGE_Poland_w1_eye_far')
+vari <- COURAGE_Poland_w1_eye_far$q2023_vis_diff
+kable(Categorical_summary(vari, missing_values = c(8))[3], caption = "q2023_vis_diff")
+kable(Categorical_summary(vari, missing_values = c(8))[1], caption = "Category")
+ggplot(COURAGE_Poland_w1_eye_far, aes(x=factor(q2023_vis_diff))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Eye Sight - Far Vision") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 0` 
+* `3 into 0` 
+* `4 into 0` 
+* `5 into 0`      
+* `8 into 998`
+* `NA into 999`
+
+```{r harmo Poland w1}
+COURAGE_ds_pol_w1 <- tibble(id=COURAGE_Poland_w1_eye_far$id)
+COURAGE_ds_pol_w1$eye_far <- car::recode(COURAGE_Poland_w1_eye_far$q2023_vis_diff, "1 = '1';2 = '0';3 = '0';4 = '0';5 = '0';8 = '998'; NA = '999' ")
+COURAGE_ds_pol_w1$eye_far <- labelled(COURAGE_ds_pol_w1$eye_far, labels = c(Yes=0, No=1, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript Poland w1, echo=F}
+vari <- COURAGE_ds_pol_w1$eye_far
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "eye_far")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(COURAGE_ds_pol_w1, aes(x=factor(eye_far))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Eye Sight - Far Vision") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation Poland w1, echo=F}
+AfterH <- table(COURAGE_ds_pol_w1$eye_far)
+X <- table(COURAGE_Poland_w1_eye_far$q2023_vis_diff)
+BeforeH<- c(sum(X[2:5]),X[c(1,6)])
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2,3,4,5->0","1->1","8->998") 
+kable(C)
+```
+
+
+
+```{r importOPAL Poland w1, echo=FALSE}
+label(COURAGE_ds_pol_w1$eye_far) <- "Eyesight - far vision"
+#opal.assign.data(o, 'COURAGE_ds_pol_w1', COURAGE_ds_pol_w1)
+#opal.symbol_import(o,'COURAGE_ds_pol_w1', project='_Athlos_Harm_Dataset')
+eye_far <- COURAGE_ds_pol_w1
+save(eye_far, file = "../RData/pol_w1/eye_far.RData")
+
+COURAGE_m_ds_pol_w1 <- COURAGE_ds_pol_w1
+COURAGE_m_ds_pol_w1$eye_far <- car::recode(COURAGE_m_ds_pol_w1$eye_far, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'COURAGE_m_ds_pol_w1', COURAGE_m_ds_pol_w1)
+#opal.symbol_import(o,'COURAGE_m_ds_pol_w1', project='_Athlos_Harm_Dataset')
+```
+
+### Wave 2
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `q2023_vis_diff_s1`
+* Label: `Visual difficulty far`
+* Categories:
+   + `1 = None` 
+   + `2 = Mild` 
+   + `3 = Moderate` 
+   + `4 = Severe`
+   + `5 = Extreme`
+* Missings
+   + `NA`
+
+```{r assign Poland w2, echo=F}
+opal.assign.table.tibble(o, 'COURAGE_Poland_w2_eye_far','Courage.Courage_Poland_w2', variables=list('q2023_vis_diff_s1'), missings = TRUE)
+```
+
+```{r local Poland w2, echo=F}
+COURAGE_Poland_w2_eye_far <- opal.execute(o,'COURAGE_Poland_w2_eye_far')
+vari <- COURAGE_Poland_w2_eye_far$q2023_vis_diff_s1
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "q2023_vis_diff_s1")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(COURAGE_Poland_w2_eye_far, aes(x=factor(q2023_vis_diff_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Eye Sight - Far Vision") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 0` 
+* `3 into 0` 
+* `4 into 0` 
+* `5 into 0`      
+* `NA into 999`
+
+```{r harmo Poland w2}
+COURAGE_ds_pol_w2 <- tibble(id=COURAGE_Poland_w2_eye_far$id)
+COURAGE_ds_pol_w2$eye_far <- car::recode(COURAGE_Poland_w2_eye_far$q2023_vis_diff_s1, "1 = '1';2 = '0';3 = '0';4 = '0';5 = '0';NA = '999' ")
+COURAGE_ds_pol_w2$eye_far <- labelled(COURAGE_ds_pol_w2$eye_far, labels = c(Yes=0, No=1, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript Poland w2, echo=F}
+vari <- COURAGE_ds_pol_w2$eye_far
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "eye_far")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(COURAGE_ds_pol_w2, aes(x=factor(eye_far))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Eye Sight - Far Vision") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation Poland w2, echo=F}
+AfterH <- table(COURAGE_ds_pol_w2$eye_far)
+X <- table(COURAGE_Poland_w2_eye_far$q2023_vis_diff_s1)
+BeforeH<- c(sum(X[2:5]),X[1],sum(is.na(COURAGE_Poland_w2_eye_far$q2023_vis_diff_s1)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2,3,4,5->0","1->1","NA->999") 
+kable(C)
+```
+
+```{r importOPAL Poland w2, echo=FALSE}
+label(COURAGE_ds_pol_w2$eye_far) <- "Eyesight - far vision"
+#opal.assign.data(o, 'COURAGE_ds_pol_w2', COURAGE_ds_pol_w2)
+#opal.symbol_import(o,'COURAGE_ds_pol_w2', project='_Athlos_Harm_Dataset')
+eye_far <- COURAGE_ds_pol_w2
+save(eye_far, file = "../RData/pol_w2/eye_far.RData")
+
+COURAGE_m_ds_pol_w2 <- COURAGE_ds_pol_w2
+COURAGE_m_ds_pol_w2$eye_far <- car::recode(COURAGE_m_ds_pol_w2$eye_far, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'COURAGE_m_ds_pol_w2', COURAGE_m_ds_pol_w2)
+#opal.symbol_import(o,'COURAGE_m_ds_pol_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+## Finland
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `q2023_vis_diff`
+* Label: `Visual difficulty far`
+* Categories:
+   + `1 = None` 
+   + `2 = Mild` 
+   + `3 = Moderate` 
+   + `4 = Severe`
+   + `5 = Extreme`
+* Missings
+   + `9 = Not Applicable`
+   + `NA`
+
+```{r assign Finland w1, echo=F}
+opal.assign.table.tibble(o, 'COURAGE_Finland_w1_eye_far','Courage.Courage_Finland_w1', variables=list('q2023_vis_diff'), missings = TRUE)
+```
+
+```{r local Finland w1, echo=F}
+COURAGE_Finland_w1_eye_far <- opal.execute(o,'COURAGE_Finland_w1_eye_far')
+vari <- COURAGE_Finland_w1_eye_far$q2023_vis_diff
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = "q2023_vis_diff")
+kable(Categorical_summary(vari, missing_values = c(9))[1], caption = "Category")
+ggplot(COURAGE_Finland_w1_eye_far, aes(x=factor(q2023_vis_diff))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Eye Sight - Far Vision") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 0` 
+* `3 into 0` 
+* `4 into 0` 
+* `5 into 0`    
+* `9 into 996`
+* `NA into 999`
+
+```{r harmo Finland w1}
+COURAGE_ds_fin_w1 <- tibble(id=COURAGE_Finland_w1_eye_far$id)
+COURAGE_ds_fin_w1$eye_far <- car::recode(COURAGE_Finland_w1_eye_far$q2023_vis_diff, "1 = '1';2 = '0';3 = '0';4 = '0';5 = '0';9 = '996' ;NA = '999' ")
+COURAGE_ds_fin_w1$eye_far <- labelled(COURAGE_ds_fin_w1$eye_far, labels = c(Yes=0, No=1, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript Finland w1, echo=F}
+vari <- COURAGE_ds_fin_w1$eye_far
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "eye_far")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(COURAGE_ds_fin_w1, aes(x=factor(eye_far))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Eye Sight - Far Vision") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation Finland w1, echo=F}
+AfterH <- table(COURAGE_ds_fin_w1$eye_far)
+X <- table(COURAGE_Finland_w1_eye_far$q2023_vis_diff)
+BeforeH<- c(sum(X[2:5]),X[c(1,6)],sum(is.na(COURAGE_Finland_w1_eye_far$q2023_vis_diff)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2,3,4,5->0","1->1","9->996","NA->999") 
+kable(C)
+```
+
+
+```{r importOPAL Finland w1, echo=FALSE}
+label(COURAGE_ds_fin_w1$eye_far) <- "Eyesight - far vision"
+#opal.assign.data(o, 'COURAGE_ds_fin_w1', COURAGE_ds_fin_w1)
+#opal.symbol_import(o,'COURAGE_ds_fin_w1', project='_Athlos_Harm_Dataset')
+eye_far <- COURAGE_ds_fin_w1
+save(eye_far, file = "../RData/fin_w1/eye_far.RData")
+
+COURAGE_m_ds_fin_w1 <- COURAGE_ds_fin_w1
+COURAGE_m_ds_fin_w1$eye_far <- car::recode(COURAGE_m_ds_fin_w1$eye_far, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'COURAGE_m_ds_fin_w1', COURAGE_m_ds_fin_w1)
+#opal.symbol_import(o,'COURAGE_m_ds_fin_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+# Quality estimation
+No comments.
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

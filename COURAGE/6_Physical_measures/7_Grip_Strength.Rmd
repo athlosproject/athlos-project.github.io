@@ -1,0 +1,494 @@
+---
+title: "Grip strength"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `grip`
+* Variable label: `Grip strength in kg`
+* Variable description: `Grip strength`
+* Domain: `Physical measures`
+* Value type: `continuous`
+* Comments: `According to a systematic review (Roberts et al, 2011), there are some inconsistencies in the use of maximum or mean grip strength as a summary measure which limit comparison of results between epidemiological studies. With multiple attempts, the maximum grip strength will be greater than the mean value. 
+Even though for right handed people, there is a 10% stronger grip in the dominant hand, this is not true for left handed or ambidextrous people, whose grip strength are more or less equal in both hands (Roberts et al, 2011). 
+In light of the above, the harmonised variable "grip" is proposed to be the highest score (to the nearest kg) of all hand grip measurements in each study, regardless of hand dominance. This is following a protocol suggested by Roberts et al (2011), based on the American Society of Hand Therapists (ASHT) protocol.`
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "Grip strength"
+```
+
+# Data process
+
+## Spain
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+| **Name** | `q2521_first`| `q2522_second`| `q2522a_third`| 
+|-|-|-|-|-|
+| **Label** | `First test` | `Second test` | `Third test` | 
+| **Table name** | `Courage_Spain_w1` |`Courage_Spain_w1` |`Courage_Spain_w1` |
+| **Categories** | `continuous` |`continuous` |`continuous` |
+| **Missing values** | `-97.0 = RF ` | `-97.0 = RF ` |
+| | `-88.0 = DK` | `-88.0 = DK` |
+| **Description** |  | | | 
+
+```{r assign Spain w1, echo=F}
+opal.assign.table.tibble(o, 'COURAGE_gs','Courage.Courage_Spain_w1',
+                         variables=list('q2521_first', 'q2522_second', 'q2522a_third'), missings = TRUE)
+COURAGE_gs <- opal.execute(o,'COURAGE_gs')
+```
+
+```{r local Spain w1, echo=F}
+vari <- COURAGE_gs$q2521_first
+kable(Continuous_summary(var = vari, missing_values = c(-88, -97))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-88, -97))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-88, -97))$summary, caption = "Summary")
+ggplot(COURAGE_gs, aes(x=(q2521_first))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+
+vari <- COURAGE_gs$q2522_second
+kable(Continuous_summary(var = vari, missing_values = c(-88, -97))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-88, -97))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-88, -97))$summary, caption = "Summary")
+ggplot(COURAGE_gs, aes(x=(q2522_second))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+
+vari <- COURAGE_gs$q2522a_third
+kable(Continuous_summary(var = vari, missing_values = c(-88, -97))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-88, -97))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-88, -97))$summary, caption = "Summary")
+ggplot(COURAGE_gs, aes(x=(q2522a_third))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+
+The harmonized variable is the higest score of all measurements and the missing values have to be recoded as follows: 
+
+* `-97 into 997`
+* `-88 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo Spain w1}
+COURAGE_ds_spain_w1 <- tibble(id=COURAGE_gs$id)
+COURAGE_ds_spain_w1$grip <- apply(COURAGE_gs[,2:4], MARGIN = 1, FUN = function(x) max(x, na.rm = TRUE))
+COURAGE_ds_spain_w1$grip <- car::recode(COURAGE_ds_spain_w1$grip, "-Inf=999; -97=997; -88=998")
+COURAGE_ds_spain_w1$grip <- as.integer(COURAGE_ds_spain_w1$grip)
+COURAGE_ds_spain_w1$grip <- labelled(COURAGE_ds_spain_w1$grip, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript Spain w1, echo=F}
+vari <- COURAGE_ds_spain_w1$grip
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(COURAGE_ds_spain_w1, aes(grip)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100) 
+```
+
+#### Validation
+```{r crosstabulation Spain w1, echo=F}
+```
+
+
+```{r importOPAL Spain w1, echo=FALSE}
+label(COURAGE_ds_spain_w1$grip) <- ds_label
+grip <- COURAGE_ds_spain_w1
+save(grip, file = "../RData/spain_w1/grip.RData")
+```
+
+### Wave 2
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+| **Name** | `q2521_first_s1`| `q2522_second_s1`| `q2522a_third_s1`| 
+|-|-|-|-|-|
+| **Label** | `First test` | `Second test` | `Third test` | 
+| **Table name** | `Courage_Spain_w2_1` |`Courage_Spain_w2_1` |`Courage_Spain_w2_1` |
+| **Categories** | `continuous` |`continuous` |`continuous` |
+| **Missing values** | `-97.0 = Refuse ` | `-97.0 = Refuse ` |
+| **Description** |  | | | 
+
+
+```{r assign Spain w2, echo=F}
+opal.assign.table.tibble(o, 'COURAGE_gs','Courage.Courage_Spain_w2_1',
+                         variables=list('q2521_first_s1', 'q2522_second_s1', 'q2522a_third_s1'), missings = TRUE)
+COURAGE_gs <- opal.execute(o,'COURAGE_gs')
+```
+
+```{r local Spain w2, echo=F}
+vari <- COURAGE_gs$q2521_first_s1
+kable(Continuous_summary(var = vari, missing_values = c(-97))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-97))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-97))$summary, caption = "Summary")
+ggplot(COURAGE_gs, aes(x=(q2521_first_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+
+vari <- COURAGE_gs$q2522_second_s1
+kable(Continuous_summary(var = vari, missing_values = c(-97))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-97))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-97))$summary, caption = "Summary")
+ggplot(COURAGE_gs, aes(x=(q2522_second_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+
+vari <- COURAGE_gs$q2522a_third_s1
+kable(Continuous_summary(var = vari, missing_values = c(-97))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-97))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-97))$summary, caption = "Summary")
+ggplot(COURAGE_gs, aes(x=(q2522a_third_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+
+The harmonized variable is the higest score of all measurements and the missing values have to be recoded as follows: 
+
+* `-97 into 997`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo Spain w2}
+COURAGE_ds_spain_w2 <- tibble(id=COURAGE_gs$id)
+COURAGE_ds_spain_w2$grip <- apply(COURAGE_gs[,2:4], MARGIN = 1, FUN = function(x) max(x, na.rm = TRUE))
+COURAGE_ds_spain_w2$grip <- car::recode(COURAGE_ds_spain_w2$grip, "-Inf=999; -97=997")
+COURAGE_ds_spain_w2$grip <- as.integer(COURAGE_ds_spain_w2$grip)
+COURAGE_ds_spain_w2$grip <- labelled(COURAGE_ds_spain_w2$grip, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript Spain w2, echo=F}
+vari <- COURAGE_ds_spain_w2$grip
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(COURAGE_ds_spain_w2, aes(grip)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100) 
+```
+
+#### Validation
+```{r crosstabulation Spain w2, echo=F}
+```
+
+
+
+
+```{r importOPAL Spain w2, echo=FALSE}
+#opal.assign.data(o, 'COURAGE_ds_spain_w2', COURAGE_ds_spain_w2)
+#opal.symbol_import(o,'COURAGE_ds_spain_w2', project='_Athlos_Harm_Dataset')
+grip <- COURAGE_ds_spain_w2
+save(grip, file = "../RData/spain_w2/grip.RData")
+
+label(COURAGE_ds_spain_w2$grip) <- ds_label
+grip <- COURAGE_ds_spain_w2
+save(grip, file = "../RData/spain_w2/grip.RData")
+```
+
+
+
+## Poland 
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+| **Name** | `q2521_first`| `q2522_second`| `q2522a_third`| 
+|-|-|-|-|-|
+| **Label** | `First test` | `Second test` | `Third test` | 
+| **Table name** | `Courage_Poland_w1` |`Courage_Poland_w1` |`Courage_Poland_w1` |
+| **Categories** | `continuous` |`continuous` |`continuous` |
+| **Missing values** | `-97.0 = RF ` | `-97.0 = RF ` |
+| | `-88.0 = DK` | `-88.0 = DK` |
+| **Description** |  | | | 
+
+
+```{r assign Poland w1, echo=F}
+opal.assign.table.tibble(o, 'COURAGE_gs','Courage.Courage_Poland_w1',
+                         variables=list('q2521_first', 'q2522_second', 'q2522a_third'), missings = TRUE)
+COURAGE_gs <- opal.execute(o,'COURAGE_gs')
+```
+
+```{r local Poland w1, echo=F}
+vari <- COURAGE_gs$q2521_first
+kable(Continuous_summary(var = vari, missing_values = c(-88, -97))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-88, -97))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-88, -97))$summary, caption = "Summary")
+ggplot(COURAGE_gs, aes(x=(q2521_first))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+
+vari <- COURAGE_gs$q2522_second
+kable(Continuous_summary(var = vari, missing_values = c(-88, -97))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-88, -97))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-88, -97))$summary, caption = "Summary")
+ggplot(COURAGE_gs, aes(x=(q2522_second))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+
+vari <- COURAGE_gs$q2522a_third
+kable(Continuous_summary(var = vari, missing_values = c(-88, -97))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-88, -97))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-88, -97))$summary, caption = "Summary")
+ggplot(COURAGE_gs, aes(x=(q2522a_third))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+
+The harmonized variable is the higest score of all measurements and the missing values have to be recoded as follows: 
+
+* `-97 into 997`
+* `-88 into 998`
+* `NA into 999`
+
+**R script**
+
+```{r harmo Poland w1}
+COURAGE_ds_pol_w1 <- tibble(id=COURAGE_gs$id)
+COURAGE_ds_pol_w1$grip <- apply(COURAGE_gs[,2:4], MARGIN = 1, FUN = function(x) max(x, na.rm = TRUE))
+COURAGE_ds_pol_w1$grip <- car::recode(COURAGE_ds_pol_w1$grip, "-Inf=999; -97=997; -88=998")
+COURAGE_ds_pol_w1$grip <- as.integer(COURAGE_ds_pol_w1$grip)
+COURAGE_ds_pol_w1$grip <- labelled(COURAGE_ds_pol_w1$grip, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript Poland w1, echo=F}
+vari <- COURAGE_ds_pol_w1$grip
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(COURAGE_ds_pol_w1, aes(grip)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100) 
+```
+
+#### Validation
+```{r crosstabulation Poland w1, echo=F}
+```
+
+
+
+```{r importOPAL Poland w1, echo=FALSE}
+#opal.assign.data(o, 'COURAGE_ds_pol_w1', COURAGE_ds_pol_w1)
+#opal.symbol_import(o,'COURAGE_ds_pol_w1', project='_Athlos_Harm_Dataset')
+
+label(COURAGE_ds_pol_w1$grip) <- ds_label
+grip <- COURAGE_ds_pol_w1
+save(grip, file = "../RData/pol_w1/grip.RData")
+```
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+| **Name** | `q2521_first`| `q2522_second`| `q2522a_third`| 
+|-|-|-|-|-|
+| **Label** | `First test` | `Second test` | `Third test` | 
+| **Table name** | `Courage_Poland_w2` |`Courage_Poland_w2` |`Courage_Poland_w2` |
+| **Categories** | `continuous` |`continuous` |`continuous` |
+| **Missing values** | `-97.0 = RF ` | `-97.0 = RF ` |
+| | `-88.0 = DK` | `-88.0 = DK` |
+| **Description** |  | | | 
+
+
+
+```{r assign Poland w2, echo=F}
+opal.assign.table.tibble(o, 'COURAGE_gs','Courage.Courage_Poland_w2',
+                         variables=list('q2521_first_s1', 'q2522_second_s1', 'q2522a_third_s1'), missings = TRUE)
+COURAGE_gs <- opal.execute(o,'COURAGE_gs')
+```
+
+```{r local Poland w2, echo=F}
+vari <- COURAGE_gs$q2521_first_s1
+kable(Continuous_summary(var = vari, missing_values = c(-97))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-97))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-97))$summary, caption = "Summary")
+ggplot(COURAGE_gs, aes(x=(q2521_first_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+
+vari <- COURAGE_gs$q2522_second_s1
+kable(Continuous_summary(var = vari, missing_values = c(-97))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-97))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-97))$summary, caption = "Summary")
+ggplot(COURAGE_gs, aes(x=(q2522_second_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+
+vari <- COURAGE_gs$q2522a_third_s1
+kable(Continuous_summary(var = vari, missing_values = c(-97))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-97))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-97))$summary, caption = "Summary")
+ggplot(COURAGE_gs, aes(x=(q2522a_third_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+
+The harmonized variable is the higest score of all measurements and the missing values have to be recoded as follows: 
+
+* `-97 into 997`
+* `NA into 999`
+
+**R script**
+
+```{r harmo Poland w2}
+COURAGE_ds_pol_w2 <- tibble(id=COURAGE_gs$id)
+COURAGE_ds_pol_w2$grip <- apply(COURAGE_gs[,2:4], MARGIN = 1, FUN = function(x) max(x, na.rm = TRUE))
+COURAGE_ds_pol_w2$grip <- car::recode(COURAGE_ds_pol_w2$grip, "-Inf=999; -97=997")
+COURAGE_ds_pol_w2$grip <- as.integer(COURAGE_ds_pol_w2$grip)
+COURAGE_ds_pol_w2$grip <- labelled(COURAGE_ds_pol_w2$grip, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript Poland w2, echo=F}
+vari <- COURAGE_ds_pol_w2$grip
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(COURAGE_ds_pol_w2, aes(grip)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100) 
+```
+
+#### Validation
+```{r crosstabulation Poland w2, echo=F}
+```
+
+
+```{r importOPAL Poland w2, echo=FALSE}
+label(COURAGE_ds_pol_w2$grip) <- ds_label
+grip <- COURAGE_ds_pol_w2
+save(grip, file = "../RData/pol_w2/grip.RData")
+```
+
+
+
+## Finland 
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+| **Name** | `q2521_first`| `q2522_second`| `q2522a_third`| 
+|-|-|-|-|-|
+| **Label** | `First test` | `Second test` | `Third test` | 
+| **Table name** | `Courage_Finland_w1` |`Courage_Finland_w1` |`Courage_Finland_w1` |
+| **Categories** | `continuous` |`continuous` |`continuous` |
+| **Missing values** | `-97.0 = RF ` | `-97.0 = RF ` |
+| | `-88.0 = DK` | `-88.0 = DK` |
+| **Description** |  | | | 
+
+
+```{r assign Finland w1, echo=F}
+opal.assign.table.tibble(o, 'COURAGE_gs','Courage.Courage_Finland_w1',
+                         variables=list('q2521_first', 'q2522_second', 'q2522a_third'), missings = TRUE)
+COURAGE_gs <- opal.execute(o,'COURAGE_gs')
+```
+
+```{r local Finland w1, echo=F}
+vari <- COURAGE_gs$q2521_first
+kable(Continuous_summary(var = vari, missing_values = c(-88, -97))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-88, -97))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-88, -97))$summary, caption = "Summary")
+ggplot(COURAGE_gs, aes(x=(q2521_first))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+
+vari <- COURAGE_gs$q2522_second
+kable(Continuous_summary(var = vari, missing_values = c(-88, -97))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-88, -97))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-88, -97))$summary, caption = "Summary")
+ggplot(COURAGE_gs, aes(x=(q2522_second))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+
+vari <- COURAGE_gs$q2522a_third
+kable(Continuous_summary(var = vari, missing_values = c(-88, -97))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(-88, -97))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(-88, -97))$summary, caption = "Summary")
+ggplot(COURAGE_gs, aes(x=(q2522a_third))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+
+The harmonized variable is the higest score of all measurements and the missing values have to be recoded as follows: 
+
+* `-97 into 997`
+* `-88 into 998`
+* `NA into 999`
+
+**R script**
+
+```{r harmo Finland w1}
+COURAGE_ds_fin_w1 <- tibble(id=COURAGE_gs$id)
+COURAGE_ds_fin_w1$grip <- apply(COURAGE_gs[,2:4], MARGIN = 1, FUN = function(x) max(x, na.rm = TRUE))
+COURAGE_ds_fin_w1$grip <- car::recode(COURAGE_ds_fin_w1$grip, "-Inf=999; -97=997; -88=998")
+COURAGE_ds_fin_w1$grip <- as.integer(COURAGE_ds_fin_w1$grip)
+COURAGE_ds_fin_w1$grip <- labelled(COURAGE_ds_fin_w1$grip, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript Finland w1, echo=F}
+vari <- COURAGE_ds_fin_w1$grip
+kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+ggplot(COURAGE_ds_fin_w1, aes(grip)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,100) 
+```
+
+#### Validation
+```{r crosstabulation Finland w1, echo=F}
+```
+
+```{r importOPAL Finland w1, echo=FALSE}
+#opal.assign.data(o, 'COURAGE_ds_fin_w1', COURAGE_ds_fin_w1)
+#opal.symbol_import(o,'COURAGE_ds_fin_w1', project='_Athlos_Harm_Dataset')
+
+label(COURAGE_ds_fin_w1$grip) <- ds_label
+grip <- COURAGE_ds_fin_w1
+save(grip, file = "../RData/fin_w1/grip.RData")
+```
+
+
+
+
+
+#### Quality control
+No comments.
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

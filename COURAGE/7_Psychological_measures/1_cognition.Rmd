@@ -1,0 +1,259 @@
+---
+title: "Cognition"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `cog_stat`
+* Variable label: `Cognitive status of the participant, assessed by the Mini Mental State Examination`
+* Domain: `Psycological measures`
+* Value type: `categorical`
+* Category coding:
+* Comments: `The test used is the Mini Mental State Examination (MMSE). Two values have been created for the potential variable: 0=no cognitive impairment (when the score is greater or equal to 23) and 1=cognitive impairment (when the score is lower to 23).`
+
+**Code** | **Category Label**
+-------- | ------------------------
+0        | no cognitive impairment
+1        | cognitive impairment
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+```{r lab, echo=FALSE}
+ds_label <- "Cognitive status"
+ds_label_all <- "Cognitive status of the participant, assessed by the Mini Mental State Examination"
+```
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Finnish population
+
+### Wave 1 
+
+There is no variable. 
+
+
+
+
+## Polish population
+
+### Wave 1 
+
+There is no variable. 
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `q1004_MMSE`|
+|-|-|
+| **Label** | `MMSE points`|
+| **Table name** | `Courage_Poland_w2` |
+| **Description** |  |
+
+```{r assign_pol2,  echo=FALSE}
+opal.assign.table.tibble(o, 'COURAGE_cog','Courage.Courage_Poland_w2',
+                         variables=list('q1004_MMSE'), missings = TRUE)
+COURAGE_cog <- opal.execute(o,'COURAGE_cog')
+```
+
+```{r local_pol2,  echo=FALSE}
+vari <- COURAGE_cog$q1004_MMSE
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = "MMSE points") 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(COURAGE_cog, aes(vari)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `q1004_MMSE < 24 into 1` 
+* `q1004_MMSE >= 24 into 0`
+* `NA into 999`
+
+**R script:**
+```{r harmo_pol2,   echo=TRUE}
+COURAGE_ds_pol_w2 <- tibble(id=COURAGE_cog$id)
+COURAGE_ds_pol_w2$cog_stat <- car::recode(COURAGE_cog[[2]], "lo:23=1; 24:900=0; NA=999")
+COURAGE_ds_pol_w2$cog_stat <- labelled(COURAGE_ds_pol_w2$cog_stat, labels = c("no cognitive impairment"=0, "cognitive impairment"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_pol2,  echo=FALSE}
+vari <- COURAGE_ds_pol_w2$cog_stat
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(COURAGE_ds_pol_w2, aes(x=factor(cog_stat))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_pol2,  echo=FALSE}
+BeforeH <- c(sum(na.omit(COURAGE_cog[[2]])>23),sum(na.omit(COURAGE_cog[[2]])<=23), sum(is.na(COURAGE_cog[[2]])))
+AfterH <- table(COURAGE_ds_pol_w2$cog_stat)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("(24-30)->0","(0-23)->1", "NA->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_pol2,  echo=FALSE}
+#opal.assign.data(o, 'COURAGE_ds_pol_w2', COURAGE_ds_pol_w2)
+#opal.symbol_import(o,'COURAGE_ds_pol_w2', project='_Athlos_Harm_Dataset')
+label(COURAGE_ds_pol_w2$cog_stat) <- ds_label_all
+cog_stat <- COURAGE_ds_pol_w2
+save(cog_stat, file = "../RData/pol_w2/cog_stat.RData")
+rm(cog_stat, COURAGE_cog)
+
+COURAGE_m_ds_pol_w2 <- COURAGE_ds_pol_w2
+COURAGE_m_ds_pol_w2$cog_stat <- car::recode(COURAGE_m_ds_pol_w2$cog_stat, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'COURAGE_m_ds_pol_w2', COURAGE_m_ds_pol_w2)
+#opal.symbol_import(o,'COURAGE_m_ds_pol_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+## Spanish population
+
+### Wave 1 
+
+There is no variable. 
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `sum_MMSEc`|
+|-|-|
+| **Label** | `Rounded and corrected MMSE total score`|
+| **Table name** | `Courage_Spain_w2_1` |
+| **Description** |  |
+
+```{r assign_spain2,  echo=FALSE}
+opal.assign.table.tibble(o, 'COURAGE_cog','Courage.Courage_Spain_w2_1',
+                         variables=list('sum_MMSEc'), missings = TRUE)
+COURAGE_cog <- opal.execute(o,'COURAGE_cog')
+```
+
+```{r local_spain2,  echo=FALSE}
+vari <- COURAGE_cog$sum_MMSEc
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = "MMSE points") 
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(COURAGE_cog, aes(vari)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `sum_MMSEc < 24 into 1` 
+* `sum_MMSEc >= 24 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_spain2,   echo=TRUE}
+COURAGE_ds_spain_w2 <- tibble(id=COURAGE_cog$id)
+COURAGE_ds_spain_w2$cog_stat <- car::recode(COURAGE_cog[[2]], "lo:23=1; 24:900=0; NA=999")
+COURAGE_ds_spain_w2$cog_stat <- labelled(COURAGE_ds_spain_w2$cog_stat, labels = c("no cognitive impairment"=0, "cognitive impairment"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_spain2,  echo=FALSE}
+vari <- COURAGE_ds_spain_w2$cog_stat
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(COURAGE_ds_spain_w2, aes(x=factor(cog_stat))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_spain2,  echo=FALSE}
+BeforeH <- c(sum(na.omit(COURAGE_cog[[2]])>23),sum(na.omit(COURAGE_cog[[2]])<=23), sum(is.na(COURAGE_cog[[2]])))
+AfterH <- table(COURAGE_ds_spain_w2$cog_stat)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("(23-30)->0","(0-22)->1", "NA->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_spain2,  echo=FALSE}
+#opal.assign.data(o, 'COURAGE_ds_spain_w2', COURAGE_ds_spain_w2)
+#opal.symbol_import(o,'COURAGE_ds_spain_w2', project='_Athlos_Harm_Dataset')
+label(COURAGE_ds_spain_w2$cog_stat) <- ds_label_all
+cog_stat <- COURAGE_ds_spain_w2
+save(cog_stat, file = "../RData/spain_w2/cog_stat.RData")
+rm(cog_stat, COURAGE_cog)
+
+COURAGE_m_ds_spain_w2 <- COURAGE_ds_spain_w2
+COURAGE_m_ds_spain_w2$cog_stat <- car::recode(COURAGE_m_ds_spain_w2$cog_stat, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'COURAGE_m_ds_spain_w2', COURAGE_m_ds_spain_w2)
+#opal.symbol_import(o,'COURAGE_m_ds_spain_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+# Quality estimation
+
+
+Variable available only for the second waves (Polish and Spanish population).
+
+
+```{r closeRsession, echo=FALSE,  echo=FALSE} 
+opal.logout(o)
+```
+
+

@@ -1,0 +1,539 @@
+---
+title: "Marital Status"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `marital_status`
+* Variable label: `The current marital status of the participant`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+1        | single
+2        | married-cohabitating
+3        | divorced-separated
+4        | widow
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Finnish population
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `q1012_mar_stat`
+* Label: `Marital status`
+* Categories: 
+    + `1 = NEVER MARRIED (AND NO COHABITING)`
+    + `2 = CURRENTLY MARRIED`
+    + `3 = COHABITING`
+    + `4 = SEPARATED/DIVORCED`
+    + `5 = WIDOWED`
+
+* Description: 
+```{r assign_fin,  echo=FALSE}
+opal.assign.table.tibble(o, 'COURAGE_fin_w1_ms','Courage.Courage_Finland_w1',
+                         variables=list('q1012_mar_stat'), missings = TRUE)
+```
+
+```{r local_fin,  echo=FALSE}
+COURAGE_fin_w1_ms <- opal.execute(o,'COURAGE_fin_w1_ms')
+vari <- COURAGE_fin_w1_ms$q1012_mar_stat
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_fin_w1_ms$q1012_mar_stat, missing_values = NA)
+ggplot(COURAGE_fin_w1_ms, aes(x=factor(q1012_mar_stat))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "NEVER MARRIED (AND NO COHABITING)" into 1`
+* `keep "CURRENTLY MARRIED" into 2`
+* `recode 3 "COHABITING" into 2`
+* `recode 4 "SEPARATED/DIVORCED" into 3`
+* `recode 5 "WIDOWED" into 4`
+* `recode NA into 999`
+
+
+**R script:**
+
+```{r harmo_fin,   echo=TRUE}
+COURAGE_ds_fin_w1 <- tibble(id=COURAGE_fin_w1_ms$id)
+COURAGE_ds_fin_w1$marital_status <- car::recode(COURAGE_fin_w1_ms$q1012_mar_stat, " 3=2; 4=3; 5=4; NA=999")
+COURAGE_ds_fin_w1$marital_status <- labelled(COURAGE_ds_fin_w1$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_fin,  echo=FALSE}
+vari <- COURAGE_ds_fin_w1$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_ds_fin_w1$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(COURAGE_ds_fin_w1, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_fin,  echo=FALSE}
+BeforeH <- table(COURAGE_fin_w1_ms$q1012_mar_stat)
+BeforeH <- c( BeforeH[1], sum(BeforeH[c(2, 3)]), BeforeH[4], BeforeH[5], sum(is.na(COURAGE_fin_w1_ms$q1012_mar_stat))) 
+AfterH <- table(COURAGE_ds_fin_w1$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1","(2,3)->2", "4->3", "5->4", "NA->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_fin,  echo=FALSE}
+val_labels(COURAGE_ds_fin_w1) <- NULL
+opal.assign.data(o, 'COURAGE_ds_fin_w1', COURAGE_ds_fin_w1)
+#opal.symbol_import(o,'COURAGE_ds_fin_w1', project='_Athlos_Harm_Dataset')
+
+COURAGE_m_ds_fin_w1 <- COURAGE_ds_fin_w1
+COURAGE_m_ds_fin_w1$marital_status <- car::recode(COURAGE_m_ds_fin_w1$marital_status, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+opal.assign.data(o, 'COURAGE_m_ds_fin_w1', COURAGE_m_ds_fin_w1)
+#opal.symbol_import(o,'COURAGE_m_ds_fin_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+## Polish population
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `q1012_mar_stat`
+* Label: `Marital status`
+* Categories: 
+    + `1 = NEVER MARRIED (AND NO COHABITING)`
+    + `2 = CURRENTLY MARRIED`
+    + `3 = COHABITING`
+    + `4 = SEPARATED/DIVORCED`
+    + `5 = WIDOWED`
+
+* Description: 
+```{r assign_pol1,  echo=FALSE}
+opal.assign.table.tibble(o, 'COURAGE_pol_w1_ms','Courage.Courage_Poland_w1',
+                         variables=list('q1012_mar_stat'), missings = TRUE)
+```
+
+```{r local_pol1,  echo=FALSE}
+COURAGE_pol_w1_ms <- opal.execute(o,'COURAGE_pol_w1_ms')
+vari <- COURAGE_pol_w1_ms$q1012_mar_stat
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_pol_w1_ms$q1012_mar_stat, missing_values = NA)
+ggplot(COURAGE_pol_w1_ms, aes(x=factor(q1012_mar_stat))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "NEVER MARRIED (AND NO COHABITING)" into 1`
+* `keep "CURRENTLY MARRIED" into 2`
+* `recode 3 "COHABITING" into 2`
+* `recode 4 "SEPARATED/DIVORCED" into 3`
+* `recode 5 "WIDOWED" into 4`
+* `recode NA into 999`
+
+
+**R script:**
+
+```{r harmo_pol1,   echo=TRUE}
+COURAGE_ds_pol_w1 <- tibble(id=COURAGE_pol_w1_ms$id)
+COURAGE_ds_pol_w1$marital_status <- car::recode(COURAGE_pol_w1_ms$q1012_mar_stat, " 3=2; 4=3; 5=4; NA=999")
+COURAGE_ds_pol_w1$marital_status <- labelled(COURAGE_ds_pol_w1$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_pol1,  echo=FALSE}
+vari <- COURAGE_ds_pol_w1$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_ds_pol_w1$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(COURAGE_ds_pol_w1, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_pol1,  echo=FALSE}
+BeforeH <- table(COURAGE_pol_w1_ms$q1012_mar_stat)
+BeforeH <- c( BeforeH[1], sum(BeforeH[c(2, 3)]), BeforeH[4], BeforeH[5])
+AfterH <- table(COURAGE_ds_pol_w1$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1","(2,3)->2", "4->3", "5->4")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_pol1,  echo=FALSE}
+val_labels(COURAGE_ds_pol_w1) <- NULL
+opal.assign.data(o, 'COURAGE_ds_pol_w1', COURAGE_ds_pol_w1)
+#opal.symbol_import(o,'COURAGE_ds_pol_w1', project='_Athlos_Harm_Dataset')
+
+COURAGE_m_ds_pol_w1 <- COURAGE_ds_pol_w1
+COURAGE_m_ds_pol_w1$marital_status <- car::recode(COURAGE_m_ds_pol_w1$marital_status, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+opal.assign.data(o, 'COURAGE_m_ds_pol_w1', COURAGE_m_ds_pol_w1)
+#opal.symbol_import(o,'COURAGE_m_ds_pol_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `q1012_mar_stat_s1`
+* Label: `Marital status`
+* Categories: 
+    + `1 = NEVER MARRIED (AND NO COHABITING)`
+    + `2 = CURRENTLY MARRIED`
+    + `3 = COHABITING`
+    + `4 = SEPARATED/DIVORCED`
+    + `5 = WIDOWED`
+
+* Description: 
+```{r assign_pol2,  echo=FALSE}
+opal.assign.table.tibble(o, 'COURAGE_pol_w2_ms','Courage.Courage_Poland_w2',
+                         variables=list('q1012_mar_stat_s1'), missings = TRUE)
+```
+
+```{r local_pol2,  echo=FALSE}
+COURAGE_pol_w2_ms <- opal.execute(o,'COURAGE_pol_w2_ms')
+vari <- COURAGE_pol_w2_ms$q1012_mar_stat_s1
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_pol_w2_ms$q1012_mar_stat_s1, missing_values = NA)
+ggplot(COURAGE_pol_w2_ms, aes(x=factor(q1012_mar_stat_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "NEVER MARRIED (AND NO COHABITING)" into 1`
+* `keep "CURRENTLY MARRIED" into 2`
+* `recode 3 "COHABITING" into 2`
+* `recode 4 "SEPARATED/DIVORCED" into 3`
+* `recode 5 "WIDOWED" into 4`
+* `recode NA into 999`
+
+**R script:**
+
+```{r harmo_pol2,   echo=TRUE}
+COURAGE_ds_pol_w2 <- tibble(id=COURAGE_pol_w2_ms$id)
+COURAGE_ds_pol_w2$marital_status <- car::recode(COURAGE_pol_w2_ms$q1012_mar_stat_s1, " 3=2; 4=3; 5=4; NA=999")
+COURAGE_ds_pol_w2$marital_status <- labelled(COURAGE_ds_pol_w2$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_pol2,  echo=FALSE}
+vari <- COURAGE_ds_pol_w2$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_ds_pol_w2$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(COURAGE_ds_pol_w2, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_pol2,  echo=FALSE}
+BeforeH <- table(COURAGE_pol_w2_ms$q1012_mar_stat_s1)
+BeforeH <- c( BeforeH[1], BeforeH[2], BeforeH[3], BeforeH[4], sum(is.na(COURAGE_pol_w2_ms$q1012_mar_stat_s1))) 
+AfterH <- table(COURAGE_ds_pol_w2$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1","(2,3)->2", "4->3", "5->4", "NA->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_pol2,  echo=FALSE}
+val_labels(COURAGE_ds_pol_w2) <- NULL
+opal.assign.data(o, 'COURAGE_ds_pol_w2', COURAGE_ds_pol_w2)
+#opal.symbol_import(o,'COURAGE_ds_pol_w2', project='_Athlos_Harm_Dataset')
+
+COURAGE_m_ds_pol_w2 <- COURAGE_ds_pol_w2
+COURAGE_m_ds_pol_w2$marital_status <- car::recode(COURAGE_m_ds_pol_w2$marital_status, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+opal.assign.data(o, 'COURAGE_m_ds_pol_w2', COURAGE_m_ds_pol_w2)
+#opal.symbol_import(o,'COURAGE_m_ds_pol_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+## Spanish population
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `q1012_mar_stat`
+* Label: `Marital status`
+* Categories: 
+    + `1 = NEVER MARRIED (AND NO COHABITING)`
+    + `2 = CURRENTLY MARRIED`
+    + `3 = COHABITING`
+    + `4 = SEPARATED/DIVORCED`
+    + `5 = WIDOWED`
+
+* Description: 
+```{r assign_spain1,  echo=FALSE}
+opal.assign.table.tibble(o, 'COURAGE_spain_w1_ms','Courage.Courage_Spain_w1',
+                         variables=list('q1012_mar_stat'), missings = TRUE)
+```
+
+```{r local_spain1,  echo=FALSE}
+COURAGE_spain_w1_ms <- opal.execute(o,'COURAGE_spain_w1_ms')
+vari <- COURAGE_spain_w1_ms$q1012_mar_stat
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_spain_w1_ms$q1012_mar_stat, missing_values = NA)
+ggplot(COURAGE_spain_w1_ms, aes(x=factor(q1012_mar_stat))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "NEVER MARRIED (AND NO COHABITING)" into 1`
+* `keep "CURRENTLY MARRIED" into 2`
+* `recode 3 "COHABITING" into 2`
+* `recode 4 "SEPARATED/DIVORCED" into 3`
+* `recode 5 "WIDOWED" into 4`
+* `recode NA into 999`
+
+
+**R script:**
+
+```{r harmo_spain1,   echo=TRUE}
+COURAGE_ds_spain_w1 <- tibble(id=COURAGE_spain_w1_ms$id)
+COURAGE_ds_spain_w1$marital_status <- car::recode(COURAGE_spain_w1_ms$q1012_mar_stat, " 3=2; 4=3; 5=4; NA=999")
+COURAGE_ds_spain_w1$marital_status <- labelled(COURAGE_ds_spain_w1$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_spain1,  echo=FALSE}
+vari <- COURAGE_ds_spain_w1$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_ds_spain_w1$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(COURAGE_ds_spain_w1, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_spain1,  echo=FALSE}
+BeforeH <- table(COURAGE_spain_w1_ms$q1012_mar_stat)
+BeforeH <- c( BeforeH[1], sum(BeforeH[c(2, 3)]), BeforeH[4], BeforeH[5])
+AfterH <- table(COURAGE_ds_spain_w1$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1","(2,3)->2", "4->3", "5->4")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_spain1,  echo=FALSE}
+val_labels(COURAGE_ds_spain_w1) <- NULL
+opal.assign.data(o, 'COURAGE_ds_spain_w1', COURAGE_ds_spain_w1)
+#opal.symbol_import(o,'COURAGE_ds_spain_w1', project='_Athlos_Harm_Dataset')
+
+COURAGE_m_ds_spain_w1 <- COURAGE_ds_spain_w1
+COURAGE_m_ds_spain_w1$marital_status <- car::recode(COURAGE_m_ds_spain_w1$marital_status, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+opal.assign.data(o, 'COURAGE_m_ds_spain_w1', COURAGE_m_ds_spain_w1)
+#opal.symbol_import(o,'COURAGE_m_ds_spain_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `q1012_mar_stat_s1`
+* Label: `Marital status`
+* Categories: 
+    + `1 = NEVER MARRIED (AND NO COHABITING)`
+    + `2 = CURRENTLY MARRIED`
+    + `3 = COHABITING`
+    + `4 = SEPARATED/DIVORCED`
+    + `5 = WIDOWED`
+
+* Description: 
+```{r assign_spain2,  echo=FALSE}
+opal.assign.table.tibble(o, 'COURAGE_spain_w2_ms','Courage.Courage_Spain_w2_1',
+                         variables=list('q1012_mar_stat_s1'), missings = TRUE)
+```
+
+```{r local_spain2,  echo=FALSE}
+COURAGE_spain_w2_ms <- opal.execute(o,'COURAGE_spain_w2_ms')
+vari <- COURAGE_spain_w2_ms$q1012_mar_stat_s1
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_spain_w2_ms$q1012_mar_stat_s1, missing_values = NA)
+ggplot(COURAGE_spain_w2_ms, aes(x=factor(q1012_mar_stat_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "NEVER MARRIED (AND NO COHABITING)" into 1`
+* `keep "CURRENTLY MARRIED" into 2`
+* `recode 3 "COHABITING" into 2`
+* `recode 4 "SEPARATED/DIVORCED" into 3`
+* `recode 5 "WIDOWED" into 4`
+* `recode NA into 999`
+
+
+**R script:**
+
+```{r harmo_spain2,   echo=TRUE}
+COURAGE_ds_spain_w2 <- tibble(id=COURAGE_spain_w2_ms$id)
+COURAGE_ds_spain_w2$marital_status <- car::recode(COURAGE_spain_w2_ms$q1012_mar_stat_s1, " 3=2; 4=3; 5=4; NA=999")
+COURAGE_ds_spain_w2$marital_status <- labelled(COURAGE_ds_spain_w2$marital_status, labels = c("single"=1, "married cohabitating"=2, "divorced separated"=3, "widow"=4, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_spain2,  echo=FALSE}
+vari <- COURAGE_ds_spain_w2$marital_status
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_ds_spain_w2$marital_status, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(COURAGE_ds_spain_w2, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Marital Status") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_spain2,  echo=FALSE}
+BeforeH <- table(COURAGE_spain_w2_ms$q1012_mar_stat_s1)
+BeforeH <- c( BeforeH[1], sum(BeforeH[c(2, 3)]), BeforeH[4], BeforeH[5], sum(is.na(COURAGE_spain_w2_ms$q1012_mar_stat_s1))) 
+AfterH <- table(COURAGE_ds_spain_w2$marital_status)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1","(2,3)->2", "4->3", "5->4", "NA->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_spain2,  echo=FALSE}
+val_labels(COURAGE_ds_spain_w2) <- NULL
+opal.assign.data(o, 'COURAGE_ds_spain_w2', COURAGE_ds_spain_w2)
+#opal.symbol_import(o,'COURAGE_ds_spain_w2', project='_Athlos_Harm_Dataset')
+
+COURAGE_m_ds_spain_w2 <- COURAGE_ds_spain_w2
+COURAGE_m_ds_spain_w2$marital_status <- car::recode(COURAGE_m_ds_spain_w2$marital_status, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+opal.assign.data(o, 'COURAGE_m_ds_spain_w2', COURAGE_m_ds_spain_w2)
+#opal.symbol_import(o,'COURAGE_m_ds_spain_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+# Quality estimation
+
+No comments
+
+```{r save, echo=FALSE}
+marital_status <- COURAGE_ds_spain_w1
+save(marital_status, file = "../RData/spain_w1/marital_status.RData")
+rm(marital_status)
+
+marital_status <- COURAGE_ds_spain_w2
+save(marital_status, file = "../RData/spain_w2/marital_status.RData")
+rm(marital_status)
+
+marital_status <- COURAGE_ds_pol_w1
+save(marital_status, file = "../RData/pol_w1/marital_status.RData")
+rm(marital_status)
+
+marital_status <- COURAGE_ds_pol_w2
+save(marital_status, file = "../RData/pol_w2/marital_status.RData")
+rm(marital_status)
+
+marital_status <- COURAGE_ds_fin_w1
+save(marital_status, file = "../RData/fin_w1/marital_status.RData")
+rm(marital_status)
+```
+
+
+```{r closeRsession, echo=FALSE,  echo=FALSE} 
+opal.logout(o)
+```
+
+

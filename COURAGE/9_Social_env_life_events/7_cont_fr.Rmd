@@ -1,0 +1,732 @@
+---
+title: "Are the contacts with friends/neighbours frequent (i.e. contact once a month or more often)"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_ania.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variables is the following:
+
+* Short name: `cont_fr`
+* Variable label: `Are the contacts with friends/neighbours frequent (i.e. contact once a month or more often)`
+* Domain: `Social environment`
+* Value type: `cathegorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Finnish population
+
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q6010g_friends`
+* Label: `Friends?`
+* Categories: 
+    + `1 = Yes`
+    + `2 = No`
+    
+* Name: `q6217_friends`
+* Label: `Friends face-to-face`
+* Categories:
+    + `1 = Never`
+    + `2 = Once/few times per year`
+    + `3 = Once/few times per month`
+    + `4 = Once/few times per week`
+    + `5 = Daily`
+* Missings:
+    + `9 = NA`
+    
+* Name: `q6010h_neighbours`
+* Label: `Neighbours?`
+* Categories: 
+    + `1 = Yes`
+    + `2 = No`
+    
+* Name: `q6218_neighbours`
+* Label: `Neighbors face-to-face`
+* Categories:
+    + `1 = Never`
+    + `2 = Once/few times per year`
+    + `3 = Once/few times per month`
+    + `4 = Once/few times per week`
+    + `5 = Daily`
+* Missings:
+    + `9 = NA`
+  
+    
+
+* Description: 
+```{r assign1 fin}
+opal.assign.table.tibble(o, 'COURAGE_fin_w1_cont_fr','Courage.Courage_Finland_w1', 
+                        variables=list('q6010g_friends','q6217_friends','q6010h_neighbours','q6218_neighbours'), missings = TRUE)
+```
+
+```{r local1 fin}
+COURAGE_fin_w1_cont_fr <- opal.execute(o,'COURAGE_fin_w1_cont_fr')
+
+vari <- COURAGE_fin_w1_cont_fr$q6217_friends
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(9))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_fin_w1_cont_fr$q6217_friends, missing_values = NA)
+ggplot(COURAGE_fin_w1_cont_fr, aes(x=factor(q6217_friends))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Friends face-to-face") + ylab("Frequency")
+
+vari <- COURAGE_fin_w1_cont_fr$q6218_neighbours
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(9))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_fin_w1_cont_fr$q6218_neighbours, missing_values = NA)
+ggplot(COURAGE_fin_w1_cont_fr, aes(x=factor(q6218_neighbours))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Neighbors face-to-face") + ylab("Frequency")
+
+vari <- COURAGE_fin_w1_cont_fr$q6010g_friends
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_fin_w1_cont_fr$q6010g_friends, missing_values = NA)
+ggplot(COURAGE_fin_w1_cont_fr, aes(x=factor(q6010g_friends))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has friends?") + ylab("Frequency")
+
+vari <- COURAGE_fin_w1_cont_fr$q6010h_neighbours
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_fin_w1_cont_fr$q6010h_neighbours, missing_values = NA)
+ggplot(COURAGE_fin_w1_cont_fr, aes(x=factor(q6010h_neighbours))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has neighbours?") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `q6217 in (1,2) AND q6218 in (1,2) then 0`
+* `q6010g=2 AND q6218 in (1,2) then 0`
+* `q6217 in (1,2) AND q6010h=2 then 0`
+* `q6217 in (3,4,5) OR q6218 in (3,4,5) into 1`
+* `q6010g=2 AND q6010h=2 INTO 996`
+* `q6217 = 9 OR q6218 = 9 into 996`
+* `NA into 999`
+
+ 
+**R script:**
+```{r harmo1 fin, echo=TRUE}
+COURAGE_ds_fin_w1 <- tibble(id=COURAGE_fin_w1_cont_fr$id)
+
+COURAGE_fin_w1_cont_fr$q6010g_friends <- car::recode(as.vector(COURAGE_fin_w1_cont_fr$q6010g_friends), "NA='-999'")
+COURAGE_fin_w1_cont_fr$q6010h_neighbours <- car::recode(as.vector(COURAGE_fin_w1_cont_fr$q6010h_neighbours), "NA='-999'")
+COURAGE_fin_w1_cont_fr$q6217_friends <- car::recode(as.vector(COURAGE_fin_w1_cont_fr$q6217_friends), "NA='-999'")
+COURAGE_fin_w1_cont_fr$q6218_neighbours <- car::recode(as.vector(COURAGE_fin_w1_cont_fr$q6218_neighbours), "NA='-999'")
+
+COURAGE_ds_fin_w1$cont_fr <- c(NA)  
+for(i in 1:dim(COURAGE_fin_w1_cont_fr)[1]){
+  if( COURAGE_fin_w1_cont_fr$q6217_friends[i] %in% c(1,2) & COURAGE_fin_w1_cont_fr$q6218_neighbours[i] %in% c(1,2) ) { 
+    COURAGE_ds_fin_w1$cont_fr[i] = 0 }
+  else if( COURAGE_fin_w1_cont_fr$q6010g_friends[i] == 2 & COURAGE_fin_w1_cont_fr$q6218_neighbours[i] %in% c(1,2) ) { 
+    COURAGE_ds_fin_w1$cont_fr[i] = 0 }
+  else if( COURAGE_fin_w1_cont_fr$q6217_friends[i] %in% c(1,2) & COURAGE_fin_w1_cont_fr$q6010h_neighbours[i] == 2 ) { 
+    COURAGE_ds_fin_w1$cont_fr[i] = 0 }
+  else if(COURAGE_fin_w1_cont_fr$q6217_friends[i] %in% c(3,4,5) | COURAGE_fin_w1_cont_fr$q6218_neighbours[i] %in% c(3,4,5) ){ 
+    COURAGE_ds_fin_w1$cont_fr[i] = 1 }
+  else if(COURAGE_fin_w1_cont_fr$q6010g_friends[i] == 2 & COURAGE_fin_w1_cont_fr$q6010h_neighbours[i] == 2 ){
+    COURAGE_ds_fin_w1$cont_fr[i] = 996 }
+  else if(COURAGE_fin_w1_cont_fr$q6217_friends[i] == 9 | COURAGE_fin_w1_cont_fr$q6218_neighbours[i] == 9 ){ 
+    COURAGE_ds_fin_w1$cont_fr[i] = 996 }
+}
+
+COURAGE_ds_fin_w1$cont_fr <- car::recode(as.vector(COURAGE_ds_fin_w1$cont_fr), "NA='999'")
+COURAGE_ds_fin_w1$cont_fr <- labelled(COURAGE_ds_fin_w1$cont_fr, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 fin}
+vari <- COURAGE_ds_fin_w1$cont_fr
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_ds_fin_w1$cont_fr, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(COURAGE_ds_fin_w1, aes(x=factor(cont_fr))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are the contacts with friends/neighbours frequent") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 fin}
+
+```
+
+ 
+ 
+
+
+
+## Polish population
+
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q6217_friends`
+* Label: `Friends face-to-face`
+* Categories:
+    + `1 = Never`
+    + `2 = Once/few times per year`
+    + `3 = Once/few times per month`
+    + `4 = Once/few times per week`
+    + `5 = Daily`
+* Missings:
+    + `9 = NA`
+    
+* Name: `q6218_neighbours`
+* Label: `Neighbors face-to-face`
+* Categories:
+    + `1 = Never`
+    + `2 = Once/few times per year`
+    + `3 = Once/few times per month`
+    + `4 = Once/few times per week`
+    + `5 = Daily`
+* Missings:
+    + `9 = NA`
+    
+
+* Description: 
+```{r assign1 pol}
+opal.assign.table.tibble(o, 'COURAGE_pol_w1_cont_fr','Courage.Courage_Poland_w1', 
+                        variables=list('q6010g_friends','q6217_friends','q6010h_neighbours','q6218_neighbours'), missings = TRUE)
+```
+
+```{r local1 pol}
+COURAGE_pol_w1_cont_fr <- opal.execute(o,'COURAGE_pol_w1_cont_fr')
+
+vari <- COURAGE_pol_w1_cont_fr$q6217_friends
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(9))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_pol_w1_cont_fr$q6217_friends, missing_values = NA)
+ggplot(COURAGE_pol_w1_cont_fr, aes(x=factor(q6217_friends))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Friends face-to-face") + ylab("Frequency")
+
+vari <- COURAGE_pol_w1_cont_fr$q6218_neighbours
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(9))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_pol_w1_cont_fr$q6218_neighbours, missing_values = NA)
+ggplot(COURAGE_pol_w1_cont_fr, aes(x=factor(q6218_neighbours))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Neighbors face-to-face") + ylab("Frequency")
+
+vari <- COURAGE_pol_w1_cont_fr$q6010g_friends
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_pol_w1_cont_fr$q6010g_friends, missing_values = NA)
+ggplot(COURAGE_pol_w1_cont_fr, aes(x=factor(q6010g_friends))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has friends?") + ylab("Frequency")
+
+vari <- COURAGE_pol_w1_cont_fr$q6010h_neighbours
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_pol_w1_cont_fr$q6010h_neighbours, missing_values = NA)
+ggplot(COURAGE_pol_w1_cont_fr, aes(x=factor(q6010h_neighbours))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has neighbours?") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `q6217 in (1,2) AND q6218 in (1,2) then 0`
+* `q6010g=2 AND q6218 in (1,2) then 0`
+* `q6217 in (1,2) AND q6010h=2 then 0`
+* `q6217 in (3,4,5) OR q6218 in (3,4,5) into 1`
+* `q6010g=2 AND q6010h=2 INTO 996`
+* `q6217 = 9 OR q6218 = 9 into 996`
+* `NA into 999`
+
+**R script:** 
+
+```{r harmo1 pol, echo=TRUE}
+COURAGE_ds_pol_w1 <- tibble(id=COURAGE_pol_w1_cont_fr$id)
+
+COURAGE_pol_w1_cont_fr$q6010g_friends <- car::recode(as.vector(COURAGE_pol_w1_cont_fr$q6010g_friends), "NA='-999'")
+COURAGE_pol_w1_cont_fr$q6010h_neighbours <- car::recode(as.vector(COURAGE_pol_w1_cont_fr$q6010h_neighbours), "NA='-999'")
+COURAGE_pol_w1_cont_fr$q6217_friends <- car::recode(as.vector(COURAGE_pol_w1_cont_fr$q6217_friends), "NA='-999'")
+COURAGE_pol_w1_cont_fr$q6218_neighbours <- car::recode(as.vector(COURAGE_pol_w1_cont_fr$q6218_neighbours), "NA='-999'")
+
+COURAGE_ds_pol_w1$cont_fr <- c(NA)  
+for(i in 1:dim(COURAGE_pol_w1_cont_fr)[1]){
+  if( COURAGE_pol_w1_cont_fr$q6217_friends[i] %in% c(1,2) & COURAGE_pol_w1_cont_fr$q6218_neighbours[i] %in% c(1,2) ) { 
+    COURAGE_ds_pol_w1$cont_fr[i] = 0 }
+  else if( COURAGE_pol_w1_cont_fr$q6010g_friends[i] == 2 & COURAGE_pol_w1_cont_fr$q6218_neighbours[i] %in% c(1,2) ) { 
+    COURAGE_ds_pol_w1$cont_fr[i] = 0 }
+  else if( COURAGE_pol_w1_cont_fr$q6217_friends[i] %in% c(1,2) & COURAGE_pol_w1_cont_fr$q6010h_neighbours[i] == 2 ) { 
+    COURAGE_ds_pol_w1$cont_fr[i] = 0 }
+  else if(COURAGE_pol_w1_cont_fr$q6217_friends[i] %in% c(3,4,5) | COURAGE_pol_w1_cont_fr$q6218_neighbours[i] %in% c(3,4,5) ){ 
+    COURAGE_ds_pol_w1$cont_fr[i] = 1 }
+  else if(COURAGE_pol_w1_cont_fr$q6010g_friends[i] == 2 & COURAGE_pol_w1_cont_fr$q6010h_neighbours[i] == 2 ){
+    COURAGE_ds_pol_w1$cont_fr[i] = 996 }
+  else if(COURAGE_pol_w1_cont_fr$q6217_friends[i] == 9 | COURAGE_pol_w1_cont_fr$q6218_neighbours[i] == 9 ){ 
+    COURAGE_ds_pol_w1$cont_fr[i] = 996 }
+}
+
+COURAGE_ds_pol_w1$cont_fr <- car::recode(as.vector(COURAGE_ds_pol_w1$cont_fr), "NA='999'")
+COURAGE_ds_pol_w1$cont_fr <- labelled(COURAGE_ds_pol_w1$cont_fr, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991 ))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 pol}
+vari <- COURAGE_ds_pol_w1$cont_fr
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_ds_pol_w1$cont_fr, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(COURAGE_ds_pol_w1, aes(x=factor(cont_fr))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are the contacts with friends/neighbours frequent") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 pol}
+
+```
+
+ 
+ 
+
+
+
+### Wave 2 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q6217_friends_s1`
+* Label: `Friends face-to-face`
+* Categories:
+    + `1 = Never`
+    + `2 = Once/few times per year`
+    + `3 = Once/few times per month`
+    + `4 = Once/few times per week`
+    + `5 = Daily`
+* Missings:
+    + `9 = NA`
+    
+* Name: `q6218_neighbours_s1`
+* Label: `Neighbors face-to-face`
+* Categories:
+    + `1 = Never`
+    + `2 = Once/few times per year`
+    + `3 = Once/few times per month`
+    + `4 = Once/few times per week`
+    + `5 = Daily`
+* Missings:
+    + `9 = NA`
+    
+
+* Description: 
+```{r assign2 pol}
+opal.assign.table.tibble(o, 'COURAGE_pol_w2_cont_fr','Courage.Courage_Poland_w2', 
+                        variables=list('q6010g_friends_s1','q6217_friends_s1','q6010h_neighbours_s1','q6218_neighbours_s1'), missings = TRUE)
+```
+
+```{r local2 pol}
+COURAGE_pol_w2_cont_fr <- opal.execute(o,'COURAGE_pol_w2_cont_fr')
+
+vari <- COURAGE_pol_w2_cont_fr$q6217_friends_s1
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(9))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_pol_w2_cont_fr$q6217_friends_s1, missing_values = NA)
+ggplot(COURAGE_pol_w2_cont_fr, aes(x=factor(q6217_friends_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Friends face-to-face") + ylab("Frequency")
+
+vari <- COURAGE_pol_w2_cont_fr$q6218_neighbours_s1
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(9))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_pol_w2_cont_fr$q6218_neighbours_s1, missing_values = NA)
+ggplot(COURAGE_pol_w2_cont_fr, aes(x=factor(q6218_neighbours_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Neighbors face-to-face") + ylab("Frequency")
+
+vari <- COURAGE_pol_w2_cont_fr$q6010g_friends_s1
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_pol_w2_cont_fr$q6010g_friends_s1, missing_values = NA)
+ggplot(COURAGE_pol_w2_cont_fr, aes(x=factor(q6010g_friends_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has friends?") + ylab("Frequency")
+
+vari <- COURAGE_pol_w2_cont_fr$q6010h_neighbours_s1
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_pol_w2_cont_fr$q6010h_neighbours_s1, missing_values = NA)
+ggplot(COURAGE_pol_w2_cont_fr, aes(x=factor(q6010h_neighbours_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has neighbours?") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `q6217 in (1,2) AND q6218 in (1,2) then 0`
+* `q6010g=2 AND q6218 in (1,2) then 0`
+* `q6217 in (1,2) AND q6010h=2 then 0`
+* `q6217 in (3,4,5) OR q6218 in (3,4,5) into 1`
+* `q6010g=2 AND q6010h=2 INTO 996`
+* `q6217 = 9 OR q6218 = 9 into 996`
+* `NA into 999`
+
+**R script:** 
+
+```{r harmo2 pol, echo=TRUE}
+COURAGE_ds_pol_w2 <- tibble(id=COURAGE_pol_w2_cont_fr$id)
+
+COURAGE_pol_w2_cont_fr$q6010g_friends_s1 <- car::recode(as.vector(COURAGE_pol_w2_cont_fr$q6010g_friends_s1), "NA='-999'")
+COURAGE_pol_w2_cont_fr$q6010h_neighbours_s1 <- car::recode(as.vector(COURAGE_pol_w2_cont_fr$q6010h_neighbours_s1), "NA='-999'")
+COURAGE_pol_w2_cont_fr$q6217_friends_s1 <- car::recode(as.vector(COURAGE_pol_w2_cont_fr$q6217_friends_s1), "NA='-999'")
+COURAGE_pol_w2_cont_fr$q6218_neighbours_s1 <- car::recode(as.vector(COURAGE_pol_w2_cont_fr$q6218_neighbours_s1), "NA='-999'")
+
+COURAGE_ds_pol_w2$cont_fr <- c(NA)  
+for(i in 1:dim(COURAGE_pol_w2_cont_fr)[1]){
+  if( COURAGE_pol_w2_cont_fr$q6217_friends_s1[i] %in% c(1,2) & COURAGE_pol_w2_cont_fr$q6218_neighbours_s1[i] %in% c(1,2) ) { 
+    COURAGE_ds_pol_w2$cont_fr[i] = 0 }
+  else if( COURAGE_pol_w2_cont_fr$q6010g_friends_s1[i] == 2 & COURAGE_pol_w2_cont_fr$q6218_neighbours_s1[i] %in% c(1,2) ) { 
+    COURAGE_ds_pol_w2$cont_fr[i] = 0 }
+  else if( COURAGE_pol_w2_cont_fr$q6217_friends_s1[i] %in% c(1,2) & COURAGE_pol_w2_cont_fr$q6010h_neighbours_s1[i] == 2 ) { 
+    COURAGE_ds_pol_w2$cont_fr[i] = 0 }
+  else if(COURAGE_pol_w2_cont_fr$q6217_friends_s1[i] %in% c(3,4,5) | COURAGE_pol_w2_cont_fr$q6218_neighbours_s1[i] %in% c(3,4,5) ){ 
+    COURAGE_ds_pol_w2$cont_fr[i] = 1 }
+  else if(COURAGE_pol_w2_cont_fr$q6010g_friends_s1[i] == 2 & COURAGE_pol_w2_cont_fr$q6010h_neighbours_s1[i] == 2 ){
+    COURAGE_ds_pol_w2$cont_fr[i] = 996 }
+  else if(COURAGE_pol_w2_cont_fr$q6217_friends_s1[i] == 9 | COURAGE_pol_w2_cont_fr$q6218_neighbours_s1[i] == 9 ){ 
+    COURAGE_ds_pol_w2$cont_fr[i] = 996 }
+}
+
+COURAGE_ds_pol_w2$cont_fr <- car::recode(as.vector(COURAGE_ds_pol_w2$cont_fr), "NA='999'")
+COURAGE_ds_pol_w2$cont_fr <- labelled(COURAGE_ds_pol_w2$cont_fr, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991 ))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 pol}
+vari <- COURAGE_ds_pol_w2$cont_fr
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_ds_pol_w2$cont_fr, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(COURAGE_ds_pol_w2, aes(x=factor(cont_fr))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are the contacts with friends/neighbours frequent") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 pol}
+
+```
+
+ 
+ 
+
+
+## Spanish population
+
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q6217_friends`
+* Label: `Friends face-to-face`
+* Categories:
+    + `1 = Never`
+    + `2 = Once/few times per year`
+    + `3 = Once/few times per month`
+    + `4 = Once/few times per week`
+    + `5 = Daily`
+* Missings:
+    + `9 = NA`
+    
+* Name: `q6218_neighbours`
+* Label: `Neighbors face-to-face`
+* Categories:
+    + `1 = Never`
+    + `2 = Once/few times per year`
+    + `3 = Once/few times per month`
+    + `4 = Once/few times per week`
+    + `5 = Daily`
+* Missings:
+    + `9 = NA`
+    
+
+* Description: 
+```{r assign1 spain}
+opal.assign.table.tibble(o, 'COURAGE_spain_w1_cont_fr','Courage.Courage_Spain_w1', 
+                        variables=list('q6010g_friends','q6217_friends','q6010h_neighbours','q6218_neighbours'), missings = TRUE)
+```
+
+```{r local1 spain}
+COURAGE_spain_w1_cont_fr <- opal.execute(o,'COURAGE_spain_w1_cont_fr')
+
+vari <- COURAGE_spain_w1_cont_fr$q6217_friends
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(9))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_spain_w1_cont_fr$q6217_friends, missing_values = NA)
+ggplot(COURAGE_spain_w1_cont_fr, aes(x=factor(q6217_friends))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Friends face-to-face") + ylab("Frequency")
+
+vari <- COURAGE_spain_w1_cont_fr$q6218_neighbours
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(9))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_spain_w1_cont_fr$q6218_neighbours, missing_values = NA)
+ggplot(COURAGE_spain_w1_cont_fr, aes(x=factor(q6218_neighbours))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Neighbors face-to-face") + ylab("Frequency")
+
+vari <- COURAGE_spain_w1_cont_fr$q6010g_friends 
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_spain_w1_cont_fr$q6010g_friends, missing_values = NA)
+ggplot(COURAGE_spain_w1_cont_fr, aes(x=factor(q6010g_friends))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has friends?") + ylab("Frequency")
+
+vari <- COURAGE_spain_w1_cont_fr$q6010h_neighbours
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_spain_w1_cont_fr$q6010h_neighbours, missing_values = NA)
+ggplot(COURAGE_spain_w1_cont_fr, aes(x=factor(q6010h_neighbours))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has neighbours?") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `q6217 in (1,2) AND q6218 in (1,2) then 0`
+* `q6010g=2 AND q6218 in (1,2) then 0`
+* `q6217 in (1,2) AND q6010h=2 then 0`
+* `q6217 in (3,4,5) OR q6218 in (3,4,5) into 1`
+* `q6010g=2 AND q6010h=2 INTO 996`
+* `q6217 = 9 OR q6218 = 9 into 996`
+* `NA into 999`
+
+ 
+**R script:**
+```{r harmo1 spain, echo=TRUE}
+COURAGE_ds_spain_w1 <- tibble(id=COURAGE_spain_w1_cont_fr$id)
+
+COURAGE_spain_w1_cont_fr$q6010g_friends <- car::recode(as.vector(COURAGE_spain_w1_cont_fr$q6010g_friends), "NA='-999'")
+COURAGE_spain_w1_cont_fr$q6010h_neighbours <- car::recode(as.vector(COURAGE_spain_w1_cont_fr$q6010h_neighbours), "NA='-999'")
+COURAGE_spain_w1_cont_fr$q6217_friends <- car::recode(as.vector(COURAGE_spain_w1_cont_fr$q6217_friends), "NA='-999'")
+COURAGE_spain_w1_cont_fr$q6218_neighbours <- car::recode(as.vector(COURAGE_spain_w1_cont_fr$q6218_neighbours), "NA='-999'")
+
+COURAGE_ds_spain_w1$cont_fr <- c(NA)  
+for(i in 1:dim(COURAGE_spain_w1_cont_fr)[1]){
+  if( COURAGE_spain_w1_cont_fr$q6217_friends[i] %in% c(1,2) & COURAGE_spain_w1_cont_fr$q6218_neighbours[i] %in% c(1,2) ) { 
+    COURAGE_ds_spain_w1$cont_fr[i] = 0 }
+  else if( COURAGE_spain_w1_cont_fr$q6010g_friends[i] == 2 & COURAGE_spain_w1_cont_fr$q6218_neighbours[i] %in% c(1,2) ) { 
+    COURAGE_ds_spain_w1$cont_fr[i] = 0 }
+  else if( COURAGE_spain_w1_cont_fr$q6217_friends[i] %in% c(1,2) & COURAGE_spain_w1_cont_fr$q6010h_neighbours[i] == 2 ) { 
+    COURAGE_ds_spain_w1$cont_fr[i] = 0 }
+  else if(COURAGE_spain_w1_cont_fr$q6217_friends[i] %in% c(3,4,5) | COURAGE_spain_w1_cont_fr$q6218_neighbours[i] %in% c(3,4,5) ){ 
+    COURAGE_ds_spain_w1$cont_fr[i] = 1 }
+  else if(COURAGE_spain_w1_cont_fr$q6010g_friends[i] == 2 & COURAGE_spain_w1_cont_fr$q6010h_neighbours[i] == 2 ){
+    COURAGE_ds_spain_w1$cont_fr[i] = 996 }
+  else if(COURAGE_spain_w1_cont_fr$q6217_friends[i] == 9 | COURAGE_spain_w1_cont_fr$q6218_neighbours[i] == 9 ){ 
+    COURAGE_ds_spain_w1$cont_fr[i] = 996 }
+}
+
+COURAGE_ds_spain_w1$cont_fr <- car::recode(as.vector(COURAGE_ds_spain_w1$cont_fr), "NA='999'")
+COURAGE_ds_spain_w1$cont_fr <- labelled(COURAGE_ds_spain_w1$cont_fr, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991 ))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 spain}
+vari <- COURAGE_ds_spain_w1$cont_fr
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_ds_spain_w1$cont_fr, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(COURAGE_ds_spain_w1, aes(x=factor(cont_fr))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are the contacts with friends/neighbours frequent") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 spain}
+
+```
+
+ 
+ 
+
+
+
+### Wave 2 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q6217_friends_s1`
+* Label: `Friends face-to-face`
+* Categories:
+    + `1 = Never`
+    + `2 = Once/few times per year`
+    + `3 = Once/few times per month`
+    + `4 = Once/few times per week`
+    + `5 = Daily`
+* Missings:
+    + `9 = NA`
+    
+* Name: `q6218_neighbours_s1`
+* Label: `Neighbors face-to-face`
+* Categories:
+    + `1 = Never`
+    + `2 = Once/few times per year`
+    + `3 = Once/few times per month`
+    + `4 = Once/few times per week`
+    + `5 = Daily`
+* Missings:
+    + `9 = NA`
+    
+
+* Description: 
+```{r assign2 spain}
+opal.assign.table.tibble(o, 'COURAGE_spain_w2_cont_fr','Courage.Courage_Spain_w2_1', 
+                        variables=list('q6010g_friends_s1','q6217_friends_s1','q6010h_neighbours_s1','q6218_neighbours_s1'), missings = TRUE)
+```
+
+```{r local2 spain}
+COURAGE_spain_w2_cont_fr <- opal.execute(o,'COURAGE_spain_w2_cont_fr')
+vari <- COURAGE_spain_w2_cont_fr$q6217_friends_s1
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(9))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_spain_w2_cont_fr$q6217_friends_s1, missing_values = NA)
+ggplot(COURAGE_spain_w2_cont_fr, aes(x=factor(q6217_friends_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Friends face-to-face") + ylab("Frequency")
+
+vari <- COURAGE_spain_w2_cont_fr$q6218_neighbours_s1
+kable(Categorical_summary(vari, missing_values = c(9))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(9))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_spain_w2_cont_fr$q6218_neighbours_s1, missing_values = NA)
+ggplot(COURAGE_spain_w2_cont_fr, aes(x=factor(q6218_neighbours_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Neighbors face-to-face") + ylab("Frequency")
+
+vari <- COURAGE_spain_w2_cont_fr$q6010g_friends_s1
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_spain_w2_cont_fr$q6010g_friends_s1, missing_values = NA)
+ggplot(COURAGE_spain_w2_cont_fr, aes(x=factor(q6010g_friends_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has friends?") + ylab("Frequency")
+vari <- COURAGE_spain_w2_cont_fr$q6010h_neighbours_s1
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_spain_w2_cont_fr$q6010h_neighbours_s1, missing_values = NA)
+ggplot(COURAGE_spain_w2_cont_fr, aes(x=factor(q6010h_neighbours_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has neighbours?") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `q6217 in (1,2) AND q6218 in (1,2) then 0`
+* `q6010g=2 AND q6218 in (1,2) then 0`
+* `q6217 in (1,2) AND q6010h=2 then 0`
+* `q6217 in (3,4,5) OR q6218 in (3,4,5) into 1`
+* `q6010g=2 AND q6010h=2 INTO 996`
+* `q6217 = 9 OR q6218 = 9 into 996`
+* `NA into 999`
+
+ 
+**R script:**
+```{r harmo2 spain, echo=TRUE}
+COURAGE_ds_spain_w2 <- tibble(id=COURAGE_spain_w2_cont_fr$id)
+
+COURAGE_spain_w2_cont_fr$q6010g_friends_s1 <- car::recode(as.vector(COURAGE_spain_w2_cont_fr$q6010g_friends_s1), "NA='-999'")
+COURAGE_spain_w2_cont_fr$q6010h_neighbours_s1 <- car::recode(as.vector(COURAGE_spain_w2_cont_fr$q6010h_neighbours_s1), "NA='-999'")
+COURAGE_spain_w2_cont_fr$q6217_friends_s1 <- car::recode(as.vector(COURAGE_spain_w2_cont_fr$q6217_friends_s1), "NA='-999'")
+COURAGE_spain_w2_cont_fr$q6218_neighbours_s1 <- car::recode(as.vector(COURAGE_spain_w2_cont_fr$q6218_neighbours_s1), "NA='-999'")
+
+COURAGE_ds_spain_w2$cont_fr <- c(NA)  
+for(i in 1:dim(COURAGE_spain_w2_cont_fr)[1]){
+  if( COURAGE_spain_w2_cont_fr$q6217_friends_s1[i] %in% c(1,2) & COURAGE_spain_w2_cont_fr$q6218_neighbours_s1[i] %in% c(1,2) ) { 
+    COURAGE_ds_spain_w2$cont_fr[i] = 0 }
+  else if( COURAGE_spain_w2_cont_fr$q6010g_friends_s1[i] == 2 & COURAGE_spain_w2_cont_fr$q6218_neighbours_s1[i] %in% c(1,2) ) { 
+    COURAGE_ds_spain_w2$cont_fr[i] = 0 }
+  else if( COURAGE_spain_w2_cont_fr$q6217_friends_s1[i] %in% c(1,2) & COURAGE_spain_w2_cont_fr$q6010h_neighbours_s1[i] == 2 ) { 
+    COURAGE_ds_spain_w2$cont_fr[i] = 0 }
+  else if(COURAGE_spain_w2_cont_fr$q6217_friends_s1[i] %in% c(3,4,5) | COURAGE_spain_w2_cont_fr$q6218_neighbours_s1[i] %in% c(3,4,5) ){ 
+    COURAGE_ds_spain_w2$cont_fr[i] = 1 }
+  else if(COURAGE_spain_w2_cont_fr$q6010g_friends_s1[i] == 2 & COURAGE_spain_w2_cont_fr$q6010h_neighbours_s1[i] == 2 ){
+    COURAGE_ds_spain_w2$cont_fr[i] = 996 }
+  else if(COURAGE_spain_w2_cont_fr$q6217_friends_s1[i] == 9 | COURAGE_spain_w2_cont_fr$q6218_neighbours_s1[i] == 9 ){ 
+    COURAGE_ds_spain_w2$cont_fr[i] = 996 }
+}
+
+COURAGE_ds_spain_w2$cont_fr <- car::recode(as.vector(COURAGE_ds_spain_w2$cont_fr), "NA='999'")
+COURAGE_ds_spain_w2$cont_fr <- labelled(COURAGE_ds_spain_w2$cont_fr, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991 ))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 spain}
+vari <- COURAGE_ds_spain_w2$cont_fr
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_ds_spain_w2$cont_fr, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(COURAGE_ds_spain_w2, aes(x=factor(cont_fr))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Are the contacts with friends/neighbours frequent") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 spain}
+
+```
+
+ 
+```{r save, echo=FALSE}
+cont_fr <- COURAGE_ds_spain_w1
+save(cont_fr, file = "../RData/spain_w1/cont_fr.RData")
+rm(cont_fr)
+
+cont_fr <- COURAGE_ds_spain_w2
+save(cont_fr, file = "../RData/spain_w2/cont_fr.RData")
+rm(cont_fr)
+
+cont_fr <- COURAGE_ds_pol_w1
+save(cont_fr, file = "../RData/pol_w1/cont_fr.RData")
+rm(cont_fr)
+
+cont_fr <- COURAGE_ds_pol_w2
+save(cont_fr, file = "../RData/pol_w2/cont_fr.RData")
+rm(cont_fr)
+
+cont_fr <- COURAGE_ds_fin_w1
+save(cont_fr, file = "../RData/fin_w1/cont_fr.RData")
+rm(cont_fr)
+```
+
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+

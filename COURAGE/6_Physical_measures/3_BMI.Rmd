@@ -1,0 +1,566 @@
+---
+title: "BMI"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+  
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/Rmds/setup_albert.r")
+```
+<!-- ########################################################## --> 
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+  
+* Name: `bmi`
+* Label: `Body Mass Index calculated as weight(kg)/height(m)^2`
+* Type of variable: `countinous`
+* Missings: 
+    + `991 = CAPI/interviewer error`
+    + `992 = Impute`
+    + `993 = Disable to measure`
+    + `994 = Not attempt/not done`
+    + `995 = Does not answer`
+    + `996 = Not applicable`
+    + `997 = Refuse`
+    + `998 = Do not know`
+    + `999 = Missing`
+* Comments: `the BMI variable should be created by dividing weight and heigh variables with the following equation= weight (kg)/height(m)^2.`
+
+
+### COURAGE - Finnish - Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q2507_weight`
+* Label: `weight`
+* Type of variable: `countinous`
+* Missings
+    + `997 = Disable to measure`
+    + `998 = Refusal`
+
+* Name: `q2506_height`
+* Label: `height`
+* Type of variable: `countinous`
+* Missings
+    + `997 = Disable to measure`
+    + `998 = Refusal`
+
+
+```{r assign_fin}
+opal.assign.table.tibble(o, 'COURAGE_fin_w1_bmi','Courage.Courage_Finland_w1',
+                         variables=list('q2507_weight', 'q2506_height'), missings = TRUE)
+```
+
+```{r local_fin}
+COURAGE_fin_w1_bmi <- opal.execute(o,'COURAGE_fin_w1_bmi')
+
+Continuous_summary(var = COURAGE_fin_w1_bmi$q2507_weight, missing_values = c(997, 998))
+ggplot(COURAGE_fin_w1_bmi, aes(q2507_weight)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency") + xlim(50,100)
+
+Continuous_summary(var = COURAGE_fin_w1_bmi$q2506_height, missing_values = c(997, 998))
+ggplot(COURAGE_fin_w1_bmi, aes(q2506_height)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(50,100)
+```
+
+#### Harmonisation algorithm
+The harmonized variable will be calculate from the study-specific variables using this formula
+
+bmi=weight/height^2
+
+The missing values have to be recoded as follows:
+
+* `NA into 999`
+* `997 into 993`
+* `998 into 997`
+
+R code of the ALGORITHM:
+
+```{r harmo_fin}
+COURAGE_ds_fin_w1 <- tibble(id=COURAGE_fin_w1_bmi$id)
+COURAGE_ds_fin_w1$bmi  <- car::recode(round(COURAGE_fin_w1_bmi$q2507_weight /((COURAGE_fin_w1_bmi$q2506_height/100)^2), 3), "NA=999; 997=993; 998=997")
+COURAGE_ds_fin_w1$bmi  <- labelled(COURAGE_ds_fin_w1$bmi , labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_fin}
+Continuous_summary(var = COURAGE_ds_fin_w1$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(COURAGE_ds_fin_w1, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,100)
+```
+
+#### Validation
+There are some unusual values that are lower than 12:
+```{r crosstabulation_fin}
+COURAGE_fin_w1_bmi$bmi <- COURAGE_ds_fin_w1$bmi
+COURAGE_fin_w1_bmi[which(COURAGE_fin_w1_bmi$bmi<13),]
+```
+
+
+
+
+
+
+### COURAGE - Polish - Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q2507_weight`
+* Label: `weight`
+* Type of variable: `countinous`
+* Missings
+    + `997 = Disable to measure`
+    + `998 = Refusal`
+
+* Name: `q2506_height`
+* Label: `height`
+* Type of variable: `countinous`
+* Missings
+    + `997 = Disable to measure`
+    + `998 = Refusal`
+
+```{r assign_pol1}
+opal.assign.table.tibble(o, 'COURAGE_pol_w1_bmi','Courage.Courage_Poland_w1',
+                         variables=list('q2507_weight', 'q2506_height'), missings = TRUE)
+```
+
+```{r local_pol1}
+COURAGE_pol_w1_bmi <- opal.execute(o,'COURAGE_pol_w1_bmi')
+
+Continuous_summary(var = COURAGE_pol_w1_bmi$q2507_weight, missing_values = c(997, 998))
+ggplot(COURAGE_pol_w1_bmi, aes(q2507_weight)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency") + xlim(50,100)
+
+Continuous_summary(var = COURAGE_pol_w1_bmi$q2506_height, missing_values = c(997, 998))
+ggplot(COURAGE_pol_w1_bmi, aes(q2506_height)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(50,100)
+
+```
+
+#### Harmonisation algorithm
+The harmonized variable will be calculate from the study-specific variables using this formula
+
+bmi=weight/height^2
+
+The missing values have to be recoded as follows:
+
+* `NA into 999`
+* `997 into 993`
+* `998 into 997`
+
+R code of the ALGORITHM:
+
+```{r harmo_pol1}
+compute_bmi <- function(Heigth, Weigth, miss, heigth_m = TRUE){
+  Heigth <- car::recode(Heigth, "NA=999")
+  Weigth <- car::recode(Weigth, "NA=999")
+  
+  if(heigth_m){
+    bmi <- Weigth/(Heigth^2)
+    
+    bmi[Heigth==999] <- 999
+    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
+    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
+    
+    bmi[Weigth==999] <- 999
+    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
+    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
+  } else {
+    bmi <- Weigth/((Heigth/100)^2)
+    
+    bmi[Heigth==999] <- 999
+    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
+    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
+    
+    bmi[Weigth==999] <- 999
+    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
+    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
+  }
+  bmi
+}
+
+COURAGE_pol_w1_bmi$bmi <- compute_bmi(Heigth = COURAGE_pol_w1_bmi$q2506_height, 
+            Weigth = COURAGE_pol_w1_bmi$q2507_weight, miss = c(997, 998), 
+            heigth_m = FALSE)
+
+COURAGE_ds_pol_w1 <- tibble(id=COURAGE_pol_w1_bmi$id)
+COURAGE_ds_pol_w1$bmi  <- car::recode(COURAGE_pol_w1_bmi$bmi, "NA=999; 997=993; 998=997")
+COURAGE_ds_pol_w1$bmi  <- labelled(COURAGE_ds_pol_w1$bmi , labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_pol1}
+Continuous_summary(var = COURAGE_ds_pol_w1$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(COURAGE_ds_pol_w1, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,100)
+```
+
+#### Validation
+There are some unusual values that are lower than 12:
+```{r crosstabulation_pol1}
+COURAGE_pol_w1_bmi$bmi <- COURAGE_ds_pol_w1$bmi
+COURAGE_pol_w1_bmi[which(COURAGE_pol_w1_bmi$bmi<13),]
+```
+
+
+
+
+
+
+
+### COURAGE - Polish - Wave 2 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q2507_weight_s1`
+* Label: `weight`
+* Type of variable: `countinous`
+* Missings
+    + `997 = Disable to measure`
+    + `998 = Refusal`
+    
+* Name: `q2506_height_s1`
+* Label: `height`
+* Type of variable: `countinous`
+* Missings
+    + `997 = Disable to measure`
+    + `998 = Refusal`
+
+```{r assign_pol2}
+opal.assign.table.tibble(o, 'COURAGE_pol_w2_bmi','Courage.Courage_Poland_w2',
+                         variables=list('q2507_weight_s1', 'q2506_height_s1'), missings = TRUE)
+```
+
+```{r local_pol2}
+COURAGE_pol_w2_bmi <- opal.execute(o,'COURAGE_pol_w2_bmi')
+
+Continuous_summary(var = COURAGE_pol_w2_bmi$q2507_weight_s1, missing_values = c(997, 998))
+ggplot(COURAGE_pol_w2_bmi, aes(q2507_weight_s1)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency") + xlim(50,100)
+
+Continuous_summary(var = COURAGE_pol_w2_bmi$q2506_height_s1, missing_values = c(997, 998))
+ggplot(COURAGE_pol_w2_bmi, aes(q2506_height_s1)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(50,100)
+```
+
+#### Harmonisation algorithm
+The harmonized variable will be calculate from the study-specific variables using this formula
+
+bmi=weight/height^2
+
+The missing values have to be recoded as follows:
+
+* `NA into 999`
+* `997 into 993`
+* `998 into 997`
+
+R code of the ALGORITHM:
+
+```{r harmo_pol2}
+compute_bmi <- function(Heigth, Weigth, miss, heigth_m = TRUE){
+  Heigth <- car::recode(Heigth, "NA=999")
+  Weigth <- car::recode(Weigth, "NA=999")
+  
+  if(heigth_m){
+    bmi <- Weigth/(Heigth^2)
+    
+    bmi[Heigth==999] <- 999
+    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
+    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
+    
+    bmi[Weigth==999] <- 999
+    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
+    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
+  } else {
+    bmi <- Weigth/((Heigth/100)^2)
+    
+    bmi[Heigth==999] <- 999
+    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
+    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
+    
+    bmi[Weigth==999] <- 999
+    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
+    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
+  }
+  bmi
+}
+
+COURAGE_pol_w2_bmi$bmi <- compute_bmi(Heigth = COURAGE_pol_w2_bmi$q2506_height_s1,             Weigth = COURAGE_pol_w2_bmi$q2507_weight_s1, miss = c(997, 998), 
+            heigth_m = FALSE)
+
+COURAGE_ds_pol_w2 <- tibble(id=COURAGE_pol_w2_bmi$id)
+COURAGE_ds_pol_w2$bmi  <- car::recode(COURAGE_pol_w2_bmi$bmi, "NA=999; 997=993; 998=997")
+COURAGE_ds_pol_w2$bmi  <- labelled(COURAGE_ds_pol_w2$bmi , labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_pol2}
+Continuous_summary(var = COURAGE_ds_pol_w2$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(COURAGE_ds_pol_w2, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,100)
+```
+
+#### Validation
+
+```{r crosstabulation_pol2}
+
+
+```
+
+
+
+
+
+
+
+
+### COURAGE - Spain - Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q2507_weight`
+* Label: `weight`
+* Type of variable: `countinous`
+* Missings
+    + `997 = Disable to measure`
+    + `998 = Refusal`
+
+* Name: `q2506_height`
+* Label: `height`
+* Type of variable: `countinous`
+* Missings
+    + `997 = Disable to measure`
+    + `998 = Refusal`
+
+
+```{r assign_spain1}
+opal.assign.table.tibble(o, 'COURAGE_spain_w1_bmi','Courage.Courage_Spain_w1',
+                         variables=list('q2507_weight', 'q2506_height'), missings = TRUE)
+```
+
+```{r local_spain1}
+COURAGE_spain_w1_bmi <- opal.execute(o,'COURAGE_spain_w1_bmi')
+
+Continuous_summary(var = COURAGE_spain_w1_bmi$q2507_weight, missing_values = c(997, 998))
+ggplot(COURAGE_spain_w1_bmi, aes(q2507_weight)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency") + xlim(50,100)
+
+Continuous_summary(var = COURAGE_spain_w1_bmi$q2506_height, missing_values = c(997, 998))
+ggplot(COURAGE_spain_w1_bmi, aes(q2506_height)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(50,100)
+```
+
+#### Harmonisation algorithm
+The harmonized variable will be calculate from the study-specific variables using this formula
+
+bmi=weight/height^2
+
+The missing values have to be recoded as follows:
+
+* `NA into 999`
+* `997 into 993`
+* `998 into 997`
+
+R code of the ALGORITHM:
+
+```{r harmo_spain1}
+compute_bmi <- function(Heigth, Weigth, miss, heigth_m = TRUE){
+  Heigth <- car::recode(Heigth, "NA=999")
+  Weigth <- car::recode(Weigth, "NA=999")
+  
+  if(heigth_m){
+    bmi <- Weigth/(Heigth^2)
+    
+    bmi[Heigth==999] <- 999
+    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
+    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
+    bmi[Heigth==miss[3]] <- Heigth[Heigth==miss[3]]
+    
+    bmi[Weigth==999] <- 999
+    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
+    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
+    bmi[Weigth==miss[3]] <- Weigth[Weigth==miss[3]]
+  } else {
+    bmi <- Weigth/((Heigth/100)^2)
+    
+    bmi[Heigth==999] <- 999
+    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
+    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
+    bmi[Heigth==miss[3]] <- Heigth[Heigth==miss[3]]
+    
+    bmi[Weigth==999] <- 999
+    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
+    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
+    bmi[Weigth==miss[3]] <- Weigth[Weigth==miss[3]]
+  }
+  bmi
+}
+
+COURAGE_spain_w1_bmi$bmi <- compute_bmi(Heigth = COURAGE_spain_w1_bmi$q2506_height, 
+            Weigth = COURAGE_spain_w1_bmi$q2507_weight, miss = c(997, 998, 889), 
+            heigth_m = FALSE)
+
+COURAGE_ds_spain_w1 <- tibble(id=COURAGE_spain_w1_bmi$id)
+COURAGE_ds_spain_w1$bmi  <- car::recode(COURAGE_spain_w1_bmi$bmi, "NA=999; 997=993; 998=997; 889=997")
+COURAGE_ds_spain_w1$bmi  <- labelled(COURAGE_ds_spain_w1$bmi , labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_spain1}
+Continuous_summary(var = COURAGE_ds_spain_w1$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(COURAGE_ds_spain_w1, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,100)
+```
+
+#### Validation
+
+```{r crosstabulation_spain1}
+```
+
+
+
+
+
+
+
+### COURAGE - Spain - Wave 2 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q2507_weight_s1`
+* Label: `weight`
+* Type of variable: `countinous`
+* Missings
+    + `997 = Disable to measure`
+    + `998 = Refusal`
+
+* Name: `q2506_height_s1`
+* Label: `height`
+* Type of variable: `countinous`
+* Missings
+    + `997 = Disable to measure`
+    + `998 = Refusal`
+
+```{r assign_spain2}
+opal.assign.table.tibble(o, 'COURAGE_spain_w2_bmi','Courage.Courage_Spain_w2_1',
+                         variables=list('q2507_weight_s1', 'q2506_height_s1'), missings = TRUE)
+```
+
+```{r local_spain2}
+COURAGE_spain_w2_bmi <- opal.execute(o,'COURAGE_spain_w2_bmi')
+
+Continuous_summary(var = COURAGE_spain_w2_bmi$q2507_weight_s1, missing_values = c(997, 998))
+ggplot(COURAGE_spain_w2_bmi, aes(q2507_weight_s1)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency") + xlim(50,100)
+
+Continuous_summary(var = COURAGE_spain_w2_bmi$q2506_height_s1, missing_values = c(997, 998))
+ggplot(COURAGE_spain_w2_bmi, aes(q2506_height_s1)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(50,100)
+```
+
+#### Harmonisation algorithm
+
+bmi=weight/height^2
+
+The missing values have to be recoded as follows:
+
+* `NA into 999`
+* `997 into 993`
+* `998 into 997`
+
+R code of the ALGORITHM:
+
+```{r harmo_spain2}
+compute_bmi <- function(Heigth, Weigth, miss, heigth_m = TRUE){
+  Heigth <- car::recode(Heigth, "NA=999")
+  Weigth <- car::recode(Weigth, "NA=999")
+  
+  if(heigth_m){
+    bmi <- Weigth/(Heigth^2)
+    
+    bmi[Heigth==999] <- 999
+    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
+    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
+    
+    bmi[Weigth==999] <- 999
+    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
+    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
+  } else {
+    bmi <- Weigth/((Heigth/100)^2)
+    
+    bmi[Heigth==999] <- 999
+    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
+    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
+    
+    bmi[Weigth==999] <- 999
+    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
+    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
+  }
+  bmi
+}
+
+COURAGE_spain_w2_bmi$bmi <- compute_bmi(Heigth = COURAGE_spain_w2_bmi$q2506_height_s1, 
+            Weigth = COURAGE_spain_w2_bmi$q2507_weight_s1, miss = c(997, 998), 
+            heigth_m = FALSE)
+
+COURAGE_ds_spain_w2 <- tibble(id=COURAGE_spain_w2_bmi$id)
+COURAGE_ds_spain_w2$bmi  <- car::recode(COURAGE_spain_w2_bmi$bmi, "NA=999; 997=993; 998=997")
+COURAGE_ds_spain_w2$bmi  <- labelled(COURAGE_ds_spain_w2$bmi , labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_spain2}
+Continuous_summary(var = COURAGE_ds_spain_w2$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(COURAGE_ds_spain_w2, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,100)
+```
+
+#### Validation
+There are som unusual values that are upper than 70:
+```{r crosstabulation_spain2}
+COURAGE_spain_w2_bmi[which(COURAGE_spain_w2_bmi$bmi>70 & COURAGE_spain_w2_bmi$bmi<900),]
+```
+
+
+# Quality estimation
+
+No comments.
+
+```{r save, echo=FALSE}
+bmi <- COURAGE_ds_spain_w1
+save(bmi, file = "../RData/spain_w1/bmi.RData")
+rm(bmi)
+
+bmi <- COURAGE_ds_spain_w2
+save(bmi, file = "../RData/spain_w2/bmi.RData")
+rm(bmi)
+
+bmi <- COURAGE_ds_pol_w1
+save(bmi, file = "../RData/pol_w1/bmi.RData")
+rm(bmi)
+
+bmi <- COURAGE_ds_pol_w2
+save(bmi, file = "../RData/pol_w2/bmi.RData")
+rm(bmi)
+
+bmi <- COURAGE_ds_fin_w1
+save(bmi, file = "../RData/fin_w1/bmi.RData")
+rm(bmi)
+```
+
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+

@@ -1,0 +1,565 @@
+---
+title: "Has other (living) family members (e.g. parents, siblings, in-laws, etc.)"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_ania.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variables is the following:
+
+* Short name: `oth_fam`
+* Variable label: `Has other (living) family members (e.g. parents, siblings, in-laws, etc.)`
+* Domain: `Social environment`
+* Value type: `cathegorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Finnish population
+
+
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q6010b_parents`
+* Label: `Parents?`
+* Categories: 
+    + `1.0 = Yes`
+    + `2.0 = No`
+    
+* Name: `q6010e_other`
+* Label: `Other relatives?`
+* Categories: 
+    + `1.0 = Yes`
+    + `2.0 = No`
+
+* Description: 
+```{r assign1 fin}
+opal.assign.table.tibble(o, 'COURAGE_fin_w1_oth_fam','Courage.Courage_Finland_w1', 
+                        variables=list('q6010b_parents','q6010e_other'), missings = TRUE)
+```
+
+```{r local1 fin}
+COURAGE_fin_w1_oth_fam <- opal.execute(o,'COURAGE_fin_w1_oth_fam')
+vari <- COURAGE_fin_w1_oth_fam$q6010b_parents
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_fin_w1_oth_fam$q6010b_parents, missing_values = NA)
+ggplot(COURAGE_fin_w1_oth_fam, aes(x=factor(q6010b_parents))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has parents?") + ylab("Frequency")
+
+vari <-  COURAGE_fin_w1_oth_fam$q6010e_other
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_fin_w1_oth_fam$q6010e_other, missing_values = NA)
+ggplot(COURAGE_fin_w1_oth_fam, aes(x=factor(q6010e_other))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other relatives?") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 or 1 into 1`
+* `2 and 2 into 0`
+* `NA into 999`
+
+ **R script:**
+
+```{r harmo1 fin, echo=TRUE}
+COURAGE_ds_fin_w1 <- tibble(id=COURAGE_fin_w1_oth_fam$id)
+
+COURAGE_fin_w1_oth_fam$q6010b_parents <- car::recode(as.vector(COURAGE_fin_w1_oth_fam$q6010b_parents), "NA='-999'")
+COURAGE_fin_w1_oth_fam$q6010e_other <- car::recode(as.vector(COURAGE_fin_w1_oth_fam$q6010e_other), "NA='-999'")
+
+COURAGE_ds_fin_w1$oth_fam <- c(NA)
+for(i in 1:dim(COURAGE_fin_w1_oth_fam)[1]){
+  if( COURAGE_fin_w1_oth_fam$q6010b_parents[i] == 1 | COURAGE_fin_w1_oth_fam$q6010e_other[i] == 1 ){
+    COURAGE_ds_fin_w1$oth_fam[i] = 1 }
+  else if( COURAGE_fin_w1_oth_fam$q6010b_parents[i] == 2 & COURAGE_fin_w1_oth_fam$q6010e_other[i] == 2 ){
+    COURAGE_ds_fin_w1$oth_fam[i] = 0 }
+}
+
+COURAGE_ds_fin_w1$oth_fam <- car::recode(as.vector(COURAGE_ds_fin_w1$oth_fam), "NA='999'")
+COURAGE_ds_fin_w1$oth_fam <- labelled(COURAGE_ds_fin_w1$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 fin}
+vari <- COURAGE_ds_fin_w1$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_ds_fin_w1$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(COURAGE_ds_fin_w1, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 fin}
+AfterH <- table(COURAGE_ds_fin_w1$oth_fam)
+BeforeH1 <- table(COURAGE_fin_w1_oth_fam$q6010b_parents, COURAGE_fin_w1_oth_fam$q6010e_other, useNA='ifany')
+BeforeH <- c(NA)
+BeforeH[[1]] <- BeforeH1['2','2']
+BeforeH[[2]] <- sum(sum(BeforeH1['1',]),sum(BeforeH1[c('-999','2'),'1'])) 
+BeforeH[[3]] <- sum(sum(BeforeH1['-999',]),sum(BeforeH1['2','-999']))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0","1","NA->999")
+kable(C)
+```
+
+ 
+ 
+
+
+
+## Polish population
+
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q6010b_parents`
+* Label: `Parents?`
+* Categories: 
+    + `1.0 = Yes`
+    + `2.0 = No`
+    
+* Name: `q6010e_other`
+* Label: `Other relatives?`
+* Categories: 
+    + `1.0 = Yes`
+    + `2.0 = No`
+
+* Description: 
+```{r assign1pol}
+opal.assign.table.tibble(o, 'COURAGE_pol_w1_oth_fam','Courage.Courage_Poland_w1', 
+                        variables=list('q6010b_parents','q6010e_other'), missings = TRUE)
+```
+
+```{r local1pol}
+COURAGE_pol_w1_oth_fam <- opal.execute(o,'COURAGE_pol_w1_oth_fam')
+vari <-  COURAGE_pol_w1_oth_fam$q6010b_parents
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_pol_w1_oth_fam$q6010b_parents, missing_values = NA)
+ggplot(COURAGE_pol_w1_oth_fam, aes(x=factor(q6010b_parents))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has parents?") + ylab("Frequency")
+
+vari <-  COURAGE_pol_w1_oth_fam$q6010e_othe
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_pol_w1_oth_fam$q6010e_other, missing_values = NA)
+ggplot(COURAGE_pol_w1_oth_fam, aes(x=factor(q6010e_other))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other relatives?") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 or 1 into 1`
+* `2 and 2 into 0`
+* `NA into 999`
+
+ **R script:**
+
+```{r harmo1pol, echo=TRUE}
+COURAGE_ds_pol_w1 <- tibble(id=COURAGE_pol_w1_oth_fam$id)
+
+COURAGE_pol_w1_oth_fam$q6010b_parents <- car::recode(as.vector(COURAGE_pol_w1_oth_fam$q6010b_parents), "NA='-999'")
+COURAGE_pol_w1_oth_fam$q6010e_other <- car::recode(as.vector(COURAGE_pol_w1_oth_fam$q6010e_other), "NA='-999'")
+
+COURAGE_ds_pol_w1$oth_fam <- c(NA)
+for(i in 1:dim(COURAGE_pol_w1_oth_fam)[1]){
+  if( COURAGE_pol_w1_oth_fam$q6010b_parents[i] == 1 | COURAGE_pol_w1_oth_fam$q6010e_other[i] == 1 ){
+    COURAGE_ds_pol_w1$oth_fam[i] = 1 }
+  else if( COURAGE_pol_w1_oth_fam$q6010b_parents[i] == 2 & COURAGE_pol_w1_oth_fam$q6010e_other[i] == 2 ){
+    COURAGE_ds_pol_w1$oth_fam[i] = 0 }
+}
+
+COURAGE_ds_pol_w1$oth_fam <- car::recode(as.vector(COURAGE_ds_pol_w1$oth_fam), "NA='999'")
+COURAGE_ds_pol_w1$oth_fam <- labelled(COURAGE_ds_pol_w1$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1pol}
+vari <- COURAGE_ds_pol_w1$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_ds_pol_w1$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(COURAGE_ds_pol_w1, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1pol}
+AfterH <- table(COURAGE_ds_pol_w1$oth_fam)
+BeforeH1 <- table(COURAGE_pol_w1_oth_fam$q6010b_parents, COURAGE_pol_w1_oth_fam$q6010e_other, useNA='ifany')
+BeforeH <- c(NA)
+BeforeH[[1]] <- BeforeH1['2','2']
+BeforeH[[2]] <- sum(sum(BeforeH1['1',]),sum(BeforeH1[c('-999','2'),'1'])) 
+BeforeH[[3]] <- sum(sum(BeforeH1['-999',]),sum(BeforeH1['2','-999']))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0","1","NA->999")
+kable(C)
+```
+
+ 
+ 
+
+
+
+### Wave 2 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q6010b_parents_s1`
+* Label: `Parents?`
+* Categories: 
+    + `1.0 = Yes`
+    + `2.0 = No`
+    
+* Name: `q6010e_other_s1`
+* Label: `Other relatives?`
+* Categories: 
+    + `1.0 = Yes`
+    + `2.0 = No`
+
+* Description: 
+```{r assign2pol}
+opal.assign.table.tibble(o, 'COURAGE_pol_w2_oth_fam','Courage.Courage_Poland_w2', 
+                        variables=list('q6010b_parents_s1','q6010e_other_s1'), missings = TRUE)
+```
+
+```{r local2pol}
+COURAGE_pol_w2_oth_fam <- opal.execute(o,'COURAGE_pol_w2_oth_fam')
+vari <- COURAGE_pol_w2_oth_fam$q6010b_parents_s1
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_pol_w2_oth_fam$q6010b_parents_s1, missing_values = NA)
+ggplot(COURAGE_pol_w2_oth_fam, aes(x=factor(q6010b_parents_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has parents?") + ylab("Frequency")
+
+vari <- COURAGE_pol_w2_oth_fam$q6010e_other_s1
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_pol_w2_oth_fam$q6010e_other_s1, missing_values = NA)
+ggplot(COURAGE_pol_w2_oth_fam, aes(x=factor(q6010e_other_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other relatives?") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 or 1 into 1`
+* `2 and 2 into 0`
+* `NA into 999`
+
+ **R script:**
+
+```{r harmo2pol, echo=TRUE}
+COURAGE_ds_pol_w2 <- tibble(id=COURAGE_pol_w2_oth_fam$id)
+
+COURAGE_pol_w2_oth_fam$q6010b_parents_s1 <- car::recode(as.vector(COURAGE_pol_w2_oth_fam$q6010b_parents_s1), "NA='-999'")
+COURAGE_pol_w2_oth_fam$q6010e_other_s1 <- car::recode(as.vector(COURAGE_pol_w2_oth_fam$q6010e_other_s1), "NA='-999'")
+
+COURAGE_ds_pol_w2$oth_fam <- c(NA)
+for(i in 1:dim(COURAGE_pol_w2_oth_fam)[1]){
+  if( COURAGE_pol_w2_oth_fam$q6010b_parents_s1[i] == 1 | COURAGE_pol_w2_oth_fam$q6010e_other_s1[i] == 1 ){
+    COURAGE_ds_pol_w2$oth_fam[i] = 1 }
+  else if( COURAGE_pol_w2_oth_fam$q6010b_parents_s1[i] == 2 & COURAGE_pol_w2_oth_fam$q6010e_other_s1[i] == 2 ){
+    COURAGE_ds_pol_w2$oth_fam[i] = 0 }
+}
+
+COURAGE_ds_pol_w2$oth_fam <- car::recode(as.vector(COURAGE_ds_pol_w2$oth_fam), "NA='999'")
+COURAGE_ds_pol_w2$oth_fam <- labelled(COURAGE_ds_pol_w2$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2pol}
+vari <- COURAGE_ds_pol_w2$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_ds_pol_w2$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(COURAGE_ds_pol_w2, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2pol}
+AfterH <- table(COURAGE_ds_pol_w2$oth_fam)
+BeforeH1 <- table(COURAGE_pol_w2_oth_fam$q6010b_parents_s1, COURAGE_pol_w2_oth_fam$q6010e_other_s1, useNA='ifany')
+BeforeH <- c(NA)
+BeforeH[[1]] <- BeforeH1['2','2']
+BeforeH[[2]] <- sum(sum(BeforeH1['1',]),sum(BeforeH1[c('-999','2'),'1'])) 
+BeforeH[[3]] <- sum(sum(BeforeH1['-999',]),sum(BeforeH1['2','-999']))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0","1","NA->999")
+kable(C)
+```
+
+ 
+ 
+
+
+
+## Spanish population
+
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q6010b_parents`
+* Label: `Parents?`
+* Categories: 
+    + `1.0 = Yes`
+    + `2.0 = No`
+    
+* Name: `q6010e_other`
+* Label: `Other relatives?`
+* Categories: 
+    + `1.0 = Yes`
+    + `2.0 = No`
+
+* Description: 
+```{r assign1 spain}
+opal.assign.table.tibble(o, 'COURAGE_spain_w1_oth_fam','Courage.Courage_Spain_w1', 
+                        variables=list('q6010b_parents','q6010e_other'), missings = TRUE)
+```
+
+```{r local1 spain}
+COURAGE_spain_w1_oth_fam <- opal.execute(o,'COURAGE_spain_w1_oth_fam')
+vari <- COURAGE_spain_w1_oth_fam$q6010b_parents
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_spain_w1_oth_fam$q6010b_parents, missing_values = NA)
+ggplot(COURAGE_spain_w1_oth_fam, aes(x=factor(q6010b_parents))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has parents?") + ylab("Frequency")
+vari <- COURAGE_spain_w1_oth_fam$q6010e_other
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_spain_w1_oth_fam$q6010e_other, missing_values = NA)
+ggplot(COURAGE_spain_w1_oth_fam, aes(x=factor(q6010e_other))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other relatives?") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 or 1 into 1`
+* `2 and 2 into 0`
+* `NA into 999`
+
+ **R script:**
+
+```{r harmo1 spain, echo=TRUE}
+COURAGE_ds_spain_w1 <- tibble(id=COURAGE_spain_w1_oth_fam$id)
+
+COURAGE_spain_w1_oth_fam$q6010b_parents <- car::recode(as.vector(COURAGE_spain_w1_oth_fam$q6010b_parents), "NA='-999'")
+COURAGE_spain_w1_oth_fam$q6010e_other <- car::recode(as.vector(COURAGE_spain_w1_oth_fam$q6010e_other), "NA='-999'")
+
+COURAGE_ds_spain_w1$oth_fam <- c(NA)
+for(i in 1:dim(COURAGE_spain_w1_oth_fam)[1]){
+  if( COURAGE_spain_w1_oth_fam$q6010b_parents[i] == 1 | COURAGE_spain_w1_oth_fam$q6010e_other[i] == 1 ){
+    COURAGE_ds_spain_w1$oth_fam[i] = 1 }
+  else if( COURAGE_spain_w1_oth_fam$q6010b_parents[i] == 2 & COURAGE_spain_w1_oth_fam$q6010e_other[i] == 2 ){
+    COURAGE_ds_spain_w1$oth_fam[i] = 0 }
+}
+
+COURAGE_ds_spain_w1$oth_fam <- car::recode(as.vector(COURAGE_ds_spain_w1$oth_fam), "NA='999'")
+COURAGE_ds_spain_w1$oth_fam <- labelled(COURAGE_ds_spain_w1$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 spain}
+vari <- COURAGE_ds_spain_w1$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_ds_spain_w1$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(COURAGE_ds_spain_w1, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 spain}
+AfterH <- table(COURAGE_ds_spain_w1$oth_fam)
+BeforeH1 <- table(COURAGE_spain_w1_oth_fam$q6010b_parents, COURAGE_spain_w1_oth_fam$q6010e_other, useNA='ifany')
+BeforeH <- c(NA)
+BeforeH[[1]] <- BeforeH1['2','2']
+BeforeH[[2]] <- sum(sum(BeforeH1['1',]),sum(BeforeH1[c('-999','2'),'1'])) 
+BeforeH[[3]] <- sum(sum(BeforeH1['-999',]),sum(BeforeH1['2','-999']))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0","1","NA->999")
+kable(C)
+```
+
+ 
+ 
+
+
+
+### Wave 2 
+
+#### Study-specific variables
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `q6010b_parents_s1`
+* Label: `Parents?`
+* Categories: 
+    + `1.0 = Yes`
+    + `2.0 = No`
+    
+* Name: `q6010e_other_s1`
+* Label: `Other relatives?`
+* Categories: 
+    + `1.0 = Yes`
+    + `2.0 = No`
+
+* Description: 
+```{r assign2 spain}
+opal.assign.table.tibble(o, 'COURAGE_spain_w2_oth_fam','Courage.Courage_Spain_w2_1', 
+                        variables=list('q6010b_parents_s1','q6010e_other_s1'), missings = TRUE)
+```
+
+```{r local2 spain}
+COURAGE_spain_w2_oth_fam <- opal.execute(o,'COURAGE_spain_w2_oth_fam')
+vari <- COURAGE_spain_w2_oth_fam$q6010b_parents_s1
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_spain_w2_oth_fam$q6010b_parents_s1, missing_values = NA)
+ggplot(COURAGE_spain_w2_oth_fam, aes(x=factor(q6010b_parents_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has parents?") + ylab("Frequency")
+vari <- COURAGE_spain_w2_oth_fam$q6010e_other_s1
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+#Categorical_summary(var = COURAGE_spain_w2_oth_fam$q6010e_other_s1, missing_values = NA)
+ggplot(COURAGE_spain_w2_oth_fam, aes(x=factor(q6010e_other_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other relatives?") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 or 1 into 1`
+* `2 and 2 into 0`
+* `NA into 999`
+
+ **R script:**
+
+```{r harmo2 spain, echo=TRUE}
+COURAGE_ds_spain_w2 <- tibble(id=COURAGE_spain_w2_oth_fam$id)
+
+COURAGE_spain_w2_oth_fam$q6010b_parents_s1 <- car::recode(as.vector(COURAGE_spain_w2_oth_fam$q6010b_parents_s1), "NA='-999'")
+COURAGE_spain_w2_oth_fam$q6010e_other_s1 <- car::recode(as.vector(COURAGE_spain_w2_oth_fam$q6010e_other_s1), "NA='-999'")
+
+COURAGE_ds_spain_w2$oth_fam <- c(NA)
+for(i in 1:dim(COURAGE_spain_w2_oth_fam)[1]){
+  if( COURAGE_spain_w2_oth_fam$q6010b_parents_s1[i] == 1 | COURAGE_spain_w2_oth_fam$q6010e_other_s1[i] == 1 ){
+    COURAGE_ds_spain_w2$oth_fam[i] = 1 }
+  else if( COURAGE_spain_w2_oth_fam$q6010b_parents_s1[i] == 2 & COURAGE_spain_w2_oth_fam$q6010e_other_s1[i] == 2 ){
+    COURAGE_ds_spain_w2$oth_fam[i] = 0 }
+}
+
+COURAGE_ds_spain_w2$oth_fam <- car::recode(as.vector(COURAGE_ds_spain_w2$oth_fam), "NA='999'")
+COURAGE_ds_spain_w2$oth_fam <- labelled(COURAGE_ds_spain_w2$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 spain}
+vari <- COURAGE_ds_spain_w2$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = COURAGE_ds_spain_w2$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(COURAGE_ds_spain_w2, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 spain}
+AfterH <- table(COURAGE_ds_spain_w2$oth_fam)
+BeforeH1 <- table(COURAGE_spain_w2_oth_fam$q6010b_parents_s1, COURAGE_spain_w2_oth_fam$q6010e_other_s1, useNA='ifany')
+BeforeH <- c(NA)
+BeforeH[[1]] <- BeforeH1['2','2']
+BeforeH[[2]] <- sum(sum(BeforeH1['1',]),sum(BeforeH1[c('-999','2'),'1'])) 
+BeforeH[[3]] <- sum(sum(BeforeH1['-999',]),sum(BeforeH1['2','-999']))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0","1","NA->999")
+kable(C)
+```
+
+
+```{r save, echo=FALSE}
+oth_fam <- COURAGE_ds_spain_w1
+save(oth_fam, file = "../RData/spain_w1/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- COURAGE_ds_spain_w2
+save(oth_fam, file = "../RData/spain_w2/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- COURAGE_ds_pol_w1
+save(oth_fam, file = "../RData/pol_w1/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- COURAGE_ds_pol_w2
+save(oth_fam, file = "../RData/pol_w2/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- COURAGE_ds_fin_w1
+save(oth_fam, file = "../RData/fin_w1/oth_fam.RData")
+rm(oth_fam)
+```
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+
+
+ 
+ 
+
+
