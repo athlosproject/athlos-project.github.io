@@ -1,0 +1,397 @@
+---
+title: "Education"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_ania.r")
+```
+
+<!-- ########################################################## --> 
+
+# Description of DataSchema variable 
+
+* Short name: `education`
+* Variable label: `Highest level of formal education achieved`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | less than primary education
+1        | primary education
+2        | secondary education
+3        | tertiary education
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## aksst 
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `a_002_a`
+* Label: `HIGHEST SCHOOL`
+* Categories: 
+    + `1 = elementary/middle school`
+    + `2 = high school (including old-system middle school, girls' school, trade school, normal school)`
+    + `3 = junior college (including technical high school, etc.)`
+    + `4 = vocational school`
+    + `5 = university (including old-system high school, old-system technical college)`
+    + `6 = graduate school (Master's)`
+    + `7 = graduate school (Ph.D)`
+    + `8 = other`
+* Missings: 
+    + `9 = don't know`
+    + `10 = refused to answer`
+
+    
+* Description: 
+```{r assign_aksst1,  echo=FALSE}
+opal.assign.table.tibble(o, 'JSTAR_aksst_w1_educ','JSTAR_datasets_restricted.jstar_2007_5cities',
+                         variables=list('a_002_a'), missings = TRUE)
+```
+
+```{r local_aksst1,  echo=FALSE}
+JSTAR_aksst_w1_educ <- opal.execute(o,'JSTAR_aksst_w1_educ')
+vari <- JSTAR_aksst_w1_educ$a_002_a
+kable(Categorical_summary(vari, missing_values = c(9, 10))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(9, 10))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(9, 10))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_aksst_w1_educ$a_002_a, missing_values = c(9,10))
+ggplot(JSTAR_aksst_w1_educ, aes(x=factor(a_002_a))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "elementary/middle school" into 1`
+* `keep "high school (including old-system middle school, girls' school, trade school, normal school)" into 2`
+* `recode 3 "junior college (including technical high school, etc.)" into 2`
+* `recode 4 "vocational school" into 2`
+* `recode 5 "university (including old-system high school, old-system technical college)" into 3`
+* `recode 6 "graduate school (Master's)" into 3`
+* `recode 7 "graduate school (Ph.D)" into 3`
+* `recode 8 "other" into 999`
+* `recode 9 "don't know" into 998`
+* `recode 10 "refused to answer" into 997`
+* `recode NA into 999`
+
+**R script:**
+
+```{r harmo_aksst1,   echo=TRUE}
+JSTAR_aksst_ds_w1 <- tibble(id=JSTAR_aksst_w1_educ$id)
+JSTAR_aksst_ds_w1$education <- car::recode(JSTAR_aksst_w1_educ$a_002_a, "3=2; 4=2; 5=3; 6=3; 7=3; 8=999; 9=998; 10=997;  NA=999")
+JSTAR_aksst_ds_w1$education <- labelled(JSTAR_aksst_ds_w1$education, labels = c("less than primary education"=0, "primary education"=1, "secondary education"=2, "tertiary education"=3, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_aksst1,  echo=FALSE}
+vari <- JSTAR_aksst_ds_w1$education
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_aksst_ds_w1$education, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(JSTAR_aksst_ds_w1, aes(x=factor(education))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_aksst1,  echo=FALSE}
+BeforeH <- table(JSTAR_aksst_w1_educ$a_002_a)
+BeforeH <- c(BeforeH[1], sum(BeforeH[2:4]),sum(BeforeH[5:7]), BeforeH[10], BeforeH[9], sum( BeforeH[8],sum(is.na(JSTAR_aksst_w1_educ$a_002_a))))
+AfterH <- table(JSTAR_aksst_ds_w1$education)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1", "(2,3,4)->2", "(5,6,7)->3", "10->997", "9->998", "(8,NA)->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_aksst1,  echo=FALSE}
+val_labels(JSTAR_aksst_ds_w1) <- NULL
+opal.assign.data(o, 'JSTAR_aksst_ds_w1', JSTAR_aksst_ds_w1)
+#opal.symbol_import(o,'JSTAR_aksst_ds_w1', project='_Athlos_Harm_Dataset')
+education <- JSTAR_aksst_ds_w1
+save(education, file = "../RData/aksst_w1/education.RData")
+rm(education)
+
+JSTAR_aksst_m_ds_w1 <- JSTAR_aksst_ds_w1
+JSTAR_aksst_m_ds_w1$education <- car::recode(JSTAR_aksst_m_ds_w1$education, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+opal.assign.data(o, 'JSTAR_aksst_m_ds_w1', JSTAR_aksst_m_ds_w1)
+#opal.symbol_import(o,'JSTAR_aksst_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 2 
+
+There is no variable.
+
+
+### Wave 3 
+
+There is no variable.
+
+
+
+
+## tn 
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `a_002_1`
+* Label: `HIGHEST SCHOOL`
+* Categories: 
+    + `1 = Elementary/middle school`
+    + `2 = High school (including old-system middle school, girls' school, trade school, normal school)`
+    + `3 = Junior college (including technical high school, etc.)`
+    + `4 = Vocational school`
+    + `5 = University (including old-system high school, old-system technical college)`
+    + `6 = Graduate school (Master's)`
+    + `7 = Graduate school (Ph.D)`
+    + `8 = Other`
+* Missings: 
+    + `9 = Don't know`
+    + `10 = Refused to answer`
+
+* Description: 
+```{r assign_tn1,  echo=FALSE}
+opal.assign.table.tibble(o, 'JSTAR_tn_w1_educ','JSTAR_datasets_restricted.jstar_2009_2cities',
+                         variables=list('a_002_1'), missings = TRUE)
+```
+
+```{r local_tn1,  echo=FALSE}
+JSTAR_tn_w1_educ <- opal.execute(o,'JSTAR_tn_w1_educ')
+vari <- JSTAR_tn_w1_educ$a_002_1
+kable(Categorical_summary(vari, missing_values = c(9, 10))[3], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = c(9, 10))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(9, 10))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_tn_w1_educ$a_002_1, missing_values = c(9,10))
+ggplot(JSTAR_tn_w1_educ, aes(x=factor(a_002_1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "elementary/middle school" into 1`
+* `keep "high school (including old-system middle school, girls' school, trade school, normal school)" into 2`
+* `recode 3 "junior college (including technical high school, etc.)" into 2`
+* `recode 4 "vocational school" into 2`
+* `recode 5 "university (including old-system high school, old-system technical college)" into 3`
+* `recode 6 "graduate school (Master's)" into 3`
+* `recode 7 "graduate school (Ph.D)" into 3`
+* `recode 8 "other" into 999`
+* `recode 9 "don't know" into 998`
+* `recode 10 "refused to answer" into 997`
+* `recode NA into 999`
+
+**R script:**
+
+```{r harmo_tn1,   echo=TRUE}
+JSTAR_tn_ds_w1 <- tibble(id=JSTAR_tn_w1_educ$id)
+JSTAR_tn_ds_w1$education <- car::recode(JSTAR_tn_w1_educ$a_002_1, "3=2; 4=2; 5=3; 6=3; 7=3; 8=999; 9=998; 10=997;  NA=999")
+JSTAR_tn_ds_w1$education <- labelled(JSTAR_tn_ds_w1$education, labels = c("less than primary education"=0, "primary education"=1, "secondary education"=2, "tertiary education"=3, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_tn1,  echo=FALSE}
+vari <- JSTAR_tn_ds_w1$education
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_tn_ds_w1$education, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(JSTAR_tn_ds_w1, aes(x=factor(education))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_tn1,  echo=FALSE}
+BeforeH <- table(JSTAR_tn_w1_educ$a_002_1)
+BeforeH <- c(BeforeH[1], sum(BeforeH[2:4]),sum(BeforeH[5:7]), BeforeH[10], BeforeH[9], sum( BeforeH[8],sum(is.na(JSTAR_tn_w1_educ$a_002_1))))
+AfterH <- table(JSTAR_tn_ds_w1$education)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1", "(2,3,4)->2", "(5,6,7)->3", "10->997", "9->998", "(8,NA)->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_tn1,  echo=FALSE}
+val_labels(JSTAR_tn_ds_w1) <- NULL
+opal.assign.data(o, 'JSTAR_tn_ds_w1', JSTAR_tn_ds_w1)
+#opal.symbol_import(o,'JSTAR_tn_ds_w1', project='_Athlos_Harm_Dataset')
+education <- JSTAR_tn_ds_w1
+save(education, file = "../RData/tn_w1/education.RData")
+rm(education)
+
+JSTAR_tn_m_ds_w1 <- JSTAR_tn_ds_w1
+JSTAR_tn_m_ds_w1$education <- car::recode(JSTAR_tn_m_ds_w1$education, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+opal.assign.data(o, 'JSTAR_tn_m_ds_w1', JSTAR_tn_m_ds_w1)
+#opal.symbol_import(o,'JSTAR_tn_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 2 
+
+There is no variable.
+
+
+
+## cth 
+### Wave 1 
+
+#### Study-specific variable description
+
+ 
+
+* Name: `a_002_1`
+* Label: `HIGHEST SCHOOL`
+* Categories: 
+    + `1 = Elementary/middle school`
+    + `2 = High school (including old-system middle school, girls' school, trade school, normal school)`
+    + `3 = Junior college (including technical high school, etc.)`
+    + `4 = Vocational school`
+    + `5 = University (including old-system high school, old-system technical college)`
+    + `6 = Graduate school (Master's)`
+    + `7 = Graduate school (Ph.D)`
+    + `8 = Other`
+* Missings: 
+    + `9 = Don't know`
+    + `10 = Refused to answer`
+
+* Description: 
+```{r assign_cth1,  echo=FALSE}
+opal.assign.table.tibble(o, 'JSTAR_cth_w1_educ','JSTAR_datasets_restricted.jstar_2011_3cities',
+                         variables=list('a_002_1'), missings = TRUE)
+```
+
+```{r local_cth1,  echo=FALSE}
+JSTAR_cth_w1_educ <- opal.execute(o,'JSTAR_cth_w1_educ')
+vari <- JSTAR_cth_w1_educ$a_002_1
+kable(Categorical_summary(vari, missing_values = c(9, 10))[3], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = c(9, 10))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(9, 10))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_cth_w1_educ$a_002_1, missing_values = c(9,10))
+ggplot(JSTAR_cth_w1_educ, aes(x=factor(a_002_1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be recoded as follows:
+
+* `keep "elementary/middle school" into 1`
+* `keep "high school (including old-system middle school, girls' school, trade school, normal school)" into 2`
+* `recode 3 "junior college (including technical high school, etc.)" into 2`
+* `recode 4 "vocational school" into 2`
+* `recode 5 "university (including old-system high school, old-system technical college)" into 3`
+* `recode 6 "graduate school (Master's)" into 3`
+* `recode 7 "graduate school (Ph.D)" into 3`
+* `recode 8 "other" into 999`
+* `recode 9 "don't know" into 998`
+* `recode 10 "refused to answer" into 997`
+* `recode NA into 999`
+
+**R script:**
+
+```{r harmo_cth1,   echo=TRUE}
+JSTAR_cth_ds_w1 <- tibble(id=JSTAR_cth_w1_educ$id)
+JSTAR_cth_ds_w1$education <- car::recode(JSTAR_cth_w1_educ$a_002_1, "3=2; 4=2; 5=3; 6=3; 7=3; 8=999; 9=998; 10=997;  NA=999")
+JSTAR_cth_ds_w1$education <- labelled(JSTAR_cth_ds_w1$education, labels = c("less than primary education"=0, "primary education"=1, "secondary education"=2, "tertiary education"=3, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_cth1,  echo=FALSE}
+vari <- JSTAR_cth_ds_w1$education
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_cth_ds_w1$education, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(JSTAR_cth_ds_w1, aes(x=factor(education))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_cth1,  echo=FALSE}
+BeforeH <- table(JSTAR_cth_w1_educ$a_002_1)
+BeforeH <- c(BeforeH[1], sum(BeforeH[2:4]),sum(BeforeH[5:7]), BeforeH[10], BeforeH[9], sum( BeforeH[8],sum(is.na(JSTAR_cth_w1_educ$a_002_1))))
+AfterH <- table(JSTAR_cth_ds_w1$education)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1", "(2,3,4)->2", "(5,6,7)->3", "10->997", "9->998", "(8,NA)->999")
+kable(C)
+```
+
+ 
+ 
+
+ 
+```{r importOPAL_cth1,  echo=FALSE}
+val_labels(JSTAR_cth_ds_w1) <- NULL
+opal.assign.data(o, 'JSTAR_cth_ds_w1', JSTAR_cth_ds_w1)
+#opal.symbol_import(o,'JSTAR_cth_ds_w1', project='_Athlos_Harm_Dataset')
+education <- JSTAR_cth_ds_w1
+save(education, file = "../RData/cth_w1/education.RData")
+rm(education)
+
+JSTAR_cth_m_ds_w1 <- JSTAR_cth_ds_w1
+JSTAR_cth_m_ds_w1$education <- car::recode(JSTAR_cth_m_ds_w1$education, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+opal.assign.data(o, 'JSTAR_cth_m_ds_w1', JSTAR_cth_m_ds_w1)
+#opal.symbol_import(o,'JSTAR_cth_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+# Quality estimation
+
+No comments
+
+```{r closeRsession, echo=FALSE,  echo=FALSE} 
+opal.logout(o)
+```
+

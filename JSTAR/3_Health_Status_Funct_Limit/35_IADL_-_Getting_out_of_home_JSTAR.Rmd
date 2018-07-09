@@ -1,0 +1,546 @@
+---
+title: "IADL - Getting out of home"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE,  echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/Rmds/setup_laia.r")
+```
+<!-- ########################################################## --> 
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `iadl_outhome`
+* Variable label: `IADL - Difficulties for getting out of home`
+* Variable description: `IADL - Difficulties for getting out of home`
+* Domain: `Health status and functional limitations`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | Yes
+1        | No
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+```{r lab, echo=FALSE}
+ds_label <- "IADL - Difficulties for getting out of home"
+```
+
+
+# Data process
+
+
+```{r, dataDirectory, echo=FALSE}
+datafolder <- "../RData"
+```
+
+
+## 5 cities
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+* Name: `tome5`
+* Label: `Q2:DAILY ACTIVITIES -1- CAN YOU GO FORTH THE HOUSE ALONE BY PUBLIC TRANSPORT?`
+* Categories:
+   + `1 = Yes`
+   + `2 = No`
+* Missings
+   + `NA` 
+
+```{r assign 5 cities w1, echo=FALSE}
+opal.assign.table.tibble(o, 'JSTAR_5cities_w1_iadl_outhome','JSTAR_datasets_restricted.jstar_2007_5cities', variables=list('tome5'), missings = TRUE)
+JSTAR_5cities_w1_iadl_outhome <- opal.execute(o,'JSTAR_5cities_w1_iadl_outhome')
+```
+
+```{r local 5 cities w1, echo=FALSE}
+vari <- JSTAR_5cities_w1_iadl_outhome$tome5
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_5cities_w1_iadl_outhome, aes(x=factor(tome5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Getting out of home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 0` 
+* `NA into 999`
+
+**R script:**
+
+```{r harmo 5 cities w1}
+JSTAR_aksst_ds_w1 <- tibble(id=JSTAR_5cities_w1_iadl_outhome$id)
+JSTAR_aksst_ds_w1$iadl_outhome <- recode(JSTAR_5cities_w1_iadl_outhome$tome5, "1 = '1';2 = '0';NA = '999' ")
+JSTAR_aksst_ds_w1$iadl_outhome <- labelled(JSTAR_aksst_ds_w1$iadl_outhome, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript 5 cities w1, echo=FALSE}
+vari <- JSTAR_aksst_ds_w1$iadl_outhome
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(JSTAR_aksst_ds_w1, aes(x=factor(iadl_outhome))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Getting out of home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation 5 cities w1, echo=FALSE}
+AfterH <- table(JSTAR_aksst_ds_w1$iadl_outhome)
+X<-table(JSTAR_5cities_w1_iadl_outhome$tome5)
+BeforeH <- c(X[2:1],sum(is.na(JSTAR_5cities_w1_iadl_outhome$tome5)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","NA->999") 
+kable(C)
+```
+
+```{r importOPAL 5 cities w1, echo=FALSE}
+label(JSTAR_aksst_ds_w1$iadl_outhome) <- ds_label
+iadl_outhome <- JSTAR_aksst_ds_w1
+save(iadl_outhome, file = "../RData/aksst_w1/iadl_outhome.RData")
+#opal.assign.data(o, 'JSTAR_aksst_ds_w1', JSTAR_aksst_ds_w1)
+#opal.symbol_import(o,'JSTAR_aksst_ds_w1', project='_Athlos_Harm_Dataset')
+
+JSTAR_m_aksst_ds_w1 <- JSTAR_aksst_ds_w1
+JSTAR_m_aksst_ds_w1$iadl_outhome <- recode(JSTAR_m_aksst_ds_w1$iadl_outhome, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'JSTAR_m_aksst_ds_w1', JSTAR_m_aksst_ds_w1)
+#opal.symbol_import(o,'JSTAR_m_aksst_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `tome84`
+* Label: `Q8:DAILY ACTIVITIES -1- CAN YOU GO OUT ALONE BY PUBLIC TRANSPORTATION?`
+* Categories:
+   + `1 = Yes`
+   + `2 = No`
+* Missings
+   + `NA` 
+
+```{r assign 5 cities w2, echo=FALSE}
+opal.assign.table.tibble(o, 'JSTAR_5cities_w2_iadl_outhome','JSTAR_datasets_restricted.jstar_2009_5cities', variables=list('tome84'), missings = TRUE)
+JSTAR_5cities_w2_iadl_outhome <- opal.execute(o,'JSTAR_5cities_w2_iadl_outhome')
+```
+
+```{r local 5 cities w2, echo=FALSE}
+vari <- JSTAR_5cities_w2_iadl_outhome$tome84
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_5cities_w2_iadl_outhome, aes(x=factor(tome84))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Getting out of home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 0` 
+* `NA into 999`
+
+**R script:**
+
+```{r harmo 5 cities w2}
+JSTAR_aksst_ds_w2 <- tibble(id=JSTAR_5cities_w2_iadl_outhome$id)
+JSTAR_aksst_ds_w2$iadl_outhome <- recode(JSTAR_5cities_w2_iadl_outhome$tome84, "1 = '1';2 = '0';NA = '999' ")
+JSTAR_aksst_ds_w2$iadl_outhome <- labelled(JSTAR_aksst_ds_w2$iadl_outhome, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript 5 cities w2, echo=FALSE}
+vari <- JSTAR_aksst_ds_w2$iadl_outhome
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(JSTAR_aksst_ds_w2, aes(x=factor(iadl_outhome))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Getting out of home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation 5 cities w2, echo=FALSE}
+AfterH <- table(JSTAR_aksst_ds_w2$iadl_outhome)
+X<-table(JSTAR_5cities_w2_iadl_outhome$tome84)
+BeforeH <- c(X[2:1],sum(is.na(JSTAR_5cities_w2_iadl_outhome$tome84)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","NA->999") 
+kable(C)
+```
+
+
+```{r importOPAL 5 cities w2, echo=FALSE}
+label(JSTAR_aksst_ds_w2$iadl_outhome) <- ds_label
+iadl_outhome <- JSTAR_aksst_ds_w2
+save(iadl_outhome, file = "../RData/aksst_w2/iadl_outhome.RData")
+#opal.assign.data(o, 'JSTAR_aksst_ds_w2', JSTAR_aksst_ds_w2)
+#opal.symbol_import(o,'JSTAR_aksst_ds_w2', project='_Athlos_Harm_Dataset')
+
+JSTAR_m_aksst_ds_w2 <- JSTAR_aksst_ds_w2
+JSTAR_m_aksst_ds_w2$iadl_outhome <- recode(JSTAR_m_aksst_ds_w2$iadl_outhome, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'JSTAR_m_aksst_ds_w2', JSTAR_m_aksst_ds_w2)
+#opal.symbol_import(o,'JSTAR_m_aksst_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 3 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `q6_1`
+* Label: `11Q6:DAILY ACTIVITIES -1- GO OUT ALONE BY PUBLIC TRANSPORTATION`
+* Categories:
+   + `1 = Yes`
+   + `2 = No`
+* Missings
+   + `NA` 
+
+```{r assign 5 cities w3, echo=FALSE}
+opal.assign.table.tibble(o, 'JSTAR_5cities_w3_iadl_outhome','JSTAR_datasets_restricted.jstar_2011_5cities', variables=list('q6_1'), missings = TRUE)
+JSTAR_5cities_w3_iadl_outhome <- opal.execute(o,'JSTAR_5cities_w3_iadl_outhome')
+```
+
+```{r local 5 cities w3, echo=FALSE}
+vari <- JSTAR_5cities_w3_iadl_outhome$q6_1
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_5cities_w3_iadl_outhome, aes(x=factor(q6_1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Getting out of home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 0` 
+* `NA into 999`
+
+**R script:**
+
+```{r harmo 5 cities w3}
+JSTAR_aksst_ds_w3 <- tibble(id=JSTAR_5cities_w3_iadl_outhome$id)
+JSTAR_aksst_ds_w3$iadl_outhome <- recode(JSTAR_5cities_w3_iadl_outhome$q6_1, "1 = '1';2 = '0';NA = '999' ")
+JSTAR_aksst_ds_w3$iadl_outhome <- labelled(JSTAR_aksst_ds_w3$iadl_outhome, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript 5 cities w3, echo=FALSE}
+vari <- JSTAR_aksst_ds_w3$iadl_outhome
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(JSTAR_aksst_ds_w3, aes(x=factor(iadl_outhome))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Getting out of home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation 5 cities w3, echo=FALSE}
+AfterH <- table(JSTAR_aksst_ds_w3$iadl_outhome)
+X<-table(JSTAR_5cities_w3_iadl_outhome$q6_1)
+BeforeH <- c(X[2:1],sum(is.na(JSTAR_5cities_w3_iadl_outhome$q6_1)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","NA->999") 
+kable(C)
+```
+
+```{r importOPAL 5 cities w3, echo=FALSE}
+label(JSTAR_aksst_ds_w3$iadl_outhome) <- ds_label
+iadl_outhome <- JSTAR_aksst_ds_w3
+save(iadl_outhome, file = "../RData/aksst_w3/iadl_outhome.RData")
+#opal.assign.data(o, 'JSTAR_aksst_ds_w3', JSTAR_aksst_ds_w3)
+#opal.symbol_import(o,'JSTAR_aksst_ds_w3', project='_Athlos_Harm_Dataset')
+
+JSTAR_m_aksst_ds_w3 <- JSTAR_aksst_ds_w3
+JSTAR_m_aksst_ds_w3$iadl_outhome <- recode(JSTAR_m_aksst_ds_w3$iadl_outhome, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'JSTAR_m_aksst_ds_w3', JSTAR_m_aksst_ds_w3)
+#opal.symbol_import(o,'JSTAR_m_aksst_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+
+
+## 3 cities
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `q2_1`
+* Label: `Q2:DAILY ACTIVITIES -1- CAN YOU GO OUT ALONE BY PUBLIC TRANSPORTATION?`
+* Categories:
+   + `1 = Yes`
+   + `2 = No`
+* Missings
+   + `NA` 
+
+```{r assign 3 cities w1, echo=FALSE}
+opal.assign.table.tibble(o, 'JSTAR_3cities_w1_iadl_outhome','JSTAR_datasets_restricted.jstar_2011_3cities', variables=list('q2_1'), missings = TRUE)
+JSTAR_3cities_w1_iadl_outhome <- opal.execute(o,'JSTAR_3cities_w1_iadl_outhome')
+```
+
+```{r local 3 cities w1, echo=FALSE}
+vari <- JSTAR_3cities_w1_iadl_outhome$q2_1
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_3cities_w1_iadl_outhome, aes(x=factor(q2_1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Getting out of home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 0` 
+* `NA into 999`
+
+**R script:**
+
+```{r harmo 3 cities w1}
+JSTAR_cth_ds_w1 <- tibble(id=JSTAR_3cities_w1_iadl_outhome$id)
+JSTAR_cth_ds_w1$iadl_outhome <- recode(JSTAR_3cities_w1_iadl_outhome$q2_1, "1 = '1';2 = '0';NA = '999' ")
+JSTAR_cth_ds_w1$iadl_outhome <- labelled(JSTAR_cth_ds_w1$iadl_outhome, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript 3 cities w1, echo=FALSE}
+vari <- JSTAR_cth_ds_w1$iadl_outhome
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(JSTAR_cth_ds_w1, aes(x=factor(iadl_outhome))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Getting out of home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation 3 cities w1, echo=FALSE}
+AfterH <- table(JSTAR_cth_ds_w1$iadl_outhome)
+X<-table(JSTAR_3cities_w1_iadl_outhome$q2_1)
+BeforeH <- c(X[c(2:1)],sum(is.na(JSTAR_3cities_w1_iadl_outhome$q2_1)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","NA->999") 
+kable(C)
+```
+
+```{r importOPAL 3 cities w1, echo=FALSE}
+label(JSTAR_cth_ds_w1$iadl_outhome) <- ds_label
+iadl_outhome <- JSTAR_cth_ds_w1
+save(iadl_outhome, file = "../RData/cth_w1/iadl_outhome.RData")
+#opal.assign.data(o, 'JSTAR_cth_ds_w1', JSTAR_cth_ds_w1)
+#opal.symbol_import(o,'JSTAR_cth_ds_w1', project='_Athlos_Harm_Dataset')
+
+JSTAR_m_cth_ds_w1 <- JSTAR_cth_ds_w1
+JSTAR_m_cth_ds_w1$iadl_outhome <- recode(JSTAR_m_cth_ds_w1$iadl_outhome, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'JSTAR_m_cth_ds_w1', JSTAR_m_cth_ds_w1)
+#opal.symbol_import(o,'JSTAR_m_cth_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+## 2 cities
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `tome5`
+* Label: `Q2:DAILY ACTIVITIES -1- CAN YOU GO OUT ALONE BY PUBLIC TRANSPORTATION?`
+* Categories:
+   + `1 = Yes`
+   + `2 = No`
+* Missings
+   + `NA` 
+
+```{r assign 2 cities w1, echo=FALSE}
+opal.assign.table.tibble(o, 'JSTAR_2cities_w1_iadl_outhome','JSTAR_datasets_restricted.jstar_2009_2cities', variables=list('tome5'), missings = TRUE)
+JSTAR_2cities_w1_iadl_outhome <- opal.execute(o,'JSTAR_2cities_w1_iadl_outhome')
+```
+
+```{r local 2 cities w1, echo=FALSE}
+vari <- JSTAR_2cities_w1_iadl_outhome$tome5
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_2cities_w1_iadl_outhome, aes(x=factor(tome5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Getting out of home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 0` 
+* `NA into 999`
+
+**R script:**
+
+```{r harmo 2 cities w1}
+JSTAR_tn_ds_w1 <- tibble(id=JSTAR_2cities_w1_iadl_outhome$id)
+JSTAR_tn_ds_w1$iadl_outhome <- recode(JSTAR_2cities_w1_iadl_outhome$tome5, "1 = '1';2 = '0';NA = '999' ")
+JSTAR_tn_ds_w1$iadl_outhome <- labelled(JSTAR_tn_ds_w1$iadl_outhome, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript 2 cities w1, echo=FALSE}
+vari <- JSTAR_tn_ds_w1$iadl_outhome
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(JSTAR_tn_ds_w1, aes(x=factor(iadl_outhome))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Getting out of home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation 2 cities w1, echo=FALSE}
+AfterH <- table(JSTAR_tn_ds_w1$iadl_outhome)
+X<-table(JSTAR_2cities_w1_iadl_outhome$tome5)
+BeforeH <- c(X[2:1],sum(is.na(JSTAR_2cities_w1_iadl_outhome$tome5)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","NA->999") 
+kable(C)
+```
+
+```{r importOPAL 2 cities w1, echo=FALSE}
+label(JSTAR_tn_ds_w1$iadl_outhome) <- ds_label
+iadl_outhome <- JSTAR_tn_ds_w1
+save(iadl_outhome, file = "../RData/tn_w1/iadl_outhome.RData")
+#opal.assign.data(o, 'JSTAR_tn_ds_w1', JSTAR_tn_ds_w1)
+#opal.symbol_import(o,'JSTAR_tn_ds_w1', project='_Athlos_Harm_Dataset')
+
+JSTAR_m_tn_ds_w1 <- JSTAR_tn_ds_w1
+JSTAR_m_tn_ds_w1$iadl_outhome <- recode(JSTAR_m_tn_ds_w1$iadl_outhome, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'JSTAR_m_tn_ds_w1', JSTAR_m_tn_ds_w1)
+#opal.symbol_import(o,'JSTAR_m_tn_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+
+The study-specific variables elected to be harmonised is:
+
+
+* Name: `q6_1`
+* Label: ` 11Q6:DAILY ACTIVITIES -1- GO OUT ALONE BY PUBLIC TRANSPORTATION`
+* Categories:
+   + `1 = Yes`
+   + `2 = No`
+* Missings
+   + `NA` 
+
+```{r assign 2 cities w2, echo=FALSE}
+opal.assign.table.tibble(o, 'JSTAR_2cities_w2_iadl_outhome','JSTAR_datasets_restricted.jstar_2011_2cities', variables=list('q6_1'), missings = TRUE)
+JSTAR_2cities_w2_iadl_outhome <- opal.execute(o,'JSTAR_2cities_w2_iadl_outhome')
+```
+
+```{r local 2 cities w2, echo=FALSE}
+vari <- JSTAR_2cities_w2_iadl_outhome$q6_1
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_2cities_w2_iadl_outhome, aes(x=factor(q6_1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Getting out of home") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1` 
+* `2 into 0` 
+* `NA into 999`
+
+**R script:**
+
+```{r harmo 2 cities w2}
+JSTAR_tn_ds_w2 <- tibble(id=JSTAR_2cities_w2_iadl_outhome$id)
+JSTAR_tn_ds_w2$iadl_outhome <- recode(JSTAR_2cities_w2_iadl_outhome$q6_1, "1 = '1';2 = '0';NA = '999' ")
+JSTAR_tn_ds_w2$iadl_outhome <- labelled(JSTAR_tn_ds_w2$iadl_outhome, labels = c("Yes"=0, "No"=1,"Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript 2 cities w2, echo=FALSE}
+vari <- JSTAR_tn_ds_w2$iadl_outhome
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(JSTAR_tn_ds_w2, aes(x=factor(iadl_outhome))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IADL - Getting out of home") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation 2 cities w2, echo=FALSE}
+AfterH <- table(JSTAR_tn_ds_w2$iadl_outhome)
+X<-table(JSTAR_2cities_w2_iadl_outhome$q6_1)
+BeforeH <- c(X[2:1],sum(is.na(JSTAR_2cities_w2_iadl_outhome$q6_1)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","NA->999") 
+kable(C)
+```
+
+```{r importOPAL 2 cities w2, echo=FALSE}
+label(JSTAR_tn_ds_w2$iadl_outhome) <- ds_label
+iadl_outhome <- JSTAR_tn_ds_w2
+save(iadl_outhome, file = "../RData/tn_w2/iadl_outhome.RData")
+#opal.assign.data(o, 'JSTAR_tn_ds_w2', JSTAR_tn_ds_w2)
+#opal.symbol_import(o,'JSTAR_tn_ds_w2', project='_Athlos_Harm_Dataset')
+
+JSTAR_m_tn_ds_w2 <- JSTAR_tn_ds_w2
+JSTAR_m_tn_ds_w2$iadl_outhome <- recode(JSTAR_m_tn_ds_w2$iadl_outhome, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'JSTAR_m_tn_ds_w2', JSTAR_m_tn_ds_w2)
+#opal.symbol_import(o,'JSTAR_m_tn_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+# Quality estimation
+
+No comments
+
+[Comments on the quality of the new harmonised variable. This section can be done in a later stage, once all variables are harmonised.]
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

@@ -1,0 +1,517 @@
+---
+title: "Month of Birth"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+  
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+<!-- ########################################################## --> 
+
+
+```{r lab, echo=FALSE}
+ds_label <- "Month of birth"
+```
+
+
+
+
+
+# Description of DataSchema variable 
+
+The description of harmonised variable is the following:
+
+
+* Short name: `mbirth`
+* Variable label: `month of birth`
+* Variable description: `Month of birth`
+* Domain: `Socio-demographic and economic characteristics`
+* Value type: `continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+# Data process
+
+## aksst
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `k_001_3_c` |
+|----------|------------|
+| **Label** | `CORRECT MONTH OF BIRTH OF THE RESPONDENT` |
+| **Table name** | `jstar_2009_5cities` |
+| **Description** |  |
+
+
+```{r assign_aksst1, echo=F, echo=F}
+opal.assign.table.tibble(o, 'JSTAR_aksst_w2_mbirth','JSTAR_datasets_restricted.jstar_2009_5cities',
+                         variables=list('k_001_3_c'), missings = TRUE)
+opal.assign.table.tibble(o, 'JSTAR_aksst_w1_id','JSTAR_datasets_restricted.jstar_2007_5cities',
+                         variables=list('a_000_b'), missings = TRUE)
+JSTAR_aksst_w2_mbirth <- opal.execute(o,'JSTAR_aksst_w2_mbirth')
+JSTAR_aksst_w1_id <- opal.execute(o,'JSTAR_aksst_w1_id')
+```
+
+```{r local_aksst1, echo=F, echo=F}
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], k_001_3_c=as.numeric(new_2[,2]))
+  new_22
+}
+
+JSTAR_aksst_w1_mbirth <- Add_indiv(old = JSTAR_aksst_w2_mbirth, new = JSTAR_aksst_w1_id)
+
+vari <- JSTAR_aksst_w1_mbirth$k_001_3_c
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_aksst_w1_mbirth, aes(x=factor(k_001_3_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_aksst1}
+JSTAR_aksst_ds_w1 <- tibble(id=JSTAR_aksst_w1_mbirth$id)
+JSTAR_aksst_ds_w1$mbirth <- car::recode(JSTAR_aksst_w1_mbirth$k_001_3_c, "NA=999")
+JSTAR_aksst_ds_w1$mbirth <- labelled(JSTAR_aksst_ds_w1$mbirth, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_aksst1, echo=F, echo=F}
+vari <- JSTAR_aksst_ds_w1$mbirth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(JSTAR_aksst_ds_w1, aes(x=factor(mbirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_aksst1, echo=F, echo=F}
+BeforeH <- c(table(JSTAR_aksst_w1_mbirth$k_001_3_c), sum(is.na(JSTAR_aksst_w1_mbirth$k_001_3_c)))
+AfterH <- table(JSTAR_aksst_ds_w1$mbirth)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:10], "NA->999")
+kable(C)
+```
+
+
+
+
+
+```{r importOPAL_aksst1, echo=F, echo=F}
+
+#opal.assign.data(o, 'JSTAR_aksst_ds_w1', JSTAR_aksst_ds_w1)
+#opal.symbol_import(o,'JSTAR_aksst_ds_w1', project='_Athlos_Harm_Dataset')
+mbirth <- JSTAR_aksst_ds_w1
+save(mbirth, file = "../RData/aksst_w1/mbirth.RData")
+rm(mbirth)
+
+JSTAR_aksst_m_ds_w1 <- JSTAR_aksst_ds_w1
+JSTAR_aksst_m_ds_w1$mbirth <- car::recode(JSTAR_aksst_m_ds_w1$mbirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'JSTAR_aksst_m_ds_w1', JSTAR_aksst_m_ds_w1)
+#opal.symbol_import(o,'JSTAR_aksst_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `k_001_3_c` |
+|----------|------------|
+| **Label** | `CORRECT MONTH OF BIRTH OF THE RESPONDENT` |
+| **Table name** | `jstar_2009_5cities` |
+| **Description** |  |
+
+
+
+```{r assign_aksst2, echo=F, echo=F}
+opal.assign.table.tibble(o, 'JSTAR_aksst_w2_mbirth','JSTAR_datasets_restricted.jstar_2009_5cities',
+                         variables=list('k_001_3_c'), missings = TRUE)
+JSTAR_aksst_w2_mbirth <- opal.execute(o,'JSTAR_aksst_w2_mbirth')
+```
+
+```{r local_aksst2, echo=F, echo=F}
+vari <- JSTAR_aksst_w2_mbirth$k_001_3_c
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_aksst_w2_mbirth, aes(x=factor(k_001_3_c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_aksst2}
+JSTAR_aksst_ds_w2 <- tibble(id=JSTAR_aksst_w2_mbirth$id)
+JSTAR_aksst_ds_w2$mbirth <- car::recode(JSTAR_aksst_w2_mbirth$k_001_3_c, "NA=999")
+JSTAR_aksst_ds_w2$mbirth <- labelled(JSTAR_aksst_ds_w2$mbirth, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_aksst2, echo=F}
+vari <- JSTAR_aksst_ds_w2$mbirth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(JSTAR_aksst_ds_w2, aes(x=factor(mbirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_aksst2, echo=F}
+BeforeH <- c(table(JSTAR_aksst_w2_mbirth$k_001_3_c), sum(is.na(JSTAR_aksst_w2_mbirth$k_001_3_c)))
+AfterH <- table(JSTAR_aksst_ds_w2$mbirth)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:10], "NA->999")
+kable(C)
+```
+
+
+
+
+
+```{r importOPAL_aksst2, echo=F}
+
+#opal.assign.data(o, 'JSTAR_aksst_ds_w2', JSTAR_aksst_ds_w2)
+#opal.symbol_import(o,'JSTAR_aksst_ds_w2', project='_Athlos_Harm_Dataset')
+mbirth <- JSTAR_aksst_ds_w2
+save(mbirth, file = "../RData/aksst_w2/mbirth.RData")
+rm(mbirth)
+
+JSTAR_aksst_m_ds_w2 <- JSTAR_aksst_ds_w2
+JSTAR_aksst_m_ds_w2$mbirth <- car::recode(JSTAR_aksst_m_ds_w2$mbirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'JSTAR_aksst_m_ds_w2', JSTAR_aksst_m_ds_w2)
+#opal.symbol_import(o,'JSTAR_aksst_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+### Wave 3 
+
+#### Study-specific variable description
+
+| **Name** | `k_001_3_g` |
+|----------|------------|-|
+| **Label** | `CORRECT BIRTH DATE OF THE RESPONDENT, MONTH` |
+| **Table name** | `jstar_2011_5cities` |
+| **Description** |  |
+
+
+
+```{r assign_aksst3, echo=F}
+opal.assign.table.tibble(o, 'JSTAR_aksst_w3_mbirth','JSTAR_datasets_restricted.jstar_2011_5cities',
+                         variables=list('k_001_3_g'), missings = TRUE)
+JSTAR_aksst_w3_mbirth <- opal.execute(o,'JSTAR_aksst_w3_mbirth')
+```
+
+```{r local_aksst3, echo=F}
+vari <- JSTAR_aksst_w3_mbirth$k_001_3_g
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_aksst_w3_mbirth, aes(x=factor(k_001_3_g))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_aksst3}
+JSTAR_aksst_ds_w3 <- tibble(id=JSTAR_aksst_w3_mbirth$id)
+JSTAR_aksst_ds_w3$mbirth <- car::recode(JSTAR_aksst_w3_mbirth$k_001_3_g, "NA=999")
+JSTAR_aksst_ds_w3$mbirth <- labelled(JSTAR_aksst_ds_w3$mbirth, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_aksst3, echo=F}
+vari <- JSTAR_aksst_ds_w3$mbirth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(JSTAR_aksst_ds_w3, aes(x=factor(mbirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_aksst3, echo=F}
+BeforeH <- c(table(JSTAR_aksst_w3_mbirth$k_001_3_g), sum(is.na(JSTAR_aksst_w3_mbirth$k_001_3_g)))
+AfterH <- table(JSTAR_aksst_ds_w3$mbirth)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:9], "NA->999")
+kable(C)
+```
+
+
+
+
+
+```{r importOPAL_aksst3, echo=F}
+
+#opal.assign.data(o, 'JSTAR_aksst_ds_w3', JSTAR_aksst_ds_w3)
+#opal.symbol_import(o,'JSTAR_aksst_ds_w3', project='_Athlos_Harm_Dataset')
+mbirth <- JSTAR_aksst_ds_w3
+save(mbirth, file = "../RData/aksst_w3/mbirth.RData")
+rm(mbirth)
+
+JSTAR_aksst_m_ds_w3 <- JSTAR_aksst_ds_w3
+JSTAR_aksst_m_ds_w3$mbirth <- car::recode(JSTAR_aksst_m_ds_w3$mbirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'JSTAR_aksst_m_ds_w3', JSTAR_aksst_m_ds_w3)
+#opal.symbol_import(o,'JSTAR_aksst_m_ds_w3', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+## tn
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `k_001_3_g` |
+|----------|------------|
+| **Label** | `CORRECT BIRTH DATE OF THE RESPONDENT, MONTH` |
+| **Table name** | `jstar_2011_2cities` |
+| **Description** |  |
+
+
+
+```{r assign_tn1, echo=F}
+opal.assign.table.tibble(o, 'JSTAR_tn_w2_mbirth','JSTAR_datasets_restricted.jstar_2011_2cities',
+                         variables=list('k_001_3_g'), missings = TRUE)
+opal.assign.table.tibble(o, 'JSTAR_tn_w1_id','JSTAR_datasets_restricted.jstar_2009_2cities',
+                         variables=list('a_000_b'), missings = TRUE)
+JSTAR_tn_w2_mbirth <- opal.execute(o,'JSTAR_tn_w2_mbirth')
+JSTAR_tn_w1_id <- opal.execute(o,'JSTAR_tn_w1_id')
+```
+
+```{r local_tn1, echo=F}
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], k_001_3_g=as.numeric(new_2[,2]))
+  new_22
+}
+
+JSTAR_tn_w1_mbirth <- Add_indiv(old = JSTAR_tn_w2_mbirth, new = JSTAR_tn_w1_id)
+
+vari <- JSTAR_tn_w1_mbirth$k_001_3_g
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_tn_w1_mbirth, aes(x=factor(k_001_3_g))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_tn1}
+JSTAR_tn_ds_w1 <- tibble(id=JSTAR_tn_w1_mbirth$id)
+JSTAR_tn_ds_w1$mbirth <- car::recode(JSTAR_tn_w1_mbirth$k_001_3_g, "NA=999")
+JSTAR_tn_ds_w1$mbirth <- labelled(JSTAR_tn_ds_w1$mbirth, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_tn1, echo=F}
+vari <- JSTAR_tn_ds_w1$mbirth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(JSTAR_tn_ds_w1, aes(x=factor(mbirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_tn1, echo=F}
+BeforeH <- c(table(JSTAR_tn_w1_mbirth$k_001_3_g), sum(is.na(JSTAR_tn_w1_mbirth$k_001_3_g)))
+AfterH <- table(JSTAR_tn_ds_w1$mbirth)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:6], "NA->999")
+kable(C)
+```
+
+
+
+
+
+```{r importOPAL_tn1, echo=F}
+
+#opal.assign.data(o, 'JSTAR_tn_ds_w1', JSTAR_tn_ds_w1)
+#opal.symbol_import(o,'JSTAR_tn_ds_w1', project='_Athlos_Harm_Dataset')
+mbirth <- JSTAR_tn_ds_w1
+save(mbirth, file = "../RData/tn_w1/mbirth.RData")
+rm(mbirth)
+
+JSTAR_tn_m_ds_w1 <- JSTAR_tn_ds_w1
+JSTAR_tn_m_ds_w1$mbirth <- car::recode(JSTAR_tn_m_ds_w1$mbirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'JSTAR_tn_m_ds_w1', JSTAR_tn_m_ds_w1)
+#opal.symbol_import(o,'JSTAR_tn_m_ds_w1', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `k_001_3_g` |
+|----------|------------|
+| **Label** | `CORRECT BIRTH DATE OF THE RESPONDENT, MONTH` |
+| **Table name** | `jstar_2011_2cities` |
+| **Description** |  |
+
+
+
+
+```{r assign_tn2, echo=F}
+opal.assign.table.tibble(o, 'JSTAR_tn_w2_mbirth','JSTAR_datasets_restricted.jstar_2011_2cities',
+                         variables=list('k_001_3_g'), missings = TRUE)
+JSTAR_tn_w2_mbirth <- opal.execute(o,'JSTAR_tn_w2_mbirth')
+```
+
+```{r local_tn2, echo=F}
+vari <- JSTAR_tn_w2_mbirth$k_001_3_g
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_tn_w2_mbirth, aes(x=factor(k_001_3_g))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_tn2}
+JSTAR_tn_ds_w2 <- tibble(id=JSTAR_tn_w2_mbirth$id)
+JSTAR_tn_ds_w2$mbirth <- car::recode(JSTAR_tn_w2_mbirth$k_001_3_g, "NA=999")
+JSTAR_tn_ds_w2$mbirth <- labelled(JSTAR_tn_ds_w2$mbirth, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_tn2, echo=F}
+vari <- JSTAR_tn_ds_w2$mbirth
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(JSTAR_tn_ds_w2, aes(x=factor(mbirth))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of birth") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_tn2, echo=F}
+BeforeH <- c(table(JSTAR_tn_w2_mbirth$k_001_3_g), sum(is.na(JSTAR_tn_w2_mbirth$k_001_3_g)))
+AfterH <- table(JSTAR_tn_ds_w2$mbirth)
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c(names(AfterH)[1:6], "NA->999")
+kable(C)
+```
+
+
+
+
+
+```{r importOPAL_tn2, echo=F}
+
+#opal.assign.data(o, 'JSTAR_tn_ds_w2', JSTAR_tn_ds_w2)
+#opal.symbol_import(o,'JSTAR_tn_ds_w2', project='_Athlos_Harm_Dataset')
+mbirth <- JSTAR_tn_ds_w2
+save(mbirth, file = "../RData/tn_w2/mbirth.RData")
+rm(mbirth)
+
+JSTAR_tn_m_ds_w2 <- JSTAR_tn_ds_w2
+JSTAR_tn_m_ds_w2$mbirth <- car::recode(JSTAR_tn_m_ds_w2$mbirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
+#opal.assign.data(o, 'JSTAR_tn_m_ds_w2', JSTAR_tn_m_ds_w2)
+#opal.symbol_import(o,'JSTAR_tn_m_ds_w2', project='_Athlos_Harm_Dataset')
+```
+
+
+
+
+
+## cth
+
+### Wave 1 
+
+There is no variable.
+
+
+
+
+# Quality estimation
+
+No comments.
+
+
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

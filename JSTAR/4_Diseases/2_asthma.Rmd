@@ -1,0 +1,888 @@
+---
+title: "Asthma"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `h_asthma`
+* Variable label: `History of  Asthma`
+* Variable description: `history of asthma diagnosis`
+* Domain: `Diseases`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No asthma
+1        | Asthma
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+* Short name: `h_asthma_age`
+* Variable label: `Age first diagnosed asthma`
+* Variable description: `The age first told had asthma diagnosis`
+* Domain: `Diseases`
+* Value type: `Continuous`
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+<!-- # Global variables -->
+```{r global, include=FALSE, echo=F}
+miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
+ds_label <- "History of Asthma"
+ds_label_age <- "Age first diagnosed asthma"
+cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
+cont_label <- cat_label[3:11]
+datafolder <- "../RData/"
+#sing_idlist <- c()
+```
+<!-- ########################################################## --> 
+
+
+
+# Data process
+
+
+
+## aksst
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `h_001_7` |`h_001_7_1`|
+|-|-|-|
+| **Label** | `H-001-7:HAVE A ASTHMA`|`H-001-7-1:ASTHMA AGE`|
+| **Table name**  | `jstar_2007_5cities`| `jstar_2007_5cities`|
+| **Categories** | `0 = Have not been diagnosed or advised to seek care`<br/>`1 = Have been diagnosed or advised to seek care` |`continuous`|
+| **Missings** | `NA` | `NA` |
+| **Description** |  |  |
+
+```{r assign aksst_w1, echo=F}
+
+opal.assign.table.tibble(o, 'JSTAR_aksst_w1','JSTAR_datasets_restricted.jstar_2007_5cities',variables=list('h_001_7','h_001_7_1'), missings = T)
+JSTAR_aksst_w1 <- opal.execute(o,'JSTAR_aksst_w1')
+
+```
+
+```{r local aksst_w1, echo=F}
+
+vbl <- JSTAR_aksst_w1$h_001_7
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(JSTAR_aksst_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_aksst_w1, aes(x=factor(h_001_7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- JSTAR_aksst_w1$h_001_7_1
+kable(Continuous_summary(var = vbl, missing_values = NA)[3], caption = names(JSTAR_aksst_w1)[3])
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(JSTAR_aksst_w1, aes(h_001_7_1)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(0,75)
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_asthma` from the study-specific variable it has to be recoded as follows:
+
+* `keep up 0 into 0`
+* `keep up 1 into 1`
+* `NA into 999`
+
+To compute `h_asthma_age` from the study-specific variable it has to be recoded as follows:
+
+* `if h_asthma == 1, h_asthma_age = h_001_7_1`
+* `if h_asthma == 0, h_asthma_age = 996`
+* `h_asthma == missing into 999`
+
+**R script:**
+
+```{r harmo aksst_w1}
+
+# Categorical variable harmonization
+JSTAR_ds_aksst_w1 <- tibble(id=JSTAR_aksst_w1$id)
+JSTAR_ds_aksst_w1$h_asthma <- car::recode(JSTAR_aksst_w1$h_001_7,"NA=999")
+
+# Continuous variable harmonization
+JSTAR_ds_aksst_w1$h_asthma_age <- rep(999,length(JSTAR_ds_aksst_w1$id))
+JSTAR_ds_aksst_w1$h_asthma_age[which(JSTAR_ds_aksst_w1$h_asthma==1)] <- JSTAR_aksst_w1$h_001_7_1[which(JSTAR_ds_aksst_w1$h_asthma==1)]
+JSTAR_ds_aksst_w1$h_asthma_age[which(JSTAR_ds_aksst_w1$h_asthma==0)] <- 996
+
+# We build a global table in order to have updated the asthma status of all the individuals through the different waves
+JSTAR_ds_aksst <- JSTAR_ds_aksst_w1
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript aksst_w1, echo=F}
+
+vbl <- JSTAR_ds_aksst_w1$h_asthma
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(JSTAR_ds_aksst_w1, aes(x=factor(h_asthma))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- JSTAR_ds_aksst_w1$h_asthma_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(JSTAR_ds_aksst_w1, aes(h_asthma_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(0,75)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation aksst_w1, echo=F}
+
+AfterH <- table(JSTAR_ds_aksst_w1$h_asthma)
+BeforeH <- table(JSTAR_aksst_w1$h_001_7, useNA = "ifany")
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0->0","1->1","NA->999")
+kable(C)
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+
+| **Name** | `h_001_7` |`h_001_7_1_b`|`ybirth`|
+|-|-|-|-|
+| **Label** | `H-001-7:HAVE A ASTHMA`|`H-001-7-1:ASTHMA, YEAR`|`year of birth`|
+| **Table name**  | `jstar_2009_5cities`| `jstar_2009_5cities`|`ybirth`|
+| **Categories** | `1 = Newly diagnosed with or indicated`<br/>`2 = Fully recovered once but recurred in the past 2 years`<br/>`3 = Still be treated`<br/>`4 = Fully recovered/Never diagnosed with indicated` |`continuous`|`continuous`|
+| **Missings** | `NA` | `NA` | `999 = Missing` |
+| **Description** |  |  |  |
+
+```{r assign aksst_w2, echo=F}
+
+opal.assign.table.tibble(o, 'JSTAR_aksst_w2','JSTAR_datasets_restricted.jstar_2009_5cities',variables=list('h_001_7','h_001_7_1_b'), missings = T)
+JSTAR_aksst_w2 <- opal.execute(o,'JSTAR_aksst_w2')
+load(paste0(datafolder,"aksst_w2/ybirth.RData"))
+JSTAR_aksst_w2 <- left_join(JSTAR_aksst_w2,ybirth,by="id")
+
+```
+
+```{r local aksst_w2, echo=F}
+
+vbl <- JSTAR_aksst_w2$h_001_7
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(JSTAR_aksst_w2)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_aksst_w2, aes(x=factor(h_001_7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- JSTAR_aksst_w2$h_001_7_1_b
+kable(Continuous_summary(var = vbl, missing_values = NA)[3], caption = names(JSTAR_aksst_w2)[3])
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(JSTAR_aksst_w2, aes(h_001_7_1_b)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1995,2010)
+
+vbl <- JSTAR_aksst_w2$ybirth
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(JSTAR_aksst_w2)[4])
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(JSTAR_aksst_w2, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1930,1960)
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_asthma` from the study-specific variable it has to be recoded as follows:
+
+* `h_001_7 (w1) == 0 and h_001_7 (w2) == 4 into 0`
+* `h_001_7 (w1) == 1 or h_001_7 (w2) == 1 or 2 or 3 into 1`
+* `otherwise into 999`
+
+To compute `h_asthma_age` from the study-specific variable it has to be recoded as follows:
+
+* `if h_asthma == 1 in w2 and 0 in w1, h_asthma_age = h_001_7_1_b-ybirth`
+* `if h_asthma == 1 in w2 and w1, h_asthma_age = age from wave 1`
+* `if h_asthma == 0, h_asthma_age = 996`
+* `h_asthma == missing into 999`
+
+**R script:**
+
+```{r harmo aksst_w2}
+
+JSTAR_aksst_w2 <- left_join(JSTAR_aksst_w2, JSTAR_ds_aksst, by = "id")
+
+# Categorical variable harmonization
+JSTAR_ds_aksst_w2 <- tibble(id=JSTAR_aksst_w2$id)
+JSTAR_ds_aksst_w2$h_asthma <- rep(999,length(JSTAR_aksst_w2$id))
+JSTAR_ds_aksst_w2$h_asthma[which(JSTAR_aksst_w2$h_001_7 == 4 & (JSTAR_aksst_w2$h_asthma != 1 | is.na(JSTAR_aksst_w2$h_asthma)))] <- 0
+JSTAR_ds_aksst_w2$h_asthma[which(JSTAR_aksst_w2$h_001_7 %in% c(1,2,3) | ((!is.na(JSTAR_aksst_w2$h_001_7)) & JSTAR_aksst_w2$h_asthma == 1))] <- 1
+
+# We update the asthma status of the individuals in the global table
+assign_merge <- function(endtib,sttib,log_vec=c(T),col_end_index=NULL,col_st_index=NULL){
+  newtib <- left_join(endtib,sttib,by="id")
+  newtib[log_vec,col_end_index] <- newtib[log_vec,col_st_index]
+  id_ind <- match("id",names(newtib))
+  newtib <- newtib[,c(id_ind,col_end_index)]
+  names(newtib)[2] <- "x"
+  newtib$x <- car::recode(newtib$x,"NA=999")
+  names(newtib)[2] <- names(endtib)[col_end_index]
+  newtib
+}
+JSTAR_aksst_ds_prov <- JSTAR_ds_aksst[,c(1,2)]
+JSTAR_aksst_ds_prov <- assign_merge(JSTAR_aksst_ds_prov,JSTAR_ds_aksst_w2,log_vec=(JSTAR_aksst_ds_prov$id %in% JSTAR_ds_aksst_w2$id),col_end_index = 2, col_st_index = 3)
+JSTAR_ds_aksst$h_asthma <- JSTAR_aksst_ds_prov$h_asthma
+rm(JSTAR_aksst_ds_prov)
+
+# Continuous variable harmonization
+JSTAR_ds_aksst_w2$h_asthma_age <- rep(999,length(JSTAR_aksst_w2$id))
+JSTAR_ds_aksst_w2$h_asthma_age[which(JSTAR_ds_aksst_w2$h_asthma == 0)] <- 996
+JSTAR_ds_aksst_w2$h_asthma_age[which(JSTAR_ds_aksst_w2$h_asthma == 1 & (is.na(JSTAR_aksst_w2$h_asthma_age) | JSTAR_aksst_w2$h_asthma_age %in% miss_values_vector) & JSTAR_aksst_w2$ybirth != 999)] <- JSTAR_aksst_w2$h_001_7_1_b[which(JSTAR_ds_aksst_w2$h_asthma == 1 & (is.na(JSTAR_aksst_w2$h_asthma_age) | JSTAR_aksst_w2$h_asthma_age %in% miss_values_vector) & JSTAR_aksst_w2$ybirth != 999)]-JSTAR_aksst_w2$ybirth[which(JSTAR_ds_aksst_w2$h_asthma == 1 & (is.na(JSTAR_aksst_w2$h_asthma_age) | JSTAR_aksst_w2$h_asthma_age %in% miss_values_vector) & JSTAR_aksst_w2$ybirth != 999)]
+JSTAR_ds_aksst_w2$h_asthma_age[which(JSTAR_ds_aksst_w2$h_asthma == 1 & !is.na(JSTAR_aksst_w2$h_asthma_age) & !JSTAR_aksst_w2$h_asthma_age %in% miss_values_vector)] <- JSTAR_aksst_w2$h_asthma_age[which(JSTAR_ds_aksst_w2$h_asthma == 1 & !is.na(JSTAR_aksst_w2$h_asthma_age) & !JSTAR_aksst_w2$h_asthma_age %in% miss_values_vector)]
+JSTAR_ds_aksst_w2$h_asthma_age <- car::recode(JSTAR_ds_aksst_w2$h_asthma_age, "NA=999")
+
+JSTAR_ds_aksst$h_asthma_age[which((JSTAR_ds_aksst$id %in% JSTAR_ds_aksst_w2$id) & (JSTAR_ds_aksst$h_asthma != 999))] <- JSTAR_ds_aksst_w2$h_asthma_age[which(JSTAR_ds_aksst_w2$h_asthma != 999)]
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript aksst_w2, echo=F}
+
+vbl <- JSTAR_ds_aksst_w2$h_asthma
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(JSTAR_ds_aksst_w2, aes(x=factor(h_asthma))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- JSTAR_ds_aksst_w2$h_asthma_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(JSTAR_ds_aksst_w2, aes(h_asthma_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(10,80)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation aksst_w2, echo=F, results='asis'}
+
+AfterH <- table(JSTAR_ds_aksst_w2$h_asthma, useNA = "ifany")
+X <- c(
+  sum(((!is.na(JSTAR_aksst_w2$h_001_7)) & JSTAR_aksst_w2$h_001_7 == 4) & (JSTAR_aksst_w2$h_asthma != 1)),
+  sum(((!is.na(JSTAR_aksst_w2$h_001_7)) & JSTAR_aksst_w2$h_001_7 %in% c(1,2,3)) | ((!is.na(JSTAR_aksst_w2$h_asthma)) & (!is.na(JSTAR_aksst_w2$h_001_7)) & JSTAR_aksst_w2$h_asthma == 1))
+)
+BeforeH <- c(X[1:2],length(JSTAR_aksst_w2$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0 (w1),4 (w2)->0","1,2,3->1","NA->999")
+kable(C)
+
+cat("There are 2 individuals which answer incompatible age of diagnostic in wave 1 and year of diagnostic in wave 2. We harmonize them from the first data answered (wave 1).")
+JSTAR_aksst_w2$agediff <- JSTAR_aksst_w2$h_001_7_1_b - JSTAR_aksst_w2$ybirth
+kable(JSTAR_aksst_w2[which(!is.na(JSTAR_aksst_w2$h_001_7_1_b) & !is.na(JSTAR_aksst_w2$h_asthma_age) & !JSTAR_aksst_w2$h_asthma_age %in% miss_values_vector & JSTAR_aksst_w2$h_asthma_age != JSTAR_aksst_w2$agediff),],align = 'c')
+
+cat("There are 32 individuals who answered in wave 1 they had asthma and in wave 2 they did not. We harmonize them as having it")
+kable(frq(JSTAR_aksst_w2$h_asthma[which(JSTAR_aksst_w2$h_001_7==4)]),align='c', caption = 'Previous status of individuals who tell in wave 2 they have not asthma')
+
+```
+
+
+
+### Wave 3
+
+
+#### Study-specific variable description
+
+| **Name** | `h_001_7` |`yintw (aksst_w2)`|`yintw (aksst_w3)`|`ybirth`|
+|-|-|-|-|-|
+| **Label** | `11H-001-7:HAVE A ASTHMA`|`year of interview`|`year of interview`|`year of birth`|
+| **Table name**  | `jstar_2011_5cities`| `yintw`| `yintw`|`ybirth`|
+| **Categories** |`1 = Newly diagnosed with or indicated`<br/>`2 = Fully recovered once but recurred in the past 2 years`<br/>`3 = Still be treated`<br/>`4 = Fully recovered/Never diagnosed with indicated` |`continuous`|`continuous`|`continuous`||`continuous`|
+| **Missings** | `NA` |  |  |  `999 = Missing` |
+| **Description** |  |  |  |  |
+
+```{r assign aksst_w3, echo=F}
+
+opal.assign.table.tibble(o, 'JSTAR_aksst_w3','JSTAR_datasets_restricted.jstar_2011_5cities',variables=list('h_001_7'), missings = T)
+JSTAR_aksst_w3 <- opal.execute(o,'JSTAR_aksst_w3')
+load(paste0(datafolder,"aksst_w3/ybirth.RData"))
+JSTAR_aksst_w3 <- left_join(JSTAR_aksst_w3,ybirth,by="id")
+rm(ybirth)
+load(paste0(datafolder,"aksst_w3/yintw.RData"))
+JSTAR_aksst_w3 <- left_join(JSTAR_aksst_w3,yintw,by="id")
+names(JSTAR_aksst_w3)[4] <- "yintw_aksst_w3"
+rm(yintw)
+load(paste0(datafolder,"aksst_w2/yintw.RData"))
+JSTAR_aksst_w3 <- left_join(JSTAR_aksst_w3,yintw,by="id")
+names(JSTAR_aksst_w3)[5] <- "yintw_aksst_w2"
+rm(yintw)
+
+```
+
+```{r local aksst_w3, echo=F}
+
+vbl <- JSTAR_aksst_w3$h_001_7
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(JSTAR_aksst_w3)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_aksst_w3, aes(x=factor(h_001_7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- JSTAR_aksst_w3$yintw_aksst_w2
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(JSTAR_aksst_w3)[5])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_aksst_w3, aes(x=factor(yintw_aksst_w2))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- JSTAR_aksst_w3$yintw_aksst_w3
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(JSTAR_aksst_w3)[4])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_aksst_w3, aes(x=factor(yintw_aksst_w3))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- JSTAR_aksst_w3$ybirth
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(JSTAR_aksst_w3)[3])
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(JSTAR_aksst_w3, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1925,1965)
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_asthma` from the study-specific variable it has to be recoded as follows:
+
+* `h_001_7 (w1) == 0 and h_001_7 (w2) == 4 and h_001_7 (w3) == 4 into 0`
+* `h_001_7 (w1) == 1 or h_001_7 (w2) == 1 or 2 or 3 or h_001_7 (w3) == 1 or 2 or 3 into 1`
+* `otherwise into 999`
+
+To compute `h_asthma_age` from the study-specific variable it has to be recoded as follows:
+
+* `if h_asthma == 1 in w3 and 0 in w2, h_asthma_age = (year of interview w3-year of interview w2)/2 + (year of interview w2 - ybirth)`
+* `if h_asthma == 1 in w3 and other wave, h_asthma_age as previously`
+* `if h_asthma == 0, h_asthma_age = 996`
+* `h_asthma == missing into 999`
+
+**R script:**
+
+```{r harmo aksst_w3}
+
+# We use the harmonized variable of previous waves instead of the study-specific variables
+JSTAR_aksst_w3 <- left_join(JSTAR_aksst_w3, JSTAR_ds_aksst, by = "id")
+
+# Categorical variable harmonization
+JSTAR_ds_aksst_w3 <- tibble(id=JSTAR_aksst_w3$id)
+JSTAR_ds_aksst_w3$h_asthma <- rep(999,length(JSTAR_aksst_w3$id))
+JSTAR_ds_aksst_w3$h_asthma[which(JSTAR_aksst_w3$h_001_7 == 4 & (JSTAR_aksst_w3$h_asthma != 1 | is.na(JSTAR_aksst_w3$h_asthma)))] <- 0
+JSTAR_ds_aksst_w3$h_asthma[which(JSTAR_aksst_w3$h_001_7 %in% c(1,2,3) | ((!is.na(JSTAR_aksst_w3$h_001_7)) & JSTAR_aksst_w3$h_asthma == 1))] <- 1
+
+# We update the hypertension status of the individuals in the global table
+rm(JSTAR_ds_aksst)
+
+# Continuous variable harmonization
+JSTAR_ds_aksst_w3$h_asthma_age <- rep(999,length(JSTAR_aksst_w3$id))
+JSTAR_ds_aksst_w3$h_asthma_age[which(JSTAR_ds_aksst_w3$h_asthma == 0)] <- 996
+JSTAR_ds_aksst_w3$h_asthma_age[which(JSTAR_ds_aksst_w3$h_asthma == 1 & !is.na(JSTAR_aksst_w3$h_asthma_age) & !JSTAR_aksst_w3$h_asthma_age %in% miss_values_vector)] <- JSTAR_aksst_w3$h_asthma_age[which(JSTAR_ds_aksst_w3$h_asthma == 1 & !is.na(JSTAR_aksst_w3$h_asthma_age) & !JSTAR_aksst_w3$h_asthma_age %in% miss_values_vector)]
+JSTAR_ds_aksst_w3$h_asthma_age[which(JSTAR_ds_aksst_w3$h_asthma == 1 & JSTAR_aksst_w3$h_asthma==0 & JSTAR_aksst_w3$ybirth != 999)] <- (JSTAR_aksst_w3$yintw_aksst_w3[which(JSTAR_ds_aksst_w3$h_asthma == 1 & JSTAR_aksst_w3$h_asthma==0 & JSTAR_aksst_w3$ybirth != 999)] + JSTAR_aksst_w3$yintw_aksst_w2[which(JSTAR_ds_aksst_w3$h_asthma == 1 & JSTAR_aksst_w3$h_asthma==0 & JSTAR_aksst_w3$ybirth != 999)])/2 - JSTAR_aksst_w3$ybirth[which(JSTAR_ds_aksst_w3$h_asthma == 1 & JSTAR_aksst_w3$h_asthma==0 & JSTAR_aksst_w3$ybirth != 999)]
+JSTAR_ds_aksst_w3$h_asthma_age <- car::recode(JSTAR_ds_aksst_w3$h_asthma_age, "NA=999")
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript aksst_w3, echo=F}
+
+vbl <- JSTAR_ds_aksst_w3$h_asthma
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(JSTAR_ds_aksst_w3, aes(x=factor(h_asthma))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- JSTAR_ds_aksst_w3$h_asthma_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(JSTAR_ds_aksst_w3, aes(h_asthma_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(10,80)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation aksst_w3, echo=F, results='asis'}
+
+AfterH <- table(JSTAR_ds_aksst_w3$h_asthma, useNA = "ifany")
+X <- c(
+  sum(((!is.na(JSTAR_aksst_w3$h_001_7)) & JSTAR_aksst_w3$h_001_7 == 4) & (JSTAR_aksst_w3$h_asthma != 1)),
+  sum(((!is.na(JSTAR_aksst_w3$h_001_7)) & JSTAR_aksst_w3$h_001_7 %in% c(1,2,3)) | ((!is.na(JSTAR_aksst_w3$h_asthma)) & (!is.na(JSTAR_aksst_w3$h_001_7)) & JSTAR_aksst_w3$h_asthma == 1))
+)
+BeforeH <- c(X[1:2],length(JSTAR_aksst_w3$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0 (w1),4 (w2)->0","1,2,3->1","NA->999")
+kable(C)
+
+cat("There are 38 individuals who answered in previous waves they had asthma and in wave 3 that they did not. We harmonize them as having it")
+kable(frq(JSTAR_aksst_w3$h_asthma[which(JSTAR_aksst_w3$h_001_7==4)]),align='c', caption = 'Previous status of individuals who tell in wave 3 they have not asthma')
+
+```
+
+
+
+## tn
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `h_001_7` |`h_001_7_1`|
+|-|-|-|
+| **Label** | `H-001-7:HAVE A ASTHMA`|`H-001-7-1:ASTHMA, AGE`|
+| **Table name**  | `jstar_2009_2cities`| `jstar_2009_2cities`|
+| **Categories** | `0 = Have not been diagnosed or advised to seek care`<br/>`1 = Have been diagnosed or advised to seek care` |`continuous`|
+| **Missings** | `NA` | `NA` |
+| **Description** |  |  |
+
+```{r assign tn_w1, echo=F}
+
+opal.assign.table.tibble(o, 'JSTAR_tn_w1','JSTAR_datasets_restricted.jstar_2009_2cities',variables=list('h_001_7','h_001_7_1'), missings = T)
+JSTAR_tn_w1 <- opal.execute(o,'JSTAR_tn_w1')
+
+```
+
+```{r local tn_w1, echo=F}
+
+vbl <- JSTAR_tn_w1$h_001_7
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(JSTAR_tn_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_tn_w1, aes(x=factor(h_001_7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- JSTAR_tn_w1$h_001_7_1
+kable(Continuous_summary(var = vbl, missing_values = NA)[3], caption = names(JSTAR_tn_w1)[3])
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(JSTAR_tn_w1, aes(h_001_7_1)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(-1,70)
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_asthma` from the study-specific variable it has to be recoded as follows:
+
+* `keep up 0 into 0`
+* `keep up 1 into 1`
+* `NA into 999`
+
+To compute `h_asthma_age` from the study-specific variable it has to be recoded as follows:
+
+* `if h_asthma == 1, h_asthma_age = h_001_7_1`
+* `if h_asthma == 0, h_asthma_age = 996`
+* `h_asthma == missing into 999`
+
+**R script:**
+
+```{r harmo tn_w1}
+
+# Categorical variable harmonization
+JSTAR_ds_tn_w1 <- tibble(id=JSTAR_tn_w1$id)
+JSTAR_ds_tn_w1$h_asthma <- car::recode(JSTAR_tn_w1$h_001_7,"NA=999")
+
+# Continuous variable harmonization
+JSTAR_ds_tn_w1$h_asthma_age <- rep(999,length(JSTAR_ds_tn_w1$id))
+JSTAR_ds_tn_w1$h_asthma_age[which(JSTAR_ds_tn_w1$h_asthma==1)] <- JSTAR_tn_w1$h_001_7_1[which(JSTAR_ds_tn_w1$h_asthma==1)]
+JSTAR_ds_tn_w1$h_asthma_age[which(JSTAR_ds_tn_w1$h_asthma==0)] <- 996
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript tn_w1, echo=F}
+
+vbl <- JSTAR_ds_tn_w1$h_asthma
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(JSTAR_ds_tn_w1, aes(x=factor(h_asthma))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- JSTAR_ds_tn_w1$h_asthma_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(JSTAR_ds_tn_w1, aes(h_asthma_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(-1,75)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation tn_w1, echo=F}
+
+AfterH <- table(JSTAR_ds_tn_w1$h_asthma)
+BeforeH <- table(JSTAR_tn_w1$h_001_7, useNA = "ifany")
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0->0","1->1","NA->999")
+kable(C)
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+
+
+| **Name** | `h_001_7` |`yintw (tn_w2)`|`yintw (tn_w1)`|`ybirth`|
+|-|-|-|-|-|
+| **Label** | `11H-001-7:HAVE A ASTHMA`|`year of interview`|`year of interview`|`year of birth`|
+| **Table name**  | `jstar_2011_2cities`| `yintw`| `yintw`|`ybirth`|
+| **Categories** |`1 = Newly diagnosed with or indicated`<br/>`2 = Fully recovered once but recurred in the past 2 years`<br/>`3 = Still be treated`<br/>`4 = Fully recovered/Never diagnosed with indicated`|`continuous`|`continuous`|`continuous`||`continuous`|
+| **Missings** | `NA` |  |  |  `999 = Missing` |
+| **Description** |  |  |  |  |
+
+
+
+```{r assign tn_w2, echo=F}
+
+opal.assign.table.tibble(o, 'JSTAR_tn_w2','JSTAR_datasets_restricted.jstar_2011_2cities',variables=list('h_001_7'), missings = T)
+JSTAR_tn_w2 <- opal.execute(o,'JSTAR_tn_w2')
+load(paste0(datafolder,"tn_w2/ybirth.RData"))
+JSTAR_tn_w2 <- left_join(JSTAR_tn_w2,ybirth,by="id")
+rm(ybirth)
+load(paste0(datafolder,"tn_w2/yintw.RData"))
+JSTAR_tn_w2 <- left_join(JSTAR_tn_w2,yintw,by="id")
+names(JSTAR_tn_w2)[4] <- "yintw_tn_w2"
+rm(yintw)
+load(paste0(datafolder,"tn_w1/yintw.RData"))
+JSTAR_tn_w2 <- left_join(JSTAR_tn_w2,yintw,by="id")
+names(JSTAR_tn_w2)[5] <- "yintw_tn_w1"
+rm(yintw)
+
+```
+
+```{r local tn_w2, echo=F}
+
+vbl <- JSTAR_tn_w2$h_001_7
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(JSTAR_tn_w2)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_tn_w2, aes(x=factor(h_001_7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- JSTAR_tn_w2$yintw_tn_w1
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(JSTAR_tn_w2)[5])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_tn_w2, aes(x=factor(yintw_tn_w1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- JSTAR_tn_w2$yintw_tn_w2
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(JSTAR_tn_w2)[4])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_tn_w2, aes(x=factor(yintw_tn_w2))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- JSTAR_tn_w2$ybirth
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(JSTAR_tn_w2)[3])
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(JSTAR_tn_w2, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1930,1960)
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_asthma` from the study-specific variable it has to be recoded as follows:
+
+* `h_001_7 (w1) == 0 and h_001_7 (w2) == 4 into 0`
+* `h_001_7 (w1) == 1 or h_001_7 (w2) == 1 or 2 or 3 into 1`
+* `otherwise into 999`
+
+To compute `h_asthma_age` from the study-specific variable it has to be recoded as follows:
+
+* `if h_asthma == 1 in w2 and 0 in w1, h_asthma_age = (year of interview w2-year of interview w1)/2+(year of interview w1 -ybirth)`
+* `if h_asthma == 1 in w2 and w1, h_asthma_age as previously`
+* `if h_asthma == 0, h_asthma_age = 996`
+* `h_asthma == missing into 999`
+
+**R script:**
+
+```{r harmo tn_w2}
+
+JSTAR_tn_w2 <- left_join(JSTAR_tn_w2, JSTAR_ds_tn_w1, by = "id")
+
+# Categorical variable harmonization
+JSTAR_ds_tn_w2 <- tibble(id=JSTAR_tn_w2$id)
+JSTAR_ds_tn_w2$h_asthma <- rep(999,length(JSTAR_tn_w2$id))
+JSTAR_ds_tn_w2$h_asthma[which(JSTAR_tn_w2$h_001_7 == 4 & (JSTAR_tn_w2$h_asthma != 1 | is.na(JSTAR_tn_w2$h_asthma)))] <- 0
+JSTAR_ds_tn_w2$h_asthma[which(JSTAR_tn_w2$h_001_7 %in% c(1,2,3) | ((!is.na(JSTAR_tn_w2$h_001_7)) & JSTAR_tn_w2$h_asthma == 1))] <- 1
+
+# Continuous variable harmonization
+JSTAR_ds_tn_w2$h_asthma_age <- rep(999,length(JSTAR_tn_w2$id))
+JSTAR_ds_tn_w2$h_asthma_age[which(JSTAR_ds_tn_w2$h_asthma == 0)] <- 996
+JSTAR_ds_tn_w2$h_asthma_age[which(JSTAR_ds_tn_w2$h_asthma == 1 & !JSTAR_tn_w2$h_asthma_age %in% miss_values_vector & !is.na(JSTAR_tn_w2$h_asthma_age))] <- JSTAR_tn_w2$h_asthma_age[which(JSTAR_ds_tn_w2$h_asthma == 1 & !JSTAR_tn_w2$h_asthma_age %in% miss_values_vector & !is.na(JSTAR_tn_w2$h_asthma_age))]
+JSTAR_ds_tn_w2$h_asthma_age[which(JSTAR_ds_tn_w2$h_asthma == 1 & JSTAR_tn_w2$h_asthma==0 & JSTAR_tn_w2$ybirth != 999)] <- (JSTAR_tn_w2$yintw_tn_w2[which(JSTAR_ds_tn_w2$h_asthma == 1 & JSTAR_tn_w2$h_asthma==0 & JSTAR_tn_w2$ybirth != 999)] + JSTAR_tn_w2$yintw_tn_w1[which(JSTAR_ds_tn_w2$h_asthma == 1 & JSTAR_tn_w2$h_asthma==0 & JSTAR_tn_w2$ybirth != 999)])/2 - JSTAR_tn_w2$ybirth[which(JSTAR_ds_tn_w2$h_asthma == 1 & JSTAR_tn_w2$h_asthma==0 & JSTAR_tn_w2$ybirth != 999)]
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript tn_w2, echo=F}
+
+vbl <- JSTAR_ds_tn_w2$h_asthma
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(JSTAR_ds_tn_w2, aes(x=factor(h_asthma))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- JSTAR_ds_tn_w2$h_asthma_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(JSTAR_ds_tn_w2, aes(h_asthma_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(10,80)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation tn_w2, echo=F, results='asis'}
+
+AfterH <- table(JSTAR_ds_tn_w2$h_asthma, useNA = "ifany")
+X <- c(
+  sum(((!is.na(JSTAR_tn_w2$h_001_7)) & JSTAR_tn_w2$h_001_7 == 4) & (JSTAR_tn_w2$h_asthma != 1)),
+  sum(((!is.na(JSTAR_tn_w2$h_001_7)) & JSTAR_tn_w2$h_001_7 %in% c(1,2,3)) | ((!is.na(JSTAR_tn_w2$h_asthma)) & (!is.na(JSTAR_tn_w2$h_001_7)) & JSTAR_tn_w2$h_asthma == 1))
+)
+BeforeH <- c(X[1:2],length(JSTAR_tn_w2$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0 (w1),4 (w2)->0","1,2,3->1","NA->999")
+kable(C)
+
+cat("There are 17 individuals who answered in wave 1 they had asthma and in wave 2 they did not. We harmonize them as having asthma")
+kable(frq(JSTAR_tn_w2$h_asthma[which(JSTAR_tn_w2$h_001_7==4)]),align='c', caption = 'Previous status of individuals who tell in wave 2 they have not asthma')
+
+```
+
+
+
+## cth
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `h_001_7` |`h_001_7_1`|
+|-|-|-|
+| **Label** | `H-001-7:HAVE A ASTHMA`|`H-001-7-1:ASTHMA, AGE`|
+| **Table name**  | `jstar_2011_3cities`| `jstar_2011_3cities`|
+| **Categories** | `0 = Have not been diagnosed or advised to seek care`<br/>`1 = Have been diagnosed or advised to seek care` |`continuous`|
+| **Missings** | `NA` | `NA` |
+| **Description** |  |  |
+
+```{r assign cth_w1, echo=F}
+
+opal.assign.table.tibble(o, 'JSTAR_cth_w1','JSTAR_datasets_restricted.jstar_2011_3cities',variables=list('h_001_7','h_001_7_1'), missings = T)
+JSTAR_cth_w1 <- opal.execute(o,'JSTAR_cth_w1')
+
+```
+
+```{r local cth_w1, echo=F}
+
+vbl <- JSTAR_cth_w1$h_001_7
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(JSTAR_cth_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_cth_w1, aes(x=factor(h_001_7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- JSTAR_cth_w1$h_001_7_1
+kable(Continuous_summary(var = vbl, missing_values = NA)[3], caption = names(JSTAR_cth_w1)[3])
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(JSTAR_cth_w1, aes(h_001_7_1)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(10,75)
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `h_asthma` from the study-specific variable it has to be recoded as follows:
+
+* `keep up 0 into 0`
+* `keep up 1 into 1`
+* `NA into 999`
+
+To compute `h_asthma_age` from the study-specific variable it has to be recoded as follows:
+
+* `if h_asthma == 1, h_asthma_age = h_001_7_1`
+* `if h_asthma == 0, h_asthma_age = 996`
+* `h_asthma == missing into 999`
+
+**R script:**
+
+```{r harmo cth_w1}
+
+# Categorical variable harmonization
+JSTAR_ds_cth_w1 <- tibble(id=JSTAR_cth_w1$id)
+JSTAR_ds_cth_w1$h_asthma <- car::recode(JSTAR_cth_w1$h_001_7,"NA=999")
+
+# Continuous variable harmonization
+JSTAR_ds_cth_w1$h_asthma_age <- rep(999,length(JSTAR_ds_cth_w1$id))
+JSTAR_ds_cth_w1$h_asthma_age[which(JSTAR_ds_cth_w1$h_asthma==1)] <- JSTAR_cth_w1$h_001_7_1[which(JSTAR_ds_cth_w1$h_asthma==1)]
+JSTAR_ds_cth_w1$h_asthma_age[which(JSTAR_ds_cth_w1$h_asthma==0)] <- 996
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript cth_w1, echo=F}
+
+vbl <- JSTAR_ds_cth_w1$h_asthma
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(JSTAR_ds_cth_w1, aes(x=factor(h_asthma))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- JSTAR_ds_cth_w1$h_asthma_age
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(JSTAR_ds_cth_w1, aes(h_asthma_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(10,75)
+
+```
+
+
+#### Validation
+
+```{r crosstabulation cth_w1, echo=F}
+
+AfterH <- table(JSTAR_ds_cth_w1$h_asthma)
+BeforeH <- table(JSTAR_cth_w1$h_001_7, useNA = "ifany")
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("0->0","1->1","NA->999")
+kable(C)
+
+```
+
+
+
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
+
+**R script:**
+
+```{r summ}
+
+l.hds <- list(aksst_w1 = JSTAR_ds_aksst_w1, aksst_w2 = JSTAR_ds_aksst_w2, aksst_w3 = JSTAR_ds_aksst_w3, tn_w1 = JSTAR_ds_tn_w1, tn_w2 = JSTAR_ds_tn_w2, cth_w1 = JSTAR_ds_cth_w1)
+
+for(name in names(l.hds)) {
+  aux_object <- l.hds[[name]]
+  label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
+  l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
+  label(l.hds[[name]][[3]]) <- label(aux_object[[3]]) <- ds_label_age # Text value assigned at the DS description, at the top
+  l.hds[[name]][[3]] <- labelled(l.hds[[name]][[3]], labels = cont_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  m_name <- paste0("JSTAR_m_ds_",name)
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+for (i in seq_along(l.hds)){
+  t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+}
+t.hds[13,] <- c("n", "sample size", 
+             length(l.hds[[1]][[2]]), length(l.hds[[2]][[2]]) , length(l.hds[[3]][[2]]), length(l.hds[[4]][[2]]), length(l.hds[[5]][[2]]), length(l.hds[[6]][[2]]))
+names(t.hds)<-c("val", "label", "AKSST_W1", "AKSST_W2", "AKSST_W3", "TN_W1", "TN_W2", "CTH_W1")
+kable(t.hds)
+
+```
+
+
+
+# Quality estimation
+
+* We assume that if an individual answers it has asthma in one wave, it has for all the next waves. Individuals with discrepancies with respect to this criterium are specified at the end of each validation.
+* There are individuals whose harmonized diagnostic ages depend on the waves. We harmonize diagnostic age taking the first data they answer.
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+for(index in seq_along(l.hds)){
+  h_asthma <- l.hds[[index]]
+  save(h_asthma, file = paste0(datafolder,names(l.hds)[index],"/h_asthma.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

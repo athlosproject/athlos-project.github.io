@@ -1,0 +1,1048 @@
+---
+title: "Has other (living) family members (e.g. parents, siblings, in-laws, etc.)"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_ania.r")
+```
+
+<!-- ########################################################## --> 
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variables is the following:
+
+* Short name: `oth_fam`
+* Variable label: `Has other (living) family members (e.g. parents, siblings, in-laws, etc.)`
+* Domain: `Social environment`
+* Value type: `cathegorical`
+* Categories:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No
+1        | Yes
+
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+<!-- ########################################################## --> 
+
+# Data process
+## aksst
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variables elected to be harmonised are:
+
+* Name: `a_013`
+* Label: `A-013:IS PARENT STILL ALIVE`
+* Category:
+    + `1 = Yes,both`
+    + `2 = Only father living`
+    + `3 = Only mother living`
+    + `4 = Both parents dead`
+* Missings:
+    + `5 = Don't know`
+    + `6 = Refused to answer`
+    
+* Name: `a_018`
+* Label: `A-018:IS PARENT-IN-LAW STILL ALIVE`
+* Category:
+    + `1 = Yes,both`
+    + `2 = Only father living`
+    + `3 = Only mother living`
+    + `4 = Both deceased`
+* Missings:
+    + `5 = Don't know`
+    + `6 = Refused to answer`
+
+
+* Description: 
+```{r assign1 5cities}
+opal.assign.table.tibble(o, 'JSTAR_aksst_w1_oth_fam','JSTAR_datasets_restricted.jstar_2007_5cities', 
+                        variables=list('a_013','a_018'), missings = TRUE)
+```
+
+```{r local1 5cities}
+JSTAR_aksst_w1_oth_fam <- opal.execute(o,'JSTAR_aksst_w1_oth_fam')
+
+vari <- JSTAR_aksst_w1_oth_fam$a_013
+kable(Categorical_summary(vari, missing_values = c(5,6))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(5,6))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(5,6))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_aksst_w1_oth_fam$a_013, missing_values = NA)
+ggplot(JSTAR_aksst_w1_oth_fam, aes(x=factor(a_013))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IS PARENT STILL ALIVE?") + ylab("Frequency")
+
+vari <- JSTAR_aksst_w1_oth_fam$a_018
+kable(Categorical_summary(vari, missing_values = c(5,6))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(5,6))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(5,6))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_aksst_w1_oth_fam$a_018, missing_values = NA)
+ggplot(JSTAR_aksst_w1_oth_fam, aes(x=factor(a_018))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IS PARENT-IN-LAW STILL ALIVE?") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any is in {1,2,3} then 1`
+* `if both are equal 4 then 0`
+* `5 into 998`
+* `6 into 997`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1 5cities, echo=TRUE}
+JSTAR_aksst_ds_w1 <- tibble(id=JSTAR_aksst_w1_oth_fam$id)
+
+JSTAR_aksst_w1_oth_fam$a_013 <- car::recode(as.vector(JSTAR_aksst_w1_oth_fam$a_013), "NA='-999'")
+JSTAR_aksst_w1_oth_fam$a_018 <- car::recode(as.vector(JSTAR_aksst_w1_oth_fam$a_018), "NA='-999'")
+
+JSTAR_aksst_ds_w1$oth_fam <- c(NA) 
+for(i in 1:dim(JSTAR_aksst_w1_oth_fam)[1]){
+  if(JSTAR_aksst_w1_oth_fam$a_013[i] %in% c(1,2,3) | JSTAR_aksst_w1_oth_fam$a_018[i] %in% c(1,2,3) ){
+    JSTAR_aksst_ds_w1$oth_fam[i] = 1 } 
+  else if(JSTAR_aksst_w1_oth_fam$a_013[i] == 4 & JSTAR_aksst_w1_oth_fam$a_018[i] == 4 ){
+    JSTAR_aksst_ds_w1$oth_fam[i] = 0 }
+  else if(JSTAR_aksst_w1_oth_fam$a_013[i] == 5 | JSTAR_aksst_w1_oth_fam$a_018[i] == 5 ){
+    JSTAR_aksst_ds_w1$oth_fam[i] = 998 }
+  else if(JSTAR_aksst_w1_oth_fam$a_013[i] == 6 | JSTAR_aksst_w1_oth_fam$a_018[i] == 6 ){
+    JSTAR_aksst_ds_w1$oth_fam[i] = 997 }
+}
+
+JSTAR_aksst_ds_w1$oth_fam <- car::recode(as.vector(JSTAR_aksst_ds_w1$oth_fam), "NA='999'")
+JSTAR_aksst_ds_w1$oth_fam <- labelled(JSTAR_aksst_ds_w1$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 5cities}
+vari <- JSTAR_aksst_ds_w1$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_aksst_ds_w1$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(JSTAR_aksst_ds_w1, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 5cities}
+
+```
+
+ 
+ 
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variables elected to be harmonised are:
+
+
+** FROM WAVE1: **
+* Name: `a_013`
+* Label: `A-013:IS PARENT STILL ALIVE`
+* Category:
+    + `1 = Yes,both`
+    + `2 = Only father living`
+    + `3 = Only mother living`
+    + `4 = Both parents dead`
+* Missings:
+    + `5 = Don't know`
+    + `6 = Refused to answer`
+    
+* Name: `a_018`
+* Label: `A-018:IS PARENT-IN-LAW STILL ALIVE`
+* Category:
+    + `1 = Yes,both`
+    + `2 = Only father living`
+    + `3 = Only mother living`
+    + `4 = Both deceased`
+* Missings:
+    + `5 = Don't know`
+    + `6 = Refused to answer`
+
+
+
+** FROM WAVE2: **
+* Name: `a_013`
+* Label: `A-013:CHANGES IN THE PARENT'S SITUATION`
+* Category:
+    + `1 = Same`
+    + `2 = Changed`
+* Missings:
+    + `3 = Don't know`
+    + `4 = Refused to answer`
+
+* Name: `a_013_1_a`
+* Label: `A-013-1:CHANGES IN THE PARENT'S SITUATION`
+* Category:
+    + `1 = Father passed away in ____`
+    + `2 = Mother passed away in ____`
+    + `3 = Father passed away in ____ and mother passed away in ____`
+* Missings:
+    + `4 = Don't know`
+    + `5 = Refused to answer`
+    
+* Name: `a_017`
+* Label: `A-017:CHANGES IN THE PARENT-IN-LAW'S SITUATION`
+* Category:
+    + `1 = Same`
+    + `2 = Changed`
+* Missings:
+    + `3 = Don't know`
+    + `4 = Refused to answer`
+    
+* Name: `a_017_1_a`
+* Label: `A-017-1:CHANGES IN THE PARENT-IN-LAW'S SITUATION`
+* Category:
+    + `1 = Spouse's father passed away in ____`
+    + `2 = Spouse's mother passed away in ____`
+    + `3 = Spouse's father passed away in ____ and spouse's mother passed away in ____`
+* Missings:
+    + `4 = Don't know`
+    + `5 = Refused to answer`
+
+
+
+* Description: 
+```{r assign2 5cities}
+opal.assign.table.tibble(o, 'JSTAR_aksst_w2_oth_fam','JSTAR_datasets_restricted.jstar_2009_5cities', 
+                        variables=list('a_013','a_013_1_a','a_017','a_017_1_a'), missings = TRUE)
+```
+
+```{r local2 5cities}
+JSTAR_aksst_w2_oth_fam <- opal.execute(o,'JSTAR_aksst_w2_oth_fam')
+
+vari <- JSTAR_aksst_w2_oth_fam$a_013
+kable(Categorical_summary(vari, missing_values = c(3,4))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(3,4))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(3,4))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_aksst_w2_oth_fam$a_013, missing_values = NA)
+ggplot(JSTAR_aksst_w2_oth_fam, aes(x=factor(a_013))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("CHANGES IN THE PARENT'S SITUATION?") + ylab("Frequency")
+
+vari <- JSTAR_aksst_w2_oth_fam$a_013_1_a
+kable(Categorical_summary(vari, missing_values = c(5,6))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(5,6))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(5,6))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_aksst_w2_oth_fam$a_013_1_a, missing_values = NA)
+ggplot(JSTAR_aksst_w2_oth_fam, aes(x=factor(a_013_1_a))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("CHANGES IN THE PARENT'S SITUATION?") + ylab("Frequency")
+
+vari <- JSTAR_aksst_w2_oth_fam$a_017
+kable(Categorical_summary(vari, missing_values = c(3,4))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(3,4))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(3,4))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_aksst_w2_oth_fam$a_017, missing_values = NA)
+ggplot(JSTAR_aksst_w2_oth_fam, aes(x=factor(a_017))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("CHANGES IN THE PARENT-IN-LAW'S SITUATION") + ylab("Frequency")
+
+vari <- JSTAR_aksst_w2_oth_fam$a_017_1_a
+kable(Categorical_summary(vari, missing_values = c(5,6))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(5,6))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(5,6))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_aksst_w2_oth_fam$a_017_1_a, missing_values = NA)
+ggplot(JSTAR_aksst_w2_oth_fam, aes(x=factor(a_017_1_a))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("CHANGES IN THE PARENT-IN-LAW'S SITUATION") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+**parents:**
+* `if {a_013(W1)=1 and [a_013(W2)=1 OR (a_013(W2)=2 AND a_013_1_a in {1,2})]} OR {a_013(W1)=2 and a_013(W2)=1} OR {a_013(W1)=3 and a_013(W2)=1} - THEN 1`
+* `if {a_013(W1)=1 and a_013(W2)=2 AND a_013_1_a=3} OR {a_013(W1)=2 and a_013(W2)=2 AND a_013_1_a=1} OR {a_013(W1)=3 and a_013(W2)=2 AND a_013_1_a=2} OR a_013(W1)=4 - THEN 0`
+
+**parents-in-law:**
+* `if {a_018(W1)=1 and [a_017(W2)=1 OR (a_017(W2)=2 AND a_017_1_a in {1,2})]} OR {a_018(W1)=2 and a_017(W2)=1} OR {a_018(W1)=3 and a_017(W2)=1} - THEN 1`
+* `if {a_018(W1)=1 and a_017(W2)=2 AND a_017_1_a=3} OR {a_018(W1)=2 and a_017(W2)=2 AND a_017_1_a=1} OR {a_018(W1)=3 and a_017(W2)=2 AND a_017_1_a=2} OR a_018(W1)=4 - THEN 0`
+
+*TOGETHER: *
+* `If any from SOLO is 1 then 1, if both from SOLO are 0 then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2 5cities, echo=TRUE}
+
+same_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  colnames(new_2) <- colnames(old)
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], rep_len(NA,dim(old)[2]-1))
+    }
+  }
+  new_2 <- data.frame(new_2)
+  new_22 <- data.frame(id=new_2$id, a_013_W1=new_2$a_013, a_018_W1=new_2$a_018,
+                       a_013_W2=new$a_013, a_017_W2=new$a_017, a_013_1_a=new$a_013_1_a, a_017_1_a=new$a_017_1_a) 
+                       # id = new_2$id
+                       # colname_form_OLD_table = new_2$colname_form_OLD_table 
+                       # colname_form_NEW_table = new$colname_form_NEW_table
+  new_22
+}
+
+# old = JSTAR_aksst_w1_oth_fam (a_013_W1, a_018_W1)
+# new = JSTAR_aksst_w2_oth_fam (a_013_W2, a_013_1_a, a_017_W2, a_017_1_a)
+
+JSTAR_aksst_w2_oth_fam <- same_indiv(JSTAR_aksst_w1_oth_fam, JSTAR_aksst_w2_oth_fam)
+
+JSTAR_aksst_ds_w2 <- tibble(id=JSTAR_aksst_w2_oth_fam$id)
+
+JSTAR_aksst_w2_oth_fam$a_013_W1 <- car::recode(as.vector(JSTAR_aksst_w2_oth_fam$a_013_W1), "NA='-999'")
+JSTAR_aksst_w2_oth_fam$a_018_W1 <- car::recode(as.vector(JSTAR_aksst_w2_oth_fam$a_018_W1), "NA='-999'")
+JSTAR_aksst_w2_oth_fam$a_013_W2 <- car::recode(as.vector(JSTAR_aksst_w2_oth_fam$a_013_W2), "NA='-999'")
+JSTAR_aksst_w2_oth_fam$a_017_W2 <- car::recode(as.vector(JSTAR_aksst_w2_oth_fam$a_017_W2), "NA='-999'")
+JSTAR_aksst_w2_oth_fam$a_013_1_a <- car::recode(as.vector(JSTAR_aksst_w2_oth_fam$a_013_1_a), "NA='-999'")
+JSTAR_aksst_w2_oth_fam$a_017_1_a <- car::recode(as.vector(JSTAR_aksst_w2_oth_fam$a_017_1_a), "NA='-999'")
+
+
+JSTAR_aksst_ds_w2$oth_fam_par <- c(NA) #auxiliary variable
+for(i in 1:dim(JSTAR_aksst_w2_oth_fam)[1]){
+  if( ( JSTAR_aksst_w2_oth_fam$a_013_W1[i] == 1 & (
+    JSTAR_aksst_w2_oth_fam$a_013_W2[i]==1 | ( JSTAR_aksst_w2_oth_fam$a_013_W2[i]==2 & JSTAR_aksst_w2_oth_fam$a_013_1_a[i] %in% c(1,2) ) ) ) |
+      ( JSTAR_aksst_w2_oth_fam$a_013_W1[i] %in% c(2,3) & JSTAR_aksst_w2_oth_fam$a_013_W2[i]==1 ) ) {
+        JSTAR_aksst_ds_w2$oth_fam_par[i] = 1 }
+  if( ( JSTAR_aksst_w2_oth_fam$a_013_W1[i]==1 & JSTAR_aksst_w2_oth_fam$a_013_W2[i]==2 & JSTAR_aksst_w2_oth_fam$a_013_1_a[i]==3 ) |
+      ( JSTAR_aksst_w2_oth_fam$a_013_W1[i]==2 & JSTAR_aksst_w2_oth_fam$a_013_W2[i]==2 & JSTAR_aksst_w2_oth_fam$a_013_1_a[i]==1 ) |
+      ( JSTAR_aksst_w2_oth_fam$a_013_W1[i]==3 & JSTAR_aksst_w2_oth_fam$a_013_W2[i]==2 & JSTAR_aksst_w2_oth_fam$a_013_1_a[i]==2 ) |
+      JSTAR_aksst_w2_oth_fam$a_013_W1[i]==4 ) {
+    JSTAR_aksst_ds_w2$oth_fam_par[i] = 0 }
+  # don't knows:
+  else if( JSTAR_aksst_w2_oth_fam$a_013_W1[i]==5 | JSTAR_aksst_w2_oth_fam$a_013_W2[i]==3 | JSTAR_aksst_w2_oth_fam$a_013_1_a[i]==4 ) {
+    JSTAR_aksst_ds_w2$oth_fam_par[i] = 998 }
+  # refusals:
+  else if( JSTAR_aksst_w2_oth_fam$a_013_W1[i]==6 | JSTAR_aksst_w2_oth_fam$a_013_W2[i]==4 | JSTAR_aksst_w2_oth_fam$a_013_1_a[i]==5 ) {
+    JSTAR_aksst_ds_w2$oth_fam_par[i] = 997 }
+}
+
+JSTAR_aksst_ds_w2$oth_fam_parinlaw <- c(NA) #auxiliary variable
+for(i in 1:dim(JSTAR_aksst_w2_oth_fam)[1]){
+  if( ( JSTAR_aksst_w2_oth_fam$a_018_W1[i]==1 & ( 
+    JSTAR_aksst_w2_oth_fam$a_017_W2[i]==1 | ( JSTAR_aksst_w2_oth_fam$a_017_W2[i]==2 & JSTAR_aksst_w2_oth_fam$a_017_1_a[i] %in% c(1,2) ) ) ) |
+      ( JSTAR_aksst_w2_oth_fam$a_018_W1[i] %in% c(2,3) & JSTAR_aksst_w2_oth_fam$a_017_W2[i]==1 ) ) {
+        JSTAR_aksst_ds_w2$oth_fam_parinlaw[i] = 1 }
+  if( ( JSTAR_aksst_w2_oth_fam$a_018_W1[i]==1 & JSTAR_aksst_w2_oth_fam$a_017_W2[i]==2 & JSTAR_aksst_w2_oth_fam$a_017_1_a[i]==3 ) |
+      ( JSTAR_aksst_w2_oth_fam$a_018_W1[i]==2 & JSTAR_aksst_w2_oth_fam$a_017_W2[i]==2 & JSTAR_aksst_w2_oth_fam$a_017_1_a[i]==1 ) |
+      ( JSTAR_aksst_w2_oth_fam$a_018_W1[i]==3 & JSTAR_aksst_w2_oth_fam$a_017_W2[i]==2 & JSTAR_aksst_w2_oth_fam$a_017_1_a[i]==2 ) |
+      JSTAR_aksst_w2_oth_fam$a_018_W1[i]==4 ) {
+    JSTAR_aksst_ds_w2$oth_fam_parinlaw[i] = 0 }
+  # don't knows:
+  else if( JSTAR_aksst_w2_oth_fam$a_018_W1[i]==5 | JSTAR_aksst_w2_oth_fam$a_017_W2[i]==3 | JSTAR_aksst_w2_oth_fam$a_017_1_a[i]==4 ) {
+    JSTAR_aksst_ds_w2$oth_fam_parinlaw[i] = 998 }
+  # refusals:
+  else if( JSTAR_aksst_w2_oth_fam$a_018_W1[i]==6 | JSTAR_aksst_w2_oth_fam$a_017_W2[i]==4 | JSTAR_aksst_w2_oth_fam$a_013_1_a[i]==5 ) {
+    JSTAR_aksst_ds_w2$oth_fam_parinlaw[i] = 997 }
+}
+    
+JSTAR_aksst_ds_w2$oth_fam_par <- car::recode(as.vector(JSTAR_aksst_ds_w2$oth_fam_par), "NA='999'")
+JSTAR_aksst_ds_w2$oth_fam_parinlaw <- car::recode(as.vector(JSTAR_aksst_ds_w2$oth_fam_parinlaw), "NA='999'")
+
+JSTAR_aksst_ds_w2$oth_fam <- c(NA) 
+for(i in 1:dim(JSTAR_aksst_ds_w2)[1]){
+  if( JSTAR_aksst_ds_w2$oth_fam_par[i] == 1 | JSTAR_aksst_ds_w2$oth_fam_parinlaw[i] == 1 ) {
+        JSTAR_aksst_ds_w2$oth_fam[i] = 1 }
+  else if( JSTAR_aksst_ds_w2$oth_fam_par[i] == 0 & JSTAR_aksst_ds_w2$oth_fam_parinlaw[i] == 0 ) {
+        JSTAR_aksst_ds_w2$oth_fam[i] = 0 }
+  else if( JSTAR_aksst_ds_w2$oth_fam_par[i] == 997 & JSTAR_aksst_ds_w2$oth_fam_parinlaw[i] == 997 ) {
+        JSTAR_aksst_ds_w2$oth_fam[i] = 997 }
+  else if( JSTAR_aksst_ds_w2$oth_fam_par[i] == 998 & JSTAR_aksst_ds_w2$oth_fam_parinlaw[i] == 998 ) {
+        JSTAR_aksst_ds_w2$oth_fam[i] = 998 }
+
+}  
+
+JSTAR_aksst_ds_w2$oth_fam <- car::recode(as.vector(JSTAR_aksst_ds_w2$oth_fam), "NA='999'")
+JSTAR_aksst_ds_w2$oth_fam <- labelled(JSTAR_aksst_ds_w2$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+JSTAR_aksst_ds_w2 <- JSTAR_aksst_ds_w2[,c("id", "oth_fam")]
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 5cities}
+vari <- JSTAR_aksst_ds_w2$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_aksst_ds_w2$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(JSTAR_aksst_ds_w2, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 5cities}
+
+```
+
+ 
+ 
+
+
+
+### Wave 3
+
+#### Study-specific variables
+
+The study-specific variables elected to be harmonised are:
+
+
+** FROM WAVE1: **
+* Name: `a_013`
+* Label: `A-013:IS PARENT STILL ALIVE`
+* Category:
+    + `1 = Yes,both`
+    + `2 = Only father living`
+    + `3 = Only mother living`
+    + `4 = Both parents dead`
+* Missings:
+    + `5 = Don't know`
+    + `6 = Refused to answer`
+
+
+** FROM WAVE2: **
+* Name: `a_013`
+* Label: `A-013:CHANGES IN THE PARENT'S SITUATION`
+* Category:
+    + `1 = Same`
+    + `2 = Changed`
+* Missings:
+    + `3 = Don't know`
+    + `4 = Refused to answer`
+
+* Name: `a_013_1_a`
+* Label: `A-013-1:CHANGES IN THE PARENT'S SITUATION`
+* Category:
+    + `1 = Father passed away in ____`
+    + `2 = Mother passed away in ____`
+    + `3 = Father passed away in ____ and mother passed away in ____`
+* Missings:
+    + `4 = Don't know`
+    + `5 = Refused to answer`
+
+
+** FROM WAVE3: **
+* Name: `a_013`
+* Label: `11A-013:CHANGES IN THE PARENT'S SITUATION`
+* Category:
+    + `1 = Same`
+    + `2 = Changed`
+* Missings:
+    + `3 = Don't know`
+    + `4 = Refused to answer`
+
+* Name: `a_013_1_a`
+* Label: `11A-013-1:CHANGES IN THE PARENT'S SITUATION`
+* Category:
+    + `1 = Father passed away in ____`
+    + `2 = Mother passed away in ____`
+    + `3 = Father passed away in ____ and mother passed away in ____`
+* Missings:
+    + `4 = Don't know`
+    + `5 = Refused to answer`
+
+
+
+* Description: 
+```{r assign3 5cities}
+opal.assign.table.tibble(o, 'JSTAR_aksst_w3_oth_fam','JSTAR_datasets_restricted.jstar_2011_5cities', 
+                        variables=list('a_013','a_013_1_a'), missings = TRUE)
+```
+
+```{r local3 5cities}
+JSTAR_aksst_w3_oth_fam <- opal.execute(o,'JSTAR_aksst_w3_oth_fam')
+
+vari <- JSTAR_aksst_w3_oth_fam$a_013
+kable(Categorical_summary(vari, missing_values = c(3,4))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(3,4))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(3,4))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_aksst_w3_oth_fam$a_013, missing_values = NA)
+ggplot(JSTAR_aksst_w3_oth_fam, aes(x=factor(a_013))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("CHANGES IN THE PARENT'S SITUATION?") + ylab("Frequency")
+
+
+vari <- JSTAR_aksst_w3_oth_fam$a_013_1_a
+kable(Categorical_summary(vari, missing_values = c(5,6))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(5,6))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(5,6))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_aksst_w3_oth_fam$a_013_1_a, missing_values = NA)
+ggplot(JSTAR_aksst_w3_oth_fam, aes(x=factor(a_013_1_a))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("CHANGES IN THE PARENT'S SITUATION?") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `Let c=(a_013(W1), a_013(W2), a_013(W3)). All possible cases (excluding missings) are:`
+* `if c=(1,1,1) then 1`
+* `if c=(1,1,2) and a_013_1_a(W3) in {1,2} then 1`
+* `if c=(1,1,2) and a_013_1_a(W3)=3 then 0`
+* `if c=(2,1,1) or (3,1,1) then 1`
+* `if a_013(W1)=4 then 0`
+* `if c=(1,2,1) and a_013_1_a(W2) in {1,2} then 1`
+* `if c=(1,2,1) and a_013_1_a(W2)=3 then 0`
+* `if a_013(W1) in {2,3} and a_013(W2)=2 then 0`
+* `if c=(1,2,2) then 0`
+* `if c=(2,1,2) or (3,1,2) then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo3 5cities, echo=TRUE}
+# Double same_indiv:
+
+same_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  colnames(new_2) <- colnames(old)
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], rep_len(NA,dim(old)[2]-1))
+    }
+  }
+  new_2 <- data.frame(new_2)
+  new_22 <- data.frame(id=new_2$id, a_013_W1=new_2$a_013,
+                       a_013_W3=new$a_013, a_013_1_a_W3=new$a_013_1_a) 
+                       # id = new_2$id
+                       # colname_form_OLD_table = new_2$colname_form_OLD_table 
+                       # colname_form_NEW_table = new$colname_form_NEW_table
+  new_22
+}
+
+# old = JSTAR_aksst_w1_oth_fam (a_013_W1)
+# new = JSTAR_aksst_w3_oth_fam (a_013_w3, a_013_1_a_W3)
+JSTAR_aksst_w3_oth_fam_1 <- same_indiv(JSTAR_aksst_w1_oth_fam, JSTAR_aksst_w3_oth_fam)
+
+
+same_indiv2 <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  colnames(new_2) <- colnames(old)
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA)
+    }
+  }
+  new_2 <- data.frame(new_2)
+  new_22 <- data.frame(id=new_2$id, a_013_W2=new_2$a_013_W2, a_013_1_a_W2=new_2$a_013_1_a,
+                       a_013_W3=new$a_013, a_013_1_a_W3=new$a_013_1_a) 
+                       # id = new_2$id
+                       # colname_form_OLD_table = new_2$colname_form_OLD_table 
+                       # colname_form_NEW_table = new$colname_form_NEW_table
+  new_22
+}
+
+# old = JSTAR_aksst_w2_oth_fam (a_013_W2, a_013_1_a_W2)
+# new = JSTAR_aksst_w3_oth_fam (a_013_w3, a_013_1_a_W3)
+JSTAR_aksst_w3_oth_fam_2 <- same_indiv2(old=JSTAR_aksst_w2_oth_fam, new=JSTAR_aksst_w3_oth_fam)
+
+
+JSTAR_aksst_w3_oth_fam <- merge(JSTAR_aksst_w3_oth_fam_1, JSTAR_aksst_w3_oth_fam_2, by="id")
+
+JSTAR_aksst_ds_w3 <- tibble(id=JSTAR_aksst_w3_oth_fam$id)
+
+JSTAR_aksst_w3_oth_fam$a_013_W1 <- car::recode(as.vector(JSTAR_aksst_w3_oth_fam$a_013_W1), "NA='-999'")
+JSTAR_aksst_w3_oth_fam$a_013_W2 <- car::recode(as.vector(JSTAR_aksst_w3_oth_fam$a_013_W2), "NA='-999'")
+JSTAR_aksst_w3_oth_fam$a_013_W3 <- car::recode(as.vector(JSTAR_aksst_w3_oth_fam$a_013_W3.x), "NA='-999'")
+JSTAR_aksst_w3_oth_fam$a_013_1_a_W2 <- car::recode(as.vector(JSTAR_aksst_w3_oth_fam$a_013_1_a_W2), "NA='-999'")
+JSTAR_aksst_w3_oth_fam$a_013_1_a_W3 <- car::recode(as.vector(JSTAR_aksst_w3_oth_fam$a_013_1_a_W3.x), "NA='-999'")
+
+
+JSTAR_aksst_ds_w3$oth_fam <- c(NA) 
+for(i in 1:dim(JSTAR_aksst_w3_oth_fam)[1]){
+  if( JSTAR_aksst_w3_oth_fam$a_013_W1[i]==1 & JSTAR_aksst_w3_oth_fam$a_013_W2[i]==1 & JSTAR_aksst_w3_oth_fam$a_013_W3[i]==1 ){
+    JSTAR_aksst_ds_w3$a_013_W1[i]==1 }
+  else if( JSTAR_aksst_w3_oth_fam$a_013_W1[i]==1 & JSTAR_aksst_w3_oth_fam$a_013_W2[i]==1 & JSTAR_aksst_w3_oth_fam$a_013_W3[i]==2 & 
+           JSTAR_aksst_w3_oth_fam$a_013_1_a_W3[i] %in% c(1,2) ) {
+    JSTAR_aksst_ds_w3$a_013_W1[i]==1 }
+  else if( JSTAR_aksst_w3_oth_fam$a_013_W1[i]==1 & JSTAR_aksst_w3_oth_fam$a_013_W2[i]==1 & JSTAR_aksst_w3_oth_fam$a_013_W3[i]==2 & 
+           JSTAR_aksst_w3_oth_fam$a_013_1_a_W3[i]==3 ) {
+    JSTAR_aksst_ds_w3$a_013_W1[i]==0 }
+  else if( JSTAR_aksst_w3_oth_fam$a_013_W1[i] %in% c(2,3) & JSTAR_aksst_w3_oth_fam$a_013_W2[i]==1 & JSTAR_aksst_w3_oth_fam$a_013_W3[i]==1 ) {
+    JSTAR_aksst_ds_w3$a_013_W1[i]==1 }
+  else if( JSTAR_aksst_w3_oth_fam$a_013_W1[i] == 4 ){
+    JSTAR_aksst_ds_w3$a_013_W1[i]==0 }
+  else if( JSTAR_aksst_w3_oth_fam$a_013_W1[i]==1 & JSTAR_aksst_w3_oth_fam$a_013_W2[i]==2 & JSTAR_aksst_w3_oth_fam$a_013_W3[i]==1 & 
+           JSTAR_aksst_w3_oth_fam$a_013_1_a_W2[i] %in% c(1,2) ) {
+    JSTAR_aksst_ds_w3$a_013_W1[i]==1 }
+  else if( JSTAR_aksst_w3_oth_fam$a_013_W1[i]==1 & JSTAR_aksst_w3_oth_fam$a_013_W2[i]==2 & JSTAR_aksst_w3_oth_fam$a_013_W3[i]==1 & 
+           JSTAR_aksst_w3_oth_fam$a_013_1_a_W2[i]==3 ) {
+    JSTAR_aksst_ds_w3$a_013_W1[i]==0 }
+  else if( JSTAR_aksst_w3_oth_fam$a_013_W1[i] %in% c(2,3) & JSTAR_aksst_w3_oth_fam$a_013_W2[i]==2 ){
+    JSTAR_aksst_ds_w3$a_013_W1[i]==0 }
+  else if( JSTAR_aksst_w3_oth_fam$a_013_W1[i]==1 & JSTAR_aksst_w3_oth_fam$a_013_W2[i]==2 & JSTAR_aksst_w3_oth_fam$a_013_W3[i]==2 ){
+    JSTAR_aksst_ds_w3$a_013_W1[i]==0 }
+  else if( JSTAR_aksst_w3_oth_fam$a_013_W1[i]==2 & JSTAR_aksst_w3_oth_fam$a_013_W2[i]==1 & JSTAR_aksst_w3_oth_fam$a_013_W3[i]==2 ){
+    JSTAR_aksst_ds_w3$a_013_W1[i]==0 }
+  else if( JSTAR_aksst_w3_oth_fam$a_013_W1[i]==3 & JSTAR_aksst_w3_oth_fam$a_013_W2[i]==1 & JSTAR_aksst_w3_oth_fam$a_013_W3[i]==2 ){
+    JSTAR_aksst_ds_w3$a_013_W1[i]==0 }
+
+  else if( JSTAR_aksst_w3_oth_fam$a_013_W1[i]==5 | JSTAR_aksst_w3_oth_fam$a_013_W2[i]==3 | JSTAR_aksst_w3_oth_fam$a_013_W3[i]==3 ) {
+        JSTAR_aksst_ds_w3$oth_fam[i] = 997 }
+  else if( JSTAR_aksst_w3_oth_fam$a_013_W1[i]==6 | JSTAR_aksst_w3_oth_fam$a_013_W2[i]==4 | JSTAR_aksst_w3_oth_fam$a_013_W3[i]==4 ) {
+        JSTAR_aksst_ds_w3$oth_fam[i] = 998 }
+}  
+  
+JSTAR_aksst_ds_w3$oth_fam <- car::recode(as.vector(JSTAR_aksst_ds_w3$oth_fam), "NA='999'")
+JSTAR_aksst_ds_w3$oth_fam <- labelled(JSTAR_aksst_ds_w3$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript3 5cities}
+vari <- JSTAR_aksst_ds_w3$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_aksst_ds_w3$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(JSTAR_aksst_ds_w3, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation3 5cities}
+
+```
+
+ 
+ 
+
+
+## tn
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variables elected to be harmonised are:
+
+* Name: `a_013`
+* Label: `A-013:IS PARENT STILL ALIVE`
+* Category:
+    + `1 = Yes,both`
+    + `2 = Only father living`
+    + `3 = Only mother living`
+    + `4 = Both parents dead`
+* Missings:
+    + `5 = Don't know`
+    + `6 = Refused to answer`
+    
+* Name: `a_018`
+* Label: `A-018:IS PARENT-IN-LAW STILL ALIVE`
+* Category:
+    + `1 = Yes,both`
+    + `2 = Only father living`
+    + `3 = Only mother living`
+    + `4 = Both deceased`
+* Missings:
+    + `5 = Don't know`
+    + `6 = Refused to answer`
+
+
+* Description: 
+```{r assign1 2cities}
+opal.assign.table.tibble(o, 'JSTAR_tn_w1_oth_fam','JSTAR_datasets_restricted.jstar_2009_2cities', 
+                        variables=list('a_013','a_018'), missings = TRUE)
+```
+
+```{r local1 2cities}
+JSTAR_tn_w1_oth_fam <- opal.execute(o,'JSTAR_tn_w1_oth_fam')
+
+vari <- JSTAR_tn_w1_oth_fam$a_013
+kable(Categorical_summary(vari, missing_values = c(5,6))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(5,6))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(5,6))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_tn_w1_oth_fam$a_013, missing_values = NA)
+ggplot(JSTAR_tn_w1_oth_fam, aes(x=factor(a_013))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IS PARENT STILL ALIVE?") + ylab("Frequency")
+
+vari <- JSTAR_tn_w1_oth_fam$a_018
+kable(Categorical_summary(vari, missing_values = c(5,6))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(5,6))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(5,6))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_tn_w1_oth_fam$a_018, missing_values = NA)
+ggplot(JSTAR_tn_w1_oth_fam, aes(x=factor(a_018))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IS PARENT-IN-LAW STILL ALIVE?") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any is in {1,2,3} then 1`
+* `if both are equal 4 then 0`
+* `5 into 998`
+* `6 into 997`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1 2cities, echo=TRUE}
+JSTAR_tn_ds_w1 <- tibble(id=JSTAR_tn_w1_oth_fam$id)
+
+JSTAR_tn_w1_oth_fam$a_013 <- car::recode(as.vector(JSTAR_tn_w1_oth_fam$a_013), "NA='-999'")
+JSTAR_tn_w1_oth_fam$a_018 <- car::recode(as.vector(JSTAR_tn_w1_oth_fam$a_018), "NA='-999'")
+
+JSTAR_tn_ds_w1$oth_fam <- c(NA) 
+for(i in 1:dim(JSTAR_tn_w1_oth_fam)[1]){
+  if(JSTAR_tn_w1_oth_fam$a_013[i] %in% c(1,2,3) | JSTAR_tn_w1_oth_fam$a_018[i] %in% c(1,2,3) ){
+    JSTAR_tn_ds_w1$oth_fam[i] = 1 } 
+  else if(JSTAR_tn_w1_oth_fam$a_013[i] == 4 & JSTAR_tn_w1_oth_fam$a_018[i] == 4 ){
+    JSTAR_tn_ds_w1$oth_fam[i] = 0 }
+  else if(JSTAR_tn_w1_oth_fam$a_013[i] == 5 | JSTAR_tn_w1_oth_fam$a_018[i] == 5 ){
+    JSTAR_tn_ds_w1$oth_fam[i] = 998 }
+  else if(JSTAR_tn_w1_oth_fam$a_013[i] == 6 | JSTAR_tn_w1_oth_fam$a_018[i] == 6 ){
+    JSTAR_tn_ds_w1$oth_fam[i] = 997 }
+}
+
+JSTAR_tn_ds_w1$oth_fam <- car::recode(as.vector(JSTAR_tn_ds_w1$oth_fam), "NA='999'")
+JSTAR_tn_ds_w1$oth_fam <- labelled(JSTAR_tn_ds_w1$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1 2cities}
+vari <- JSTAR_tn_ds_w1$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_tn_ds_w1$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(JSTAR_tn_ds_w1, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1 2cities}
+
+```
+
+ 
+ 
+
+
+
+### Wave 2
+
+#### Study-specific variables
+
+The study-specific variables elected to be harmonised are:
+
+
+** FROM WAVE1: **
+* Name: `a_013`
+* Label: `A-013:IS PARENT STILL ALIVE`
+* Category:
+    + `1 = Yes,both`
+    + `2 = Only father living`
+    + `3 = Only mother living`
+    + `4 = Both parents dead`
+* Missings:
+    + `5 = Don't know`
+    + `6 = Refused to answer`
+
+
+** FROM WAVE2: **
+* Name: `a_013`
+* Label: `11A-013:CHANGES IN THE PARENT'S SITUATION`
+* Category:
+    + `1 = Same`
+    + `2 = Changed`
+* Missings:
+    + `3 = Don't know`
+    + `4 = Refused to answer`
+
+* Name: `a_013_1_a`
+* Label: `11A-013-1:CHANGES IN THE PARENT'S SITUATION`
+* Category:
+    + `1 = Father passed away in ____`
+    + `2 = Mother passed away in ____`
+    + `3 = Father passed away in ____ and mother passed away in ____`
+* Missings:
+    + `4 = Don't know`
+    + `5 = Refused to answer`
+
+
+
+* Description: 
+```{r assign2 2cities}
+opal.assign.table.tibble(o, 'JSTAR_tn_w2_oth_fam','JSTAR_datasets_restricted.jstar_2011_2cities', 
+                        variables=list('a_013','a_013_1_a'), missings = TRUE)
+```
+
+```{r local2 2cities}
+JSTAR_tn_w2_oth_fam <- opal.execute(o,'JSTAR_tn_w2_oth_fam')
+
+vari <- JSTAR_tn_w1_oth_fam$a_013
+kable(Categorical_summary(vari, missing_values = c(3,4))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(3,4))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(3,4))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_tn_w2_oth_fam$a_013, missing_values = NA)
+ggplot(JSTAR_tn_w2_oth_fam, aes(x=factor(a_013))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("CHANGES IN THE PARENT'S SITUATION?") + ylab("Frequency")
+
+vari <- JSTAR_tn_w1_oth_fam$a_013_1_a
+kable(Categorical_summary(vari, missing_values = c(4,5))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(4,5))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(4,5))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_tn_w2_oth_fam$a_013_1_a, missing_values = NA)
+ggplot(JSTAR_tn_w2_oth_fam, aes(x=factor(a_013_1_a))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("CHANGES IN THE PARENT'S SITUATION?") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if {a_013(W1)=1 and [a_013(W2)=1 OR (a_013(W2)=2 AND a_013_1_a in {1,2})]} OR {a_013(W1)=2 and a_013(W2)=1} OR {a_013(W1)=3 and a_013(W2)=1} - THEN 1`
+* `if {a_013(W1)=1 and a_013(W2)=2 AND a_013_1_a=3} OR {a_013(W1)=2 and a_013(W2)=2 AND a_013_1_a=1} OR {a_013(W1)=3 and a_013(W2)=2 AND a_013_1_a=2} OR a_013(W1)=4 - THEN 0`
+
+**R script:**
+
+```{r harmo2 2cities, echo=TRUE}
+
+same_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  colnames(new_2) <- colnames(old)
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], rep_len(NA,dim(old)[2]-1))
+    }
+  }
+  new_2 <- data.frame(new_2)
+  new_22 <- data.frame(id=new_2$id, a_013_W1=new_2$a_013,
+                       a_013_w2=new$a_013, a_013_1_a_w2=new$a_013_1_a) 
+                       # id = new_2$id
+                       # colname_form_OLD_table = new_2$colname_form_OLD_table 
+                       # colname_form_NEW_table = new$colname_form_NEW_table
+  new_22
+}
+
+# old = JSTAR_tn_w1_oth_fam (a_013_W1)
+# new = JSTAR_tn_w2_oth_fam (a_013_w2, a_013_1_a_w2)
+JSTAR_tn_w2_oth_fam <- same_indiv(JSTAR_tn_w1_oth_fam, JSTAR_tn_w2_oth_fam)
+
+JSTAR_tn_ds_w2 <- tibble(id=JSTAR_tn_w2_oth_fam$id)
+
+JSTAR_tn_w2_oth_fam$a_013_W1 <- car::recode(as.vector(JSTAR_tn_w2_oth_fam$a_013_W1), "NA='-999'")
+JSTAR_tn_w2_oth_fam$a_013_W2 <- car::recode(as.vector(JSTAR_tn_w2_oth_fam$a_013_w2), "NA='-999'")
+JSTAR_tn_w2_oth_fam$a_013_1_a_W2 <- car::recode(as.vector(JSTAR_tn_w2_oth_fam$a_013_1_a_w2), "NA='-999'")
+
+JSTAR_tn_ds_w2$oth_fam <- c(NA)
+for(i in 1:dim(JSTAR_tn_w2_oth_fam)[1]){
+  if( ( JSTAR_tn_w2_oth_fam$a_013_W1[i] == 1 & ( 
+    JSTAR_tn_w2_oth_fam$a_013_W2[i]==1 | ( JSTAR_tn_w2_oth_fam$a_013_W2[i]==2 & JSTAR_tn_w2_oth_fam$a_013_1_a_W2[i] %in% c(1,2) ) ) ) |
+      ( JSTAR_tn_w2_oth_fam$a_013_W1[i] %in% c(2,3) & JSTAR_tn_w2_oth_fam$a_013_W2[i]==1 ) ) {
+        JSTAR_tn_ds_w2$oth_fam[i] = 1 }
+  if( ( JSTAR_tn_w2_oth_fam$a_013_W1[i]==1 & JSTAR_tn_w2_oth_fam$a_013_W2[i]==2 & JSTAR_tn_w2_oth_fam$a_013_1_a_W2[i]==3 ) |
+      ( JSTAR_tn_w2_oth_fam$a_013_W1[i]==2 & JSTAR_tn_w2_oth_fam$a_013_W2[i]==2 & JSTAR_tn_w2_oth_fam$a_013_1_a_W2[i]==1 ) |
+      ( JSTAR_tn_w2_oth_fam$a_013_W1[i]==3 & JSTAR_tn_w2_oth_fam$a_013_W2[i]==2 & JSTAR_tn_w2_oth_fam$a_013_1_a_W2[i]==2 ) |
+      JSTAR_tn_w2_oth_fam$a_013_W1[i]==4 ) {
+    JSTAR_tn_ds_w2$oth_fam[i] = 0 }
+  # don't knows:
+  else if( JSTAR_tn_w2_oth_fam$a_013_W1[i]==5 | JSTAR_tn_w2_oth_fam$a_013_W2[i]==3 | JSTAR_tn_w2_oth_fam$a_013_1_a_W2[i]==4 ) {
+    JSTAR_tn_ds_w2$oth_fam[i] = 998 }
+  # refusals:
+  else if( JSTAR_tn_w2_oth_fam$a_013_W1[i]==6 | JSTAR_tn_w2_oth_fam$a_013_W2[i]==4 | JSTAR_tn_w2_oth_fam$a_013_1_a_W2[i]==5 ) {
+    JSTAR_tn_ds_w2$oth_fam[i] = 997 }
+}
+  
+JSTAR_tn_ds_w2$oth_fam <- car::recode(as.vector(JSTAR_tn_ds_w2$oth_fam), "NA='999'")
+JSTAR_tn_ds_w2$oth_fam <- labelled(JSTAR_tn_ds_w2$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2 2cities}
+vari <- JSTAR_tn_ds_w2$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_tn_ds_w2$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(JSTAR_tn_ds_w2, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2 2cities}
+
+```
+
+ 
+ 
+
+
+
+## cth
+### Wave 1 
+
+#### Study-specific variables
+
+The study-specific variables elected to be harmonised are:
+
+* Name: `a_013`
+* Label: `A-013:IS PARENT STILL ALIVE`
+* Category:
+    + `1 = Yes,both`
+    + `2 = Only father living`
+    + `3 = Only mother living`
+    + `4 = Both parents dead`
+* Missings:
+    + `5 = Don't know`
+    + `6 = Refused to answer`
+    
+* Name: `a_018`
+* Label: `A-018:IS PARENT-IN-LAW STILL ALIVE`
+* Category:
+    + `1 = Yes,both`
+    + `2 = Only father living`
+    + `3 = Only mother living`
+    + `4 = Both deceased`
+* Missings:
+    + `5 = Don't know`
+    + `6 = Refused to answer`
+
+
+* Description: 
+```{r assign1}
+opal.assign.table.tibble(o, 'JSTAR_cth_w1_oth_fam','JSTAR_datasets_restricted.jstar_2011_3cities', 
+                        variables=list('a_013','a_018'), missings = TRUE)
+```
+
+```{r local1}
+JSTAR_cth_w1_oth_fam <- opal.execute(o,'JSTAR_cth_w1_oth_fam')
+
+vari <- JSTAR_cth_w1_oth_fam$a_013
+kable(Categorical_summary(vari, missing_values = c(5,6))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(5,6))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(5,6))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_cth_w1_oth_fam$a_013, missing_values = NA)
+ggplot(JSTAR_cth_w1_oth_fam, aes(x=factor(a_013))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IS PARENT STILL ALIVE?") + ylab("Frequency")
+
+vari <- JSTAR_cth_w1_oth_fam$a_018
+kable(Categorical_summary(vari, missing_values = c(5,6))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Categorical_summary(vari, missing_values = c(5,6))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(5,6))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_cth_w1_oth_fam$a_018, missing_values = NA)
+ggplot(JSTAR_cth_w1_oth_fam, aes(x=factor(a_018))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("IS PARENT-IN-LAW STILL ALIVE?") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any is in {1,2,3} then 1`
+* `if both are equal 4 then 0`
+* `5 into 998`
+* `6 into 997`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1, echo=TRUE}
+JSTAR_cth_ds_w1 <- tibble(id=JSTAR_cth_w1_oth_fam$id)
+
+JSTAR_cth_w1_oth_fam$a_013 <- car::recode(as.vector(JSTAR_cth_w1_oth_fam$a_013), "NA='-999'")
+JSTAR_cth_w1_oth_fam$a_018 <- car::recode(as.vector(JSTAR_cth_w1_oth_fam$a_018), "NA='-999'")
+
+JSTAR_cth_ds_w1$oth_fam <- c(NA) 
+for(i in 1:dim(JSTAR_cth_w1_oth_fam)[1]){
+  if(JSTAR_cth_w1_oth_fam$a_013[i] %in% c(1,2,3) | JSTAR_cth_w1_oth_fam$a_018[i] %in% c(1,2,3) ){
+    JSTAR_cth_ds_w1$oth_fam[i] = 1 } 
+  else if(JSTAR_cth_w1_oth_fam$a_013[i] == 4 & JSTAR_cth_w1_oth_fam$a_018[i] == 4 ){
+    JSTAR_cth_ds_w1$oth_fam[i] = 0 }
+  else if(JSTAR_cth_w1_oth_fam$a_013[i] == 5 | JSTAR_cth_w1_oth_fam$a_018[i] == 5 ){
+    JSTAR_cth_ds_w1$oth_fam[i] = 998 }
+  else if(JSTAR_cth_w1_oth_fam$a_013[i] == 6 | JSTAR_cth_w1_oth_fam$a_018[i] == 6 ){
+    JSTAR_cth_ds_w1$oth_fam[i] = 997 }
+}
+
+JSTAR_cth_ds_w1$oth_fam <- car::recode(as.vector(JSTAR_cth_ds_w1$oth_fam), "NA='999'")
+JSTAR_cth_ds_w1$oth_fam <- labelled(JSTAR_cth_ds_w1$oth_fam, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1}
+vari <- JSTAR_cth_ds_w1$oth_fam
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+#Categorical_summary(var = JSTAR_cth_ds_w1$oth_fam, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(JSTAR_cth_ds_w1, aes(x=factor(oth_fam))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has other family members?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1}
+
+```
+
+ 
+```{r save, echo=FALSE}
+oth_fam <- JSTAR_tn_ds_w1
+save(oth_fam, file = "../RData/tn_w1/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- JSTAR_tn_ds_w2
+save(oth_fam, file = "../RData/tn_w2/oth_fam.RData")
+rm(oth_fam)
+
+
+oth_fam <- JSTAR_aksst_ds_w1
+save(oth_fam, file = "../RData/aksst_w1/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- JSTAR_aksst_ds_w2
+save(oth_fam, file = "../RData/aksst_w2/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- JSTAR_aksst_ds_w3
+save(oth_fam, file = "../RData/aksst_w3/oth_fam.RData")
+rm(oth_fam)
+
+oth_fam <- JSTAR_cth_ds_w1
+save(oth_fam, file = "../RData/cth_w1/oth_fam.RData")
+rm(oth_fam)
+
+
+```
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+

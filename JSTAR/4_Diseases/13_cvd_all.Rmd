@@ -1,0 +1,699 @@
+---
+title: "Cardiovascular diseases"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```
+<!-- ########################################################## --> 
+
+
+
+
+# Description of DataSchema variable
+
+The description of harmonised variable is the following:
+
+* Short name: `cvd_all`
+* Variable label: `History of all Cardiovascular diseases`
+* Variable description: `The participant has been diagnosed by one or more of the following conditions: angina, stroke, myocardial infarction, heart attack, coronary heart disease, congestive heart failure, heart murmur, valve disease, cerebral vascular disease`
+* Domain: `Diseases`
+* Value type: `categorical`
+* Category coding:
+
+**Code** | **Category Label**
+-------- | ------------------
+0        | No, the participant has not been diagnosed of any of these conditions
+1        | Yes, the participant has been diagnosed by any of these conditions
+
+* Category missings: 
+
+**Code** | **Category Label**
+----| ------------------
+991 | CAPI/interviewer error
+992 | Impute
+993 | Disable to measure
+994 | Not attempt/not done
+995 | Does not answer
+996 | Not applicable
+997 | Refuse
+998 | Do not know
+999 | Missing
+
+
+
+<!-- ########################################################## --> 
+<!-- # Global variables -->
+```{r global, include=FALSE, echo=F}
+miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
+ds_label <- "History of all Cardiovascular diseases"
+cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
+datafolder <- "../RData/"
+#sing_idlist <- c()
+```
+<!-- ########################################################## --> 
+
+
+
+# Data process
+
+
+
+## aksst
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `h_001_1` |`stroke`|
+|-|-|-|
+| **Label** | `H-001-1:HAVE A HEART DISEASE`|`Stroke`|
+| **Table name**  | `jstar_2007_5cities`|`stroke`|
+| **Categories** | `0 = Have not been diagnosed or advised to seek care`<br/>`1 = Have been diagnosed or advised to seek care` |`0 = NOT A stroke (cerebral vascular disease)`<br/>`1 = A stroke (cerebral vascular disease)`|
+| **Missings** | `NA` |`999 = Missing`|
+| **Description** |  |  |
+
+```{r assign aksst_w1, echo=F}
+
+opal.assign.table.tibble(o, 'JSTAR_aksst_w1','JSTAR_datasets_restricted.jstar_2007_5cities',variables=list('h_001_1'), missings = T)
+JSTAR_aksst_w1 <- opal.execute(o,'JSTAR_aksst_w1')
+load(paste0(datafolder,"aksst_w1/stroke.RData"))
+JSTAR_aksst_w1$stroke <- stroke$stroke
+rm(stroke)
+
+```
+
+```{r local aksst_w1, echo=F}
+
+vbl <- JSTAR_aksst_w1$h_001_1
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(JSTAR_aksst_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_aksst_w1, aes(x=factor(h_001_1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- JSTAR_aksst_w1$stroke
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(JSTAR_aksst_w1)[3])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(JSTAR_aksst_w1, aes(x=factor(stroke))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cvd_all` from the study-specific variable it has to be recoded as follows:
+
+* `all 0 into 0`
+* `some 1 into 1`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo aksst_w1}
+
+# Categorical variable harmonization
+JSTAR_ds_aksst_w1 <- tibble(id=JSTAR_aksst_w1$id)
+JSTAR_ds_aksst_w1$cvd_all <- rep(999,length(JSTAR_aksst_w1$id))
+JSTAR_ds_aksst_w1$cvd_all[which(JSTAR_aksst_w1$h_001_1==0 & JSTAR_aksst_w1$stroke==0)] <- 0
+JSTAR_ds_aksst_w1$cvd_all[which(JSTAR_aksst_w1$h_001_1==1 | JSTAR_aksst_w1$stroke==1)] <- 1
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript aksst_w1, echo=F}
+
+vbl <- JSTAR_ds_aksst_w1$cvd_all
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(JSTAR_ds_aksst_w1, aes(x=factor(cvd_all))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation aksst_w1, echo=F}
+
+AfterH <- table(JSTAR_ds_aksst_w1$cvd_all)
+X <- c(
+  sum(JSTAR_aksst_w1$h_001_1==0 & JSTAR_aksst_w1$stroke==0,na.rm=T),
+  sum(JSTAR_aksst_w1$h_001_1==1 | JSTAR_aksst_w1$stroke==1,na.rm=T)
+)
+BeforeH <- c(X[1:2],length(JSTAR_aksst_w1$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("all 0->0","some 1->1","NA->999")
+kable(C)
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+
+| **Name** | `h_001_1` |`stroke`|
+|-|-|-|
+| **Label** | `H-001-1:HAVE A HEART DISEASE`|`Stroke`|
+| **Table name**  | `jstar_2009_5cities`|`stroke`|
+| **Categories** | `1 = Newly diagnosed with or indicated`<br/>`2 = Fully recovered once but recurred in the past 2 years`<br/>`3 = Still be treated`<br/>`4 = Fully recovered/Never diagnosed with indicated` |`0 = NOT A stroke (cerebral vascular disease)`<br/>`1 = A stroke (cerebral vascular disease)`|
+| **Missings** | `NA` |`999 = Missing`|
+| **Description** |  |  |
+
+```{r assign aksst_w2, echo=F}
+
+opal.assign.table.tibble(o, 'JSTAR_aksst_w2','JSTAR_datasets_restricted.jstar_2009_5cities',variables=list('h_001_1'), missings = T)
+JSTAR_aksst_w2 <- opal.execute(o,'JSTAR_aksst_w2')
+load(paste0(datafolder,"aksst_w2/stroke.RData"))
+JSTAR_aksst_w2$stroke <- stroke$stroke
+rm(stroke)
+
+```
+
+```{r local aksst_w2, echo=F}
+
+vbl <- JSTAR_aksst_w2$h_001_1
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(JSTAR_aksst_w2)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_aksst_w2, aes(x=factor(h_001_1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- JSTAR_aksst_w2$stroke
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(JSTAR_aksst_w2)[3])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(JSTAR_aksst_w2, aes(x=factor(stroke))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cvd_all` from the study-specific variable it has to be recoded as follows:
+
+* `h_001_1 == 4 & stroke == 0 into 0`
+* `h_001_1 == 1 or 2 or 3 | stroke == 1 into 1`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo aksst_w2}
+
+# Categorical variable harmonization
+JSTAR_ds_aksst_w2 <- tibble(id=JSTAR_aksst_w2$id)
+JSTAR_ds_aksst_w2$cvd_all <- rep(999,length(JSTAR_aksst_w2$id))
+JSTAR_ds_aksst_w2$cvd_all[which(JSTAR_aksst_w2$h_001_1==4 & JSTAR_aksst_w2$stroke==0)] <- 0
+JSTAR_ds_aksst_w2$cvd_all[which(JSTAR_aksst_w2$h_001_1 %in% c(1,2,3) | JSTAR_aksst_w2$stroke==1)] <- 1
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript aksst_w2, echo=F}
+
+vbl <- JSTAR_ds_aksst_w2$cvd_all
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(JSTAR_ds_aksst_w2, aes(x=factor(cvd_all))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation aksst_w2, echo=F, results='asis'}
+
+AfterH <- table(JSTAR_ds_aksst_w2$cvd_all)
+X <- c(
+  sum(JSTAR_aksst_w2$h_001_1==4 & JSTAR_aksst_w2$stroke==0,na.rm=T),
+  sum(JSTAR_aksst_w2$h_001_1 %in% c(1,2,3) | JSTAR_aksst_w2$stroke==1,na.rm=T)
+)
+BeforeH <- c(X[1:2],length(JSTAR_aksst_w2$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("4&0->0","1,2,3|1->1","NA->999")
+kable(C)
+
+```
+
+
+
+### Wave 3
+
+
+#### Study-specific variable description
+
+| **Name** | `h_001_1` |`stroke`|
+|-|-|-|
+| **Label** |`11H-001-1:HAVE A HEART DISEASE`|`Stroke`|
+| **Table name**  | `jstar_2011_5cities`|`stroke`|
+| **Categories** | `1 = Newly diagnosed with or indicated`<br/>`2 = Fully recovered once but recurred in the past 2 years`<br/>`3 = Still be treated`<br/>`4 = Fully recovered/Never diagnosed with indicated` |`0 = NOT A stroke (cerebral vascular disease)`<br/>`1 = A stroke (cerebral vascular disease)`|
+| **Missings** | `NA` |`999 = Missing`|
+| **Description** |  |  |
+
+```{r assign aksst_w3, echo=F}
+
+opal.assign.table.tibble(o, 'JSTAR_aksst_w3','JSTAR_datasets_restricted.jstar_2011_5cities',variables=list('h_001_1'), missings = T)
+JSTAR_aksst_w3 <- opal.execute(o,'JSTAR_aksst_w3')
+load(paste0(datafolder,"aksst_w3/stroke.RData"))
+JSTAR_aksst_w3$stroke <- stroke$stroke
+rm(stroke)
+
+```
+
+```{r local aksst_w3, echo=F}
+
+vbl <- JSTAR_aksst_w3$h_001_1
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(JSTAR_aksst_w3)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_aksst_w3, aes(x=factor(h_001_1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- JSTAR_aksst_w3$stroke
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(JSTAR_aksst_w3)[3])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(JSTAR_aksst_w3, aes(x=factor(stroke))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cvd_all` from the study-specific variable it has to be recoded as follows:
+
+* `h_001_1 == 4 & stroke == 0 into 0`
+* `h_001_1 == 1 or 2 or 3 | stroke == 1 into 1`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo aksst_w3}
+
+# Categorical variable harmonization
+JSTAR_ds_aksst_w3 <- tibble(id=JSTAR_aksst_w3$id)
+JSTAR_ds_aksst_w3$cvd_all <- rep(999,length(JSTAR_aksst_w3$id))
+JSTAR_ds_aksst_w3$cvd_all[which(JSTAR_aksst_w3$h_001_1==4 & JSTAR_aksst_w3$stroke==0)] <- 0
+JSTAR_ds_aksst_w3$cvd_all[which(JSTAR_aksst_w3$h_001_1 %in% c(1,2,3) | JSTAR_aksst_w3$stroke==1)] <- 1
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript aksst_w3, echo=F}
+
+vbl <- JSTAR_ds_aksst_w3$cvd_all
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(JSTAR_ds_aksst_w3, aes(x=factor(cvd_all))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation aksst_w3, echo=F, results='asis'}
+
+AfterH <- table(JSTAR_ds_aksst_w3$cvd_all, useNA = "ifany")
+X <- c(
+  sum(JSTAR_aksst_w3$h_001_1==4 & JSTAR_aksst_w3$stroke==0,na.rm=T),
+  sum(JSTAR_aksst_w3$h_001_1 %in% c(1,2,3) | JSTAR_aksst_w3$stroke==1,na.rm=T)
+)
+BeforeH <- c(X[1:2],length(JSTAR_aksst_w3$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("4&0->0","1,2,3|1->1","NA->999")
+kable(C)
+
+```
+
+
+
+## tn
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** | `h_001_1` |`stroke`|
+|-|-|-|
+| **Label** | `H-001-1:HAVE A HEART DISEASE`|`Stroke`|
+| **Table name**  | `jstar_2009_2cities`|`stroke`|
+| **Categories** | `0 = Have not been diagnosed or advised to seek care`<br/>`1 = Have been diagnosed or advised to seek care` |`0 = NOT A stroke (cerebral vascular disease)`<br/>`1 = A stroke (cerebral vascular disease)`|
+| **Missings** | `NA` |`999 = Missing`|
+| **Description** |  |  |
+
+
+```{r assign tn_w1, echo=F}
+
+opal.assign.table.tibble(o, 'JSTAR_tn_w1','JSTAR_datasets_restricted.jstar_2009_2cities',variables=list('h_001_1'), missings = T)
+JSTAR_tn_w1 <- opal.execute(o,'JSTAR_tn_w1')
+load(paste0(datafolder,"tn_w1/stroke.RData"))
+JSTAR_tn_w1$stroke <- stroke$stroke
+rm(stroke)
+
+```
+
+```{r local tn_w1, echo=F}
+
+vbl <- JSTAR_tn_w1$h_001_1
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(JSTAR_tn_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_tn_w1, aes(x=factor(h_001_1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- JSTAR_tn_w1$stroke
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(JSTAR_tn_w1)[3])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(JSTAR_tn_w1, aes(x=factor(stroke))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cvd_all` from the study-specific variable it has to be recoded as follows:
+
+* `all 0 into 0`
+* `some 1 into 1`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo tn_w1}
+
+# Categorical variable harmonization
+JSTAR_ds_tn_w1 <- tibble(id=JSTAR_tn_w1$id)
+JSTAR_ds_tn_w1$cvd_all <- rep(999,length(JSTAR_tn_w1$id))
+JSTAR_ds_tn_w1$cvd_all[which(JSTAR_tn_w1$h_001_1==0 & JSTAR_tn_w1$stroke==0)] <- 0
+JSTAR_ds_tn_w1$cvd_all[which(JSTAR_tn_w1$h_001_1==1 | JSTAR_tn_w1$stroke==1)] <- 1
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript tn_w1, echo=F}
+
+vbl <- JSTAR_ds_tn_w1$cvd_all
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(JSTAR_ds_tn_w1, aes(x=factor(cvd_all))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation tn_w1, echo=F}
+
+AfterH <- table(JSTAR_ds_tn_w1$cvd_all)
+X <- c(
+  sum(JSTAR_tn_w1$h_001_1==0 & JSTAR_tn_w1$stroke==0,na.rm=T),
+  sum(JSTAR_tn_w1$h_001_1==1 | JSTAR_tn_w1$stroke==1,na.rm=T)
+)
+BeforeH <- c(X[1:2],length(JSTAR_tn_w1$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("all 0->0","some 1->1","NA->999")
+kable(C)
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+
+| **Name** | `h_001_1` |`stroke`|
+|-|-|-|
+| **Label** | `11H-001-1:HAVE A HEART DISEASE`|`Stroke`|
+| **Table name**  | `jstar_2011_2cities`|`stroke`|
+| **Categories** | `1 = Newly diagnosed with or indicated`<br/>`2 = Fully recovered once but recurred in the past 2 years`<br/>`3 = Still be treated`<br/>`4 = Fully recovered/Never diagnosed with indicated`|`0 = NOT A stroke (cerebral vascular disease)`<br/>`1 = A stroke (cerebral vascular disease)`|
+| **Missings** | `NA` |`999 = Missing`|
+| **Description** |  |  |
+
+
+```{r assign tn_w2, echo=F}
+
+opal.assign.table.tibble(o, 'JSTAR_tn_w2','JSTAR_datasets_restricted.jstar_2011_2cities',variables=list('h_001_1'), missings = T)
+JSTAR_tn_w2 <- opal.execute(o,'JSTAR_tn_w2')
+load(paste0(datafolder,"tn_w2/stroke.RData"))
+JSTAR_tn_w2$stroke <- stroke$stroke
+rm(stroke)
+
+```
+
+```{r local tn_w2, echo=F}
+
+vbl <- JSTAR_tn_w2$h_001_1
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(JSTAR_tn_w2)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_tn_w2, aes(x=factor(h_001_1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- JSTAR_tn_w2$stroke
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(JSTAR_tn_w2)[3])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(JSTAR_tn_w2, aes(x=factor(stroke))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cvd_all` from the study-specific variable it has to be recoded as follows:
+
+* `h_001_1 == 4 & stroke == 0 into 0`
+* `h_001_1 == 1 or 2 or 3 | stroke == 1 into 1`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo tn_w2}
+
+# Categorical variable harmonization
+JSTAR_ds_tn_w2 <- tibble(id=JSTAR_tn_w2$id)
+JSTAR_ds_tn_w2$cvd_all <- rep(999,length(JSTAR_tn_w2$id))
+JSTAR_ds_tn_w2$cvd_all[which(JSTAR_tn_w2$h_001_1==4 & JSTAR_tn_w2$stroke==0)] <- 0
+JSTAR_ds_tn_w2$cvd_all[which(JSTAR_tn_w2$h_001_1 %in% c(1,2,3) | JSTAR_tn_w2$stroke==1)] <- 1
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript tn_w2, echo=F}
+
+vbl <- JSTAR_ds_tn_w2$cvd_all
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(JSTAR_ds_tn_w2, aes(x=factor(cvd_all))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation tn_w2, echo=F, results='asis'}
+
+AfterH <- table(JSTAR_ds_tn_w2$cvd_all, useNA = "ifany")
+X <- c(
+  sum(JSTAR_tn_w2$h_001_1==4 & JSTAR_tn_w2$stroke==0,na.rm=T),
+  sum(JSTAR_tn_w2$h_001_1 %in% c(1,2,3) | JSTAR_tn_w2$stroke==1,na.rm=T)
+)
+BeforeH <- c(X[1:2],length(JSTAR_tn_w2$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("4&0->0","1,2,3|1->1","NA->999")
+kable(C)
+
+```
+
+
+
+## cth
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+
+| **Name** | `h_001_1` |`stroke`|
+|-|-|-|
+| **Label** | `H-001-1:HAVE A HEART DISEASE`|`Stroke`|
+| **Table name**  | `jstar_2011_3cities`|`stroke`|
+| **Categories** |`0 = Have not been diagnosed or advised to seek care`<br/>`1 = Have been diagnosed or advised to seek care` |`0 = NOT A stroke (cerebral vascular disease)`<br/>`1 = A stroke (cerebral vascular disease)`|
+| **Missings** | `NA` |`999 = Missing`|
+| **Description** |  |  |
+
+
+```{r assign cth_w1, echo=F}
+
+opal.assign.table.tibble(o, 'JSTAR_cth_w1','JSTAR_datasets_restricted.jstar_2011_3cities',variables=list('h_001_1'), missings = T)
+JSTAR_cth_w1 <- opal.execute(o,'JSTAR_cth_w1')
+load(paste0(datafolder,"cth_w1/stroke.RData"))
+JSTAR_cth_w1$stroke <- stroke$stroke
+rm(stroke)
+
+```
+
+```{r local cth_w1, echo=F}
+
+vbl <- JSTAR_cth_w1$h_001_1
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(JSTAR_cth_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_cth_w1, aes(x=factor(h_001_1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- JSTAR_cth_w1$stroke
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(JSTAR_cth_w1)[3])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(JSTAR_cth_w1, aes(x=factor(stroke))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `cvd_all` from the study-specific variable it has to be recoded as follows:
+
+* `all 0 into 0`
+* `some 1 into 1`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo cth_w1}
+
+# Categorical variable harmonization
+JSTAR_ds_cth_w1 <- tibble(id=JSTAR_cth_w1$id)
+JSTAR_ds_cth_w1$cvd_all <- rep(999,length(JSTAR_cth_w1$id))
+JSTAR_ds_cth_w1$cvd_all[which(JSTAR_cth_w1$h_001_1==0 & JSTAR_cth_w1$stroke==0)] <- 0
+JSTAR_ds_cth_w1$cvd_all[which(JSTAR_cth_w1$h_001_1==1 | JSTAR_cth_w1$stroke==1)] <- 1
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript cth_w1, echo=F}
+
+vbl <- JSTAR_ds_cth_w1$cvd_all
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(JSTAR_ds_cth_w1, aes(x=factor(cvd_all))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation cth_w1, echo=F}
+
+AfterH <- table(JSTAR_ds_cth_w1$cvd_all)
+X <- c(
+  sum(JSTAR_cth_w1$h_001_1==0 & JSTAR_cth_w1$stroke==0,na.rm=T),
+  sum(JSTAR_cth_w1$h_001_1==1 | JSTAR_cth_w1$stroke==1,na.rm=T)
+)
+BeforeH <- c(X[1:2],length(JSTAR_cth_w1$id)-sum(X))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("all 0->0","some 1->1","NA->999")
+kable(C)
+
+```
+
+
+
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
+
+**R script:**
+
+```{r summ}
+
+l.hds <- list(aksst_w1 = JSTAR_ds_aksst_w1, aksst_w2 = JSTAR_ds_aksst_w2, aksst_w3 = JSTAR_ds_aksst_w3, tn_w1 = JSTAR_ds_tn_w1, tn_w2 = JSTAR_ds_tn_w2, cth_w1 = JSTAR_ds_cth_w1)
+
+for(name in names(l.hds)) {
+  aux_object <- l.hds[[name]]
+  label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
+  l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  m_name <- paste0("JSTAR_m_ds_",name)
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+for (i in seq_along(l.hds)){
+  t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+}
+t.hds[13,] <- c("n", "sample size", 
+             length(l.hds[[1]][[2]]), length(l.hds[[2]][[2]]) , length(l.hds[[3]][[2]]), length(l.hds[[4]][[2]]), length(l.hds[[5]][[2]]), length(l.hds[[6]][[2]]))
+names(t.hds)<-c("val", "label", "AKSST_W1", "AKSST_W2", "AKSST_W3", "TN_W1", "TN_W2", "CTH_W1")
+kable(t.hds)
+
+```
+
+
+
+# Quality estimation
+
+The harmonized variable contains information about Heart disease (angina, heart failure, cardiac infarction, valve disease, etc.) and stroke.
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+for(index in seq_along(l.hds)){
+  cvd_all <- l.hds[[index]]
+  save(cvd_all, file = paste0(datafolder,names(l.hds)[index],"/cvd_all.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+
