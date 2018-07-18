@@ -1,0 +1,152 @@
+---
+title: "Close spouse"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/close_spouseDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/close_spouseDS.R')
+```
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## LASI
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `fs010`
+* Label: `how close is relationship with spouse or partner`
+* Categories:
+    + `1 = 1 very close`
+    + `2 = 2 quite close`
+    + `3 = 3 not very close`
+    + `4 = 4 not at all close`
+
+
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'LASI_w1_close_spouse','LASI.LASI-Pilot_all',variables=list('fs010'), missings = TRUE)
+LASI_w1_close_spouse <- opal.execute(o,'LASI_w1_close_spouse')
+```
+
+```{r local1, echo=F}
+Categorical_summary(var = LASI_w1_close_spouse$fs010, missing_values = NA)
+ggplot(LASI_w1_close_spouse, aes(x=factor(fs010))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("how close is relationship with spouse or partner") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 or 2 into 1`
+* `3 or 4 into 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1}
+LASI_ds_w1 <- tibble(id=LASI_w1_close_spouse$id)
+LASI_ds_w1$close_spouse <- car::recode(as.vector(LASI_w1_close_spouse$fs010), "1:2='1'; 3:4='0'; NA='999'")
+LASI_ds_w1$close_spouse <- labelled(LASI_ds_w1$close_spouse, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=F}
+Categorical_summary(var = LASI_ds_w1$close_spouse, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(LASI_ds_w1, aes(x=factor(close_spouse))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Is the relationship with the spouse close?") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=F}
+AfterH <- table(LASI_ds_w1$close_spouse)
+BeforeH <- table(LASI_w1_close_spouse$fs010, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[2]] <- sum(BeforeH[c(1:2)])
+BeforeH1[[1]] <- sum(BeforeH[c(3:4)])
+BeforeH1[[3]] <- BeforeH[[length(BeforeH)]]
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("3:4->0","1:2->1","NA->999")
+kable(C)
+```
+
+## Descriptive statistics of the harmonised variable accross populations and waves
+
+Percentages of categories in each harmonised variable:
+
+
+**R script:**
+
+```{r summ}
+LASI_ds_w1$close_spouse <- labelled(LASI_ds_w1$close_spouse, labels = cat_label)
+label(LASI_ds_w1$close_spouse) <- ds_label
+
+LASI_m_ds_w1 <- LASI_ds_w1
+LASI_m_ds_w1$close_spouse <- car::recode(LASI_m_ds_w1$close_spouse, "miss_values_vector=NA")
+
+tt <- frq(LASI_ds_w1$close_spouse)[[1]][,c(1:2,4)]
+tt[13,] <- c("n", "sample size", 
+             length(LASI_ds_w1$close_spouse)
+             )
+names(tt)<-c("val", "label", "w1")
+kable(tt)
+
+```
+
+
+
+# Quality estimation
+
+It is assumed that agricultural work is employment and if it is not paid, it provides food etc.
+
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+l.LASI <- list(w1 = LASI_ds_w1)
+
+for(index in seq_along(l.LASI)){
+  close_spouse <- l.LASI[[index]]
+  save(close_spouse, file = paste0(datafolder,names(l.LASI)[index],"/close_spouse.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+
