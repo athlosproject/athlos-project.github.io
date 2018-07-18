@@ -1,0 +1,316 @@
+---
+title: "Emotional support"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/emot_supDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/emot_supDS.R')
+```
+
+<!-- ########################################################## --> 
+
+# Data process
+
+
+
+## Poland
+
+### Wave 1 
+
+All data in the variable found, `p56`, is missing.
+
+
+### Wave 2
+
+Not found.
+
+## Czech Republic
+
+### Wave 1
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `p56a`
+* Label: `Rely on friends first of all when having problems`
+* Categories: 
+    + `1 = Yes`
+    + `2 = No`
+    
+* Name: `p56b`
+* Label: `Rely on relatives first of all when having problems`
+* Categories: 
+    + `1 = Yes`
+    + `2 = No`
+    
+* Name: `p56c`
+* Label: `Rely on employer first of all when having problems`
+* Categories: 
+    + `1 = Yes`
+    + `2 = No`
+    
+* Name: `p56i`
+* Label: `Rely on no-one first of all when having problems`
+* Categories: 
+    + `1 = Yes`
+    + `2 = No`
+    
+* Name: `p56j`
+* Label: `Rely on other first of all when having problems`
+* Categories: 
+    + `1 = Yes`
+    + `2 = No`
+
+
+```{r assignc1, echo=F}
+opal.assign.table.tibble(o, 'HAPIEE_cz_w1_emot_sup','HAPIEE.Cz_baseline_etic',  variables=list('p56a','p56b','p56c','p56i','p56j'), missings = TRUE)
+HAPIEE_cz_w1_emot_sup <- opal.execute(o,'HAPIEE_cz_w1_emot_sup')
+```
+
+```{r localc1, echo=F}
+Categorical_summary(var = HAPIEE_cz_w1_emot_sup$p56a, missing_values = NA)
+ggplot(HAPIEE_cz_w1_emot_sup, aes(x=factor(p56a))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Rely on friends first of all when having problems") + ylab("Frequency")
+Categorical_summary(var = HAPIEE_cz_w1_emot_sup$p56b, missing_values = NA)
+ggplot(HAPIEE_cz_w1_emot_sup, aes(x=factor(p56b))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Rely on relatives first of all when having problems") + ylab("Frequency")
+Categorical_summary(var = HAPIEE_cz_w1_emot_sup$p56c, missing_values = NA)
+ggplot(HAPIEE_cz_w1_emot_sup, aes(x=factor(p56c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Rely on employer first of all when having problems") + ylab("Frequency")
+Categorical_summary(var = HAPIEE_cz_w1_emot_sup$p56i, missing_values = NA)
+ggplot(HAPIEE_cz_w1_emot_sup, aes(x=factor(p56i))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Rely on no-one first of all when having problems") + ylab("Frequency")
+Categorical_summary(var = HAPIEE_cz_w1_emot_sup$p56j, missing_values = NA)
+ggplot(HAPIEE_cz_w1_emot_sup, aes(x=factor(p56j))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Rely on other first of all when having problems") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any variable equals 1 or p56i=2 then 1`
+* `if all are equal 2 but p56i=1 then 0`
+* `9 or NA into 999`
+
+**R script:**
+
+```{r harmoc1}
+HAPIEE_ds_cz_w1 <- tibble(id=HAPIEE_cz_w1_emot_sup$id)
+
+HAPIEE_cz_w1_emot_sup$p56a <- car::recode(as.vector(HAPIEE_cz_w1_emot_sup$p56a), "NA='-999'")
+HAPIEE_cz_w1_emot_sup$p56b <- car::recode(as.vector(HAPIEE_cz_w1_emot_sup$p56b), "NA='-999'")
+HAPIEE_cz_w1_emot_sup$p56c <- car::recode(as.vector(HAPIEE_cz_w1_emot_sup$p56c), "NA='-999'")
+HAPIEE_cz_w1_emot_sup$p56i <- car::recode(as.vector(HAPIEE_cz_w1_emot_sup$p56i), "NA='-999'")
+HAPIEE_cz_w1_emot_sup$p56j <- car::recode(as.vector(HAPIEE_cz_w1_emot_sup$p56j), "NA='-999'")
+
+HAPIEE_ds_cz_w1$emot_sup <- c(NA) # I think it is required
+for(i in 1:dim(HAPIEE_cz_w1_emot_sup)[1]){
+  if( HAPIEE_cz_w1_emot_sup$p56a[i] == "Yes" | HAPIEE_cz_w1_emot_sup$p56b[i] == "Yes" | HAPIEE_cz_w1_emot_sup$p56c[i] == "Yes" |
+      HAPIEE_cz_w1_emot_sup$p56i[i] == "No" | HAPIEE_cz_w1_emot_sup$p56j[i] == "Yes" ) {
+    HAPIEE_ds_cz_w1$emot_sup[i] = 1 }
+  else if( HAPIEE_cz_w1_emot_sup$p56a[i] == "No" & HAPIEE_cz_w1_emot_sup$p56b[i] == "No" & HAPIEE_cz_w1_emot_sup$p56c[i] == "No" &
+      HAPIEE_cz_w1_emot_sup$p56i[i] == "Yes" & HAPIEE_cz_w1_emot_sup$p56j[i] == "No" ) {
+    HAPIEE_ds_cz_w1$emot_sup[i] = 0 }
+  else if( HAPIEE_cz_w1_emot_sup$p56a[i] == 9 & HAPIEE_cz_w1_emot_sup$p56b[i] == 9 & HAPIEE_cz_w1_emot_sup$p56c[i] == 9 &
+      HAPIEE_cz_w1_emot_sup$p56i[i] == 9 & HAPIEE_cz_w1_emot_sup$p56j[i] == 9 ) {
+    HAPIEE_ds_cz_w1$emot_sup[i] = 999 }
+}
+
+HAPIEE_ds_cz_w1$emot_sup <- car::recode(as.vector(HAPIEE_ds_cz_w1$emot_sup), "NA='999'")
+HAPIEE_ds_cz_w1$emot_sup <- labelled(HAPIEE_ds_cz_w1$emot_sup, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descriptc1, echo=F}
+Categorical_summary(var = HAPIEE_ds_cz_w1$emot_sup, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(HAPIEE_ds_cz_w1, aes(x=factor(emot_sup))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Receives emotional support from someone") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulationc1, echo=F}
+
+```
+
+### Wave 2
+
+Not found.
+
+## Lithuania
+ 
+
+### Wave 1
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `p56a`
+* Label: `Rely on friends first of all when having problems`
+* Categories: 
+    + `1 = Yes`
+    + `2 = No`
+    
+* Name: `p56b`
+* Label: `Rely on relatives first of all when having problems`
+* Categories: 
+    + `1 = Yes`
+    + `2 = No`
+    
+* Name: `p56c`
+* Label: `Rely on employer first of all when having problems`
+* Categories: 
+    + `1 = Yes`
+    + `2 = No`
+    
+* Name: `p56i`
+* Label: `Rely on no-one first of all when having problems`
+* Categories: 
+    + `1 = Yes`
+    + `2 = No`
+    
+* Name: `p56j`
+* Label: `Rely on other first of all when having problems`
+* Categories: 
+    + `1 = Yes`
+    + `2 = No`
+
+
+```{r assignl1, echo=F}
+opal.assign.table.tibble(o, 'HAPIEE_li_w1_emot_sup','HAPIEE.Li_baseline_etic',  variables=list('p56a','p56b','p56c','p56i','p56j'), missings = TRUE)
+HAPIEE_li_w1_emot_sup <- opal.execute(o,'HAPIEE_li_w1_emot_sup')
+```
+
+```{r locall1, echo=F}
+Categorical_summary(var = HAPIEE_li_w1_emot_sup$p56a, missing_values = NA)
+ggplot(HAPIEE_li_w1_emot_sup, aes(x=factor(p56a))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Rely on friends first of all when having problems") + ylab("Frequency")
+Categorical_summary(var = HAPIEE_li_w1_emot_sup$p56b, missing_values = NA)
+ggplot(HAPIEE_li_w1_emot_sup, aes(x=factor(p56b))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Rely on relatives first of all when having problems") + ylab("Frequency")
+Categorical_summary(var = HAPIEE_li_w1_emot_sup$p56c, missing_values = NA)
+ggplot(HAPIEE_li_w1_emot_sup, aes(x=factor(p56c))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Rely on employer first of all when having problems") + ylab("Frequency")
+Categorical_summary(var = HAPIEE_li_w1_emot_sup$p56i, missing_values = NA)
+ggplot(HAPIEE_li_w1_emot_sup, aes(x=factor(p56i))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Rely on no-one first of all when having problems") + ylab("Frequency")
+Categorical_summary(var = HAPIEE_li_w1_emot_sup$p56j, missing_values = NA)
+ggplot(HAPIEE_li_w1_emot_sup, aes(x=factor(p56j))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Rely on other first of all when having problems") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any variable equals 1 or p56i=2 then 1`
+* `if all are equal 2 but p56i=1 then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmol1}
+HAPIEE_ds_li_w1 <- tibble(id=HAPIEE_li_w1_emot_sup$id)
+
+HAPIEE_li_w1_emot_sup$p56a <- car::recode(as.vector(HAPIEE_li_w1_emot_sup$p56a), "NA='-999'")
+HAPIEE_li_w1_emot_sup$p56b <- car::recode(as.vector(HAPIEE_li_w1_emot_sup$p56b), "NA='-999'")
+HAPIEE_li_w1_emot_sup$p56c <- car::recode(as.vector(HAPIEE_li_w1_emot_sup$p56c), "NA='-999'")
+HAPIEE_li_w1_emot_sup$p56i <- car::recode(as.vector(HAPIEE_li_w1_emot_sup$p56i), "NA='-999'")
+HAPIEE_li_w1_emot_sup$p56j <- car::recode(as.vector(HAPIEE_li_w1_emot_sup$p56j), "NA='-999'")
+
+HAPIEE_ds_li_w1$emot_sup <- c(NA) # I think it is required
+for(i in 1:dim(HAPIEE_li_w1_emot_sup)[1]){
+  if( HAPIEE_li_w1_emot_sup$p56a[i] == 'Yes' | HAPIEE_li_w1_emot_sup$p56b[i] == 'Yes' | HAPIEE_li_w1_emot_sup$p56c[i] == 'Yes' |
+      HAPIEE_li_w1_emot_sup$p56i[i] == 'No' | HAPIEE_li_w1_emot_sup$p56j[i] == 'Yes' ) {
+    HAPIEE_ds_li_w1$emot_sup[i] = 1 }
+  else if( HAPIEE_li_w1_emot_sup$p56a[i] == 'No' & HAPIEE_li_w1_emot_sup$p56b[i] == 'No' & HAPIEE_li_w1_emot_sup$p56c[i] == 'No' &
+      HAPIEE_li_w1_emot_sup$p56i[i] == 'Yes' & HAPIEE_li_w1_emot_sup$p56j[i] == 'No' ) {
+    HAPIEE_ds_li_w1$emot_sup[i] = 0 }
+}
+
+HAPIEE_ds_li_w1$emot_sup <- car::recode(as.vector(HAPIEE_ds_li_w1$emot_sup), "NA='999'")
+HAPIEE_ds_li_w1$emot_sup <- labelled(HAPIEE_ds_li_w1$emot_sup, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descriptl1, echo=F}
+Categorical_summary(var = HAPIEE_ds_li_w1$emot_sup, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(HAPIEE_ds_li_w1, aes(x=factor(emot_sup))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Receives emotional support from someone") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulationl1, echo=F}
+
+```
+
+
+
+
+
+```{r final, echo=F}
+
+lb.hds <- list(cz_w1 = HAPIEE_ds_cz_w1, li_w1 = HAPIEE_ds_li_w1)
+
+for(name in names(lb.hds)) {
+  aux_object <- lb.hds[[name]]
+  label(lb.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
+  lb.hds[[name]][[2]] <- labelled(lb.hds[[name]][[2]], labels = cat_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  m_name <- paste0("HAPIEE_m_ds_",name)
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+
+l.hds <- c(lb.hds)
+ln.hds <- names(lb.hds)
+
+```
+
+## Descriptive statistics of the harmonised variable accross populations and waves
+
+Percentages of categories in each harmonised variable by cohort:
+
+**R script:**
+
+```{r summ}
+
+t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+for (i in seq_along(ln.hds)){
+  t.hds[2+i] <- frq(l.hds[[ln.hds[i]]][2])[[1]][,4] 
+}
+t.hds[13,] <- c("n", "sample size",sapply(ln.hds,function(wave) length(l.hds[[wave]][[1]])))
+names(t.hds)<-c("val", "label", "Czech_Republic_W1","Lithuania_W1")
+kable(t.hds)
+  
+```
+
+# Quality estimation
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+for(index in seq_along(l.hds)){
+  emot_sup <- l.hds[[index]]
+  save(emot_sup, file = paste0(datafolder,names(l.hds)[index],"/emot_sup.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
