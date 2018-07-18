@@ -1,0 +1,238 @@
+---
+title: "Life-threatening situation"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/lifethreat_sitDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/lifethreat_sitDS.R')
+```
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## MHAS
+
+### Wave 1
+
+Not found.
+
+### Wave 2
+
+Not found.
+
+### Wave 3
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `sa22_12`
+* Label: `Major event since 2001:Accident or..affected deceased's health/family situation`
+* Categories: 
+    + `1 = Yes`
+    + `2 = No`
+* Missings: 
+    + `8 = RF`
+    + `9 = DK`
+    
+* Name: `m4_1_12`
+* Label: `Major event since 2001: respondent had a stroke`
+* Categories: 
+    + `1 = Yes`
+    + `2 = No`
+* Missings: 
+    + `8 = Refused`
+    + `9 = DK`
+    
+* Name: `m5_1_12`
+* Label: `Major event since 2001: respondent had a heart attack`
+* Categories: 
+    + `1 = Yes`
+    + `2 = No`
+* Missings: 
+    + `8 = Refused`
+    + `9 = DK`
+    
+* Name: `m6_1_12`
+* Label: `Major event since 2001: respondent had major surgery`
+* Categories: 
+    + `1 = Yes`
+    + `2 = No`
+    + `8 = Refused`
+    + `9 = DK`
+    
+* Name: `m8_1_12`
+* Label: `Major event since 2001: respondent was diagnosed with new cancer`
+* Categories: 
+    + `1 = Yes`
+    + `2 = No`
+* Missings: 
+    + `8 = Refused`
+    + `9 = DK`
+    
+* Name: `m10_1_12`
+* Label: `Major event since 2001: respondent had accident .. affect health/family situation`
+* Categories: 
+    + `1 = Yes`
+    + `2 = No`
+* Missings: 
+    + `8 = Refused`
+    + `9 = DK`
+    
+
+```{r assign3, echo=F}
+
+opal.assign.table.tibble(o, 'MHAS_w3_life_thr','Mexican Health Aging Study.MHAS_2012_new',variables=list('sa22_12','m4_1_12','m5_1_12','m6_1_12','m8_1_12','m10_1_12'), missings = TRUE)
+MHAS_w3_life_thr <- opal.execute(o,'MHAS_w3_life_thr')
+
+```
+
+```{r local3, echo=F}
+Categorical_summary(var = MHAS_w3_life_thr$sa22_12, missing_values = NA)
+ggplot(MHAS_w3_life_thr, aes(x=factor(sa22_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Major event since 2001:Accident or..affected deceased's health/family situation") + ylab("Frequency")
+Categorical_summary(var = MHAS_w3_life_thr$m4_1_12, missing_values = NA)
+ggplot(MHAS_w3_life_thr, aes(x=factor(m4_1_12))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Major event since 2001: respondent had a stroke") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To recode the harmonize variable from the study-specific variable it has to be recoded as follows:  
+
+* `if any equal 1 then 1`
+* `if all are equal 2 then 0`
+* `8 into 997`
+* `9 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo3}
+
+MHAS_ds_w3 <- tibble(id=MHAS_w3_life_thr$id)
+
+MHAS_w3_life_thr$sa22_12 <- car::recode(as.vector(MHAS_w3_life_thr$sa22_12), "NA='-999'")
+MHAS_w3_life_thr$m4_1_12 <- car::recode(as.vector(MHAS_w3_life_thr$m4_1_12), "NA='-999'")
+MHAS_w3_life_thr$m5_1_12 <- car::recode(as.vector(MHAS_w3_life_thr$m5_1_12), "NA='-999'")
+MHAS_w3_life_thr$m6_1_12 <- car::recode(as.vector(MHAS_w3_life_thr$m6_1_12), "NA='-999'")
+MHAS_w3_life_thr$m8_1_12 <- car::recode(as.vector(MHAS_w3_life_thr$m8_1_12), "NA='-999'")
+MHAS_w3_life_thr$m10_1_12 <- car::recode(as.vector(MHAS_w3_life_thr$m10_1_12), "NA='-999'")
+
+MHAS_ds_w3$lifethreat_sit <- c(NA)
+for(i in 1:dim(MHAS_w3_life_thr)[1]){
+  if( MHAS_w3_life_thr$sa22_12[i] == 1 | MHAS_w3_life_thr$m4_1_12[i] == 1 | MHAS_w3_life_thr$m5_1_12[i] == 1 |
+      MHAS_w3_life_thr$m6_1_12[i] == 1 | MHAS_w3_life_thr$m8_1_12[i] == 1 | MHAS_w3_life_thr$m10_1_12[i] == 1 ) {
+    MHAS_ds_w3$lifethreat_sit[i] = 1 }
+  else if( MHAS_w3_life_thr$sa22_12[i] == -999 & MHAS_w3_life_thr$m4_1_12[i] == -999 & MHAS_w3_life_thr$m5_1_12[i] == -999 &
+      MHAS_w3_life_thr$m6_1_12[i] == -999 & MHAS_w3_life_thr$m8_1_12[i] == -999 & MHAS_w3_life_thr$m10_1_12[i] == -999 ) {
+    MHAS_ds_w3$lifethreat_sit[i] = 999 }
+  else if( MHAS_w3_life_thr$sa22_12[i] %in% c(2, -999) & MHAS_w3_life_thr$m4_1_12[i] %in% c(2, -999) & MHAS_w3_life_thr$m5_1_12[i] %in% c(2, -999) &
+      MHAS_w3_life_thr$m6_1_12[i] %in% c(2, -999) & MHAS_w3_life_thr$m8_1_12[i] %in% c(2, -999) & MHAS_w3_life_thr$m10_1_12[i] %in% c(2, -999) ) {
+    MHAS_ds_w3$lifethreat_sit[i] = 0 }
+  else if(  MHAS_w3_life_thr$sa22_12[i] == 8 | MHAS_w3_life_thr$m4_1_12[i] == 8 | MHAS_w3_life_thr$m5_1_12[i] == 8 |
+      MHAS_w3_life_thr$m6_1_12[i] == 8 | MHAS_w3_life_thr$m8_1_12[i] == 8 | MHAS_w3_life_thr$m10_1_12[i] == 8 ) { 
+    MHAS_ds_w3$lifethreat_sit[i] = 997 }
+  else if( MHAS_w3_life_thr$sa22_12[i] == 9 | MHAS_w3_life_thr$m4_1_12[i] == 9 | MHAS_w3_life_thr$m5_1_12[i] == 9 |
+      MHAS_w3_life_thr$m6_1_12[i] == 9 | MHAS_w3_life_thr$m8_1_12[i] == 9 | MHAS_w3_life_thr$m10_1_12[i] == 9 ) { 
+    MHAS_ds_w3$lifethreat_sit[i] = 998 }
+}
+
+MHAS_ds_w3$lifethreat_sit <- car::recode(as.vector(MHAS_ds_w3$lifethreat_sit), "NA='999'")
+
+```
+
+#### Statistics of the new harmonised variable
+```{r descript3, echo=F}
+
+vbl <- MHAS_ds_w3$lifethreat_sit
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(MHAS_ds_w3, aes(x=factor(lifethreat_sit))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+##### Validation
+```{r crosstabulation3, echo=F}
+
+```
+
+
+
+```{r final, echo=F}
+
+l.hds <- list(w3 = MHAS_ds_w3)
+
+for(name in names(l.hds)) {
+  aux_object <- l.hds[[name]]
+  label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
+  l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  m_name <- paste0("MHAS_m_ds_",name)
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+```
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+
+Percentages of categories in each harmonised variable.
+
+
+
+```{r summ}
+
+t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+for (i in seq_along(l.hds)){
+  t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+}
+t.hds[13,] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+             )
+names(t.hds)<-c("val", "label",names(l.hds))
+kable(t.hds)
+
+```
+
+
+# Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+
+for(index in seq_along(l.hds)){
+  lifethreat_sit <- l.hds[[index]]
+  save(lifethreat_sit, file = paste0(datafolder,names(l.hds)[index],"/lifethreat_sit.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

@@ -1,0 +1,192 @@
+---
+title: "Life-threatening situation"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/lifethreat_sitDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/lifethreat_sitDS.R')
+```
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## ELSA
+
+### Wave 1
+
+Not found.
+
+### Wave 2
+
+Not found.
+
+### Wave 3
+
+#### Study-specific variable description
+
+
+| **Name** |`rsill`|
+|-|-|
+| **Label** |`Have you ever had a life-threatening illness or accident?`|
+| **Table name** |`wave_3_life_history_data`|
+| **Categories** |`1 = yes`<br/>`2 = no`|
+| **Missings** |`-9 = Refusal`<br/>`-8 = Don't Know`<br/>`-7 = self completion not completed`<br/>`-2 = respondent missed question`<br/>`-1 = Not applicable`|
+| **Description** |  |
+
+```{r assign3, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w3_life_thr','ELSA.wave_3_life_history_data',variables=list('rsill'), missings = TRUE)
+ELSA_w3_life_thr <- opal.execute(o,'ELSA_w3_life_thr')
+# The next IDs are removed since these individuals do not appear in the main tables of ELSA, so we do not have the essential information about them.
+specialid <- c("100026", "101418", "101544", "102264", "103505", "110381", "115918", "116000", "121394", "150589", "152048", "152225")
+ELSA_w3_life_thr <- ELSA_w3_life_thr[-match(specialid,ELSA_w3_life_thr$id),]
+
+```
+
+```{r local3, echo=F}
+
+vbl <- ELSA_w3_life_thr$rsill
+vbl_miss <- c(-1,-2,-7,-8,-9)
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = 'rsill')
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(ELSA_w3_life_thr, aes(x=factor(rsill))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To recode the harmonize variable from the study-specific variable it has to be recoded as follows:  
+
+* `1 into 1; 2 into 0`
+* `-9 into 997`
+* `-8 into 998`
+* `-7 into 999`
+* `-2 into 994`
+* `-1 into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo3}
+
+ELSA_ds_w3 <- tibble(id=ELSA_w3_life_thr$id)
+ELSA_ds_w3$lifethreat_sit <- car::recode(as.vector(ELSA_w3_life_thr$rsill), "1='1'; 2='0'; -9='997'; -8='998'; -7='999'; -2='994'; -1='996'; NA='999'")
+
+```
+
+#### Statistics of the new harmonised variable
+```{r descript3, echo=F}
+
+vbl <- ELSA_ds_w3$lifethreat_sit
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ELSA_ds_w3, aes(x=factor(lifethreat_sit))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+##### Validation
+```{r crosstabulation3, echo=F}
+AfterH <- table(ELSA_ds_w3$lifethreat_sit)
+BeforeH <- table(ELSA_w3_life_thr$rsill, useNA='ifany')[c(4,3,2,1)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","-2->994","-7->999")
+kable(C)
+```
+
+### Wave 4
+
+Not found.
+
+### Wave 5
+
+Not found.
+
+### Wave 6
+
+Not found.
+
+### Wave 7
+
+Not found.
+
+
+
+
+```{r final, echo=F}
+
+l.hds <- list(w3 = ELSA_ds_w3)
+
+for(name in names(l.hds)) {
+  aux_object <- l.hds[[name]]
+  label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
+  l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  m_name <- paste0("ELSA_m_ds_",name)
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+```
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+
+Percentages of categories in each harmonised variable.
+
+
+
+```{r summ}
+
+t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+for (i in seq_along(l.hds)){
+  t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+}
+t.hds[13,] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+             )
+names(t.hds)<-c("val", "label",names(l.hds))
+kable(t.hds)
+
+```
+
+
+# Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+
+for(index in seq_along(l.hds)){
+  lifethreat_sit <- l.hds[[index]]
+  save(lifethreat_sit, file = paste0(datafolder,names(l.hds)[index],"/lifethreat_sit.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
