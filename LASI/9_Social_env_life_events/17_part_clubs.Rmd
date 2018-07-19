@@ -1,0 +1,231 @@
+---
+title: "Participation in club groups"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/part_clubsDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/part_clubsDS.R')
+```
+
+
+
+
+# Data process
+
+## India
+
+### Wave 1 
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `fs515s9`
+* Label: `member of any organization - no i am not a member of any organizations, clubs, or societies`
+* Categories:
+    + `1 = farmers association/environmental groups/political party/senior citizens clubs`
+    + `2 = tenant groups, neighborhood watch`
+    + `3 = community/caste organizations`
+    + `4 = self-help group/ngo/co-operative/mahila mandal`
+    + `5 = education, arts or music groups, evening classes`
+    + `6 = social club`
+    + `7 = sports clubs, exercise classes`
+    + `8 = any other organizations, clubs or societies`
+    + `9 = no i am not a member of any organizations, clubs, or societies`
+    
+* Name: `fs502a_a`
+* Label: `attending farmers' association/environmental groups/political party/senior citiz`
+* Categories:
+    + `1 = Daily`
+    + `2 = Weekly`
+    + `3 = Monthly`
+    + `4 = Yearly`
+    
+* Name: `fs502b_a`
+* Label: `attending tenant groups, neighborhood watch`
+* Categories:
+    + `1 = Daily`
+    + `2 = Weekly`
+    + `3 = Monthly`
+    + `4 = Yearly`
+    
+* Name: `fs502c_a`
+* Label: `community/caste organizations`
+* Categories:
+    + `1 = Daily`
+    + `2 = Weekly`
+    + `3 = Monthly`
+    + `4 = Yearly`
+    
+* Name: `fs502d_a`
+* Label: `self-help group/ngo/co-operative/mahila mandal`
+* Categories:
+    + `1 = Daily`
+    + `2 = Weekly`
+    + `3 = Monthly`
+    + `4 = Yearly`
+    
+* Name: `fs502e_a`
+* Label: `education, arts or music groups, evening classes`
+* Categories:
+    + `1 = Daily`
+    + `2 = Weekly`
+    + `3 = Monthly`
+    + `4 = Yearly`
+    
+* Name: `fs502f_a`
+* Label: `social club`
+* Categories:
+    + `1 = Daily`
+    + `2 = Weekly`
+    + `3 = Monthly`
+    + `4 = Yearly`
+    
+* Name: `fs502h_a`
+* Label: `any other organizations, clubs or societies`
+* Categories:
+    + `1 = Daily`
+    + `2 = Weekly`
+    + `3 = Monthly`
+    + `4 = Yearly`
+
+
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'LASI_w1_part_clubs','LASI.LASI-Pilot_all', 
+                        variables=list('fs515s9','fs502a_a','fs502b_a','fs502c_a','fs502d_a','fs502e_a','fs502f_a','fs502h_a'), missings = TRUE)
+```
+
+```{r local1, echo=F}
+LASI_w1_part_clubs <- opal.execute(o,'LASI_w1_part_clubs')
+Categorical_summary(var = LASI_w1_part_clubs$fs515s9, missing_values = NA)
+ggplot(LASI_w1_part_clubs, aes(x=factor(fs515s9))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("member of any organization - no i am not a member of any organizations, clubs, or societies") + ylab("Frequency")
+Categorical_summary(var = LASI_w1_part_clubs$fs502a_a, missing_values = NA)
+ggplot(LASI_w1_part_clubs, aes(x=factor(fs502a_a))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("attending farmers' association/environmental groups/political party/senior citiz") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if any fs502i_a equals 1, 2 or 3 then 1`
+* `else if fs515s9=9 or any of fs502i_a=4 then 0`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1, echo=F}
+LASI_ds_w1 <- tibble(id=LASI_w1_part_clubs$id)
+
+LASI_w1_part_clubs$fs515s9 <- car::recode(as.vector(LASI_w1_part_clubs$fs515s9), "NA='-999'")
+LASI_w1_part_clubs$fs502a_a <- car::recode(as.vector(LASI_w1_part_clubs$fs502a_a), "NA='-999'")
+LASI_w1_part_clubs$fs502b_a <- car::recode(as.vector(LASI_w1_part_clubs$fs502b_a), "NA='-999'")
+LASI_w1_part_clubs$fs502c_a <- car::recode(as.vector(LASI_w1_part_clubs$fs502c_a), "NA='-999'")
+LASI_w1_part_clubs$fs502d_a <- car::recode(as.vector(LASI_w1_part_clubs$fs502d_a), "NA='-999'")
+LASI_w1_part_clubs$fs502e_a <- car::recode(as.vector(LASI_w1_part_clubs$fs502e_a), "NA='-999'")
+LASI_w1_part_clubs$fs502f_a <- car::recode(as.vector(LASI_w1_part_clubs$fs502f_a), "NA='-999'")
+LASI_w1_part_clubs$fs502h_a <- car::recode(as.vector(LASI_w1_part_clubs$fs502h_a), "NA='-999'")
+
+LASI_ds_w1$part_clubs <- c(NA) # I think it is required
+for(i in 1:dim(LASI_w1_part_clubs)[1]){
+  if( LASI_w1_part_clubs$fs502a_a[i] %in% c(1,2,3) | LASI_w1_part_clubs$fs502b_a[i] %in% c(1,2,3) | LASI_w1_part_clubs$fs502c_a[i] %in% c(1,2,3) |  
+      LASI_w1_part_clubs$fs502d_a[i] %in% c(1,2,3) | LASI_w1_part_clubs$fs502e_a[i] %in% c(1,2,3) | LASI_w1_part_clubs$fs502f_a[i] %in% c(1,2,3) | 
+      LASI_w1_part_clubs$fs502h_a[i] %in% c(1,2,3) ) {
+    LASI_ds_w1$part_clubs[i] = 1 }
+  else if( LASI_w1_part_clubs$fs515s9[i] == 9 | LASI_w1_part_clubs$fs502a_a[i]== 4 | LASI_w1_part_clubs$fs502b_a[i]== 4 | 
+           LASI_w1_part_clubs$fs502c_a[i]== 4 | LASI_w1_part_clubs$fs502d_a[i]== 4 | LASI_w1_part_clubs$fs502e_a[i]== 4 | 
+           LASI_w1_part_clubs$fs502f_a[i]== 4 | LASI_w1_part_clubs$fs502h_a[i]== 4 ) {
+    LASI_ds_w1$part_clubs[i] = 0 }
+}
+
+LASI_ds_w1$part_clubs <- car::recode(as.vector(LASI_ds_w1$part_clubs), "NA='999'")
+LASI_ds_w1$part_clubs <- labelled(LASI_ds_w1$part_clubs, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=F}
+Categorical_summary(var = LASI_ds_w1$part_clubs, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(LASI_ds_w1, aes(x=factor(part_clubs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Participation in any club/group") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1}
+
+```
+
+
+## Descriptive statistics of the harmonised variable accross populations and waves
+
+Percentages of categories in each harmonised variable:
+
+
+**R script:**
+
+```{r summ}
+LASI_ds_w1$part_clubs <- labelled(LASI_ds_w1$part_clubs, labels = cat_label)
+label(LASI_ds_w1$part_clubs) <- ds_label
+
+LASI_m_ds_w1 <- LASI_ds_w1
+LASI_m_ds_w1$part_clubs <- car::recode(LASI_m_ds_w1$part_clubs, "miss_values_vector=NA")
+
+tt <- frq(LASI_ds_w1$part_clubs)[[1]][,c(1:2,4)]
+tt[13,] <- c("n", "sample size", 
+             length(LASI_ds_w1$part_clubs)
+             )
+names(tt)<-c("val", "label", "w1")
+kable(tt)
+
+```
+
+
+
+# Quality estimation
+
+
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+l.LASI <- list(w1 = LASI_ds_w1)
+
+for(index in seq_along(l.LASI)){
+  part_clubs <- l.LASI[[index]]
+  save(part_clubs, file = paste0(datafolder,names(l.LASI)[index],"/part_clubs.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
+
+
+
+

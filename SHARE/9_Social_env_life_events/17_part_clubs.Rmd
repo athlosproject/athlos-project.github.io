@@ -1,0 +1,496 @@
+---
+title: "Participation in club groups"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup_iago.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/part_clubsDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/part_clubsDS.R')
+```
+
+
+
+
+# Data process
+
+## SHARE
+
+### Wave 1
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `ac002d5`
+* Label: `activities last month: sport/social/other club`
+* Categories:
+    + `0 = not selected`
+    + `1 = selected`
+* Missings:
+    + `-2 = refusal`
+    + `-1 = don't know`
+
+* Name: `ac002d6`
+* Label: `activities last month: taken part religious organization`
+* Categories:
+    + `0 = not selected`
+    + `1 = selected`
+* Missings:
+    + `-2 = refusal`
+    + `-1 = don't know`
+    
+* Name: `ac002d7`
+* Label: `activities last month: taken part political/community-rel.org.`
+* Categories:
+    + `0 = not selected`
+    + `1 = selected`
+* Missings:
+    + `-2 = refusal`
+    + `-1 = don't know`
+    
+ 
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w1_part_clubs','SHARE.sharew1_rel2-6-0_ac', 
+                        variables=list('ac002d5','ac002d6','ac002d7'), missings = TRUE)
+
+```
+
+```{r local1, echo=F}
+SHARE_w1_part_clubs <- opal.execute(o,'SHARE_w1_part_clubs')
+Categorical_summary(var =SHARE_w1_part_clubs$ac002d5, missing_values = NA)
+ggplot(SHARE_w1_part_clubs, aes(x=factor(ac002d5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("activities last month: sport/social/other club") + ylab("Frequency") 
+Categorical_summary(var =SHARE_w1_part_clubs$ac002d6, missing_values = NA)
+ggplot(SHARE_w1_part_clubs, aes(x=factor(ac002d6))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("activities last month: taken part religious organization") + ylab("Frequency") 
+Categorical_summary(var =SHARE_w1_part_clubs$ac002d7, missing_values = NA)
+ggplot(SHARE_w1_part_clubs, aes(x=factor(ac002d7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("activities last month: taken part political/community-rel.org.") + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if ac002d5=1 or ac002d6=1 or ac002d7=1 then 1`
+* `if ac002d5=0 and ac002d6=0 and ac002d7=0 then 0`
+* `-2 into 997`
+* `-1 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1}
+SHARE_ds_w1 <- tibble(id=SHARE_w1_part_clubs$id)
+
+SHARE_w1_part_clubs$ac002d5 <- car::recode(as.vector(SHARE_w1_part_clubs$ac002d5), "NA='-999'")
+SHARE_w1_part_clubs$ac002d6 <- car::recode(as.vector(SHARE_w1_part_clubs$ac002d6), "NA='-999'")
+SHARE_w1_part_clubs$ac002d7 <- car::recode(as.vector(SHARE_w1_part_clubs$ac002d7), "NA='-999'")
+
+SHARE_ds_w1$part_clubs <- c(NA) # I think it is required
+for(i in 1:dim(SHARE_w1_part_clubs)[1]){
+  if( SHARE_w1_part_clubs$ac002d5[i] == 1 | SHARE_w1_part_clubs$ac002d6[i] == 1 | SHARE_w1_part_clubs$ac002d7[i] == 1 ) {
+    SHARE_ds_w1$part_clubs[i] = 1 }
+  else if( SHARE_w1_part_clubs$ac002d5[i] == 0 & SHARE_w1_part_clubs$ac002d6[i] == 0 & SHARE_w1_part_clubs$ac002d7[i] == 0 ) {
+    SHARE_ds_w1$part_clubs[i] = 0 }
+  else if( SHARE_w1_part_clubs$ac002d5[i] == -2 | SHARE_w1_part_clubs$ac002d6[i] == -2 | SHARE_w1_part_clubs$ac002d7[i] == -2 ) {
+    SHARE_ds_w1$part_clubs[i] = 997 }
+  else if( SHARE_w1_part_clubs$ac002d5[i] == -1 | SHARE_w1_part_clubs$ac002d6[i] == -1 | SHARE_w1_part_clubs$ac002d7[i] == -1 ) {
+    SHARE_ds_w1$part_clubs[i] = 998 }
+}
+
+SHARE_ds_w1$part_clubs <- car::recode(as.vector(SHARE_ds_w1$part_clubs), "NA='999'")
+SHARE_ds_w1$part_clubs <- labelled(SHARE_ds_w1$part_clubs, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=F}
+Categorical_summary(var = SHARE_ds_w1$part_clubs, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SHARE_ds_w1, aes(x=factor(part_clubs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Participation in any club/group") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=F}
+
+```
+
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+  
+* Name: `ac002d5`
+* Label: `activities last month: sport/social/other club`
+* Categories:
+    + `0 = not selected`
+    + `1 = selected`
+* Missings:
+    + `-2 = refusal`
+    + `-1 = don't know`
+
+* Name: `ac002d6`
+* Label: `activities last month: taken part religious organization`
+* Categories:
+    + `0 = not selected`
+    + `1 = selected`
+* Missings:
+    + `-2 = refusal`
+    + `-1 = don't know`
+    
+* Name: `ac002d7`
+* Label: `activities last month: taken part political/community-rel.org.`
+* Categories:
+    + `0 = not selected`
+    + `1 = selected`
+* Missings:
+    + `-2 = refusal`
+    + `-1 = don't know`
+    
+ 
+```{r assign2, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w2_part_clubs','SHARE.sharew2_rel2-6-0_ac',variables=list('ac002d5','ac002d6','ac002d7'), missings = TRUE)
+SHARE_w2_part_clubs <- opal.execute(o,'SHARE_w2_part_clubs')
+```
+
+```{r local2, echo=F}
+Categorical_summary(var =SHARE_w2_part_clubs$ac002d5, missing_values = NA)
+ggplot(SHARE_w2_part_clubs, aes(x=factor(ac002d5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("activities last month: sport/social/other club") + ylab("Frequency") 
+Categorical_summary(var =SHARE_w2_part_clubs$ac002d6, missing_values = NA)
+ggplot(SHARE_w2_part_clubs, aes(x=factor(ac002d6))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("activities last month: taken part religious organization") + ylab("Frequency") 
+Categorical_summary(var =SHARE_w2_part_clubs$ac002d7, missing_values = NA)
+ggplot(SHARE_w2_part_clubs, aes(x=factor(ac002d7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("activities last month: taken part political/community-rel.org.") + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if ac002d5=1 or ac002d6=1 or ac002d7=1 then 1`
+* `if ac002d5=0 and ac002d6=0 and ac002d7=0 then 0`
+* `-2 into 997`
+* `-1 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2}
+SHARE_ds_w2 <- tibble(id=SHARE_w2_part_clubs$id)
+
+SHARE_w2_part_clubs$ac002d5 <- car::recode(as.vector(SHARE_w2_part_clubs$ac002d5), "NA='-999'")
+SHARE_w2_part_clubs$ac002d6 <- car::recode(as.vector(SHARE_w2_part_clubs$ac002d6), "NA='-999'")
+SHARE_w2_part_clubs$ac002d7 <- car::recode(as.vector(SHARE_w2_part_clubs$ac002d7), "NA='-999'")
+
+SHARE_ds_w2$part_clubs <- c(NA) # I think it is required
+for(i in 1:dim(SHARE_w2_part_clubs)[1]){
+  if( SHARE_w2_part_clubs$ac002d5[i] == 1 | SHARE_w2_part_clubs$ac002d6[i] == 1 | SHARE_w2_part_clubs$ac002d7[i] == 1 ) {
+    SHARE_ds_w2$part_clubs[i] = 1 }
+  else if( SHARE_w2_part_clubs$ac002d5[i] == 0 & SHARE_w2_part_clubs$ac002d6[i] == 0 & SHARE_w2_part_clubs$ac002d7[i] == 0 ) {
+    SHARE_ds_w2$part_clubs[i] = 0 }
+  else if( SHARE_w2_part_clubs$ac002d5[i] == -2 | SHARE_w2_part_clubs$ac002d6[i] == -2 | SHARE_w2_part_clubs$ac002d7[i] == -2 ) {
+    SHARE_ds_w2$part_clubs[i] = 997 }
+  else if( SHARE_w2_part_clubs$ac002d5[i] == -1 | SHARE_w2_part_clubs$ac002d6[i] == -1 | SHARE_w2_part_clubs$ac002d7[i] == -1 ) {
+    SHARE_ds_w2$part_clubs[i] = 998 }
+}
+
+SHARE_ds_w2$part_clubs <- car::recode(as.vector(SHARE_ds_w2$part_clubs), "NA='999'")
+SHARE_ds_w2$part_clubs <- labelled(SHARE_ds_w2$part_clubs, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2, echo=F}
+Categorical_summary(var = SHARE_ds_w2$part_clubs, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SHARE_ds_w2, aes(x=factor(part_clubs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Participation in any club/group") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2, echo=F}
+
+```
+
+
+
+### Wave 3
+
+Not found.
+
+
+
+
+### Wave 4
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+
+* Name: `ac035d5`
+* Label: `Activities in last year: Gone to a sport, social or other kind of club`
+* Categories:
+    + `0 = not selected`
+    + `1 = selected`
+* Missings:
+    + `-2 = refusal`
+    + `-1 = don't know`
+
+* Name: `ac035d6`
+* Label: `Activities in last year: Taken part in activities of a religious organization`
+* Categories:
+    + `0 = not selected`
+    + `1 = selected`
+* Missings:
+    + `-2 = refusal`
+    + `-1 = don't know`
+    
+* Name: `ac035d7`
+* Label: `Activities in last year: Taken part in a political or community-related organization`
+* Categories:
+    + `0 = not selected`
+    + `1 = selected`
+* Missings:
+    + `-2 = refusal`
+    + `-1 = don't know`
+    
+ 
+```{r assign4, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w4_part_clubs','SHARE.sharew4_rel1-1-1_ac',variables=list('ac035d5','ac035d6','ac035d7'), missings = TRUE)
+```
+
+```{r local4, echo=F}
+SHARE_w4_part_clubs <- opal.execute(o,'SHARE_w4_part_clubs')
+Categorical_summary(var =SHARE_w4_part_clubs$ac035d5, missing_values = NA)
+ggplot(SHARE_w4_part_clubs, aes(x=factor(ac035d5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Activities in last year: Gone to a sport, social or other kind of club") + ylab("Frequency") 
+Categorical_summary(var =SHARE_w4_part_clubs$ac035d6, missing_values = NA)
+ggplot(SHARE_w4_part_clubs, aes(x=factor(ac035d6))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Activities in last year: Taken part in activities of a religious organization") + ylab("Frequency") 
+Categorical_summary(var =SHARE_w4_part_clubs$ac035d7, missing_values = NA)
+ggplot(SHARE_w4_part_clubs, aes(x=factor(ac035d7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Activities in last year: Taken part in a political or community-related organization") + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if ac036_5=1 or ac036_6=1 or ac036_7=1 then 1`
+* `if ac035d5=0 and ac035d6=0 and ac035d7=0 then 0`
+* `-2 into 997`
+* `-1 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo4}
+SHARE_ds_w4 <- tibble(id=SHARE_w4_part_clubs$id)
+
+SHARE_w4_part_clubs$ac035d5 <- car::recode(as.vector(SHARE_w4_part_clubs$ac035d5), "NA='-999'")
+SHARE_w4_part_clubs$ac035d6 <- car::recode(as.vector(SHARE_w4_part_clubs$ac035d6), "NA='-999'")
+SHARE_w4_part_clubs$ac035d7 <- car::recode(as.vector(SHARE_w4_part_clubs$ac035d7), "NA='-999'")
+
+SHARE_ds_w4$part_clubs <- c(NA) # I think it is required
+for(i in 1:dim(SHARE_w4_part_clubs)[1]){
+  if( SHARE_w4_part_clubs$ac035d5[i] == 1 | SHARE_w4_part_clubs$ac035d6[i] == 1 | SHARE_w4_part_clubs$ac035d7[i] == 1 ) {
+    SHARE_ds_w4$part_clubs[i] = 1 }
+  else if( SHARE_w4_part_clubs$ac035d5[i] == 0 & SHARE_w4_part_clubs$ac035d6[i] == 0 & SHARE_w4_part_clubs$ac035d7[i] == 0 ) {
+    SHARE_ds_w4$part_clubs[i] = 0 }
+  else if( SHARE_w4_part_clubs$ac035d5[i] == -2 | SHARE_w4_part_clubs$ac035d6[i] == -2 | SHARE_w4_part_clubs$ac035d7[i] == -2 ) {
+    SHARE_ds_w4$part_clubs[i] = 997 }
+  else if( SHARE_w4_part_clubs$ac035d5[i] == -1 | SHARE_w4_part_clubs$ac035d6[i] == -1 | SHARE_w4_part_clubs$ac035d7[i] == -1 ) {
+    SHARE_ds_w4$part_clubs[i] = 998 }
+}
+
+SHARE_ds_w4$part_clubs <- car::recode(as.vector(SHARE_ds_w4$part_clubs), "NA='999'")
+SHARE_ds_w4$part_clubs <- labelled(SHARE_ds_w4$part_clubs, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript4, echo=F}
+Categorical_summary(var = SHARE_ds_w4$part_clubs, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SHARE_ds_w4, aes(x=factor(part_clubs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Participation in any club/group") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation4, echo=F}
+
+```
+
+
+
+
+
+
+
+### Wave 5
+
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+  
+* Name: `ac035d5`
+* Label: `Activities in last year: Gone to a sport, social or other kind of club`
+* Categories:
+    + `0 = not selected`
+    + `1 = selected`
+* Missings:
+    + `-2 = refusal`
+    + `-1 = don't know`
+    
+* Name: `ac035d7`
+* Label: `Activities in last year: Taken part in a political or community-related organization`
+* Categories:
+    + `0 = not selected`
+    + `1 = selected`
+* Missings:
+    + `-2 = refusal`
+    + `-1 = don't know`
+    
+ 
+```{r assign5, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w5_part_clubs','SHARE.sharew5_rel1-0-0_ac',variables=list('ac035d5','ac035d6','ac035d7'), missings = TRUE)
+## NO VARIABLE ac035d6 !!!
+```
+
+```{r local5, echo=F}
+SHARE_w5_part_clubs <- opal.execute(o,'SHARE_w5_part_clubs')
+Categorical_summary(var =SHARE_w5_part_clubs$ac035d5, missing_values = NA)
+ggplot(SHARE_w5_part_clubs, aes(x=factor(ac035d5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Activities in last year: Gone to a sport, social or other kind of club") + ylab("Frequency")
+Categorical_summary(var =SHARE_w5_part_clubs$ac035d7, missing_values = NA)
+ggplot(SHARE_w5_part_clubs, aes(x=factor(ac035d7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Activities in last year: Taken part in a political or community-related organization") + ylab("Frequency") 
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if ac036d5=1  or ac036d7=1 then 1`
+* `if ac035d5=0 and ac035d7=0 then 0`
+* `-2 into 997`
+* `-1 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo5}
+SHARE_ds_w5 <- tibble(id=SHARE_w5_part_clubs$id)
+
+SHARE_w5_part_clubs$ac035d5 <- car::recode(as.vector(SHARE_w5_part_clubs$ac035d5), "NA='-999'")
+SHARE_w5_part_clubs$ac035d7 <- car::recode(as.vector(SHARE_w5_part_clubs$ac035d7), "NA='-999'")
+
+SHARE_ds_w5$part_clubs <- c(NA) # I think it is required
+for(i in 1:dim(SHARE_w5_part_clubs)[1]){
+  if( SHARE_w5_part_clubs$ac035d5[i] == 1 | SHARE_w5_part_clubs$ac035d7[i] == 1 ) {
+    SHARE_ds_w5$part_clubs[i] = 1 }
+  else if( SHARE_w5_part_clubs$ac035d5[i] == 0 & SHARE_w5_part_clubs$ac035d7[i] == 0 ) {
+    SHARE_ds_w5$part_clubs[i] = 0 }
+  else if( SHARE_w5_part_clubs$ac035d5[i] == -2 | SHARE_w5_part_clubs$ac035d7[i] == -2 ) {
+    SHARE_ds_w5$part_clubs[i] = 997 }
+  else if( SHARE_w5_part_clubs$ac035d5[i] == -1 | SHARE_w5_part_clubs$ac035d7[i] == -1 ) {
+    SHARE_ds_w5$part_clubs[i] = 998 }
+}
+
+SHARE_ds_w5$part_clubs <- car::recode(as.vector(SHARE_ds_w5$part_clubs), "NA='999'")
+SHARE_ds_w5$part_clubs <- labelled(SHARE_ds_w5$part_clubs, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript5, echo=F}
+Categorical_summary(var = SHARE_ds_w5$part_clubs, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+ggplot(SHARE_ds_w5, aes(x=factor(part_clubs))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Participation in any club/group") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation5, echo=F}
+
+```
+
+
+
+
+```{r final, echo=F}
+
+l.hds <- list(w1 = SHARE_ds_w1, w2 = SHARE_ds_w2, w4 = SHARE_ds_w4, w5 = SHARE_ds_w5)
+
+for(name in names(l.hds)) {
+  aux_object <- l.hds[[name]]
+  label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
+  l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  m_name <- paste0("SHARE_m_ds_",name)
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+```
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories.
+
+
+```{r summ}
+
+t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+for (i in seq_along(l.hds)){
+  t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+}
+t.hds[13,] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+             )
+names(t.hds)<-c("val", "label",names(l.hds))
+kable(t.hds)
+
+dbb <- get(paste0("SHARE_m_ds_",names(l.hds)[1]))[,c("id","part_clubs")]
+for(ind in 2:length(l.hds)){
+  dbb <- merge(dbb, get(paste0("SHARE_m_ds_",names(l.hds)[ind]))[,c("id","part_clubs")], by = "id", suffixes = c("", paste0(".",names(l.hds)[ind])), all = T)
+}
+names(dbb) <- c("id", names(l.hds))
+
+v.dbb <- dbb[,2]
+for(ind in 2:length(l.hds)){
+  v.dbb <- paste(v.dbb,dbb[,ind+1],sep="")
+}
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb)
+
+```
+
+
+# Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+<!-- ########################################################## --> 
+<!-- # Save -->
+```{r save, include=FALSE, echo=F}
+
+
+for(index in seq_along(l.hds)){
+  part_clubs <- l.hds[[index]]
+  save(part_clubs, file = paste0(datafolder,names(l.hds)[index],"/part_clubs.RData"))
+}
+
+```
+<!-- ########################################################## --> 
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
