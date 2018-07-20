@@ -1885,6 +1885,59 @@ ggplot(SHARE_ds_w5, aes(x=factor(cont_rel))) + geom_bar(stat="count", width=0.4,
  
  
 
+```{r final, echo=F}
+
+l.hds <- list(w1 = SHARE_ds_w1, w2 = SHARE_ds_w2, w4 = SHARE_ds_w4, w5 = SHARE_ds_w5)
+
+for(name in names(l.hds)) {
+  aux_object <- l.hds[[name]]
+  label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
+  l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  m_name <- paste0("SHARE_m_ds_",name)
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+```
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories.
+
+
+```{r summ}
+
+t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+for (i in seq_along(l.hds)){
+  t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+}
+t.hds[13,] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+             )
+names(t.hds)<-c("val", "label",names(l.hds))
+kable(t.hds)
+
+dbb <- get(paste0("SHARE_m_ds_",names(l.hds)[1]))[,c("id","cont_rel")]
+for(ind in 2:length(l.hds)){
+  dbb <- merge(dbb, get(paste0("SHARE_m_ds_",names(l.hds)[ind]))[,c("id","cont_rel")], by = "id", suffixes = c("", paste0(".",names(l.hds)[ind])), all = T)
+}
+names(dbb) <- c("id", names(l.hds))
+
+v.dbb <- dbb[,2]
+for(ind in 2:length(l.hds)){
+  v.dbb <- paste(v.dbb,dbb[,ind+1],sep="")
+}
+f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+kable(f.dbb)
+
+```
+
+
 ```{r save, echo=FALSE}
 cont_rel <- SHARE_ds_w1
 save(cont_rel, file = "../RData/w1/cont_rel.RData")
