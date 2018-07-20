@@ -18,7 +18,7 @@ output:
 <!-- **R script:** -->
 
 ```{r setup, include=FALSE}
-source("../../setup_iago.r")
+source("../../setup.r")
 ```
 
 <!-- ########################################################## --> 
@@ -481,10 +481,10 @@ The study-specific variable elected to be harmonised is:
 * Description: 
 ```{r assign6, echo=F}
 opal.assign.table.tibble(o, 'ELSA_w6_bereav','ELSA.wave_6_ifs_derived_variables',variables=list('marstat'), missings = TRUE)
+ELSA_w6_bereav <- opal.execute(o,'ELSA_w6_bereav')
 ```
 
 ```{r local6, echo=F}
-ELSA_w6_bereav <- opal.execute(o,'ELSA_w6_bereav')
 vari <- ELSA_w6_bereav$marstat
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
@@ -539,6 +539,71 @@ kable(C)
 
 
 
+#### Study-specific variable description
+
+The study-specific variable elected to be harmonised is:
+    
+
+* Name: `marstat`
+* Label: `marital status - couple1 combined with dimar`
+* Categories: 
+    + `1.0 = married (inc civ pship 06 onwards)`
+    + `2.0 = cohabiting`
+    + `3.0 = single, never married`
+    + `4.0 = widowed`
+    + `5.0 = divorced`
+    + `6.0 = separated`
+
+```{r assign7, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w7_bereav','ELSA.wave7_dv',variables=list('marstat'), missings = TRUE)
+ELSA_w7_bereav <- opal.execute(o,'ELSA_w7_bereav')
+```
+
+```{r local7, echo=F}
+vari <- ELSA_w7_bereav$marstat
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(ELSA_w7_bereav, aes(x=factor(marstat))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("marital status") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To recode the harmonize variable from the study-specific variable it has to be recoded as follows:  
+
+* `4 into 1`
+* `1,2,3,5,6 into 0`
+* `NA into 999`
+
+**R script**
+
+```{r harmo7, echo=F}
+ELSA_ds_w7 <- tibble(id=ELSA_w7_bereav$id)
+ELSA_ds_w7$bereav <- car::recode(as.vector(ELSA_w7_bereav$marstat), "4='1'; 1:3='0'; 5:6='0'; NA='999'")
+ELSA_ds_w7$bereav <- labelled(ELSA_ds_w7$bereav, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript7, echo=F}
+vari <- ELSA_ds_w7$bereav
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+ggplot(ELSA_ds_w7, aes(x=factor(bereav))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Experience of a loss of any close person") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation7, echo=F}
+AfterH <- table(ELSA_ds_w7$bereav)
+BeforeH <- table(ELSA_w7_bereav$marstat, useNA='ifany')
+BeforeH1 <- c(NA)
+BeforeH1[[1]] <- sum(BeforeH[c(1:3,5:6)])
+BeforeH1[[2]] <- BeforeH[[4]]
+C <- rbind(BeforeH1,AfterH)
+colnames(C) <- c("1:3&5:6->0","4->1")
+kable(C)
+```
+
+
+
  
 ```{r save, echo=FALSE}
 bereav <- ELSA_ds_w1
@@ -563,6 +628,11 @@ rm(bereav)
 
 bereav <- ELSA_ds_w6
 save(bereav, file = "../RData/w6/bereav.RData")
+rm(bereav)
+
+
+bereav <- ELSA_ds_w7
+save(bereav, file = "../RData/w7/bereav.RData")
 rm(bereav)
 
 
