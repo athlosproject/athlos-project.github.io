@@ -11,44 +11,25 @@ output:
       collapsed: yes
       smooth_scroll: yes
 ---
-  
+
 <!-- ########################################################## --> 
-
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/ybirthDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/ybirthDS.R')
+```
 
 
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-* Short name: `ybirth`
-* Variable label: `year of birth`
-* Variable description: `Year of birth`
-* Domain: `Socio-demographic and economic characteristics`
-* Value type: `continuous`
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
 
 # Data process
 
-## ELSA
+## England
 
 
 ```{r assign_all, echo=F}
@@ -82,7 +63,7 @@ ELSA_w7_ybirth <- opal.execute(o,'ELSA_w7_ybirth')
 
 **R script:**
 
-```{r global}
+```{r global_harmo}
 
 #We generate a tbl with all the id (join of all the tables by id)
 
@@ -894,13 +875,47 @@ ELSA_m_ds_w7$ybirth <- car::recode(ELSA_m_ds_w7$ybirth, "c(991, 992, 993, 994, 9
 
 
 
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+
+
+```{r summ, echo=F}
+
+l.hds <- list(w1 = ELSA_ds_w1, w2 = ELSA_ds_w2, w3 = ELSA_ds_w3, w4 = ELSA_ds_w4, w5 = ELSA_ds_w5, w6 = ELSA_ds_w6, w7 = ELSA_ds_w7)
+m.hds <- list()
+
+for(name in names(l.hds)) {
+  aux_object <- l.hds[[name]]
+  label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+  l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cont_label)
+  m_name <- paste0("ELSA_m_ds_",name)
+  assign(m_name, aux_object)
+  m.hds[[name]] <- get(paste0("ELSA_m_ds_",name))
+  rm(aux_object)
+}
+
+t.summ <- summary(m.hds[[1]][2])[1:6]
+t.hds <- substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1)
+for (i in seq_along(l.hds)){
+  t.summ <- summary(m.hds[[i]][2])[1:6]
+  t.hds <- cbind(t.hds,as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))))
+}
+t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+
+dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][2]))[[2]],names(l.hds))
+kable(t.hds,caption=ds_label)
+
+
+
+```
 
 
 # Quality estimation
 
 
-Respondents aged 90 or over were coded as missing (-7) and recoded 
-to DK (998) or NA (996).
+Respondents aged 90 or over were coded as missing (-7) and recoded to DK (998) or NA (996).
 
 
 
