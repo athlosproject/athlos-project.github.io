@@ -11,55 +11,29 @@ output:
       collapsed: yes
       smooth_scroll: yes
 ---
-  
-<!-- ########################################################## --> 
 
+<!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/CHARLS/CHARLS_ids.R")
+source("../../setup.r")
+source("../CHARLS_ids.R")
 ```
 <!-- ########################################################## --> 
-
-```{r lab, echo=FALSE}
-ds_label <- "Month of birth"
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/mbirthDS.Rmd'}
 ```
-
-
-# Description of DataSchema variable 
-
-The description of harmonised variable is the following:
-
-
-* Short name: `mbirth`
-* Variable label: `month of birth`
-* Variable description: `Month of birth`
-* Domain: `Socio-demographic and economic characteristics`
-* Value type: `continuous`
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
+```{r global, echo=F}
+source('../../_DS_Rmd/mbirthDS.R')
+```
 
 # Data process
 
-## CHARLS
+## China
 
 
 ### Wave 1 
 
-#### Study-specific variables
+#### Study-specific variable description
 
 
 
@@ -68,6 +42,7 @@ The description of harmonised variable is the following:
 |----------|------------|-|
 | **Label** | `When were You Born:Month` |  `Birth Month` | 
 | **Table name** | `Demographic_Background_wave2` |`demographic_background_wave1`|
+| **Missings** | `0 = do not remember month and day`<br/>`NA` | `0 = do not remember month and day`<br/>`NA` |
 | **Description** |  |  |
 
 
@@ -79,12 +54,12 @@ opal.assign.table.tibble(o, 'CHARLS_w1_mbirth2','CHARLS.demographic_background_w
                          variables=list('ba002_2'), missings = TRUE)
 opal.assign.table.tibble(o, 'CHARLS_w1_id','CHARLS.CHARLS_w1_ids',
                          variables=list('var'), missings = TRUE)
-```
-
-```{r local1, echo=F}
 CHARLS_w2_mbirth2 <- opal.execute(o,'CHARLS_w2_mbirth2')
 CHARLS_w1_mbirth2 <- opal.execute(o,'CHARLS_w1_mbirth2')
 CHARLS_w1_id <- opal.execute(o,'CHARLS_w1_id')
+```
+
+```{r local1, echo=F}
 
 CHARLS_w1_mbirth2$oldid <- CHARLS_w1_mbirth2$id
 CHARLS_w1_mbirth2$id <- CHARLS_ids(ids = CHARLS_w1_mbirth2$oldid)
@@ -130,21 +105,23 @@ CHARLS_w2_mbirth22 <- Add_indiv(old = CHARLS_w2_mbirth2, new = CHARLS_w1_id)
 CHARLS_w1_mbirth$ba002_2_w2 <- CHARLS_w2_mbirth22$ba002_2
 
 vari <- CHARLS_w1_mbirth$ba002_2
-kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
-kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
-ggplot(CHARLS_w1_mbirth, aes(ba002_2)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency")
+vbl_miss <- c(0)
+kable(Categorical_summary(vari, missing_values = vbl_miss)[3], caption = "ba002_2") 
+kable(Categorical_summary(vari, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(filter(CHARLS_w1_mbirth,!vari %in% vbl_miss), aes(ba002_2)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
 vari <- CHARLS_w1_mbirth$ba002_2_w2
-kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
-kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
-ggplot(CHARLS_w1_mbirth, aes(ba002_2_w2)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency")
+vbl_miss <- c(0)
+kable(Categorical_summary(vari, missing_values = vbl_miss)[3], caption = "ba002_2_w2") 
+kable(Categorical_summary(vari, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(filter(CHARLS_w1_mbirth,!vari %in% vbl_miss), aes(ba002_2_w2)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
 The harmonized variable is the same than the study-specific variable from wave 2, but the missing values have to be recoded from the study-specific variable from wave 1 and all other missing data have to be recoded as follows:
 
 * `NA into 999`
-* `0 into 999`
+* `0 into 998`
 
 Year of birth study-specific variable in wave 2 have 77.21% of missing data because is a confirmatory variable of year of birth from wave 1. It means that in wave 2 they ask "BA001_W2_1 We record your birth time is [Birth Time], is it right?" if the answer is yes they don't ask for date of birth and age again, but if their answer is No they ask for the date of birth and age again, in other to correct the mistakes of the study-specific variable from wave 1.
 
@@ -163,7 +140,7 @@ CHARLS_w1_mbirth$mbirth[which(CHARLS_w1_mbirth$mbirth==0)] <- CHARLS_w1_mbirth$b
 
 
 CHARLS_ds_w1 <- tibble(id=CHARLS_w1_mbirth$id)
-CHARLS_ds_w1$mbirth <- car::recode(CHARLS_w1_mbirth$mbirth, "NA=999; 0=999")
+CHARLS_ds_w1$mbirth <- car::recode(CHARLS_w1_mbirth$mbirth, "NA=999; 0=998")
 CHARLS_ds_w1$mbirth <- labelled(CHARLS_ds_w1$mbirth, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
@@ -179,11 +156,11 @@ ggplot(CHARLS_ds_w1, aes(x=factor(mbirth))) + geom_bar(stat="count", width=0.4, 
 #### Validation
 ```{r crosstabulation1, echo=F}
 BeforeH <- table(CHARLS_w1_mbirth$mbirth)
-BeforeH <- c(BeforeH[2:13], sum(BeforeH[1], sum(is.na(CHARLS_w1_mbirth$mbirth))))
+BeforeH <- c(BeforeH[2:13], BeforeH[1], sum(is.na(CHARLS_w1_mbirth$mbirth)))
 AfterH <- table(CHARLS_ds_w1$mbirth)
 C <- rbind(BeforeH,AfterH)
-colnames(C) <- c(names(AfterH)[1:12], "(0,NA)->999")
-C
+colnames(C) <- c(names(AfterH)[1:12],"0->998", "NA->999")
+kable(C)
 ```
 
 
@@ -193,12 +170,13 @@ C
 
 ### Wave 2 
 
-#### Study-specific variables
+#### Study-specific variable description
 
 | **Name** | `ba002_2` |  `ba002_2` |
 |----------|------------|-|-|
 | **Label** | `Birth Month` | `When were You Born:Month` |
 | **Table name** | `demographic_background_wave1` |`Demographic_Background_wave2`|
+| **Missings** | `0 = do not remember month and day`<br/>`NA` | `0 = do not remember month and day`<br/>`NA` |
 | **Description** |  |  |
 
 
@@ -209,12 +187,12 @@ opal.assign.table.tibble(o, 'CHARLS_w2_mbirth2','CHARLS.Demographic_Background_w
                          variables=list('ba002_2'), missings = TRUE)
 opal.assign.table.tibble(o, 'CHARLS_w2_id','CHARLS.CHARLS_w2_ids',
                          variables=list('var'), missings = TRUE)
-```
-
-```{r local2, echo=F}
 CHARLS_w1_mbirth2 <- opal.execute(o,'CHARLS_w1_mbirth2')
 CHARLS_w2_mbirth2 <- opal.execute(o,'CHARLS_w2_mbirth2')
 CHARLS_w2_id <- opal.execute(o,'CHARLS_w2_id')
+```
+
+```{r local2, echo=F}
 
 CHARLS_w1_mbirth2$oldid <- CHARLS_w1_mbirth2$id
 CHARLS_w1_mbirth2$id <- CHARLS_ids(ids = CHARLS_w1_mbirth2$oldid)
@@ -262,20 +240,23 @@ CHARLS_w2_mbirth <- Add_indiv(old = CHARLS_w2_mbirth2, new = CHARLS_w2_id)
 CHARLS_w2_mbirth$ba002_2_w1 <- CHARLS_w1_mbirth$ba002_2
 
 vari <- CHARLS_w2_mbirth$ba002_2_w1
-kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
-kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
-ggplot(CHARLS_w2_mbirth, aes(ba002_2_w1)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency")
+vbl_miss <- c(0)
+kable(Categorical_summary(vari, missing_values = vbl_miss)[3], caption = "ba002_2_w1") 
+kable(Categorical_summary(vari, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(filter(CHARLS_w2_mbirth,!vari %in% vbl_miss), aes(ba002_2_w1)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
 vari <- CHARLS_w2_mbirth$ba002_2
-kable(Categorical_summary(vari, missing_values = NA)[2], caption = ds_label) 
-kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
-ggplot(CHARLS_w2_mbirth, aes(ba002_2)) + geom_histogram(stat="count", fill="steelblue") + xlab("Year of birth") + ylab("Frequency")
+vbl_miss <- c(0)
+kable(Categorical_summary(vari, missing_values = vbl_miss)[3], caption = "ba002_2") 
+kable(Categorical_summary(vari, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(filter(CHARLS_w2_mbirth,!vari %in% vbl_miss), aes(ba002_2)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
 The harmonized variable is the same than the study-specific variable from wave 2, but the missing values have to be recoded from the study-specific variable from wave 1 and all other missing data have to be recoded as follows:
 
 * `NA into 999`
+* `0 into 998`
 
 Year of birth study-specific variable in wave 2 have 77.21% of missing data because is a confirmatory variable of year of birth from wave 1. It means that in wave 2 they ask "BA001_W2_1 We record your birth time is [Birth Time], is it right?" if the answer is yes they don't ask for date of birth and age again, but if their answer is No they ask for the date of birth and age again, in other to correct the mistakes of the study-specific variable from wave 1.
 
@@ -292,7 +273,7 @@ CHARLS_w2_mbirth$mbirth[which(CHARLS_w2_mbirth$mbirth==0)] <- CHARLS_w2_mbirth$b
 
 
 CHARLS_ds_w2 <- tibble(id=CHARLS_w2_mbirth$id)
-CHARLS_ds_w2$mbirth <- car::recode(as.numeric(CHARLS_w2_mbirth$mbirth), "NA=999; 0=999")
+CHARLS_ds_w2$mbirth <- car::recode(as.numeric(CHARLS_w2_mbirth$mbirth), "NA=999; 0=998")
 CHARLS_ds_w2$mbirth <- labelled(CHARLS_ds_w2$mbirth, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
@@ -308,14 +289,50 @@ ggplot(CHARLS_ds_w2, aes(x=factor(mbirth))) + geom_bar(stat="count", width=0.4, 
 #### Validation
 ```{r crosstabulation2, echo=F}
 BeforeH <- table(CHARLS_w2_mbirth$mbirth)
-BeforeH <- c(BeforeH[2:13], sum(BeforeH[1], sum(is.na(CHARLS_w2_mbirth$mbirth))))
+BeforeH <- c(BeforeH[2:13], BeforeH[1], sum(is.na(CHARLS_w2_mbirth$mbirth)))
 AfterH <- table(CHARLS_ds_w2$mbirth)
 C <- rbind(BeforeH,AfterH)
-colnames(C) <- c(names(AfterH)[1:12], "(0,NA)->999")
-C
+colnames(C) <- c(names(AfterH)[1:12], "0->998","NA->999")
+kable(C)
 ```
 
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
 
+
+
+
+
+```{r summ, echo=F}
+
+l.hds <- list(w1 = CHARLS_ds_w1, w2 = CHARLS_ds_w2)
+m.hds <- list()
+
+for(name in names(l.hds)) {
+  aux_object <- l.hds[[name]]
+  label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+  l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cont_label)
+  m_name <- paste0("CHARLS_m_ds_",name)
+  assign(m_name, aux_object)
+  m.hds[[name]] <- get(paste0("CHARLS_m_ds_",name))
+  rm(aux_object)
+}
+
+t.summ <- summary(m.hds[[1]][2])[1:6]
+t.hds <- substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1)
+for (i in seq_along(l.hds)){
+  t.summ <- summary(m.hds[[i]][2])[1:6]
+  t.hds <- cbind(t.hds,as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))))
+}
+t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+
+dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][2]))[[2]],names(l.hds))
+kable(t.hds,caption=ds_label)
+
+
+
+```
 
 
 # Quality estimation
@@ -323,7 +340,7 @@ No comments.
 
 
 
-“1st July” is imputed because month of birth is not available.
+?1st July? is imputed because month of birth is not available.
 
 For the follow-up wave, we assume the computed variable is the same as for baseline. 
 
