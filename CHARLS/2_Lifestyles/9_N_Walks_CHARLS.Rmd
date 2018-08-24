@@ -15,7 +15,7 @@ output:
 <!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
 ```{r setup, include=FALSE}
-source("../../setup_iago.r")
+source("../../setup.r")
 source("../../CHARLS/CHARLS_ids.R")
 ```
 <!-- ########################################################## --> 
@@ -82,9 +82,9 @@ CHARLS_w1 <- Add_indiv(old = CHARLS_w1_2, new = CHARLS_w1_id)
 
 ```{r local w1, echo=F}
 vbl <- CHARLS_w1$da052_3_
-kable(Continuous_summary(vbl, missing_values = NA)[3], caption = label(vbl)) 
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "da052_3_") 
 pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
-ggplot(CHARLS_w1, aes(da052_3_)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency") + xlim(0,7.5)
+ggplot(CHARLS_w1, aes(da052_3_)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -107,7 +107,7 @@ vbl <- CHARLS_ds_w1$n_walks
 kable(Continuous_summary(var = vbl, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
 kable(Continuous_summary(vbl, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(CHARLS_ds_w1, aes(n_walks)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,30) 
+ggplot(CHARLS_ds_w1, aes(n_walks)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab(ds_label) + ylab("Frequency")
 ```
 
 #### Validation
@@ -161,9 +161,9 @@ CHARLS_w2 <- Add_indiv(old = CHARLS_w2_2, new = CHARLS_w2_id)
 
 ```{r local w2, echo=F}
 vbl <- CHARLS_w2$da052_3_
-kable(Continuous_summary(vbl, missing_values = NA)[3], caption = label(vbl)) 
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "da052_3_") 
 pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
-ggplot(CHARLS_w2, aes(da052_3_)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency") + xlim(0,7.5)
+ggplot(CHARLS_w2, aes(da052_3_)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -186,7 +186,7 @@ vbl <- CHARLS_ds_w2$n_walks
 kable(Continuous_summary(var = vbl, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
 kable(Continuous_summary(vbl, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(CHARLS_ds_w2, aes(n_walks)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,30)
+ggplot(CHARLS_ds_w2, aes(n_walks)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab(ds_label) + ylab("Frequency")
 ```
 
 #### Validation
@@ -194,34 +194,104 @@ ggplot(CHARLS_ds_w2, aes(n_walks)) + geom_histogram(stat="count", fill="steelblu
 ```
 
 
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
 
-```{r final, echo=F}
+```{r helpfunctions, echo=F}
 
-l.hds <- list(w1 = CHARLS_ds_w1, w2 = CHARLS_ds_w2)
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
 
-for(name in names(l.hds)) {
-  label(l.hds[[name]][[2]]) <- ds_label # Text value assigned at the DS description, at the top
-  l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
 }
+
+# Creation of summary tables for continuous data
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][2])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[2]],missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][2])[1:6]
+    # Next, missing/no-missing values
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[2]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][2]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
+}
+
+```
+
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+charls.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"))
+
+# Consider only harmonised waves
+l.hds <- lapply(charls.cw, function(wname) if(exists(paste0("CHARLS_ds_",wname[1]))){wname = list(get(paste0("CHARLS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing summaries
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name="n_walks")
+}
+
+
 
 ```
 
 
 # Quality estimation
 [Comments on the quality of the new harmonised variable.]
-
-
-<!-- ########################################################## --> 
-<!-- # Save -->
-```{r save, include=FALSE, echo=F}
-
-
-for(index in seq_along(l.hds)){
-  n_walks <- l.hds[[index]]
-  save(n_walks, file = paste0(datafolder,names(l.hds)[index],"/n_walks.RData"))
-}
-
-```
 
 
 

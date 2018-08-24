@@ -15,7 +15,7 @@ output:
 <!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
 ```{r setup, include=FALSE}
-source("../../setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
 <!-- # Loading DS description -->
@@ -38,36 +38,30 @@ source('../../_DS_Rmd/current_smokingDS.R')
 
 #### Study-specific variable description
 
-The study-specific variables elected to be harmonised is:
 
+| **Name** | `q3001_used_tobac` | `q3002_use_tobaco` |
+|-|-|-|
+| **Label** | `Used tobaco?` | `Use tobaco?` |
+| **Table name** | `Courage_Finland_w1` | `Courage_Finland_w1` |
+| **Categories:**| `1 = YES` <br/> `2 = NO` | `1 = YES, DAILY` <br/> `2 = YES, NOT DAILY` <br/> `3 = NOT AT ALL` |
+| **Missings:**| `NA` | `NA` |
+| **Description** |  |  |
 
-* Name: `q3001_used_tobac`
-* Label: `Used tobaco?`
-* Categories:
-   + `1 = YES` 
-   + `2 = NO` 
-* Missings
-   + `NA`
-
-* Name: `q3002_use_tobaco`
-* Label: `Use tobaco?`
-* Categories:
-   + `1 = YES, DAILY`
-   + `2 = YES, NOT DAILY`
-   + `3 = NOT AT ALL` 
-* Missings
-   + `NA`
-
-```{r assign finland w1, echo=F}
-opal.assign.table.tibble(o, 'COURAGE_finland_w1_current_smoking','Courage.Courage_Finland_w1', variables=list('q3001_used_tobac','q3002_use_tobaco'), missings = TRUE)
+```{r assign fin w1, echo=F}
+opal.assign.table.tibble(o, 'COURAGE_fin_w1','Courage.Courage_Finland_w1', variables=list('q3001_used_tobac','q3002_use_tobaco'), missings = TRUE)
+COURAGE_fin_w1 <- opal.execute(o,'COURAGE_fin_w1')
 ```
 
-```{r local finland w1, echo=F}
-COURAGE_finland_w1_current_smoking <- opal.execute(o,'COURAGE_finland_w1_current_smoking')
-Categorical_summary(COURAGE_finland_w1_current_smoking$q3001_used_tobac)
-ggplot(COURAGE_finland_w1_current_smoking, aes(x=factor(q3001_used_tobac))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
-Categorical_summary(COURAGE_finland_w1_current_smoking$q3002_use_tobaco)
-ggplot(COURAGE_finland_w1_current_smoking, aes(x=factor(q3002_use_tobaco))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```{r local fin w1, echo=F}
+vbl <- COURAGE_fin_w1$q3001_used_tobac
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(COURAGE_fin_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(COURAGE_fin_w1, aes(x=factor(q3001_used_tobac))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_fin_w1$q3002_use_tobaco
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(COURAGE_fin_w1)[3])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(COURAGE_fin_w1, aes(x=factor(q3002_use_tobaco))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -75,30 +69,33 @@ ggplot(COURAGE_finland_w1_current_smoking, aes(x=factor(q3002_use_tobaco))) + ge
 To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
 
 * `q3001_used_tobac=1 & q3002_use_tobaco=1,2 into 1` 
-* `q3001_used_tobac=1 & q3002_use_tobaco=3 into 0`
+* `q3002_use_tobaco=3 into 0`
 * `q3001_used_tobac=2 into 0`
 * `NA into 999` 
 
-```{r harmo finland w1}
-COURAGE_ds_fin_w1 <- tibble(id=COURAGE_finland_w1_current_smoking$id)
+```{r harmo fin w1}
+
+COURAGE_ds_fin_w1 <- tibble(id=COURAGE_fin_w1$id)
 COURAGE_ds_fin_w1$current_smoking <- rep(999,length(COURAGE_ds_fin_w1$id))
-COURAGE_ds_fin_w1$current_smoking[COURAGE_finland_w1_current_smoking$q3001_used_tobac==2|(COURAGE_finland_w1_current_smoking$q3001_used_tobac==1&COURAGE_finland_w1_current_smoking$q3002_use_tobaco==3)]<-0
-COURAGE_ds_fin_w1$current_smoking[COURAGE_finland_w1_current_smoking$q3001_used_tobac==1&(COURAGE_finland_w1_current_smoking$q3002_use_tobaco==1|COURAGE_finland_w1_current_smoking$q3002_use_tobaco==2)]<-1
-#COURAGE_ds_fin_w1$current_smoking <- Recode(COURAGE_finland_w1_current_smoking$q3001_used_tobac, "1 = '1';2 = '0';NA = '999'")
-COURAGE_ds_fin_w1$current_smoking <- labelled(COURAGE_ds_fin_w1$current_smoking, labels = c(No=0, Yes=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+COURAGE_ds_fin_w1$current_smoking[which(COURAGE_fin_w1$q3001_used_tobac==2 | (COURAGE_fin_w1$q3002_use_tobaco==3))]<-0
+COURAGE_ds_fin_w1$current_smoking[which(COURAGE_fin_w1$q3001_used_tobac==1 & (COURAGE_fin_w1$q3002_use_tobaco==1 | COURAGE_fin_w1$q3002_use_tobaco==2))]<-1
+
 ```
 
 #### Statistical description of the new harmonised variable
-```{r descript finland w1, echo=F}
-Categorical_summary(var = COURAGE_ds_fin_w1$current_smoking, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+```{r descript fin w1, echo=F}
+vbl <- COURAGE_ds_fin_w1$current_smoking
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(COURAGE_ds_fin_w1, aes(x=factor(current_smoking))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation finland w1, echo=F}
+```{r crosstabulation fin w1, echo=F}
 AfterH <- table(COURAGE_ds_fin_w1$current_smoking)
-X <- c(sum(na.omit(COURAGE_finland_w1_current_smoking$q3001_used_tobac==2|(COURAGE_finland_w1_current_smoking$q3001_used_tobac==1&COURAGE_finland_w1_current_smoking$q3002_use_tobaco==3))),sum(na.omit(COURAGE_finland_w1_current_smoking$q3001_used_tobac==1&(COURAGE_finland_w1_current_smoking$q3002_use_tobaco==1|COURAGE_finland_w1_current_smoking$q3002_use_tobaco==2))))
-BeforeH<- c(X[1:2],sum(is.na(COURAGE_finland_w1_current_smoking$q3001_used_tobac)))
+X <- c(sum(na.omit(COURAGE_fin_w1$q3001_used_tobac==2|(COURAGE_fin_w1$q3001_used_tobac==1&COURAGE_fin_w1$q3002_use_tobaco==3))),sum(na.omit(COURAGE_fin_w1$q3001_used_tobac==1&(COURAGE_fin_w1$q3002_use_tobaco==1|COURAGE_fin_w1$q3002_use_tobaco==2))))
+BeforeH<- c(X[1:2],sum(is.na(COURAGE_fin_w1$q3001_used_tobac)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("q3001_used_tobac=2|(q3001_used_tobac=1&q3002_use_tobaco=3)->0","q3001_used_tobac=1&q3002_use_tobaco=1,2->1","NA->999") 
 kable(C)
@@ -115,36 +112,31 @@ kable(C)
 
 #### Study-specific variable description
 
-The study-specific variables elected to be harmonised is:
 
+| **Name** | `q3001_used_tobac` | `q3002_use_tobaco` |
+|-|-|-|
+| **Label** | `Used tobaco?` | `Use tobaco?` |
+| **Table name** | `Courage_Poland_w1` | `Courage_Poland_w1` |
+| **Categories:**| `1 = YES` <br/> `2 = NO` | `1 = YES, DAILY` <br/> `2 = YES, NOT DAILY` <br/> `3 = NOT AT ALL` |
+| **Missings:**| `NA` | `NA` |
+| **Description** |  |  |
 
-* Name: `q3001_used_tobac`
-* Label: `Used tobaco?`
-* Categories:
-   + `1 = YES` 
-   + `2 = NO` 
-* Missings
-   + `NA`
-
-* Name: `q3002_use_tobaco`
-* Label: `Use tobaco?`
-* Categories:
-   + `1 = YES, DAILY`
-   + `2 = YES, NOT DAILY`
-   + `3 = NOT AT ALL` 
-* Missings
-   + `NA`
-
-```{r assign poland w1, echo=F}
-opal.assign.table.tibble(o, 'COURAGE_poland_w1_current_smoking','Courage.Courage_Poland_w1', variables=list('q3001_used_tobac','q3002_use_tobaco'), missings = TRUE)
+ 
+```{r assign pol w1, echo=F}
+opal.assign.table.tibble(o, 'COURAGE_pol_w1','Courage.Courage_Poland_w1', variables=list('q3001_used_tobac','q3002_use_tobaco'), missings = TRUE)
+COURAGE_pol_w1 <- opal.execute(o,'COURAGE_pol_w1')
 ```
 
-```{r local poland w1, echo=F}
-COURAGE_poland_w1_current_smoking <- opal.execute(o,'COURAGE_poland_w1_current_smoking')
-Categorical_summary(COURAGE_poland_w1_current_smoking$q3001_used_tobac)
-ggplot(COURAGE_poland_w1_current_smoking, aes(x=factor(q3001_used_tobac))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
-Categorical_summary(COURAGE_poland_w1_current_smoking$q3002_use_tobaco)
-ggplot(COURAGE_poland_w1_current_smoking, aes(x=factor(q3002_use_tobaco))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```{r local pol w1, echo=F}
+vbl <- COURAGE_pol_w1$q3001_used_tobac
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(COURAGE_pol_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(COURAGE_pol_w1, aes(x=factor(q3001_used_tobac))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_pol_w1$q3002_use_tobaco
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(COURAGE_pol_w1)[3])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(COURAGE_pol_w1, aes(x=factor(q3002_use_tobaco))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -152,30 +144,31 @@ ggplot(COURAGE_poland_w1_current_smoking, aes(x=factor(q3002_use_tobaco))) + geo
 To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
 
 * `q3001_used_tobac=1 & q3002_use_tobaco=1,2 into 1` 
-* `q3001_used_tobac=1 & q3002_use_tobaco=3 into 0`
+* `q3002_use_tobaco=3 into 0`
 * `q3001_used_tobac=2 into 0`
 * `NA into 999` 
 
-```{r harmo poland w1}
-COURAGE_ds_pol_w1 <- tibble(id=COURAGE_poland_w1_current_smoking$id)
+```{r harmo pol w1}
+COURAGE_ds_pol_w1 <- tibble(id=COURAGE_pol_w1$id)
 COURAGE_ds_pol_w1$current_smoking <- rep(999,length(COURAGE_ds_pol_w1$id))
-COURAGE_ds_pol_w1$current_smoking[COURAGE_poland_w1_current_smoking$q3001_used_tobac==2|(COURAGE_poland_w1_current_smoking$q3001_used_tobac==1&COURAGE_poland_w1_current_smoking$q3002_use_tobaco==3)]<-0
-COURAGE_ds_pol_w1$current_smoking[COURAGE_poland_w1_current_smoking$q3001_used_tobac==1&(COURAGE_poland_w1_current_smoking$q3002_use_tobaco==1|COURAGE_poland_w1_current_smoking$q3002_use_tobaco==2)]<-1
-#COURAGE_ds_pol_w1$current_smoking <- Recode(COURAGE_poland_w1_current_smoking$q3001_used_tobac, "1 = '1';2 = '0';NA = '999'")
-COURAGE_ds_pol_w1$current_smoking <- labelled(COURAGE_ds_pol_w1$current_smoking, labels = c(No=0, Yes=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+COURAGE_ds_pol_w1$current_smoking[which(COURAGE_pol_w1$q3001_used_tobac==2|(COURAGE_pol_w1$q3002_use_tobaco==3))]<-0
+COURAGE_ds_pol_w1$current_smoking[which(COURAGE_pol_w1$q3001_used_tobac==1&(COURAGE_pol_w1$q3002_use_tobaco==1|COURAGE_pol_w1$q3002_use_tobaco==2))]<-1
 ```
 
 #### Statistical description of the new harmonised variable
-```{r descript poland w1, echo=F}
-Categorical_summary(var = COURAGE_ds_pol_w1$current_smoking, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+```{r descript pol w1, echo=F}
+vbl <- COURAGE_ds_pol_w1$current_smoking
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(COURAGE_ds_pol_w1, aes(x=factor(current_smoking))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation poland w1, echo=F}
+```{r crosstabulation pol w1, echo=F}
 AfterH <- table(COURAGE_ds_pol_w1$current_smoking)
-X <- c(sum(na.omit(COURAGE_poland_w1_current_smoking$q3001_used_tobac==2|(COURAGE_poland_w1_current_smoking$q3001_used_tobac==1&COURAGE_poland_w1_current_smoking$q3002_use_tobaco==3))),sum(na.omit(COURAGE_poland_w1_current_smoking$q3001_used_tobac==1&(COURAGE_poland_w1_current_smoking$q3002_use_tobaco==1|COURAGE_poland_w1_current_smoking$q3002_use_tobaco==2))))
-BeforeH<- c(X[1:2],sum(is.na(COURAGE_poland_w1_current_smoking$q3001_used_tobac)))
+X <- c(sum(na.omit(COURAGE_pol_w1$q3001_used_tobac==2|(COURAGE_pol_w1$q3001_used_tobac==1&COURAGE_pol_w1$q3002_use_tobaco==3))),sum(na.omit(COURAGE_pol_w1$q3001_used_tobac==1&(COURAGE_pol_w1$q3002_use_tobaco==1|COURAGE_pol_w1$q3002_use_tobaco==2))))
+BeforeH<- c(X[1:2],sum(is.na(COURAGE_pol_w1$q3001_used_tobac)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("q3001_used_tobac=2|(q3001_used_tobac=1&q3002_use_tobaco=3)->0","q3001_used_tobac=1&q3002_use_tobaco=1,2->1","NA->999") 
 kable(C)
@@ -189,26 +182,24 @@ kable(C)
 
 #### Study-specific variable description
 
-The study-specific variables elected to be harmonised is:
+| **Name** | `q3002_use_tobaco_s1` |
+|-|-|
+| **Label** | `Use tobaco?` |
+| **Table name** | `Courage_Poland_w2` |
+| **Categories:**| `1 = YES, DAILY` <br/> `2 = YES, NOT DAILY` <br/> `3 = NOT AT ALL` |
+| **Missings:**| `NA` |
+| **Description** |  |
 
-
-* Name: `q3002_use_tobaco_s1`
-* Label: `Use tobaco?`
-* Categories:
-   + `1 = YES, DAILY`
-   + `2 = YES, NOT DAILY`
-   + `3 = NOT AT ALL` 
-* Missings
-   + `NA`
-
-```{r assign poland w2, echo=F}
-opal.assign.table.tibble(o, 'COURAGE_poland_w2_current_smoking','Courage.Courage_Poland_w2', variables=list('q3002_use_tobaco_s1'), missings = TRUE)
+```{r assign pol w2, echo=F}
+opal.assign.table.tibble(o, 'COURAGE_pol_w2','Courage.Courage_Poland_w2', variables=list('q3002_use_tobaco_s1'), missings = TRUE)
+COURAGE_pol_w2 <- opal.execute(o,'COURAGE_pol_w2')
 ```
 
-```{r local poland w2, echo=F}
-COURAGE_poland_w2_current_smoking <- opal.execute(o,'COURAGE_poland_w2_current_smoking')
-Categorical_summary(COURAGE_poland_w2_current_smoking$q3002_use_tobaco_s1)
-ggplot(COURAGE_poland_w2_current_smoking, aes(x=factor(q3002_use_tobaco_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```{r local pol w2, echo=F}
+vbl <- COURAGE_pol_w2$q3002_use_tobaco_s1
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(COURAGE_pol_w2)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(COURAGE_pol_w2, aes(x=factor(q3002_use_tobaco_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -219,23 +210,26 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `3 into 0`
 * `NA into 999` 
 
-```{r harmo poland w2}
-COURAGE_ds_pol_w2 <- tibble(id=COURAGE_poland_w2_current_smoking$id)
-COURAGE_ds_pol_w2$current_smoking <- Recode(COURAGE_poland_w2_current_smoking$q3002_use_tobaco_s1, "1 = '1';2 = '1';3 = '0';NA = '999'")
+```{r harmo pol w2}
+COURAGE_ds_pol_w2 <- tibble(id=COURAGE_pol_w2$id)
+COURAGE_ds_pol_w2$current_smoking <- Recode(COURAGE_pol_w2$q3002_use_tobaco_s1, "1 = '1';2 = '1';3 = '0';NA = '999'")
 COURAGE_ds_pol_w2$current_smoking <- labelled(COURAGE_ds_pol_w2$current_smoking, labels = c(No=0, Yes=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
 ```
 
 #### Statistical description of the new harmonised variable
-```{r descript poland w2, echo=F}
-Categorical_summary(var = COURAGE_ds_pol_w2$current_smoking, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+```{r descript pol w2, echo=F}
+vbl <- COURAGE_ds_pol_w2$current_smoking
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(COURAGE_ds_pol_w2, aes(x=factor(current_smoking))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation poland w2, echo=F}
+```{r crosstabulation pol w2, echo=F}
 AfterH <- table(COURAGE_ds_pol_w2$current_smoking)
-X <- table(COURAGE_poland_w2_current_smoking$q3002_use_tobaco_s1)
-BeforeH<- c(sum(X[3]),sum(X[1:2]),sum(is.na(COURAGE_poland_w2_current_smoking$q3002_use_tobaco_s1)))
+X <- table(COURAGE_pol_w2$q3002_use_tobaco_s1)
+BeforeH<- c(sum(X[3]),sum(X[1:2]),sum(is.na(COURAGE_pol_w2$q3002_use_tobaco_s1)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("3->0","1,2->1","NA->999") 
 kable(C)
@@ -249,36 +243,31 @@ kable(C)
 
 #### Study-specific variable description
 
-The study-specific variables elected to be harmonised is:
 
+| **Name** | `q3001_used_tobac` | `q3002_use_tobaco` |
+|-|-|-|
+| **Label** | `Used tobaco?` | `Use tobaco?` |
+| **Table name** | `Courage_Spain_w1` | `Courage_Spain_w1` |
+| **Categories:**| `1 = YES` <br/> `2 = NO` | `1 = YES, DAILY` <br/> `2 = YES, NOT DAILY` <br/> `3 = NOT AT ALL` |
+| **Missings:**| `NA` | `NA` |
+| **Description** |  |  |
 
-* Name: `q3001_used_tobac`
-* Label: `Used tobaco?`
-* Categories:
-   + `1 = YES` 
-   + `2 = NO` 
-* Missings
-   + `NA`
-
-* Name: `q3002_use_tobaco`
-* Label: `Use tobaco?`
-* Categories:
-   + `1 = YES, DAILY`
-   + `2 = YES, NOT DAILY`
-   + `3 = NOT AT ALL` 
-* Missings
-   + `NA`
 
 ```{r assign spain w1, echo=F}
-opal.assign.table.tibble(o, 'COURAGE_spain_w1_current_smoking','Courage.Courage_Spain_w1', variables=list('q3001_used_tobac','q3002_use_tobaco'), missings = TRUE)
+opal.assign.table.tibble(o, 'COURAGE_spain_w1','Courage.Courage_Spain_w1', variables=list('q3001_used_tobac','q3002_use_tobaco'), missings = TRUE)
+COURAGE_spain_w1 <- opal.execute(o,'COURAGE_spain_w1')
 ```
 
 ```{r local spain w1, echo=F}
-COURAGE_spain_w1_current_smoking <- opal.execute(o,'COURAGE_spain_w1_current_smoking')
-Categorical_summary(COURAGE_spain_w1_current_smoking$q3001_used_tobac)
-ggplot(COURAGE_spain_w1_current_smoking, aes(x=factor(q3001_used_tobac))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
-Categorical_summary(COURAGE_spain_w1_current_smoking$q3002_use_tobaco)
-ggplot(COURAGE_spain_w1_current_smoking, aes(x=factor(q3002_use_tobaco))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+vbl <- COURAGE_spain_w1$q3001_used_tobac
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(COURAGE_spain_w1)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(COURAGE_spain_w1, aes(x=factor(q3001_used_tobac))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_spain_w1$q3002_use_tobaco
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(COURAGE_spain_w1)[3])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(COURAGE_spain_w1, aes(x=factor(q3002_use_tobaco))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -286,30 +275,32 @@ ggplot(COURAGE_spain_w1_current_smoking, aes(x=factor(q3002_use_tobaco))) + geom
 To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
 
 * `q3001_used_tobac=1 & q3002_use_tobaco=1,2 into 1` 
-* `q3001_used_tobac=1 & q3002_use_tobaco=3 into 0`
+* `q3002_use_tobaco=3 into 0`
 * `q3001_used_tobac=2 into 0`
 * `NA into 999` 
 
 ```{r harmo spain w1}
-COURAGE_ds_spain_w1 <- tibble(id=COURAGE_spain_w1_current_smoking$id)
+COURAGE_ds_spain_w1 <- tibble(id=COURAGE_spain_w1$id)
 COURAGE_ds_spain_w1$current_smoking <- rep(999,length(COURAGE_ds_spain_w1$id))
-COURAGE_ds_spain_w1$current_smoking[COURAGE_spain_w1_current_smoking$q3001_used_tobac==2|(COURAGE_spain_w1_current_smoking$q3001_used_tobac==1&COURAGE_spain_w1_current_smoking$q3002_use_tobaco==3)]<-0
-COURAGE_ds_spain_w1$current_smoking[COURAGE_spain_w1_current_smoking$q3001_used_tobac==1&(COURAGE_spain_w1_current_smoking$q3002_use_tobaco==1|COURAGE_spain_w1_current_smoking$q3002_use_tobaco==2)]<-1
-#COURAGE_ds_spain_w1$current_smoking <- Recode(COURAGE_spain_w1_current_smoking$q3001_used_tobac, "1 = '1';2 = '0';NA = '999'")
-COURAGE_ds_spain_w1$current_smoking <- labelled(COURAGE_ds_spain_w1$current_smoking, labels = c(No=0, Yes=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+COURAGE_ds_spain_w1$current_smoking[which(COURAGE_spain_w1$q3001_used_tobac==2|(COURAGE_spain_w1$q3002_use_tobaco==3))]<-0
+COURAGE_ds_spain_w1$current_smoking[which(COURAGE_spain_w1$q3001_used_tobac==1&(COURAGE_spain_w1$q3002_use_tobaco==1|COURAGE_spain_w1$q3002_use_tobaco==2))]<-1
+
 ```
 
 #### Statistical description of the new harmonised variable
 ```{r descript spain w1, echo=F}
-Categorical_summary(var = COURAGE_ds_spain_w1$current_smoking, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+vbl <- COURAGE_ds_spain_w1$current_smoking
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(COURAGE_ds_spain_w1, aes(x=factor(current_smoking))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 ```
 
 #### Validation
 ```{r crosstabulation spain w1, echo=F}
 AfterH <- table(COURAGE_ds_spain_w1$current_smoking)
-X <- c(sum(na.omit(COURAGE_spain_w1_current_smoking$q3001_used_tobac==2|(COURAGE_spain_w1_current_smoking$q3001_used_tobac==1&COURAGE_spain_w1_current_smoking$q3002_use_tobaco==3))),sum(na.omit(COURAGE_spain_w1_current_smoking$q3001_used_tobac==1&(COURAGE_spain_w1_current_smoking$q3002_use_tobaco==1|COURAGE_spain_w1_current_smoking$q3002_use_tobaco==2))))
-BeforeH<- c(X[1:2],sum(is.na(COURAGE_spain_w1_current_smoking$q3001_used_tobac)))
+X <- c(sum(na.omit(COURAGE_spain_w1$q3001_used_tobac==2|(COURAGE_spain_w1$q3001_used_tobac==1&COURAGE_spain_w1$q3002_use_tobaco==3))),sum(na.omit(COURAGE_spain_w1$q3001_used_tobac==1&(COURAGE_spain_w1$q3002_use_tobaco==1|COURAGE_spain_w1$q3002_use_tobaco==2))))
+BeforeH<- c(X[1:2],sum(is.na(COURAGE_spain_w1$q3001_used_tobac)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("q3001_used_tobac=2|(q3001_used_tobac=1&q3002_use_tobaco=3)->0","q3001_used_tobac=1&q3002_use_tobaco=1,2->1","NA->999") 
 kable(C)
@@ -324,37 +315,30 @@ kable(C)
 
 #### Study-specific variable description
 
-The study-specific variables elected to be harmonised is:
+| **Name** | `q3001_used_tobac_s1` | `q3002_use_tobaco_s1` |
+|-|-|-|
+| **Label** | `Used tobaco?` | `Use tobaco?` |
+| **Table name** | `Courage_Spain_w2_1` | `Courage_Spain_w2_1` |
+| **Categories:**| `1 = YES` <br/> `2 = NO` | `1 = YES, DAILY` <br/> `2 = YES, NOT DAILY` <br/> `3 = NOT AT ALL` <br/> `4 = The participant said that he/she had never smoked before` |
+| **Missings:**| `NA` | `NA` |
+| **Description** |  |  |
 
-
-* Name: `q3001_used_tobac_s1`
-* Label: `Used tobaco?`
-* Categories:
-   + `1 = YES` 
-   + `2 = NO` 
-* Missings
-   + `NA`
-
-* Name: `q3002_use_tobaco_s1`
-* Label: `Use tobaco?`
-* Categories:
-   + `1 = YES, DAILY`
-   + `2 = YES, NOT DAILY`
-   + `3 = NOT AT ALL`
-   + `4 = The participant said that he/she had never smoked before`
-* Missings
-   + `NA`
 
 ```{r assign spain w2, echo=F}
-opal.assign.table.tibble(o, 'COURAGE_spain_w2_current_smoking','Courage.Courage_Spain_w2_1', variables=list('q3001_used_tobac_s1','q3002_use_tobaco_s1'), missings = TRUE)
+opal.assign.table.tibble(o, 'COURAGE_spain_w2','Courage.Courage_Spain_w2_1', variables=list('q3001_used_tobac_s1','q3002_use_tobaco_s1'), missings = TRUE)
+COURAGE_spain_w2 <- opal.execute(o,'COURAGE_spain_w2')
 ```
 
 ```{r local spain w2, echo=F}
-COURAGE_spain_w2_current_smoking <- opal.execute(o,'COURAGE_spain_w2_current_smoking')
-Categorical_summary(COURAGE_spain_w2_current_smoking$q3001_used_tobac_s1)
-ggplot(COURAGE_spain_w2_current_smoking, aes(x=factor(q3001_used_tobac_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
-Categorical_summary(COURAGE_spain_w2_current_smoking$q3002_use_tobaco_s1)
-ggplot(COURAGE_spain_w2_current_smoking, aes(x=factor(q3002_use_tobaco_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+vbl <- COURAGE_spain_w2$q3001_used_tobac_s1
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(COURAGE_spain_w2)[2])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(COURAGE_spain_w2, aes(x=factor(q3001_used_tobac_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_spain_w2$q3002_use_tobaco_s1
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(COURAGE_spain_w2)[3])
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(COURAGE_spain_w2, aes(x=factor(q3002_use_tobaco_s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -362,30 +346,32 @@ ggplot(COURAGE_spain_w2_current_smoking, aes(x=factor(q3002_use_tobaco_s1))) + g
 To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
 
 * `q3001_used_tobac_s1=1 & q3002_use_tobaco_s1=1,2 into 1` 
-* `q3001_used_tobac_s1=1 & q3002_use_tobaco_s1=3,4 into 0`
+* `q3002_use_tobaco_s1=3,4 into 0`
 * `q3001_used_tobac_s1=2 into 0`
 * `NA into 999` 
 
 ```{r harmo spain w2}
-COURAGE_ds_spain_w2 <- tibble(id=COURAGE_spain_w2_current_smoking$id)
+COURAGE_ds_spain_w2 <- tibble(id=COURAGE_spain_w2$id)
 COURAGE_ds_spain_w2$current_smoking <- rep(999,length(COURAGE_ds_spain_w2$id))
-COURAGE_ds_spain_w2$current_smoking[COURAGE_spain_w2_current_smoking$q3001_used_tobac_s1==2|(COURAGE_spain_w2_current_smoking$q3001_used_tobac_s1==1&(COURAGE_spain_w2_current_smoking$q3002_use_tobaco_s1==3|COURAGE_spain_w2_current_smoking$q3002_use_tobaco_s1==4))]<-0
-COURAGE_ds_spain_w2$current_smoking[COURAGE_spain_w2_current_smoking$q3001_used_tobac_s1==1&(COURAGE_spain_w2_current_smoking$q3002_use_tobaco_s1==1|COURAGE_spain_w2_current_smoking$q3002_use_tobaco_s1==2)]<-1
-#COURAGE_ds_spain_w2$current_smoking <- Recode(COURAGE_spain_w2_current_smoking$q3001_used_tobac_s1, "1 = '1';2 = '0';NA = '999'")
-COURAGE_ds_spain_w2$current_smoking <- labelled(COURAGE_ds_spain_w2$current_smoking, labels = c(No=0, Yes=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+COURAGE_ds_spain_w2$current_smoking[which(COURAGE_spain_w2$q3001_used_tobac_s1==2|((COURAGE_spain_w2$q3002_use_tobaco_s1==3|COURAGE_spain_w2$q3002_use_tobaco_s1==4)))]<-0
+COURAGE_ds_spain_w2$current_smoking[which(COURAGE_spain_w2$q3001_used_tobac_s1==1&(COURAGE_spain_w2$q3002_use_tobaco_s1==1|COURAGE_spain_w2$q3002_use_tobaco_s1==2))]<-1
+
 ```
 
 #### Statistical description of the new harmonised variable
 ```{r descript spain w2, echo=F}
-Categorical_summary(var = COURAGE_ds_spain_w2$current_smoking, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+vbl <- COURAGE_ds_spain_w2$current_smoking
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(COURAGE_ds_spain_w2, aes(x=factor(current_smoking))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 ```
 
 #### Validation
 ```{r crosstabulation spain w2, echo=F}
 AfterH <- table(COURAGE_ds_spain_w2$current_smoking)
-X <- c(sum(na.omit(COURAGE_spain_w2_current_smoking$q3001_used_tobac_s1==2|(COURAGE_spain_w2_current_smoking$q3001_used_tobac_s1==1&(COURAGE_spain_w2_current_smoking$q3002_use_tobaco_s1==3|COURAGE_spain_w2_current_smoking$q3002_use_tobaco_s1==4)))),sum(na.omit(COURAGE_spain_w2_current_smoking$q3001_used_tobac_s1==1&(COURAGE_spain_w2_current_smoking$q3002_use_tobaco_s1==1|COURAGE_spain_w2_current_smoking$q3002_use_tobaco_s1==2))))
-BeforeH<- c(X[1:2],sum(is.na(COURAGE_spain_w2_current_smoking$q3001_used_tobac_s1)))
+X <- c(sum(na.omit(COURAGE_spain_w2$q3001_used_tobac_s1==2|(COURAGE_spain_w2$q3001_used_tobac_s1==1&(COURAGE_spain_w2$q3002_use_tobaco_s1==3|COURAGE_spain_w2$q3002_use_tobaco_s1==4)))),sum(na.omit(COURAGE_spain_w2$q3001_used_tobac_s1==1&(COURAGE_spain_w2$q3002_use_tobaco_s1==1|COURAGE_spain_w2$q3002_use_tobaco_s1==2))))
+BeforeH<- c(X[1:2],sum(is.na(COURAGE_spain_w2$q3001_used_tobac_s1)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("q3001_used_tobac_s1=2|(q3001_used_tobac_s1=1&q3002_use_tobaco_s1=3,4)->0","q3001_used_tobac_s1=1&q3002_use_tobaco_s1=1,2->1","NA->999") 
 kable(C)
