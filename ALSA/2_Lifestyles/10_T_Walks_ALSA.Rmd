@@ -15,7 +15,7 @@ output:
 <!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
 ```{r setup, include=FALSE}
-source("../../setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
 <!-- # Loading DS description -->
@@ -53,8 +53,8 @@ ALSA_w1 <- opal.execute(o,'ALSA_w1')
 
 ```{r local w1, echo=F}
 vbl <- ALSA_w1$WALK2WKS
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(ALSA_w1)[2])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = c(9))[3], caption = names(ALSA_w1)[2])
+kable(Categorical_summary(vbl, missing_values = c(9))[1], caption = "Category")
 ggplot(ALSA_w1, aes(x=factor(WALK2WKS))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 ```
 
@@ -121,9 +121,10 @@ ALSA_w3 <- opal.execute(o,'ALSA_w3')
 
 ```{r local w3, echo=F}
 vbl <- ALSA_w3$HWWALKW3
-kable(Continuous_summary(vbl, missing_values = NA)[3], caption = label(vbl)) 
-pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
-ggplot(ALSA_w3, aes(HWWALKW3)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency") + coord_cartesian(xlim = c(-.45,45))
+vbl_miss <- c(99)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = label(vbl)) 
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(ALSA_w3, aes(HWWALKW3)) + geom_histogram(stat="count", fill="steelblue",data = .%>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -138,11 +139,10 @@ To compute `t_walks` from the study-specific variable it has to be recoded as fo
 **R script:**
 
 ```{r harmo w3}
+
 ALSA_ds_w3 <- tibble(id=ALSA_w3$id)
-ALSA_ds_w3$t_walks <- rep(1,length(ALSA_w3$id))
-ALSA_ds_w3$t_walks[ALSA_w3$HWWALKW3==0] <- 0
-ALSA_ds_w3$t_walks[ALSA_w3$HWWALKW3==99] <- 999
-ALSA_ds_w3$t_walks[is.na(ALSA_w3$HWWALKW3)==TRUE] <- 999
+ALSA_ds_w3$t_walks <- car::recode(ALSA_w3$HWWALKW3,"NA=999; 99=999; 0=0; 1:hi=1")
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -245,8 +245,8 @@ ALSA_w5 <- opal.execute(o,'ALSA_w5')
 
 ```{r local w5, echo=F}
 vbl <- ALSA_w5$WALK2WW5
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(ALSA_w5)[2])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = c(3))[3], caption = names(ALSA_w5)[2])
+kable(Categorical_summary(vbl, missing_values = c(3))[1], caption = "Category")
 ggplot(ALSA_w5, aes(x=factor(WALK2WW5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 ```
 
@@ -311,8 +311,8 @@ ALSA_w6 <- opal.execute(o,'ALSA_w6')
 
 ```{r local w6, echo=F}
 vbl <- ALSA_w6$WALK2WW6
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(ALSA_w6)[2])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = c(0))[3], caption = names(ALSA_w6)[2])
+kable(Categorical_summary(vbl, missing_values = c(0))[1], caption = "Category")
 ggplot(ALSA_w6, aes(x=factor(WALK2WW6))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 ```
 
@@ -321,14 +321,14 @@ ggplot(ALSA_w6, aes(x=factor(WALK2WW6))) + geom_bar(stat="count", width=0.4, fil
 To compute `t_walks` from the study-specific variable it has to be recoded as follows:
 
 * `2 into 0` 
-* `0 into 999` 
+* `0 into 995` 
 * `NA into 999`
 
 **R script:**
 
 ```{r harmo w6}
 ALSA_ds_w6 <- tibble(id=ALSA_w6$id)
-ALSA_ds_w6$t_walks <- car::recode(ALSA_w6$WALK2WW6, "2 = 0;0 = 999;NA = 999 ")
+ALSA_ds_w6$t_walks <- car::recode(ALSA_w6$WALK2WW6, "2 = 0;0 = 995;NA = 999 ")
 ```
 
 #### Statistical description of the new harmonised variable
@@ -344,9 +344,9 @@ ggplot(ALSA_ds_w6, aes(x=factor(t_walks))) + geom_bar(stat="count", width=0.4, f
 ```{r crosstabulation w6, echo=F}
 AfterH <- table(ALSA_ds_w6$t_walks)
 X<-table(ALSA_w6$WALK2WW6)
-BeforeH <- c(X[3:2],X[1]+sum(is.na(ALSA_w6$WALK2WW6)))
+BeforeH <- c(X[3:2],X[1],sum(is.na(ALSA_w6$WALK2WW6)))
 C <- rbind(BeforeH,AfterH)
-colnames(C) <- c("2->0","1->1","0,NA->999") 
+colnames(C) <- c("2->0","1->1","0->995","NA->999") 
 kable(C)
 ```
 
@@ -375,8 +375,8 @@ ALSA_w7 <- opal.execute(o,'ALSA_w7')
 
 ```{r local w7, echo=F}
 vbl <- ALSA_w7$walk2ww7
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(ALSA_w7)[2])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = c(0))[3], caption = names(ALSA_w7)[2])
+kable(Categorical_summary(vbl, missing_values = c(0))[1], caption = "Category")
 ggplot(ALSA_w7, aes(x=factor(walk2ww7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 ```
 
@@ -385,14 +385,14 @@ ggplot(ALSA_w7, aes(x=factor(walk2ww7))) + geom_bar(stat="count", width=0.4, fil
 To compute `t_walks` from the study-specific variable it has to be recoded as follows:
 
 * `2 into 0` 
-* `0 into 999` 
+* `0 into 995` 
 * `NA into 999`
 
 **R script:**
 
 ```{r harmo w7}
 ALSA_ds_w7 <- tibble(id=ALSA_w7$id)
-ALSA_ds_w7$t_walks <- car::recode(ALSA_w7$walk2ww7, "2 = 0;0 = 999;NA = 999 ")
+ALSA_ds_w7$t_walks <- car::recode(ALSA_w7$walk2ww7, "2 = 0;0 = 995;NA = 999 ")
 ```
 
 #### Statistical description of the new harmonised variable
@@ -408,9 +408,9 @@ ggplot(ALSA_ds_w7, aes(x=factor(t_walks))) + geom_bar(stat="count", width=0.4, f
 ```{r crosstabulation w7, echo=F}
 AfterH <- table(ALSA_ds_w7$t_walks)
 X<-table(ALSA_w7$walk2ww7)
-BeforeH <- c(X[3:2],X[1]+sum(is.na(ALSA_w7$walk2ww7)))
+BeforeH <- c(X[3:2],X[1],sum(is.na(ALSA_w7$walk2ww7)))
 C <- rbind(BeforeH,AfterH)
-colnames(C) <- c("2->0","1->1","0,NA->999") 
+colnames(C) <- c("2->0","1->1","0->995","NA->999") 
 kable(C)
 ```
 
@@ -437,8 +437,8 @@ ALSA_w8 <- opal.execute(o,'ALSA_w8')
 
 ```{r local w8, echo=F}
 vbl <- ALSA_w8$walk2ww8
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(ALSA_w8)[2])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = c(0))[3], caption = names(ALSA_w8)[2])
+kable(Categorical_summary(vbl, missing_values = c(0))[1], caption = "Category")
 ggplot(ALSA_w8, aes(x=factor(walk2ww8))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 ```
 
@@ -447,14 +447,14 @@ ggplot(ALSA_w8, aes(x=factor(walk2ww8))) + geom_bar(stat="count", width=0.4, fil
 To compute `t_walks` from the study-specific variable it has to be recoded as follows:
 
 * `2 into 0` 
-* `0 into 999` 
+* `0 into 995` 
 * `NA into 999`
 
 **R script:**
 
 ```{r harmo w8}
 ALSA_ds_w8 <- tibble(id=ALSA_w8$id)
-ALSA_ds_w8$t_walks <- car::recode(ALSA_w8$walk2ww8, "2 = 0;0 = 999;NA = 999 ")
+ALSA_ds_w8$t_walks <- car::recode(ALSA_w8$walk2ww8, "2 = 0;0 = 995;NA = 999 ")
 ```
 
 #### Statistical description of the new harmonised variable
@@ -470,9 +470,9 @@ ggplot(ALSA_ds_w8, aes(x=factor(t_walks))) + geom_bar(stat="count", width=0.4, f
 ```{r crosstabulation w8, echo=F}
 AfterH <- table(ALSA_ds_w8$t_walks)
 X<-table(ALSA_w8$walk2ww8)
-BeforeH <- c(X[3:2],X[1]+sum(is.na(ALSA_w8$walk2ww8)))
+BeforeH <- c(X[3:2],X[1],sum(is.na(ALSA_w8$walk2ww8)))
 C <- rbind(BeforeH,AfterH)
-colnames(C) <- c("2->0","1->1","0,NA->999") 
+colnames(C) <- c("2->0","1->1","0->995","NA->999") 
 kable(C)
 ```
 
@@ -502,8 +502,8 @@ ALSA_w9 <- opal.execute(o,'ALSA_w9')
 
 ```{r local w9, echo=F}
 vbl <- ALSA_w9$WALK2WW9
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(ALSA_w9)[2])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = c(0))[3], caption = names(ALSA_w9)[2])
+kable(Categorical_summary(vbl, missing_values = c(0))[1], caption = "Category")
 ggplot(ALSA_w9, aes(x=factor(WALK2WW9))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 ```
 
@@ -512,14 +512,14 @@ ggplot(ALSA_w9, aes(x=factor(WALK2WW9))) + geom_bar(stat="count", width=0.4, fil
 To compute `t_walks` from the study-specific variable it has to be recoded as follows:
 
 * `2 into 0` 
-* `0 into 999`
+* `0 into 995`
 * `NA into 999`
 
 **R script:**
 
 ```{r harmo w9}
 ALSA_ds_w9 <- tibble(id=ALSA_w9$id)
-ALSA_ds_w9$t_walks <- car::recode(ALSA_w9$WALK2WW9, "2 = 0;0 = 999;NA = 999 ")
+ALSA_ds_w9$t_walks <- car::recode(ALSA_w9$WALK2WW9, "2 = 0;0 = 995;NA = 999 ")
 ```
 
 #### Statistical description of the new harmonised variable
@@ -535,9 +535,9 @@ ggplot(ALSA_ds_w9, aes(x=factor(t_walks))) + geom_bar(stat="count", width=0.4, f
 ```{r crosstabulation w9, echo=F}
 AfterH <- table(ALSA_ds_w9$t_walks)
 X<-table(ALSA_w9$WALK2WW9)
-BeforeH <- c(X[3:2],X[1]+sum(is.na(ALSA_w9$WALK2WW9)))
+BeforeH <- c(X[3:2],X[1],sum(is.na(ALSA_w9$WALK2WW9)))
 C <- rbind(BeforeH,AfterH)
-colnames(C) <- c("2->0","1->1","0,NA->999") 
+colnames(C) <- c("2->0","1->1","0->995","NA->999") 
 kable(C)
 ```
 
