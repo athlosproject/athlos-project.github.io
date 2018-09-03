@@ -15,7 +15,7 @@ output:
 <!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
 ```{r setup, include=FALSE}
-source("../../setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
 <!-- # Loading DS description -->
@@ -35,51 +35,31 @@ source('../../_DS_Rmd/smokingDS.R')
 
 
 
-
-| **Name** | `R1SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-HRS-w1`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R1SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-HRS-w1`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
+| **Name** | `R1SMOKEN` | `R1SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-HRS-w1` | `HRS-HRS-w1` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 ```{r assign HRS w1, echo=F}
-opal.assign.table.tibble(o, 'HRS_HRS_w1_smoking','HRS.HRS-HRS-w1', variables=list('R1SMOKEN','R1SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_hrs_w1','HRS.HRS-HRS-w1', variables=list('R1SMOKEN','R1SMOKEV'), missings = TRUE)
+HRS_hrs_w1 <- opal.execute(o,'HRS_hrs_w1')
 ```
 
 ```{r local HRS w1, echo=F}
-HRS_HRS_w1_smoking <- opal.execute(o,'HRS_HRS_w1_smoking')
-vbl <- HRS_HRS_w1_smoking$R1SMOKEN
+vbl <- HRS_hrs_w1$R1SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R1SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_hrs_w1, aes(x=factor(R1SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
-vbl <- HRS_HRS_w1_smoking$R1SMOKEV
+vbl <- HRS_hrs_w1$R1SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R1SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_HRS_w1_smoking, aes(x=factor(R1SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_HRS_w1_smoking, aes(x=factor(R1SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_hrs_w1, aes(x=factor(R1SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -92,13 +72,12 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo HRS w1}
-HRS_ds_hrs_w1 <- tibble(id=HRS_HRS_w1_smoking$id)
+HRS_ds_hrs_w1 <- tibble(id=HRS_hrs_w1$id)
 HRS_ds_hrs_w1$smoking <- rep(999,length(HRS_ds_hrs_w1$id))
-HRS_ds_hrs_w1$smoking[HRS_HRS_w1_smoking$R1SMOKEV==0] <- 0
-HRS_ds_hrs_w1$smoking[HRS_HRS_w1_smoking$R1SMOKEN==0&HRS_HRS_w1_smoking$R1SMOKEV==1] <- 1
-HRS_ds_hrs_w1$smoking[HRS_HRS_w1_smoking$R1SMOKEN==1] <- 2
-#HRS_ds_hrs_w1$smoking <- Recode(HRS_HRS_w1_smoking$R1SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_hrs_w1$smoking <- labelled(HRS_ds_hrs_w1$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_hrs_w1$smoking[which(HRS_hrs_w1$R1SMOKEV==0)] <- 0
+HRS_ds_hrs_w1$smoking[which(HRS_hrs_w1$R1SMOKEN==0&HRS_hrs_w1$R1SMOKEV==1)] <- 1
+HRS_ds_hrs_w1$smoking[which(HRS_hrs_w1$R1SMOKEN==1)] <- 2
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -112,8 +91,8 @@ ggplot(HRS_ds_hrs_w1, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4
 #### Validation
 ```{r crosstabulation HRS w1, echo=F}
 AfterH <- table(HRS_ds_hrs_w1$smoking)
-X<-c(sum(na.omit(HRS_HRS_w1_smoking$R1SMOKEV==0)),sum(na.omit(HRS_HRS_w1_smoking$R1SMOKEN==0&HRS_HRS_w1_smoking$R1SMOKEV==1)),sum(na.omit(HRS_HRS_w1_smoking$R1SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_HRS_w1_smoking$R1SMOKEV)))
+X<-c(sum(na.omit(HRS_hrs_w1$R1SMOKEV==0)),sum(na.omit(HRS_hrs_w1$R1SMOKEN==0&HRS_hrs_w1$R1SMOKEV==1)),sum(na.omit(HRS_hrs_w1$R1SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_hrs_w1$R1SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R1SMOKEV=0->0","R1SMOKEN=0&R1SMOKEV=1->1","R1SMOKEN=1->2","NA->999") 
 kable(C)
@@ -126,52 +105,32 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R2SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-HRS-w2`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R2SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-HRS-w2`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
+| **Name** | `R2SMOKEN` | `R2SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-HRS-w2` | `HRS-HRS-w2` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 
 ```{r assign HRS w2, echo=F}
-opal.assign.table.tibble(o, 'HRS_HRS_w2_smoking','HRS.HRS-HRS-w2', variables=list('R2SMOKEN','R2SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_hrs_w2','HRS.HRS-HRS-w2', variables=list('R2SMOKEN','R2SMOKEV'), missings = TRUE)
+HRS_hrs_w2 <- opal.execute(o,'HRS_hrs_w2')
 ```
 
 ```{r local HRS w2, echo=F}
-HRS_HRS_w2_smoking <- opal.execute(o,'HRS_HRS_w2_smoking')
-vbl <- HRS_HRS_w2_smoking$R2SMOKEN
+vbl <- HRS_hrs_w2$R2SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R2SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_hrs_w2, aes(x=factor(R2SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
-vbl <- HRS_HRS_w2_smoking$R2SMOKEV
+vbl <- HRS_hrs_w2$R2SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R2SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_HRS_w2_smoking, aes(x=factor(R2SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_HRS_w2_smoking, aes(x=factor(R2SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_hrs_w2, aes(x=factor(R2SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -184,13 +143,12 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo HRS w2}
-HRS_ds_hrs_w2 <- tibble(id=HRS_HRS_w2_smoking$id)
+HRS_ds_hrs_w2 <- tibble(id=HRS_hrs_w2$id)
 HRS_ds_hrs_w2$smoking <- rep(999,length(HRS_ds_hrs_w2$id))
-HRS_ds_hrs_w2$smoking[HRS_HRS_w2_smoking$R2SMOKEV==0] <- 0
-HRS_ds_hrs_w2$smoking[HRS_HRS_w2_smoking$R2SMOKEN==0&HRS_HRS_w2_smoking$R2SMOKEV==1] <- 1
-HRS_ds_hrs_w2$smoking[HRS_HRS_w2_smoking$R2SMOKEN==1] <- 2
-#HRS_ds_hrs_w2$smoking <- Recode(HRS_HRS_w2_smoking$R2SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_hrs_w2$smoking <- labelled(HRS_ds_hrs_w2$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_hrs_w2$smoking[which(HRS_hrs_w2$R2SMOKEV==0)] <- 0
+HRS_ds_hrs_w2$smoking[which(HRS_hrs_w2$R2SMOKEN==0&HRS_hrs_w2$R2SMOKEV==1)] <- 1
+HRS_ds_hrs_w2$smoking[which(HRS_hrs_w2$R2SMOKEN==1)] <- 2
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -204,8 +162,8 @@ ggplot(HRS_ds_hrs_w2, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4
 #### Validation
 ```{r crosstabulation HRS w2, echo=F}
 AfterH <- table(HRS_ds_hrs_w2$smoking)
-X<-c(sum(na.omit(HRS_HRS_w2_smoking$R2SMOKEV==0)),sum(na.omit(HRS_HRS_w2_smoking$R2SMOKEN==0&HRS_HRS_w2_smoking$R2SMOKEV==1)),sum(na.omit(HRS_HRS_w2_smoking$R2SMOKEN==1)))
-BeforeH <- c(X,length(HRS_HRS_w2_smoking$R2SMOKEV)-sum(X))
+X<-c(sum(na.omit(HRS_hrs_w2$R2SMOKEV==0)),sum(na.omit(HRS_hrs_w2$R2SMOKEN==0&HRS_hrs_w2$R2SMOKEV==1)),sum(na.omit(HRS_hrs_w2$R2SMOKEN==1)))
+BeforeH <- c(X,length(HRS_hrs_w2$R2SMOKEV)-sum(X))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R2SMOKEV=0->0","R2SMOKEN=0&R2SMOKEV=1->1","R2SMOKEN=1->2","NA->999") 
 kable(C)
@@ -218,52 +176,33 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R3SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-HRS-w3`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R3SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-HRS-w3`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
+| **Name** | `R3SMOKEN` | `R3SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-HRS-w3` | `HRS-HRS-w3` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 
 
 ```{r assign HRS w3, echo=F}
-opal.assign.table.tibble(o, 'HRS_HRS_w3_smoking','HRS.HRS-HRS-w3', variables=list('R3SMOKEN','R3SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_hrs_w3','HRS.HRS-HRS-w3', variables=list('R3SMOKEN','R3SMOKEV'), missings = TRUE)
+HRS_hrs_w3 <- opal.execute(o,'HRS_hrs_w3')
 ```
 
 ```{r local HRS w3, echo=F}
-HRS_HRS_w3_smoking <- opal.execute(o,'HRS_HRS_w3_smoking')
-vbl <- HRS_HRS_w3_smoking$R3SMOKEN
+vbl <- HRS_hrs_w3$R3SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R3SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_hrs_w3, aes(x=factor(R3SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
-vbl <- HRS_HRS_w3_smoking$R3SMOKEV
+vbl <- HRS_hrs_w3$R3SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R3SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_HRS_w3_smoking, aes(x=factor(R3SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_HRS_w3_smoking, aes(x=factor(R3SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_hrs_w3, aes(x=factor(R3SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -276,13 +215,12 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo HRS w3}
-HRS_ds_hrs_w3 <- tibble(id=HRS_HRS_w3_smoking$id)
+HRS_ds_hrs_w3 <- tibble(id=HRS_hrs_w3$id)
 HRS_ds_hrs_w3$smoking <- rep(999,length(HRS_ds_hrs_w3$id))
-HRS_ds_hrs_w3$smoking[HRS_HRS_w3_smoking$R3SMOKEV==0] <- 0
-HRS_ds_hrs_w3$smoking[HRS_HRS_w3_smoking$R3SMOKEN==0&HRS_HRS_w3_smoking$R3SMOKEV==1] <- 1
-HRS_ds_hrs_w3$smoking[HRS_HRS_w3_smoking$R3SMOKEN==1] <- 2
-#HRS_ds_hrs_w3$smoking <- Recode(HRS_HRS_w3_smoking$R3SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_hrs_w3$smoking <- labelled(HRS_ds_hrs_w3$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_hrs_w3$smoking[which(HRS_hrs_w3$R3SMOKEV==0)] <- 0
+HRS_ds_hrs_w3$smoking[which(HRS_hrs_w3$R3SMOKEN==0&HRS_hrs_w3$R3SMOKEV==1)] <- 1
+HRS_ds_hrs_w3$smoking[which(HRS_hrs_w3$R3SMOKEN==1)] <- 2
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -296,8 +234,8 @@ ggplot(HRS_ds_hrs_w3, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4
 #### Validation
 ```{r crosstabulation HRS w3, echo=F}
 AfterH <- table(HRS_ds_hrs_w3$smoking)
-X<-c(sum(na.omit(HRS_HRS_w3_smoking$R3SMOKEV==0)),sum(na.omit(HRS_HRS_w3_smoking$R3SMOKEN==0&HRS_HRS_w3_smoking$R3SMOKEV==1)),sum(na.omit(HRS_HRS_w3_smoking$R3SMOKEN==1)))
-BeforeH <- c(X,length(HRS_HRS_w3_smoking$R3SMOKEV)-sum(X))
+X<-c(sum(na.omit(HRS_hrs_w3$R3SMOKEV==0)),sum(na.omit(HRS_hrs_w3$R3SMOKEN==0&HRS_hrs_w3$R3SMOKEV==1)),sum(na.omit(HRS_hrs_w3$R3SMOKEN==1)))
+BeforeH <- c(X,length(HRS_hrs_w3$R3SMOKEV)-sum(X))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R3SMOKEV=0->0","R3SMOKEN=0&R3SMOKEV=1->1","R3SMOKEN=1->2","NA->999") 
 kable(C)
@@ -311,52 +249,29 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R4SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-HRS-w4`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R4SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-HRS-w4`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
+| **Name** | `R4SMOKEN` | `R4SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-HRS-w4` | `HRS-HRS-w4` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 ```{r assign HRS w4, echo=F}
-opal.assign.table.tibble(o, 'HRS_HRS_w4_smoking','HRS.HRS-HRS-w4', variables=list('R4SMOKEN','R4SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_hrs_w4','HRS.HRS-HRS-w4', variables=list('R4SMOKEN','R4SMOKEV'), missings = TRUE)
+HRS_hrs_w4 <- opal.execute(o,'HRS_hrs_w4')
 ```
 
 ```{r local HRS w4, echo=F}
-HRS_HRS_w4_smoking <- opal.execute(o,'HRS_HRS_w4_smoking')
-vbl <- HRS_HRS_w4_smoking$R4SMOKEN
+vbl <- HRS_hrs_w4$R4SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R4SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_hrs_w4, aes(x=factor(R4SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_HRS_w4_smoking$R4SMOKEV
+vbl <- HRS_hrs_w4$R4SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R4SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_HRS_w4_smoking, aes(x=factor(R4SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_HRS_w4_smoking, aes(x=factor(R4SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_hrs_w4, aes(x=factor(R4SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -369,13 +284,12 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo HRS w4}
-HRS_ds_hrs_w4 <- tibble(id=HRS_HRS_w4_smoking$id)
+HRS_ds_hrs_w4 <- tibble(id=HRS_hrs_w4$id)
 HRS_ds_hrs_w4$smoking <- rep(999,length(HRS_ds_hrs_w4$id))
-HRS_ds_hrs_w4$smoking[HRS_HRS_w4_smoking$R4SMOKEV==0] <- 0
-HRS_ds_hrs_w4$smoking[HRS_HRS_w4_smoking$R4SMOKEN==0&HRS_HRS_w4_smoking$R4SMOKEV==1] <- 1
-HRS_ds_hrs_w4$smoking[HRS_HRS_w4_smoking$R4SMOKEN==1] <- 2
-#HRS_ds_hrs_w4$smoking <- Recode(HRS_HRS_w4_smoking$R4SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_hrs_w4$smoking <- labelled(HRS_ds_hrs_w4$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_hrs_w4$smoking[which(HRS_hrs_w4$R4SMOKEV==0)] <- 0
+HRS_ds_hrs_w4$smoking[which(HRS_hrs_w4$R4SMOKEN==0&HRS_hrs_w4$R4SMOKEV==1)] <- 1
+HRS_ds_hrs_w4$smoking[which(HRS_hrs_w4$R4SMOKEN==1)] <- 2
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -389,8 +303,8 @@ ggplot(HRS_ds_hrs_w4, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4
 #### Validation
 ```{r crosstabulation HRS w4, echo=F}
 AfterH <- table(HRS_ds_hrs_w4$smoking)
-X<-c(sum(na.omit(HRS_HRS_w4_smoking$R4SMOKEV==0)),sum(na.omit(HRS_HRS_w4_smoking$R4SMOKEN==0&HRS_HRS_w4_smoking$R4SMOKEV==1)),sum(na.omit(HRS_HRS_w4_smoking$R4SMOKEN==1)))
-BeforeH <- c(X,length(HRS_HRS_w4_smoking$R4SMOKEV)-sum(X))
+X<-c(sum(na.omit(HRS_hrs_w4$R4SMOKEV==0)),sum(na.omit(HRS_hrs_w4$R4SMOKEN==0&HRS_hrs_w4$R4SMOKEV==1)),sum(na.omit(HRS_hrs_w4$R4SMOKEN==1)))
+BeforeH <- c(X,length(HRS_hrs_w4$R4SMOKEV)-sum(X))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R4SMOKEV=0->0","R4SMOKEN=0&R4SMOKEV=1->1","R4SMOKEN=1->2","NA->999") 
 kable(C)
@@ -404,52 +318,30 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R5SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-HRS-w5`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R5SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-HRS-w5`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
+| **Name** | `R5SMOKEN` | `R5SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-HRS-w5` | `HRS-HRS-w5` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 ```{r assign HRS w5, echo=F}
-opal.assign.table.tibble(o, 'HRS_HRS_w5_smoking','HRS.HRS-HRS-w5', variables=list('R5SMOKEN','R5SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_hrs_w5','HRS.HRS-HRS-w5', variables=list('R5SMOKEN','R5SMOKEV'), missings = TRUE)
+HRS_hrs_w5 <- opal.execute(o,'HRS_hrs_w5')
 ```
 
 ```{r local HRS w5, echo=F}
-HRS_HRS_w5_smoking <- opal.execute(o,'HRS_HRS_w5_smoking')
-vbl <- HRS_HRS_w5_smoking$R5SMOKEN
+vbl <- HRS_hrs_w5$R5SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R5SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_hrs_w5, aes(x=factor(R5SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_HRS_w5_smoking$R5SMOKEV
+vbl <- HRS_hrs_w5$R5SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R5SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_HRS_w5_smoking, aes(x=factor(R5SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_HRS_w5_smoking, aes(x=factor(R5SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_hrs_w5, aes(x=factor(R5SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -462,13 +354,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo HRS w5}
-HRS_ds_hrs_w5 <- tibble(id=HRS_HRS_w5_smoking$id)
+HRS_ds_hrs_w5 <- tibble(id=HRS_hrs_w5$id)
 HRS_ds_hrs_w5$smoking <- rep(999,length(HRS_ds_hrs_w5$id))
-HRS_ds_hrs_w5$smoking[HRS_HRS_w5_smoking$R5SMOKEV==0] <- 0
-HRS_ds_hrs_w5$smoking[HRS_HRS_w5_smoking$R5SMOKEN==0&HRS_HRS_w5_smoking$R5SMOKEV==1] <- 1
-HRS_ds_hrs_w5$smoking[HRS_HRS_w5_smoking$R5SMOKEN==1] <- 2
-#HRS_ds_hrs_w5$smoking <- Recode(HRS_HRS_w5_smoking$R5SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_hrs_w5$smoking <- labelled(HRS_ds_hrs_w5$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_hrs_w5$smoking[which(HRS_hrs_w5$R5SMOKEV==0)] <- 0
+HRS_ds_hrs_w5$smoking[which(HRS_hrs_w5$R5SMOKEN==0&HRS_hrs_w5$R5SMOKEV==1)] <- 1
+HRS_ds_hrs_w5$smoking[which(HRS_hrs_w5$R5SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -482,8 +374,8 @@ ggplot(HRS_ds_hrs_w5, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4
 #### Validation
 ```{r crosstabulation HRS w5, echo=F}
 AfterH <- table(HRS_ds_hrs_w5$smoking)
-X<-c(sum(na.omit(HRS_HRS_w5_smoking$R5SMOKEV==0)),sum(na.omit(HRS_HRS_w5_smoking$R5SMOKEN==0&HRS_HRS_w5_smoking$R5SMOKEV==1)),sum(na.omit(HRS_HRS_w5_smoking$R5SMOKEN==1)))
-BeforeH <- c(X,length(HRS_HRS_w5_smoking$R5SMOKEV)-sum(X))
+X<-c(sum(na.omit(HRS_hrs_w5$R5SMOKEV==0)),sum(na.omit(HRS_hrs_w5$R5SMOKEN==0&HRS_hrs_w5$R5SMOKEV==1)),sum(na.omit(HRS_hrs_w5$R5SMOKEN==1)))
+BeforeH <- c(X,length(HRS_hrs_w5$R5SMOKEV)-sum(X))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R5SMOKEV=0->0","R5SMOKEN=0&R5SMOKEV=1->1","R5SMOKEN=1->2","NA->999") 
 kable(C)
@@ -495,52 +387,31 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R6SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-HRS-w6`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R6SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-HRS-w6`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
+| **Name** | `R6SMOKEN` | `R6SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-HRS-w6` | `HRS-HRS-w6` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 ```{r assign HRS w6, echo=F}
-opal.assign.table.tibble(o, 'HRS_HRS_w6_smoking','HRS.HRS-HRS-w6', variables=list('R6SMOKEN','R6SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_hrs_w6','HRS.HRS-HRS-w6', variables=list('R6SMOKEN','R6SMOKEV'), missings = TRUE)
+HRS_hrs_w6 <- opal.execute(o,'HRS_hrs_w6')
 ```
 
 ```{r local HRS w6, echo=F}
-HRS_HRS_w6_smoking <- opal.execute(o,'HRS_HRS_w6_smoking')
-vbl <- HRS_HRS_w6_smoking$R6SMOKEN
+vbl <- HRS_hrs_w6$R6SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R6SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_hrs_w6, aes(x=factor(R6SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_HRS_w6_smoking$R6SMOKEV
+vbl <- HRS_hrs_w6$R6SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R6SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_HRS_w6_smoking, aes(x=factor(R6SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_HRS_w6_smoking, aes(x=factor(R6SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_hrs_w6, aes(x=factor(R6SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -553,13 +424,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo HRS w6}
-HRS_ds_hrs_w6 <- tibble(id=HRS_HRS_w6_smoking$id)
+HRS_ds_hrs_w6 <- tibble(id=HRS_hrs_w6$id)
 HRS_ds_hrs_w6$smoking <- rep(999,length(HRS_ds_hrs_w6$id))
-HRS_ds_hrs_w6$smoking[HRS_HRS_w6_smoking$R6SMOKEV==0] <- 0
-HRS_ds_hrs_w6$smoking[HRS_HRS_w6_smoking$R6SMOKEN==0&HRS_HRS_w6_smoking$R6SMOKEV==1] <- 1
-HRS_ds_hrs_w6$smoking[HRS_HRS_w6_smoking$R6SMOKEN==1] <- 2
-#HRS_ds_hrs_w6$smoking <- Recode(HRS_HRS_w6_smoking$R6SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_hrs_w6$smoking <- labelled(HRS_ds_hrs_w6$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_hrs_w6$smoking[which(HRS_hrs_w6$R6SMOKEV==0)] <- 0
+HRS_ds_hrs_w6$smoking[which(HRS_hrs_w6$R6SMOKEN==0&HRS_hrs_w6$R6SMOKEV==1)] <- 1
+HRS_ds_hrs_w6$smoking[which(HRS_hrs_w6$R6SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -573,8 +444,8 @@ ggplot(HRS_ds_hrs_w6, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4
 #### Validation
 ```{r crosstabulation HRS w6, echo=F}
 AfterH <- table(HRS_ds_hrs_w6$smoking)
-X<-c(sum(na.omit(HRS_HRS_w6_smoking$R6SMOKEV==0)),sum(na.omit(HRS_HRS_w6_smoking$R6SMOKEN==0&HRS_HRS_w6_smoking$R6SMOKEV==1)),sum(na.omit(HRS_HRS_w6_smoking$R6SMOKEN==1)))
-BeforeH <- c(X,length(HRS_HRS_w6_smoking$R6SMOKEV)-sum(X))
+X<-c(sum(na.omit(HRS_hrs_w6$R6SMOKEV==0)),sum(na.omit(HRS_hrs_w6$R6SMOKEN==0&HRS_hrs_w6$R6SMOKEV==1)),sum(na.omit(HRS_hrs_w6$R6SMOKEN==1)))
+BeforeH <- c(X,length(HRS_hrs_w6$R6SMOKEV)-sum(X))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R6SMOKEV=0->0","R6SMOKEN=0&R6SMOKEV=1->1","R6SMOKEN=1->2","NA->999") 
 kable(C)
@@ -588,52 +459,31 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R7SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-HRS-w7`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R7SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-HRS-w7`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
+| **Name** | `R7SMOKEN` | `R7SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-HRS-w7` | `HRS-HRS-w7` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 ```{r assign HRS w7, echo=F}
-opal.assign.table.tibble(o, 'HRS_HRS_w7_smoking','HRS.HRS-HRS-w7', variables=list('R7SMOKEN','R7SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_hrs_w7','HRS.HRS-HRS-w7', variables=list('R7SMOKEN','R7SMOKEV'), missings = TRUE)
+HRS_hrs_w7 <- opal.execute(o,'HRS_hrs_w7')
 ```
 
 ```{r local HRS w7, echo=F}
-HRS_HRS_w7_smoking <- opal.execute(o,'HRS_HRS_w7_smoking')
-vbl <- HRS_HRS_w7_smoking$R7SMOKEN
+vbl <- HRS_hrs_w7$R7SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R7SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_hrs_w7, aes(x=factor(R7SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_HRS_w7_smoking$R7SMOKEV
+vbl <- HRS_hrs_w7$R7SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R7SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_HRS_w7_smoking, aes(x=factor(R7SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_HRS_w7_smoking, aes(x=factor(R7SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_hrs_w7, aes(x=factor(R7SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -646,13 +496,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo HRS w7}
-HRS_ds_hrs_w7 <- tibble(id=HRS_HRS_w7_smoking$id)
+HRS_ds_hrs_w7 <- tibble(id=HRS_hrs_w7$id)
 HRS_ds_hrs_w7$smoking <- rep(999,length(HRS_ds_hrs_w7$id))
-HRS_ds_hrs_w7$smoking[HRS_HRS_w7_smoking$R7SMOKEV==0] <- 0
-HRS_ds_hrs_w7$smoking[HRS_HRS_w7_smoking$R7SMOKEN==0&HRS_HRS_w7_smoking$R7SMOKEV==1] <- 1
-HRS_ds_hrs_w7$smoking[HRS_HRS_w7_smoking$R7SMOKEN==1] <- 2
-#HRS_ds_hrs_w7$smoking <- Recode(HRS_HRS_w7_smoking$R7SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_hrs_w7$smoking <- labelled(HRS_ds_hrs_w7$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_hrs_w7$smoking[which(HRS_hrs_w7$R7SMOKEV==0)] <- 0
+HRS_ds_hrs_w7$smoking[which(HRS_hrs_w7$R7SMOKEN==0&HRS_hrs_w7$R7SMOKEV==1)] <- 1
+HRS_ds_hrs_w7$smoking[which(HRS_hrs_w7$R7SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -666,8 +516,8 @@ ggplot(HRS_ds_hrs_w7, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4
 #### Validation
 ```{r crosstabulation HRS w7, echo=F}
 AfterH <- table(HRS_ds_hrs_w7$smoking)
-X<-c(sum(na.omit(HRS_HRS_w7_smoking$R7SMOKEV==0)),sum(na.omit(HRS_HRS_w7_smoking$R7SMOKEN==0&HRS_HRS_w7_smoking$R7SMOKEV==1)),sum(na.omit(HRS_HRS_w7_smoking$R7SMOKEN==1)))
-BeforeH <- c(X,length(HRS_HRS_w7_smoking$R7SMOKEV)-sum(X))
+X<-c(sum(na.omit(HRS_hrs_w7$R7SMOKEV==0)),sum(na.omit(HRS_hrs_w7$R7SMOKEN==0&HRS_hrs_w7$R7SMOKEV==1)),sum(na.omit(HRS_hrs_w7$R7SMOKEN==1)))
+BeforeH <- c(X,length(HRS_hrs_w7$R7SMOKEV)-sum(X))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R7SMOKEV=0->0","R7SMOKEN=0&R7SMOKEV=1->1","R7SMOKEN=1->2","NA->999") 
 kable(C)
@@ -678,52 +528,32 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R8SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-HRS-w8`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R8SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-HRS-w8`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
+| **Name** | `R8SMOKEN` | `R8SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-HRS-w8` | `HRS-HRS-w8` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 
 ```{r assign HRS w8, echo=F}
-opal.assign.table.tibble(o, 'HRS_HRS_w8_smoking','HRS.HRS-HRS-w8', variables=list('R8SMOKEN','R8SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_hrs_w8','HRS.HRS-HRS-w8', variables=list('R8SMOKEN','R8SMOKEV'), missings = TRUE)
+HRS_hrs_w8 <- opal.execute(o,'HRS_hrs_w8')
 ```
 
 ```{r local HRS w8, echo=F}
-HRS_HRS_w8_smoking <- opal.execute(o,'HRS_HRS_w8_smoking')
-vbl <- HRS_HRS_w8_smoking$R8SMOKEN
+vbl <- HRS_hrs_w8$R8SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R8SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_hrs_w8, aes(x=factor(R8SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_HRS_w8_smoking$R8SMOKEV
+vbl <- HRS_hrs_w8$R8SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R8SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_HRS_w8_smoking, aes(x=factor(R8SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_HRS_w8_smoking, aes(x=factor(R8SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_hrs_w8, aes(x=factor(R8SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -736,13 +566,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo HRS w8}
-HRS_ds_hrs_w8 <- tibble(id=HRS_HRS_w8_smoking$id)
+HRS_ds_hrs_w8 <- tibble(id=HRS_hrs_w8$id)
 HRS_ds_hrs_w8$smoking <- rep(999,length(HRS_ds_hrs_w8$id))
-HRS_ds_hrs_w8$smoking[HRS_HRS_w8_smoking$R8SMOKEV==0] <- 0
-HRS_ds_hrs_w8$smoking[HRS_HRS_w8_smoking$R8SMOKEN==0&HRS_HRS_w8_smoking$R8SMOKEV==1] <- 1
-HRS_ds_hrs_w8$smoking[HRS_HRS_w8_smoking$R8SMOKEN==1] <- 2
-#HRS_ds_hrs_w8$smoking <- Recode(HRS_HRS_w8_smoking$R8SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_hrs_w8$smoking <- labelled(HRS_ds_hrs_w8$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_hrs_w8$smoking[which(HRS_hrs_w8$R8SMOKEV==0)] <- 0
+HRS_ds_hrs_w8$smoking[which(HRS_hrs_w8$R8SMOKEN==0&HRS_hrs_w8$R8SMOKEV==1)] <- 1
+HRS_ds_hrs_w8$smoking[which(HRS_hrs_w8$R8SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -756,8 +586,8 @@ ggplot(HRS_ds_hrs_w8, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4
 #### Validation
 ```{r crosstabulation HRS w8, echo=F}
 AfterH <- table(HRS_ds_hrs_w8$smoking)
-X<-c(sum(na.omit(HRS_HRS_w8_smoking$R8SMOKEV==0)),sum(na.omit(HRS_HRS_w8_smoking$R8SMOKEN==0&HRS_HRS_w8_smoking$R8SMOKEV==1)),sum(na.omit(HRS_HRS_w8_smoking$R8SMOKEN==1)))
-BeforeH <- c(X,length(HRS_HRS_w8_smoking$R8SMOKEV)-sum(X))
+X<-c(sum(na.omit(HRS_hrs_w8$R8SMOKEV==0)),sum(na.omit(HRS_hrs_w8$R8SMOKEN==0&HRS_hrs_w8$R8SMOKEV==1)),sum(na.omit(HRS_hrs_w8$R8SMOKEN==1)))
+BeforeH <- c(X,length(HRS_hrs_w8$R8SMOKEV)-sum(X))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R8SMOKEV=0->0","R8SMOKEN=0&R8SMOKEV=1->1","R8SMOKEN=1->2","NA->999") 
 kable(C)
@@ -773,50 +603,32 @@ kable(C)
 
 
 
-| **Name** | `R9SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-HRS-w9`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R9SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-HRS-w9`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
+| **Name** | `R9SMOKEN` | `R9SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-HRS-w9` | `HRS-HRS-w9` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 
 ```{r assign HRS w9, echo=F}
-opal.assign.table.tibble(o, 'HRS_HRS_w9_smoking','HRS.HRS-HRS-w9', variables=list('R9SMOKEN','R9SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_hrs_w9','HRS.HRS-HRS-w9', variables=list('R9SMOKEN','R9SMOKEV'), missings = TRUE)
+HRS_hrs_w9 <- opal.execute(o,'HRS_hrs_w9')
 ```
 
 ```{r local HRS w9, echo=F}
-HRS_HRS_w9_smoking <- opal.execute(o,'HRS_HRS_w9_smoking')
-vbl <- HRS_HRS_w9_smoking$R9SMOKEN
+vbl <- HRS_hrs_w9$R9SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R9SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_hrs_w9, aes(x=factor(R9SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_HRS_w9_smoking$R9SMOKEV
+vbl <- HRS_hrs_w9$R9SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R9SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_HRS_w9_smoking, aes(x=factor(R9SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_HRS_w9_smoking, aes(x=factor(R9SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_hrs_w9, aes(x=factor(R9SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -829,13 +641,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo HRS w9}
-HRS_ds_hrs_w9 <- tibble(id=HRS_HRS_w9_smoking$id)
+HRS_ds_hrs_w9 <- tibble(id=HRS_hrs_w9$id)
 HRS_ds_hrs_w9$smoking <- rep(999,length(HRS_ds_hrs_w9$id))
-HRS_ds_hrs_w9$smoking[HRS_HRS_w9_smoking$R9SMOKEV==0] <- 0
-HRS_ds_hrs_w9$smoking[HRS_HRS_w9_smoking$R9SMOKEN==0&HRS_HRS_w9_smoking$R9SMOKEV==1] <- 1
-HRS_ds_hrs_w9$smoking[HRS_HRS_w9_smoking$R9SMOKEN==1] <- 2
-#HRS_ds_hrs_w9$smoking <- Recode(HRS_HRS_w9_smoking$R9SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_hrs_w9$smoking <- labelled(HRS_ds_hrs_w9$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_hrs_w9$smoking[which(HRS_hrs_w9$R9SMOKEV==0)] <- 0
+HRS_ds_hrs_w9$smoking[which(HRS_hrs_w9$R9SMOKEN==0&HRS_hrs_w9$R9SMOKEV==1)] <- 1
+HRS_ds_hrs_w9$smoking[which(HRS_hrs_w9$R9SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -849,8 +661,8 @@ ggplot(HRS_ds_hrs_w9, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4
 #### Validation
 ```{r crosstabulation HRS w9, echo=F}
 AfterH <- table(HRS_ds_hrs_w9$smoking)
-X<-c(sum(na.omit(HRS_HRS_w9_smoking$R9SMOKEV==0)),sum(na.omit(HRS_HRS_w9_smoking$R9SMOKEN==0&HRS_HRS_w9_smoking$R9SMOKEV==1)),sum(na.omit(HRS_HRS_w9_smoking$R9SMOKEN==1)))
-BeforeH <- c(X,length(HRS_HRS_w9_smoking$R9SMOKEV)-sum(X))
+X<-c(sum(na.omit(HRS_hrs_w9$R9SMOKEV==0)),sum(na.omit(HRS_hrs_w9$R9SMOKEN==0&HRS_hrs_w9$R9SMOKEV==1)),sum(na.omit(HRS_hrs_w9$R9SMOKEN==1)))
+BeforeH <- c(X,length(HRS_hrs_w9$R9SMOKEV)-sum(X))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R9SMOKEV=0->0","R9SMOKEN=0&R9SMOKEV=1->1","R9SMOKEN=1->2","NA->999") 
 kable(C)
@@ -864,52 +676,30 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R10SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-HRS-w10`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R10SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-HRS-w10`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
+| **Name** | `R10SMOKEN` | `R10SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-HRS-w10` | `HRS-HRS-w10` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 ```{r assign HRS w10, echo=F}
-opal.assign.table.tibble(o, 'HRS_HRS_w10_smoking','HRS.HRS-HRS-w10', variables=list('R10SMOKEN','R10SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_hrs_w10','HRS.HRS-HRS-w10', variables=list('R10SMOKEN','R10SMOKEV'), missings = TRUE)
+HRS_hrs_w10 <- opal.execute(o,'HRS_hrs_w10')
 ```
 
 ```{r local HRS w10, echo=F}
-HRS_HRS_w10_smoking <- opal.execute(o,'HRS_HRS_w10_smoking')
-vbl <- HRS_HRS_w10_smoking$R10SMOKEN
+vbl <- HRS_hrs_w10$R10SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R10SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_hrs_w10, aes(x=factor(R10SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_HRS_w10_smoking$R10SMOKEV
+vbl <- HRS_hrs_w10$R10SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R10SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_HRS_w10_smoking, aes(x=factor(R10SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_HRS_w10_smoking, aes(x=factor(R10SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_hrs_w10, aes(x=factor(R10SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -922,13 +712,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo HRS w10}
-HRS_ds_hrs_w10 <- tibble(id=HRS_HRS_w10_smoking$id)
+HRS_ds_hrs_w10 <- tibble(id=HRS_hrs_w10$id)
 HRS_ds_hrs_w10$smoking <- rep(999,length(HRS_ds_hrs_w10$id))
-HRS_ds_hrs_w10$smoking[HRS_HRS_w10_smoking$R10SMOKEV==0] <- 0
-HRS_ds_hrs_w10$smoking[HRS_HRS_w10_smoking$R10SMOKEN==0&HRS_HRS_w10_smoking$R10SMOKEV==1] <- 1
-HRS_ds_hrs_w10$smoking[HRS_HRS_w10_smoking$R10SMOKEN==1] <- 2
-#HRS_ds_hrs_w10$smoking <- Recode(HRS_HRS_w10_smoking$R10SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_hrs_w10$smoking <- labelled(HRS_ds_hrs_w10$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_hrs_w10$smoking[which(HRS_hrs_w10$R10SMOKEV==0)] <- 0
+HRS_ds_hrs_w10$smoking[which(HRS_hrs_w10$R10SMOKEN==0&HRS_hrs_w10$R10SMOKEV==1)] <- 1
+HRS_ds_hrs_w10$smoking[which(HRS_hrs_w10$R10SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -942,8 +732,8 @@ ggplot(HRS_ds_hrs_w10, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.
 #### Validation
 ```{r crosstabulation HRS w10, echo=F}
 AfterH <- table(HRS_ds_hrs_w10$smoking)
-X<-c(sum(na.omit(HRS_HRS_w10_smoking$R10SMOKEV==0)),sum(na.omit(HRS_HRS_w10_smoking$R10SMOKEN==0&HRS_HRS_w10_smoking$R10SMOKEV==1)),sum(na.omit(HRS_HRS_w10_smoking$R10SMOKEN==1)))
-BeforeH <- c(X,length(HRS_HRS_w10_smoking$R10SMOKEV)-sum(X))
+X<-c(sum(na.omit(HRS_hrs_w10$R10SMOKEV==0)),sum(na.omit(HRS_hrs_w10$R10SMOKEN==0&HRS_hrs_w10$R10SMOKEV==1)),sum(na.omit(HRS_hrs_w10$R10SMOKEN==1)))
+BeforeH <- c(X,length(HRS_hrs_w10$R10SMOKEV)-sum(X))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R10SMOKEV=0->0","R10SMOKEN=0&R10SMOKEV=1->1","R10SMOKEN=1->2","NA->999") 
 kable(C)
@@ -958,51 +748,32 @@ kable(C)
 
 
 
-
-| **Name** | `R11SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-HRS-w11`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R11SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-HRS-w11`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
+| **Name** | `R11SMOKEN` | `R11SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-HRS-w11` | `HRS-HRS-w11` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 
 ```{r assign HRS w11, echo=F}
-opal.assign.table.tibble(o, 'HRS_HRS_w11_smoking','HRS.HRS-HRS-w11', variables=list('R11SMOKEN','R11SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_hrs_w11','HRS.HRS-HRS-w11', variables=list('R11SMOKEN','R11SMOKEV'), missings = TRUE)
+HRS_hrs_w11 <- opal.execute(o,'HRS_hrs_w11')
 ```
 
 ```{r local HRS w11, echo=F}
-HRS_HRS_w11_smoking <- opal.execute(o,'HRS_HRS_w11_smoking')
-vbl <- HRS_HRS_w11_smoking$R11SMOKEN
+vbl <- HRS_hrs_w11$R11SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R11SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_hrs_w11, aes(x=factor(R11SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_HRS_w11_smoking$R11SMOKEV
+vbl <- HRS_hrs_w11$R11SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R11SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_HRS_w11_smoking, aes(x=factor(R11SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_HRS_w11_smoking, aes(x=factor(R11SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_hrs_w11, aes(x=factor(R11SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1015,13 +786,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo HRS w11}
-HRS_ds_hrs_w11 <- tibble(id=HRS_HRS_w11_smoking$id)
+HRS_ds_hrs_w11 <- tibble(id=HRS_hrs_w11$id)
 HRS_ds_hrs_w11$smoking <- rep(999,length(HRS_ds_hrs_w11$id))
-HRS_ds_hrs_w11$smoking[HRS_HRS_w11_smoking$R11SMOKEV==0] <- 0
-HRS_ds_hrs_w11$smoking[HRS_HRS_w11_smoking$R11SMOKEN==0&HRS_HRS_w11_smoking$R11SMOKEV==1] <- 1
-HRS_ds_hrs_w11$smoking[HRS_HRS_w11_smoking$R11SMOKEN==1] <- 2
-#HRS_ds_hrs_w11$smoking <- Recode(HRS_HRS_w11_smoking$R11SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_hrs_w11$smoking <- labelled(HRS_ds_hrs_w11$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_hrs_w11$smoking[which(HRS_hrs_w11$R11SMOKEV==0)] <- 0
+HRS_ds_hrs_w11$smoking[which(HRS_hrs_w11$R11SMOKEN==0&HRS_hrs_w11$R11SMOKEV==1)] <- 1
+HRS_ds_hrs_w11$smoking[which(HRS_hrs_w11$R11SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -1035,8 +806,8 @@ ggplot(HRS_ds_hrs_w11, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.
 #### Validation
 ```{r crosstabulation HRS w11, echo=F}
 AfterH <- table(HRS_ds_hrs_w11$smoking)
-X<-c(sum(na.omit(HRS_HRS_w11_smoking$R11SMOKEV==0)),sum(na.omit(HRS_HRS_w11_smoking$R11SMOKEN==0&HRS_HRS_w11_smoking$R11SMOKEV==1)),sum(na.omit(HRS_HRS_w11_smoking$R11SMOKEN==1)))
-BeforeH <- c(X,length(HRS_HRS_w11_smoking$R11SMOKEV)-sum(X))
+X<-c(sum(na.omit(HRS_hrs_w11$R11SMOKEV==0)),sum(na.omit(HRS_hrs_w11$R11SMOKEN==0&HRS_hrs_w11$R11SMOKEV==1)),sum(na.omit(HRS_hrs_w11$R11SMOKEN==1)))
+BeforeH <- c(X,length(HRS_hrs_w11$R11SMOKEV)-sum(X))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R11SMOKEV=0->0","R11SMOKEN=0&R11SMOKEV=1->1","R11SMOKEN=1->2","NA->999") 
 kable(C)
@@ -1049,53 +820,33 @@ kable(C)
 
 #### Study-specific variable description
 
-
-
-
-| **Name** | `R2SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-AHEAD-w2`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R2SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-AHEAD-w2`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
+| **Name** | `R2SMOKEN` | `R2SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-AHEAD-w2` | `HRS-AHEAD-w2` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 
 
 ```{r assign ahead w2, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w2_smoking','HRS.HRS-AHEAD-w2', variables=list('R2SMOKEN','R2SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ahead_w2','HRS.HRS-AHEAD-w2', variables=list('R2SMOKEN','R2SMOKEV'), missings = TRUE)
+HRS_ahead_w2 <- opal.execute(o,'HRS_ahead_w2')
 ```
 
 ```{r local ahead w2, echo=F}
-HRS_ahead_w2_smoking <- opal.execute(o,'HRS_ahead_w2_smoking')
-vbl <- HRS_ahead_w2_smoking$R2SMOKEN
+vbl <- HRS_ahead_w2$R2SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R2SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ahead_w2, aes(x=factor(R2SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_ahead_w2_smoking$R2SMOKEV
+vbl <- HRS_ahead_w2$R2SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R2SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_ahead_w2_smoking, aes(x=factor(R2SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_ahead_w2_smoking, aes(x=factor(R2SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_ahead_w2, aes(x=factor(R2SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1108,13 +859,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo ahead w2}
-HRS_ds_ahead_w2 <- tibble(id=HRS_ahead_w2_smoking$id)
+HRS_ds_ahead_w2 <- tibble(id=HRS_ahead_w2$id)
 HRS_ds_ahead_w2$smoking <- rep(999,length(HRS_ds_ahead_w2$id))
-HRS_ds_ahead_w2$smoking[HRS_ahead_w2_smoking$R2SMOKEV==0] <- 0
-HRS_ds_ahead_w2$smoking[HRS_ahead_w2_smoking$R2SMOKEN==0&HRS_ahead_w2_smoking$R2SMOKEV==1] <- 1
-HRS_ds_ahead_w2$smoking[HRS_ahead_w2_smoking$R2SMOKEN==1] <- 2
-#HRS_ds_ahead_w2$smoking <- Recode(HRS_ahead_w2_smoking$R2SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_ahead_w2$smoking <- labelled(HRS_ds_ahead_w2$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_ahead_w2$smoking[which(HRS_ahead_w2$R2SMOKEV==0)] <- 0
+HRS_ds_ahead_w2$smoking[which(HRS_ahead_w2$R2SMOKEN==0&HRS_ahead_w2$R2SMOKEV==1)] <- 1
+HRS_ds_ahead_w2$smoking[which(HRS_ahead_w2$R2SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -1128,8 +879,8 @@ ggplot(HRS_ds_ahead_w2, aes(x=factor(smoking))) + geom_bar(stat="count", width=0
 #### Validation
 ```{r crosstabulation ahead w2, echo=F}
 AfterH <- table(HRS_ds_ahead_w2$smoking)
-X<-c(sum(na.omit(HRS_ahead_w2_smoking$R2SMOKEV==0)),sum(na.omit(HRS_ahead_w2_smoking$R2SMOKEN==0&HRS_ahead_w2_smoking$R2SMOKEV==1)),sum(na.omit(HRS_ahead_w2_smoking$R2SMOKEN==1)))
-BeforeH <- c(X,length(HRS_ahead_w2_smoking$R2SMOKEV)-sum(X))
+X<-c(sum(na.omit(HRS_ahead_w2$R2SMOKEV==0)),sum(na.omit(HRS_ahead_w2$R2SMOKEN==0&HRS_ahead_w2$R2SMOKEV==1)),sum(na.omit(HRS_ahead_w2$R2SMOKEN==1)))
+BeforeH <- c(X,length(HRS_ahead_w2$R2SMOKEV)-sum(X))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R2SMOKEV=0->0","R2SMOKEN=0&R2SMOKEV=1->1","R2SMOKEN=1->2","NA->999") 
 kable(C)
@@ -1144,51 +895,32 @@ kable(C)
 
 
 
-
-| **Name** | `R3SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-AHEAD-w3`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R3SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-AHEAD-w3`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
+| **Name** | `R3SMOKEN` | `R3SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-AHEAD-w3` | `HRS-AHEAD-w3` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 
 ```{r assign ahead w3, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w3_smoking','HRS.HRS-AHEAD-w3', variables=list('R3SMOKEN','R3SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ahead_w3','HRS.HRS-AHEAD-w3', variables=list('R3SMOKEN','R3SMOKEV'), missings = TRUE)
+HRS_ahead_w3 <- opal.execute(o,'HRS_ahead_w3')
 ```
 
 ```{r local ahead w3, echo=F}
-HRS_ahead_w3_smoking <- opal.execute(o,'HRS_ahead_w3_smoking')
-vbl <- HRS_ahead_w3_smoking$R3SMOKEN
+vbl <- HRS_ahead_w3$R3SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R3SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ahead_w3, aes(x=factor(R3SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_ahead_w3_smoking$R3SMOKEV
+vbl <- HRS_ahead_w3$R3SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R3SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_ahead_w3_smoking, aes(x=factor(R3SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_ahead_w3_smoking, aes(x=factor(R3SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_ahead_w3, aes(x=factor(R3SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1201,13 +933,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo ahead w3}
-HRS_ds_ahead_w3 <- tibble(id=HRS_ahead_w3_smoking$id)
+HRS_ds_ahead_w3 <- tibble(id=HRS_ahead_w3$id)
 HRS_ds_ahead_w3$smoking <- rep(999,length(HRS_ds_ahead_w3$id))
-HRS_ds_ahead_w3$smoking[HRS_ahead_w3_smoking$R3SMOKEV==0] <- 0
-HRS_ds_ahead_w3$smoking[HRS_ahead_w3_smoking$R3SMOKEN==0&HRS_ahead_w3_smoking$R3SMOKEV==1] <- 1
-HRS_ds_ahead_w3$smoking[HRS_ahead_w3_smoking$R3SMOKEN==1] <- 2
-#HRS_ds_ahead_w3$smoking <- Recode(HRS_ahead_w3_smoking$R3SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_ahead_w3$smoking <- labelled(HRS_ds_ahead_w3$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_ahead_w3$smoking[which(HRS_ahead_w3$R3SMOKEV==0)] <- 0
+HRS_ds_ahead_w3$smoking[which(HRS_ahead_w3$R3SMOKEN==0&HRS_ahead_w3$R3SMOKEV==1)] <- 1
+HRS_ds_ahead_w3$smoking[which(HRS_ahead_w3$R3SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -1221,8 +953,8 @@ ggplot(HRS_ds_ahead_w3, aes(x=factor(smoking))) + geom_bar(stat="count", width=0
 #### Validation
 ```{r crosstabulation ahead w3, echo=F}
 AfterH <- table(HRS_ds_ahead_w3$smoking)
-X<-c(sum(na.omit(HRS_ahead_w3_smoking$R3SMOKEV==0)),sum(na.omit(HRS_ahead_w3_smoking$R3SMOKEN==0&HRS_ahead_w3_smoking$R3SMOKEV==1)),sum(na.omit(HRS_ahead_w3_smoking$R3SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_ahead_w3_smoking$R3SMOKEV)))
+X<-c(sum(na.omit(HRS_ahead_w3$R3SMOKEV==0)),sum(na.omit(HRS_ahead_w3$R3SMOKEN==0&HRS_ahead_w3$R3SMOKEV==1)),sum(na.omit(HRS_ahead_w3$R3SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_ahead_w3$R3SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R3SMOKEV=0->0","R3SMOKEN=0&R3SMOKEV=1->1","R3SMOKEN=1->2","NA->999") 
 kable(C)
@@ -1237,51 +969,31 @@ kable(C)
 
 
 
-
-| **Name** | `R4SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-AHEAD-w4`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R4SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-AHEAD-w4`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
+| **Name** | `R4SMOKEN` | `R4SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-AHEAD-w4` | `HRS-AHEAD-w4` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 ```{r assign ahead w4, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w4_smoking','HRS.HRS-AHEAD-w4', variables=list('R4SMOKEN','R4SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ahead_w4','HRS.HRS-AHEAD-w4', variables=list('R4SMOKEN','R4SMOKEV'), missings = TRUE)
+HRS_ahead_w4 <- opal.execute(o,'HRS_ahead_w4')
 ```
 
 ```{r local ahead w4, echo=F}
-HRS_ahead_w4_smoking <- opal.execute(o,'HRS_ahead_w4_smoking')
-vbl <- HRS_ahead_w4_smoking$R4SMOKEN
+vbl <- HRS_ahead_w4$R4SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R4SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ahead_w4, aes(x=factor(R4SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_ahead_w4_smoking$R4SMOKEV
+vbl <- HRS_ahead_w4$R4SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R4SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_ahead_w4_smoking, aes(x=factor(R4SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_ahead_w4_smoking, aes(x=factor(R4SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_ahead_w4, aes(x=factor(R4SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1294,13 +1006,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo ahead w4}
-HRS_ds_ahead_w4 <- tibble(id=HRS_ahead_w4_smoking$id)
+HRS_ds_ahead_w4 <- tibble(id=HRS_ahead_w4$id)
 HRS_ds_ahead_w4$smoking <- rep(999,length(HRS_ds_ahead_w4$id))
-HRS_ds_ahead_w4$smoking[HRS_ahead_w4_smoking$R4SMOKEV==0] <- 0
-HRS_ds_ahead_w4$smoking[HRS_ahead_w4_smoking$R4SMOKEN==0&HRS_ahead_w4_smoking$R4SMOKEV==1] <- 1
-HRS_ds_ahead_w4$smoking[HRS_ahead_w4_smoking$R4SMOKEN==1] <- 2
-#HRS_ds_ahead_w4$smoking <- Recode(HRS_ahead_w4_smoking$R4SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_ahead_w4$smoking <- labelled(HRS_ds_ahead_w4$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_ahead_w4$smoking[which(HRS_ahead_w4$R4SMOKEV==0)] <- 0
+HRS_ds_ahead_w4$smoking[which(HRS_ahead_w4$R4SMOKEN==0&HRS_ahead_w4$R4SMOKEV==1)] <- 1
+HRS_ds_ahead_w4$smoking[which(HRS_ahead_w4$R4SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -1314,8 +1026,8 @@ ggplot(HRS_ds_ahead_w4, aes(x=factor(smoking))) + geom_bar(stat="count", width=0
 #### Validation
 ```{r crosstabulation ahead w4, echo=F}
 AfterH <- table(HRS_ds_ahead_w4$smoking)
-X<-c(sum(na.omit(HRS_ahead_w4_smoking$R4SMOKEV==0)),sum(na.omit(HRS_ahead_w4_smoking$R4SMOKEN==0&HRS_ahead_w4_smoking$R4SMOKEV==1)),sum(na.omit(HRS_ahead_w4_smoking$R4SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_ahead_w4_smoking$R4SMOKEV)))
+X<-c(sum(na.omit(HRS_ahead_w4$R4SMOKEV==0)),sum(na.omit(HRS_ahead_w4$R4SMOKEN==0&HRS_ahead_w4$R4SMOKEV==1)),sum(na.omit(HRS_ahead_w4$R4SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_ahead_w4$R4SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R4SMOKEV=0->0","R4SMOKEN=0&R4SMOKEV=1->1","R4SMOKEN=1->2","NA->999") 
 kable(C)
@@ -1329,30 +1041,13 @@ kable(C)
 
 
 
-
-| **Name** | `R5SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-AHEAD-w5`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R5SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-AHEAD-w5`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
+| **Name** | `R5SMOKEN` | `R5SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-AHEAD-w5` | `HRS-AHEAD-w5` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
@@ -1360,20 +1055,20 @@ kable(C)
 
 
 ```{r assign ahead w5, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w5_smoking','HRS.HRS-AHEAD-w5', variables=list('R5SMOKEN','R5SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ahead_w5','HRS.HRS-AHEAD-w5', variables=list('R5SMOKEN','R5SMOKEV'), missings = TRUE)
+HRS_ahead_w5 <- opal.execute(o,'HRS_ahead_w5')
 ```
 
 ```{r local ahead w5, echo=F}
-HRS_ahead_w5_smoking <- opal.execute(o,'HRS_ahead_w5_smoking')
-vbl <- HRS_ahead_w5_smoking$R5SMOKEN
+vbl <- HRS_ahead_w5$R5SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R5SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ahead_w5, aes(x=factor(R5SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_ahead_w5_smoking$R5SMOKEV
+vbl <- HRS_ahead_w5$R5SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R5SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_ahead_w5_smoking, aes(x=factor(R5SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_ahead_w5_smoking, aes(x=factor(R5SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_ahead_w5, aes(x=factor(R5SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1386,13 +1081,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo ahead w5}
-HRS_ds_ahead_w5 <- tibble(id=HRS_ahead_w5_smoking$id)
+HRS_ds_ahead_w5 <- tibble(id=HRS_ahead_w5$id)
 HRS_ds_ahead_w5$smoking <- rep(999,length(HRS_ds_ahead_w5$id))
-HRS_ds_ahead_w5$smoking[HRS_ahead_w5_smoking$R5SMOKEV==0] <- 0
-HRS_ds_ahead_w5$smoking[HRS_ahead_w5_smoking$R5SMOKEN==0&HRS_ahead_w5_smoking$R5SMOKEV==1] <- 1
-HRS_ds_ahead_w5$smoking[HRS_ahead_w5_smoking$R5SMOKEN==1] <- 2
-#HRS_ds_ahead_w5$smoking <- Recode(HRS_ahead_w5_smoking$R5SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_ahead_w5$smoking <- labelled(HRS_ds_ahead_w5$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_ahead_w5$smoking[which(HRS_ahead_w5$R5SMOKEV==0)] <- 0
+HRS_ds_ahead_w5$smoking[which(HRS_ahead_w5$R5SMOKEN==0&HRS_ahead_w5$R5SMOKEV==1)] <- 1
+HRS_ds_ahead_w5$smoking[which(HRS_ahead_w5$R5SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -1406,8 +1101,8 @@ ggplot(HRS_ds_ahead_w5, aes(x=factor(smoking))) + geom_bar(stat="count", width=0
 #### Validation
 ```{r crosstabulation ahead w5, echo=F}
 AfterH <- table(HRS_ds_ahead_w5$smoking)
-X<-c(sum(na.omit(HRS_ahead_w5_smoking$R5SMOKEV==0)),sum(na.omit(HRS_ahead_w5_smoking$R5SMOKEN==0&HRS_ahead_w5_smoking$R5SMOKEV==1)),sum(na.omit(HRS_ahead_w5_smoking$R5SMOKEN==1)))
-BeforeH <- c(X,length(HRS_ahead_w5_smoking$R5SMOKEV)-sum(X))
+X<-c(sum(na.omit(HRS_ahead_w5$R5SMOKEV==0)),sum(na.omit(HRS_ahead_w5$R5SMOKEN==0&HRS_ahead_w5$R5SMOKEV==1)),sum(na.omit(HRS_ahead_w5$R5SMOKEN==1)))
+BeforeH <- c(X,length(HRS_ahead_w5$R5SMOKEV)-sum(X))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R5SMOKEV=0->0","R5SMOKEN=0&R5SMOKEV=1->1","R5SMOKEN=1->2","NA->999") 
 kable(C)
@@ -1420,52 +1115,31 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R6SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-AHEAD-w6`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R6SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-AHEAD-w6`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
+| **Name** | `R6SMOKEN` | `R6SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-AHEAD-w6` | `HRS-AHEAD-w6` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 ```{r assign ahead w6, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w6_smoking','HRS.HRS-AHEAD-w6', variables=list('R6SMOKEN','R6SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ahead_w6','HRS.HRS-AHEAD-w6', variables=list('R6SMOKEN','R6SMOKEV'), missings = TRUE)
+HRS_ahead_w6 <- opal.execute(o,'HRS_ahead_w6')
 ```
 
 ```{r local ahead w6, echo=F}
-HRS_ahead_w6_smoking <- opal.execute(o,'HRS_ahead_w6_smoking')
-vbl <- HRS_ahead_w6_smoking$R6SMOKEN
+vbl <- HRS_ahead_w6$R6SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R6SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ahead_w6, aes(x=factor(R6SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_ahead_w6_smoking$R6SMOKEV
+vbl <- HRS_ahead_w6$R6SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R6SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_ahead_w6_smoking, aes(x=factor(R6SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_ahead_w6_smoking, aes(x=factor(R6SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_ahead_w6, aes(x=factor(R6SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1478,13 +1152,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo ahead w6}
-HRS_ds_ahead_w6 <- tibble(id=HRS_ahead_w6_smoking$id)
+HRS_ds_ahead_w6 <- tibble(id=HRS_ahead_w6$id)
 HRS_ds_ahead_w6$smoking <- rep(999,length(HRS_ds_ahead_w6$id))
-HRS_ds_ahead_w6$smoking[HRS_ahead_w6_smoking$R6SMOKEV==0] <- 0
-HRS_ds_ahead_w6$smoking[HRS_ahead_w6_smoking$R6SMOKEN==0&HRS_ahead_w6_smoking$R6SMOKEV==1] <- 1
-HRS_ds_ahead_w6$smoking[HRS_ahead_w6_smoking$R6SMOKEN==1] <- 2
-#HRS_ds_ahead_w6$smoking <- Recode(HRS_ahead_w6_smoking$R6SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_ahead_w6$smoking <- labelled(HRS_ds_ahead_w6$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_ahead_w6$smoking[which(HRS_ahead_w6$R6SMOKEV==0)] <- 0
+HRS_ds_ahead_w6$smoking[which(HRS_ahead_w6$R6SMOKEN==0&HRS_ahead_w6$R6SMOKEV==1)] <- 1
+HRS_ds_ahead_w6$smoking[which(HRS_ahead_w6$R6SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -1498,8 +1172,8 @@ ggplot(HRS_ds_ahead_w6, aes(x=factor(smoking))) + geom_bar(stat="count", width=0
 #### Validation
 ```{r crosstabulation ahead w6, echo=F}
 AfterH <- table(HRS_ds_ahead_w6$smoking)
-X<-c(sum(na.omit(HRS_ahead_w6_smoking$R6SMOKEV==0)),sum(na.omit(HRS_ahead_w6_smoking$R6SMOKEN==0&HRS_ahead_w6_smoking$R6SMOKEV==1)),sum(na.omit(HRS_ahead_w6_smoking$R6SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_ahead_w6_smoking$R6SMOKEV)))
+X<-c(sum(na.omit(HRS_ahead_w6$R6SMOKEV==0)),sum(na.omit(HRS_ahead_w6$R6SMOKEN==0&HRS_ahead_w6$R6SMOKEV==1)),sum(na.omit(HRS_ahead_w6$R6SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_ahead_w6$R6SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R6SMOKEV=0->0","R6SMOKEN=0&R6SMOKEV=1->1","R6SMOKEN=1->2","NA->999") 
 kable(C)
@@ -1513,52 +1187,33 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R7SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-AHEAD-w7`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R7SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-AHEAD-w7`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
+| **Name** | `R7SMOKEN` | `R7SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-AHEAD-w7` | `HRS-AHEAD-w7` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 
 
 ```{r assign ahead w7, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w7_smoking','HRS.HRS-AHEAD-w7', variables=list('R7SMOKEN','R7SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ahead_w7','HRS.HRS-AHEAD-w7', variables=list('R7SMOKEN','R7SMOKEV'), missings = TRUE)
+HRS_ahead_w7 <- opal.execute(o,'HRS_ahead_w7')
 ```
 
 ```{r local ahead w7, echo=F}
-HRS_ahead_w7_smoking <- opal.execute(o,'HRS_ahead_w7_smoking')
-vbl <- HRS_ahead_w7_smoking$R7SMOKEN
+vbl <- HRS_ahead_w7$R7SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R7SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ahead_w7, aes(x=factor(R7SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_ahead_w7_smoking$R7SMOKEV
+vbl <- HRS_ahead_w7$R7SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R7SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_ahead_w7_smoking, aes(x=factor(R7SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_ahead_w7_smoking, aes(x=factor(R7SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_ahead_w7, aes(x=factor(R7SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1571,13 +1226,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo ahead w7}
-HRS_ds_ahead_w7 <- tibble(id=HRS_ahead_w7_smoking$id)
+HRS_ds_ahead_w7 <- tibble(id=HRS_ahead_w7$id)
 HRS_ds_ahead_w7$smoking <- rep(999,length(HRS_ds_ahead_w7$id))
-HRS_ds_ahead_w7$smoking[HRS_ahead_w7_smoking$R7SMOKEV==0] <- 0
-HRS_ds_ahead_w7$smoking[HRS_ahead_w7_smoking$R7SMOKEN==0&HRS_ahead_w7_smoking$R7SMOKEV==1] <- 1
-HRS_ds_ahead_w7$smoking[HRS_ahead_w7_smoking$R7SMOKEN==1] <- 2
-#HRS_ds_ahead_w7$smoking <- Recode(HRS_ahead_w7_smoking$R7SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_ahead_w7$smoking <- labelled(HRS_ds_ahead_w7$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_ahead_w7$smoking[which(HRS_ahead_w7$R7SMOKEV==0)] <- 0
+HRS_ds_ahead_w7$smoking[which(HRS_ahead_w7$R7SMOKEN==0&HRS_ahead_w7$R7SMOKEV==1)] <- 1
+HRS_ds_ahead_w7$smoking[which(HRS_ahead_w7$R7SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -1591,8 +1246,8 @@ ggplot(HRS_ds_ahead_w7, aes(x=factor(smoking))) + geom_bar(stat="count", width=0
 #### Validation
 ```{r crosstabulation ahead w7, echo=F}
 AfterH <- table(HRS_ds_ahead_w7$smoking)
-X<-c(sum(na.omit(HRS_ahead_w7_smoking$R7SMOKEV==0)),sum(na.omit(HRS_ahead_w7_smoking$R7SMOKEN==0&HRS_ahead_w7_smoking$R7SMOKEV==1)),sum(na.omit(HRS_ahead_w7_smoking$R7SMOKEN==1)))
-BeforeH <- c(X,length(HRS_ahead_w7_smoking$R7SMOKEV)-sum(X))
+X<-c(sum(na.omit(HRS_ahead_w7$R7SMOKEV==0)),sum(na.omit(HRS_ahead_w7$R7SMOKEN==0&HRS_ahead_w7$R7SMOKEV==1)),sum(na.omit(HRS_ahead_w7$R7SMOKEN==1)))
+BeforeH <- c(X,length(HRS_ahead_w7$R7SMOKEV)-sum(X))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R7SMOKEV=0->0","R7SMOKEN=0&R7SMOKEV=1->1","R7SMOKEN=1->2","NA->999") 
 kable(C)
@@ -1607,51 +1262,32 @@ kable(C)
 
 
 
-
-| **Name** | `R8SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-AHEAD-w8`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R8SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-AHEAD-w8`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
+| **Name** | `R8SMOKEN` | `R8SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-AHEAD-w8` | `HRS-AHEAD-w8` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 
 ```{r assign ahead w8, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w8_smoking','HRS.HRS-AHEAD-w8', variables=list('R8SMOKEN','R8SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ahead_w8','HRS.HRS-AHEAD-w8', variables=list('R8SMOKEN','R8SMOKEV'), missings = TRUE)
+HRS_ahead_w8 <- opal.execute(o,'HRS_ahead_w8')
 ```
 
 ```{r local ahead w8, echo=F}
-HRS_ahead_w8_smoking <- opal.execute(o,'HRS_ahead_w8_smoking')
-vbl <- HRS_ahead_w8_smoking$R8SMOKEN
+vbl <- HRS_ahead_w8$R8SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R8SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ahead_w8, aes(x=factor(R8SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_ahead_w8_smoking$R8SMOKEV
+vbl <- HRS_ahead_w8$R8SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R8SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_ahead_w8_smoking, aes(x=factor(R8SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_ahead_w8_smoking, aes(x=factor(R8SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_ahead_w8, aes(x=factor(R8SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1664,13 +1300,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo ahead w8}
-HRS_ds_ahead_w8 <- tibble(id=HRS_ahead_w8_smoking$id)
+HRS_ds_ahead_w8 <- tibble(id=HRS_ahead_w8$id)
 HRS_ds_ahead_w8$smoking <- rep(999,length(HRS_ds_ahead_w8$id))
-HRS_ds_ahead_w8$smoking[HRS_ahead_w8_smoking$R8SMOKEV==0] <- 0
-HRS_ds_ahead_w8$smoking[HRS_ahead_w8_smoking$R8SMOKEN==0&HRS_ahead_w8_smoking$R8SMOKEV==1] <- 1
-HRS_ds_ahead_w8$smoking[HRS_ahead_w8_smoking$R8SMOKEN==1] <- 2
-#HRS_ds_ahead_w8$smoking <- Recode(HRS_ahead_w8_smoking$R8SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_ahead_w8$smoking <- labelled(HRS_ds_ahead_w8$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_ahead_w8$smoking[which(HRS_ahead_w8$R8SMOKEV==0)] <- 0
+HRS_ds_ahead_w8$smoking[which(HRS_ahead_w8$R8SMOKEN==0&HRS_ahead_w8$R8SMOKEV==1)] <- 1
+HRS_ds_ahead_w8$smoking[which(HRS_ahead_w8$R8SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -1684,8 +1320,8 @@ ggplot(HRS_ds_ahead_w8, aes(x=factor(smoking))) + geom_bar(stat="count", width=0
 #### Validation
 ```{r crosstabulation ahead w8, echo=F}
 AfterH <- table(HRS_ds_ahead_w8$smoking)
-X<-c(sum(na.omit(HRS_ahead_w8_smoking$R8SMOKEV==0)),sum(na.omit(HRS_ahead_w8_smoking$R8SMOKEN==0&HRS_ahead_w8_smoking$R8SMOKEV==1)),sum(na.omit(HRS_ahead_w8_smoking$R8SMOKEN==1)))
-BeforeH <- c(X,length(HRS_ahead_w8_smoking$R8SMOKEV)-sum(X))
+X<-c(sum(na.omit(HRS_ahead_w8$R8SMOKEV==0)),sum(na.omit(HRS_ahead_w8$R8SMOKEN==0&HRS_ahead_w8$R8SMOKEV==1)),sum(na.omit(HRS_ahead_w8$R8SMOKEN==1)))
+BeforeH <- c(X,length(HRS_ahead_w8$R8SMOKEV)-sum(X))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R8SMOKEV=0->0","R8SMOKEN=0&R8SMOKEV=1->1","R8SMOKEN=1->2","NA->999") 
 kable(C)
@@ -1701,30 +1337,13 @@ kable(C)
 
 
 
-
-| **Name** | `R9SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-AHEAD-w9`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R9SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-AHEAD-w9`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
+| **Name** | `R9SMOKEN` | `R9SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-AHEAD-w9` | `HRS-AHEAD-w9` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
@@ -1732,20 +1351,20 @@ kable(C)
 
 
 ```{r assign ahead w9, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w9_smoking','HRS.HRS-AHEAD-w9', variables=list('R9SMOKEN','R9SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ahead_w9','HRS.HRS-AHEAD-w9', variables=list('R9SMOKEN','R9SMOKEV'), missings = TRUE)
+HRS_ahead_w9 <- opal.execute(o,'HRS_ahead_w9')
 ```
 
 ```{r local ahead w9, echo=F}
-HRS_ahead_w9_smoking <- opal.execute(o,'HRS_ahead_w9_smoking')
-vbl <- HRS_ahead_w9_smoking$R9SMOKEN
+vbl <- HRS_ahead_w9$R9SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R9SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ahead_w9, aes(x=factor(R9SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_ahead_w9_smoking$R9SMOKEV
+vbl <- HRS_ahead_w9$R9SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R9SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_ahead_w9_smoking, aes(x=factor(R9SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_ahead_w9_smoking, aes(x=factor(R9SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_ahead_w9, aes(x=factor(R9SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1758,13 +1377,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo ahead w9}
-HRS_ds_ahead_w9 <- tibble(id=HRS_ahead_w9_smoking$id)
+HRS_ds_ahead_w9 <- tibble(id=HRS_ahead_w9$id)
 HRS_ds_ahead_w9$smoking <- rep(999,length(HRS_ds_ahead_w9$id))
-HRS_ds_ahead_w9$smoking[HRS_ahead_w9_smoking$R9SMOKEV==0] <- 0
-HRS_ds_ahead_w9$smoking[HRS_ahead_w9_smoking$R9SMOKEN==0&HRS_ahead_w9_smoking$R9SMOKEV==1] <- 1
-HRS_ds_ahead_w9$smoking[HRS_ahead_w9_smoking$R9SMOKEN==1] <- 2
-#HRS_ds_ahead_w9$smoking <- Recode(HRS_ahead_w9_smoking$R9SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_ahead_w9$smoking <- labelled(HRS_ds_ahead_w9$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_ahead_w9$smoking[which(HRS_ahead_w9$R9SMOKEV==0)] <- 0
+HRS_ds_ahead_w9$smoking[which(HRS_ahead_w9$R9SMOKEN==0&HRS_ahead_w9$R9SMOKEV==1)] <- 1
+HRS_ds_ahead_w9$smoking[which(HRS_ahead_w9$R9SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -1778,8 +1397,8 @@ ggplot(HRS_ds_ahead_w9, aes(x=factor(smoking))) + geom_bar(stat="count", width=0
 #### Validation
 ```{r crosstabulation ahead w9, echo=F}
 AfterH <- table(HRS_ds_ahead_w9$smoking)
-X<-c(sum(na.omit(HRS_ahead_w9_smoking$R9SMOKEV==0)),sum(na.omit(HRS_ahead_w9_smoking$R9SMOKEN==0&HRS_ahead_w9_smoking$R9SMOKEV==1)),sum(na.omit(HRS_ahead_w9_smoking$R9SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_ahead_w9_smoking$R9SMOKEV)))
+X<-c(sum(na.omit(HRS_ahead_w9$R9SMOKEV==0)),sum(na.omit(HRS_ahead_w9$R9SMOKEN==0&HRS_ahead_w9$R9SMOKEV==1)),sum(na.omit(HRS_ahead_w9$R9SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_ahead_w9$R9SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R9SMOKEV=0->0","R9SMOKEN=0&R9SMOKEV=1->1","R9SMOKEN=1->2","NA->999") 
 kable(C)
@@ -1793,31 +1412,13 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R10SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-AHEAD-w10`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R10SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-AHEAD-w10`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
+| **Name** | `R10SMOKEN` | `R10SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-AHEAD-w10` | `HRS-AHEAD-w10` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
@@ -1825,20 +1426,20 @@ kable(C)
 
 
 ```{r assign ahead w10, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w10_smoking','HRS.HRS-AHEAD-w10', variables=list('R10SMOKEN','R10SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ahead_w10','HRS.HRS-AHEAD-w10', variables=list('R10SMOKEN','R10SMOKEV'), missings = TRUE)
+HRS_ahead_w10 <- opal.execute(o,'HRS_ahead_w10')
 ```
 
 ```{r local ahead w10, echo=F}
-HRS_ahead_w10_smoking <- opal.execute(o,'HRS_ahead_w10_smoking')
-vbl <- HRS_ahead_w10_smoking$R10SMOKEN
+vbl <- HRS_ahead_w10$R10SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R10SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ahead_w10, aes(x=factor(R10SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_ahead_w10_smoking$R10SMOKEV
+vbl <- HRS_ahead_w10$R10SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R10SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_ahead_w10_smoking, aes(x=factor(R10SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_ahead_w10_smoking, aes(x=factor(R10SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_ahead_w10, aes(x=factor(R10SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1851,13 +1452,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo ahead w10}
-HRS_ds_ahead_w10 <- tibble(id=HRS_ahead_w10_smoking$id)
+HRS_ds_ahead_w10 <- tibble(id=HRS_ahead_w10$id)
 HRS_ds_ahead_w10$smoking <- rep(999,length(HRS_ds_ahead_w10$id))
-HRS_ds_ahead_w10$smoking[HRS_ahead_w10_smoking$R10SMOKEV==0] <- 0
-HRS_ds_ahead_w10$smoking[HRS_ahead_w10_smoking$R10SMOKEN==0&HRS_ahead_w10_smoking$R10SMOKEV==1] <- 1
-HRS_ds_ahead_w10$smoking[HRS_ahead_w10_smoking$R10SMOKEN==1] <- 2
-#HRS_ds_ahead_w10$smoking <- Recode(HRS_ahead_w10_smoking$R10SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_ahead_w10$smoking <- labelled(HRS_ds_ahead_w10$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_ahead_w10$smoking[which(HRS_ahead_w10$R10SMOKEV==0)] <- 0
+HRS_ds_ahead_w10$smoking[which(HRS_ahead_w10$R10SMOKEN==0&HRS_ahead_w10$R10SMOKEV==1)] <- 1
+HRS_ds_ahead_w10$smoking[which(HRS_ahead_w10$R10SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -1871,8 +1472,8 @@ ggplot(HRS_ds_ahead_w10, aes(x=factor(smoking))) + geom_bar(stat="count", width=
 #### Validation
 ```{r crosstabulation ahead w10, echo=F}
 AfterH <- table(HRS_ds_ahead_w10$smoking)
-X<-c(sum(na.omit(HRS_ahead_w10_smoking$R10SMOKEV==0)),sum(na.omit(HRS_ahead_w10_smoking$R10SMOKEN==0&HRS_ahead_w10_smoking$R10SMOKEV==1)),sum(na.omit(HRS_ahead_w10_smoking$R10SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_ahead_w10_smoking$R10SMOKEV)))
+X<-c(sum(na.omit(HRS_ahead_w10$R10SMOKEV==0)),sum(na.omit(HRS_ahead_w10$R10SMOKEN==0&HRS_ahead_w10$R10SMOKEV==1)),sum(na.omit(HRS_ahead_w10$R10SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_ahead_w10$R10SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R10SMOKEV=0->0","R10SMOKEN=0&R10SMOKEV=1->1","R10SMOKEN=1->2","NA->999") 
 kable(C)
@@ -1886,52 +1487,30 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R11SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-AHEAD-w11`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R11SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-AHEAD-w11`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
+| **Name** | `R11SMOKEN` | `R11SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-AHEAD-w11` | `HRS-AHEAD-w11` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 ```{r assign ahead w11, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w11_smoking','HRS.HRS-AHEAD-w11', variables=list('R11SMOKEN','R11SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ahead_w11','HRS.HRS-AHEAD-w11', variables=list('R11SMOKEN','R11SMOKEV'), missings = TRUE)
+HRS_ahead_w11 <- opal.execute(o,'HRS_ahead_w11')
 ```
 
 ```{r local ahead w11, echo=F}
-HRS_ahead_w11_smoking <- opal.execute(o,'HRS_ahead_w11_smoking')
-vbl <- HRS_ahead_w11_smoking$R11SMOKEN
+vbl <- HRS_ahead_w11$R11SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R11SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ahead_w11, aes(x=factor(R11SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_ahead_w11_smoking$R11SMOKEV
+vbl <- HRS_ahead_w11$R11SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R11SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_ahead_w11_smoking, aes(x=factor(R11SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_ahead_w11_smoking, aes(x=factor(R11SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_ahead_w11, aes(x=factor(R11SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1944,13 +1523,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo ahead w11}
-HRS_ds_ahead_w11 <- tibble(id=HRS_ahead_w11_smoking$id)
+HRS_ds_ahead_w11 <- tibble(id=HRS_ahead_w11$id)
 HRS_ds_ahead_w11$smoking <- rep(999,length(HRS_ds_ahead_w11$id))
-HRS_ds_ahead_w11$smoking[HRS_ahead_w11_smoking$R11SMOKEV==0] <- 0
-HRS_ds_ahead_w11$smoking[HRS_ahead_w11_smoking$R11SMOKEN==0&HRS_ahead_w11_smoking$R11SMOKEV==1] <- 1
-HRS_ds_ahead_w11$smoking[HRS_ahead_w11_smoking$R11SMOKEN==1] <- 2
-#HRS_ds_ahead_w11$smoking <- Recode(HRS_ahead_w11_smoking$R11SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_ahead_w11$smoking <- labelled(HRS_ds_ahead_w11$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_ahead_w11$smoking[which(HRS_ahead_w11$R11SMOKEV==0)] <- 0
+HRS_ds_ahead_w11$smoking[which(HRS_ahead_w11$R11SMOKEN==0&HRS_ahead_w11$R11SMOKEV==1)] <- 1
+HRS_ds_ahead_w11$smoking[which(HRS_ahead_w11$R11SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -1964,8 +1543,8 @@ ggplot(HRS_ds_ahead_w11, aes(x=factor(smoking))) + geom_bar(stat="count", width=
 #### Validation
 ```{r crosstabulation ahead w11, echo=F}
 AfterH <- table(HRS_ds_ahead_w11$smoking)
-X<-c(sum(na.omit(HRS_ahead_w11_smoking$R11SMOKEV==0)),sum(na.omit(HRS_ahead_w11_smoking$R11SMOKEN==0&HRS_ahead_w11_smoking$R11SMOKEV==1)),sum(na.omit(HRS_ahead_w11_smoking$R11SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_ahead_w11_smoking$R11SMOKEV)))
+X<-c(sum(na.omit(HRS_ahead_w11$R11SMOKEV==0)),sum(na.omit(HRS_ahead_w11$R11SMOKEN==0&HRS_ahead_w11$R11SMOKEV==1)),sum(na.omit(HRS_ahead_w11$R11SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_ahead_w11$R11SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R11SMOKEV=0->0","R11SMOKEN=0&R11SMOKEV=1->1","R11SMOKEN=1->2","NA->999") 
 kable(C)
@@ -1979,52 +1558,30 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R4SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-CODA-w4`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R4SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-CODA-w4`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
+| **Name** | `R4SMOKEN` | `R4SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-CODA-w4` | `HRS-CODA-w4` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 ```{r assign CODA w4, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w4_smoking','HRS.HRS-CODA-w4', variables=list('R4SMOKEN','R4SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_coda_w4','HRS.HRS-CODA-w4', variables=list('R4SMOKEN','R4SMOKEV'), missings = TRUE)
+HRS_coda_w4 <- opal.execute(o,'HRS_coda_w4')
 ```
 
 ```{r local CODA w4, echo=F}
-HRS_coda_w4_smoking <- opal.execute(o,'HRS_coda_w4_smoking')
-vbl <- HRS_coda_w4_smoking$R4SMOKEN
+vbl <- HRS_coda_w4$R4SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R4SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_coda_w4, aes(x=factor(R4SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_coda_w4_smoking$R4SMOKEV
+vbl <- HRS_coda_w4$R4SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R4SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_coda_w4_smoking, aes(x=factor(R4SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_coda_w4_smoking, aes(x=factor(R4SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_coda_w4, aes(x=factor(R4SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2037,13 +1594,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo CODA w4}
-HRS_ds_coda_w4 <- tibble(id=HRS_coda_w4_smoking$id)
+HRS_ds_coda_w4 <- tibble(id=HRS_coda_w4$id)
 HRS_ds_coda_w4$smoking <- rep(999,length(HRS_ds_coda_w4$id))
-HRS_ds_coda_w4$smoking[HRS_coda_w4_smoking$R4SMOKEV==0] <- 0
-HRS_ds_coda_w4$smoking[HRS_coda_w4_smoking$R4SMOKEN==0&HRS_coda_w4_smoking$R4SMOKEV==1] <- 1
-HRS_ds_coda_w4$smoking[HRS_coda_w4_smoking$R4SMOKEN==1] <- 2
-#HRS_ds_coda_w4$smoking <- Recode(HRS_coda_w4_smoking$R4SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_coda_w4$smoking <- labelled(HRS_ds_coda_w4$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_coda_w4$smoking[which(HRS_coda_w4$R4SMOKEV==0)] <- 0
+HRS_ds_coda_w4$smoking[which(HRS_coda_w4$R4SMOKEN==0&HRS_coda_w4$R4SMOKEV==1)] <- 1
+HRS_ds_coda_w4$smoking[which(HRS_coda_w4$R4SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -2057,8 +1614,8 @@ ggplot(HRS_ds_coda_w4, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.
 #### Validation
 ```{r crosstabulation CODA w4, echo=F}
 AfterH <- table(HRS_ds_coda_w4$smoking)
-X<-c(sum(na.omit(HRS_coda_w4_smoking$R4SMOKEV==0)),sum(na.omit(HRS_coda_w4_smoking$R4SMOKEN==0&HRS_coda_w4_smoking$R4SMOKEV==1)),sum(na.omit(HRS_coda_w4_smoking$R4SMOKEN==1)))
-BeforeH <- c(X,length(HRS_coda_w4_smoking$R4SMOKEV)-sum(X))
+X<-c(sum(na.omit(HRS_coda_w4$R4SMOKEV==0)),sum(na.omit(HRS_coda_w4$R4SMOKEN==0&HRS_coda_w4$R4SMOKEV==1)),sum(na.omit(HRS_coda_w4$R4SMOKEN==1)))
+BeforeH <- c(X,length(HRS_coda_w4$R4SMOKEV)-sum(X))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R4SMOKEV=0->0","R4SMOKEN=0&R4SMOKEV=1->1","R4SMOKEN=1->2","NA->999") 
 kable(C)
@@ -2072,52 +1629,31 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R5SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-CODA-w5`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R5SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-CODA-w5`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
+| **Name** | `R5SMOKEN` | `R5SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-CODA-w5` | `HRS-CODA-w5` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 ```{r assign CODA w5, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w5_smoking','HRS.HRS-CODA-w5', variables=list('R5SMOKEN','R5SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_coda_w5','HRS.HRS-CODA-w5', variables=list('R5SMOKEN','R5SMOKEV'), missings = TRUE)
+HRS_coda_w5 <- opal.execute(o,'HRS_coda_w5')
 ```
 
 ```{r local CODA w5, echo=F}
-HRS_coda_w5_smoking <- opal.execute(o,'HRS_coda_w5_smoking')
-vbl <- HRS_coda_w5_smoking$R5SMOKEN
+vbl <- HRS_coda_w5$R5SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R5SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_coda_w5, aes(x=factor(R5SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_coda_w5_smoking$R5SMOKEV
+vbl <- HRS_coda_w5$R5SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R5SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_coda_w5_smoking, aes(x=factor(R5SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_coda_w5_smoking, aes(x=factor(R5SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_coda_w5, aes(x=factor(R5SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2130,13 +1666,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo CODA w5}
-HRS_ds_coda_w5 <- tibble(id=HRS_coda_w5_smoking$id)
+HRS_ds_coda_w5 <- tibble(id=HRS_coda_w5$id)
 HRS_ds_coda_w5$smoking <- rep(999,length(HRS_ds_coda_w5$id))
-HRS_ds_coda_w5$smoking[HRS_coda_w5_smoking$R5SMOKEV==0] <- 0
-HRS_ds_coda_w5$smoking[HRS_coda_w5_smoking$R5SMOKEN==0&HRS_coda_w5_smoking$R5SMOKEV==1] <- 1
-HRS_ds_coda_w5$smoking[HRS_coda_w5_smoking$R5SMOKEN==1] <- 2
-#HRS_ds_coda_w5$smoking <- Recode(HRS_coda_w5_smoking$R5SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_coda_w5$smoking <- labelled(HRS_ds_coda_w5$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_coda_w5$smoking[which(HRS_coda_w5$R5SMOKEV==0)] <- 0
+HRS_ds_coda_w5$smoking[which(HRS_coda_w5$R5SMOKEN==0&HRS_coda_w5$R5SMOKEV==1)] <- 1
+HRS_ds_coda_w5$smoking[which(HRS_coda_w5$R5SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -2150,8 +1686,8 @@ ggplot(HRS_ds_coda_w5, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.
 #### Validation
 ```{r crosstabulation CODA w5, echo=F}
 AfterH <- table(HRS_ds_coda_w5$smoking)
-X<-c(sum(na.omit(HRS_coda_w5_smoking$R5SMOKEV==0)),sum(na.omit(HRS_coda_w5_smoking$R5SMOKEN==0&HRS_coda_w5_smoking$R5SMOKEV==1)),sum(na.omit(HRS_coda_w5_smoking$R5SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_coda_w5_smoking$R5SMOKEV)))
+X<-c(sum(na.omit(HRS_coda_w5$R5SMOKEV==0)),sum(na.omit(HRS_coda_w5$R5SMOKEN==0&HRS_coda_w5$R5SMOKEV==1)),sum(na.omit(HRS_coda_w5$R5SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_coda_w5$R5SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R5SMOKEV=0->0","R5SMOKEN=0&R5SMOKEV=1->1","R5SMOKEN=1->2","NA->999") 
 kable(C)
@@ -2164,32 +1700,13 @@ kable(C)
 
 #### Study-specific variable description
 
-
-
-
-| **Name** | `R6SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-CODA-w6`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R6SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-CODA-w6`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
+| **Name** | `R6SMOKEN` | `R6SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-CODA-w6` | `HRS-CODA-w6` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
@@ -2197,20 +1714,20 @@ kable(C)
 
 
 ```{r assign CODA w6, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w6_smoking','HRS.HRS-CODA-w6', variables=list('R6SMOKEN','R6SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_coda_w6','HRS.HRS-CODA-w6', variables=list('R6SMOKEN','R6SMOKEV'), missings = TRUE)
+HRS_coda_w6 <- opal.execute(o,'HRS_coda_w6')
 ```
 
 ```{r local CODA w6, echo=F}
-HRS_coda_w6_smoking <- opal.execute(o,'HRS_coda_w6_smoking')
-vbl <- HRS_coda_w6_smoking$R6SMOKEN
+vbl <- HRS_coda_w6$R6SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R6SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_coda_w6, aes(x=factor(R6SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_coda_w6_smoking$R6SMOKEV
+vbl <- HRS_coda_w6$R6SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R6SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_coda_w6_smoking, aes(x=factor(R6SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_coda_w6_smoking, aes(x=factor(R6SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_coda_w6, aes(x=factor(R6SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2223,13 +1740,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo CODA w6}
-HRS_ds_coda_w6 <- tibble(id=HRS_coda_w6_smoking$id)
+HRS_ds_coda_w6 <- tibble(id=HRS_coda_w6$id)
 HRS_ds_coda_w6$smoking <- rep(999,length(HRS_ds_coda_w6$id))
-HRS_ds_coda_w6$smoking[HRS_coda_w6_smoking$R6SMOKEV==0] <- 0
-HRS_ds_coda_w6$smoking[HRS_coda_w6_smoking$R6SMOKEN==0&HRS_coda_w6_smoking$R6SMOKEV==1] <- 1
-HRS_ds_coda_w6$smoking[HRS_coda_w6_smoking$R6SMOKEN==1] <- 2
-#HRS_ds_coda_w6$smoking <- Recode(HRS_coda_w6_smoking$R6SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_coda_w6$smoking <- labelled(HRS_ds_coda_w6$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_coda_w6$smoking[which(HRS_coda_w6$R6SMOKEV==0)] <- 0
+HRS_ds_coda_w6$smoking[which(HRS_coda_w6$R6SMOKEN==0&HRS_coda_w6$R6SMOKEV==1)] <- 1
+HRS_ds_coda_w6$smoking[which(HRS_coda_w6$R6SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -2243,8 +1760,8 @@ ggplot(HRS_ds_coda_w6, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.
 #### Validation
 ```{r crosstabulation CODA w6, echo=F}
 AfterH <- table(HRS_ds_coda_w6$smoking)
-X<-c(sum(na.omit(HRS_coda_w6_smoking$R6SMOKEV==0)),sum(na.omit(HRS_coda_w6_smoking$R6SMOKEN==0&HRS_coda_w6_smoking$R6SMOKEV==1)),sum(na.omit(HRS_coda_w6_smoking$R6SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_coda_w6_smoking$R6SMOKEV)))
+X<-c(sum(na.omit(HRS_coda_w6$R6SMOKEV==0)),sum(na.omit(HRS_coda_w6$R6SMOKEN==0&HRS_coda_w6$R6SMOKEV==1)),sum(na.omit(HRS_coda_w6$R6SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_coda_w6$R6SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R6SMOKEV=0->0","R6SMOKEN=0&R6SMOKEV=1->1","R6SMOKEN=1->2","NA->999") 
 kable(C)
@@ -2260,50 +1777,29 @@ kable(C)
 
 
 
-| **Name** | `R7SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-CODA-w7`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R7SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-CODA-w7`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
+| **Name** | `R7SMOKEN` | `R7SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-CODA-w7` | `HRS-CODA-w7` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 ```{r assign CODA w7, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w7_smoking','HRS.HRS-CODA-w7', variables=list('R7SMOKEN','R7SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_coda_w7','HRS.HRS-CODA-w7', variables=list('R7SMOKEN','R7SMOKEV'), missings = TRUE)
+HRS_coda_w7 <- opal.execute(o,'HRS_coda_w7')
 ```
 
 ```{r local CODA w7, echo=F}
-HRS_coda_w7_smoking <- opal.execute(o,'HRS_coda_w7_smoking')
-vbl <- HRS_coda_w7_smoking$R7SMOKEN
+vbl <- HRS_coda_w7$R7SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R7SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_coda_w7, aes(x=factor(R7SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_coda_w7_smoking$R7SMOKEV
+vbl <- HRS_coda_w7$R7SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R7SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_coda_w7_smoking, aes(x=factor(R7SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_coda_w7_smoking, aes(x=factor(R7SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_coda_w7, aes(x=factor(R7SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2316,13 +1812,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo CODA w7}
-HRS_ds_coda_w7 <- tibble(id=HRS_coda_w7_smoking$id)
+HRS_ds_coda_w7 <- tibble(id=HRS_coda_w7$id)
 HRS_ds_coda_w7$smoking <- rep(999,length(HRS_ds_coda_w7$id))
-HRS_ds_coda_w7$smoking[HRS_coda_w7_smoking$R7SMOKEV==0] <- 0
-HRS_ds_coda_w7$smoking[HRS_coda_w7_smoking$R7SMOKEN==0&HRS_coda_w7_smoking$R7SMOKEV==1] <- 1
-HRS_ds_coda_w7$smoking[HRS_coda_w7_smoking$R7SMOKEN==1] <- 2
-#HRS_ds_coda_w7$smoking <- Recode(HRS_coda_w7_smoking$R7SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_coda_w7$smoking <- labelled(HRS_ds_coda_w7$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_coda_w7$smoking[which(HRS_coda_w7$R7SMOKEV==0)] <- 0
+HRS_ds_coda_w7$smoking[which(HRS_coda_w7$R7SMOKEN==0&HRS_coda_w7$R7SMOKEV==1)] <- 1
+HRS_ds_coda_w7$smoking[which(HRS_coda_w7$R7SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -2336,8 +1832,8 @@ ggplot(HRS_ds_coda_w7, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.
 #### Validation
 ```{r crosstabulation CODA w7, echo=F}
 AfterH <- table(HRS_ds_coda_w7$smoking)
-X<-c(sum(na.omit(HRS_coda_w7_smoking$R7SMOKEV==0)),sum(na.omit(HRS_coda_w7_smoking$R7SMOKEN==0&HRS_coda_w7_smoking$R7SMOKEV==1)),sum(na.omit(HRS_coda_w7_smoking$R7SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_coda_w7_smoking$R7SMOKEV)))
+X<-c(sum(na.omit(HRS_coda_w7$R7SMOKEV==0)),sum(na.omit(HRS_coda_w7$R7SMOKEN==0&HRS_coda_w7$R7SMOKEV==1)),sum(na.omit(HRS_coda_w7$R7SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_coda_w7$R7SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R7SMOKEV=0->0","R7SMOKEN=0&R7SMOKEV=1->1","R7SMOKEN=1->2","NA->999") 
 kable(C)
@@ -2352,51 +1848,30 @@ kable(C)
 
 
 
-
-| **Name** | `R8SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-CODA-w8`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R8SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-CODA-w8`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
+| **Name** | `R8SMOKEN` | `R8SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-CODA-w8` | `HRS-CODA-w8` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 ```{r assign CODA w8, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w8_smoking','HRS.HRS-CODA-w8', variables=list('R8SMOKEN','R8SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_coda_w8','HRS.HRS-CODA-w8', variables=list('R8SMOKEN','R8SMOKEV'), missings = TRUE)
+HRS_coda_w8 <- opal.execute(o,'HRS_coda_w8')
 ```
 
 ```{r local CODA w8, echo=F}
-HRS_coda_w8_smoking <- opal.execute(o,'HRS_coda_w8_smoking')
-vbl <- HRS_coda_w8_smoking$R8SMOKEN
+vbl <- HRS_coda_w8$R8SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R8SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_coda_w8, aes(x=factor(R8SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_coda_w8_smoking$R8SMOKEV
+vbl <- HRS_coda_w8$R8SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R8SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_coda_w8_smoking, aes(x=factor(R8SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_coda_w8_smoking, aes(x=factor(R8SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_coda_w8, aes(x=factor(R8SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2409,13 +1884,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo CODA w8}
-HRS_ds_coda_w8 <- tibble(id=HRS_coda_w8_smoking$id)
+HRS_ds_coda_w8 <- tibble(id=HRS_coda_w8$id)
 HRS_ds_coda_w8$smoking <- rep(999,length(HRS_ds_coda_w8$id))
-HRS_ds_coda_w8$smoking[HRS_coda_w8_smoking$R8SMOKEV==0] <- 0
-HRS_ds_coda_w8$smoking[HRS_coda_w8_smoking$R8SMOKEN==0&HRS_coda_w8_smoking$R8SMOKEV==1] <- 1
-HRS_ds_coda_w8$smoking[HRS_coda_w8_smoking$R8SMOKEN==1] <- 2
-#HRS_ds_coda_w8$smoking <- Recode(HRS_coda_w8_smoking$R8SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_coda_w8$smoking <- labelled(HRS_ds_coda_w8$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_coda_w8$smoking[which(HRS_coda_w8$R8SMOKEV==0)] <- 0
+HRS_ds_coda_w8$smoking[which(HRS_coda_w8$R8SMOKEN==0&HRS_coda_w8$R8SMOKEV==1)] <- 1
+HRS_ds_coda_w8$smoking[which(HRS_coda_w8$R8SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -2429,8 +1904,8 @@ ggplot(HRS_ds_coda_w8, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.
 #### Validation
 ```{r crosstabulation CODA w8, echo=F}
 AfterH <- table(HRS_ds_coda_w8$smoking)
-X<-c(sum(na.omit(HRS_coda_w8_smoking$R8SMOKEV==0)),sum(na.omit(HRS_coda_w8_smoking$R8SMOKEN==0&HRS_coda_w8_smoking$R8SMOKEV==1)),sum(na.omit(HRS_coda_w8_smoking$R8SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_coda_w8_smoking$R8SMOKEV)))
+X<-c(sum(na.omit(HRS_coda_w8$R8SMOKEV==0)),sum(na.omit(HRS_coda_w8$R8SMOKEN==0&HRS_coda_w8$R8SMOKEV==1)),sum(na.omit(HRS_coda_w8$R8SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_coda_w8$R8SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R8SMOKEV=0->0","R8SMOKEN=0&R8SMOKEV=1->1","R8SMOKEN=1->2","NA->999") 
 kable(C)
@@ -2444,52 +1919,31 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R9SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-CODA-w9`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R9SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-CODA-w9`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
+| **Name** | `R9SMOKEN` | `R9SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-CODA-w9` | `HRS-CODA-w9` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 ```{r assign CODA w9, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w9_smoking','HRS.HRS-CODA-w9', variables=list('R9SMOKEN','R9SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_coda_w9','HRS.HRS-CODA-w9', variables=list('R9SMOKEN','R9SMOKEV'), missings = TRUE)
+HRS_coda_w9 <- opal.execute(o,'HRS_coda_w9')
 ```
 
 ```{r local CODA w9, echo=F}
-HRS_coda_w9_smoking <- opal.execute(o,'HRS_coda_w9_smoking')
-vbl <- HRS_coda_w9_smoking$R9SMOKEN
+vbl <- HRS_coda_w9$R9SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R9SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_coda_w9, aes(x=factor(R9SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_coda_w9_smoking$R9SMOKEV
+vbl <- HRS_coda_w9$R9SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R9SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_coda_w9_smoking, aes(x=factor(R9SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_coda_w9_smoking, aes(x=factor(R9SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_coda_w9, aes(x=factor(R9SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2502,13 +1956,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo CODA w9}
-HRS_ds_coda_w9 <- tibble(id=HRS_coda_w9_smoking$id)
+HRS_ds_coda_w9 <- tibble(id=HRS_coda_w9$id)
 HRS_ds_coda_w9$smoking <- rep(999,length(HRS_ds_coda_w9$id))
-HRS_ds_coda_w9$smoking[HRS_coda_w9_smoking$R9SMOKEV==0] <- 0
-HRS_ds_coda_w9$smoking[HRS_coda_w9_smoking$R9SMOKEN==0&HRS_coda_w9_smoking$R9SMOKEV==1] <- 1
-HRS_ds_coda_w9$smoking[HRS_coda_w9_smoking$R9SMOKEN==1] <- 2
-#HRS_ds_coda_w9$smoking <- Recode(HRS_coda_w9_smoking$R9SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_coda_w9$smoking <- labelled(HRS_ds_coda_w9$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_coda_w9$smoking[which(HRS_coda_w9$R9SMOKEV==0)] <- 0
+HRS_ds_coda_w9$smoking[which(HRS_coda_w9$R9SMOKEN==0&HRS_coda_w9$R9SMOKEV==1)] <- 1
+HRS_ds_coda_w9$smoking[which(HRS_coda_w9$R9SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -2522,8 +1976,8 @@ ggplot(HRS_ds_coda_w9, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.
 #### Validation
 ```{r crosstabulation CODA w9, echo=F}
 AfterH <- table(HRS_ds_coda_w9$smoking)
-X<-c(sum(na.omit(HRS_coda_w9_smoking$R9SMOKEV==0)),sum(na.omit(HRS_coda_w9_smoking$R9SMOKEN==0&HRS_coda_w9_smoking$R9SMOKEV==1)),sum(na.omit(HRS_coda_w9_smoking$R9SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_coda_w9_smoking$R9SMOKEV)))
+X<-c(sum(na.omit(HRS_coda_w9$R9SMOKEV==0)),sum(na.omit(HRS_coda_w9$R9SMOKEN==0&HRS_coda_w9$R9SMOKEV==1)),sum(na.omit(HRS_coda_w9$R9SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_coda_w9$R9SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R9SMOKEV=0->0","R9SMOKEN=0&R9SMOKEV=1->1","R9SMOKEN=1->2","NA->999") 
 kable(C)
@@ -2537,51 +1991,32 @@ kable(C)
 
 
 
-
-| **Name** | `R10SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-CODA-w10`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R10SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-CODA-w10`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
+| **Name** | `R10SMOKEN` | `R10SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-CODA-w10` | `HRS-CODA-w10` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 
 ```{r assign CODA w10, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w10_smoking','HRS.HRS-CODA-w10', variables=list('R10SMOKEN','R10SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_coda_w10','HRS.HRS-CODA-w10', variables=list('R10SMOKEN','R10SMOKEV'), missings = TRUE)
+HRS_coda_w10 <- opal.execute(o,'HRS_coda_w10')
 ```
 
 ```{r local CODA w10, echo=F}
-HRS_coda_w10_smoking <- opal.execute(o,'HRS_coda_w10_smoking')
-vbl <- HRS_coda_w10_smoking$R10SMOKEN
+vbl <- HRS_coda_w10$R10SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R10SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_coda_w10, aes(x=factor(R10SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_coda_w10_smoking$R10SMOKEV
+vbl <- HRS_coda_w10$R10SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R10SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_coda_w10_smoking, aes(x=factor(R10SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_coda_w10_smoking, aes(x=factor(R10SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_coda_w10, aes(x=factor(R10SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2594,13 +2029,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo CODA w10}
-HRS_ds_coda_w10 <- tibble(id=HRS_coda_w10_smoking$id)
+HRS_ds_coda_w10 <- tibble(id=HRS_coda_w10$id)
 HRS_ds_coda_w10$smoking <- rep(999,length(HRS_ds_coda_w10$id))
-HRS_ds_coda_w10$smoking[HRS_coda_w10_smoking$R10SMOKEV==0] <- 0
-HRS_ds_coda_w10$smoking[HRS_coda_w10_smoking$R10SMOKEN==0&HRS_coda_w10_smoking$R10SMOKEV==1] <- 1
-HRS_ds_coda_w10$smoking[HRS_coda_w10_smoking$R10SMOKEN==1] <- 2
-#HRS_ds_coda_w10$smoking <- Recode(HRS_coda_w10_smoking$R10SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_coda_w10$smoking <- labelled(HRS_ds_coda_w10$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_coda_w10$smoking[which(HRS_coda_w10$R10SMOKEV==0)] <- 0
+HRS_ds_coda_w10$smoking[which(HRS_coda_w10$R10SMOKEN==0&HRS_coda_w10$R10SMOKEV==1)] <- 1
+HRS_ds_coda_w10$smoking[which(HRS_coda_w10$R10SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -2614,8 +2049,8 @@ ggplot(HRS_ds_coda_w10, aes(x=factor(smoking))) + geom_bar(stat="count", width=0
 #### Validation
 ```{r crosstabulation CODA w10, echo=F}
 AfterH <- table(HRS_ds_coda_w10$smoking)
-X<-c(sum(na.omit(HRS_coda_w10_smoking$R10SMOKEV==0)),sum(na.omit(HRS_coda_w10_smoking$R10SMOKEN==0&HRS_coda_w10_smoking$R10SMOKEV==1)),sum(na.omit(HRS_coda_w10_smoking$R10SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_coda_w10_smoking$R10SMOKEV)))
+X<-c(sum(na.omit(HRS_coda_w10$R10SMOKEV==0)),sum(na.omit(HRS_coda_w10$R10SMOKEN==0&HRS_coda_w10$R10SMOKEV==1)),sum(na.omit(HRS_coda_w10$R10SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_coda_w10$R10SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R10SMOKEV=0->0","R10SMOKEN=0&R10SMOKEV=1->1","R10SMOKEN=1->2","NA->999") 
 kable(C)
@@ -2630,52 +2065,33 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R11SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-CODA-w11`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R11SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-CODA-w11`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
+| **Name** | `R11SMOKEN` | `R11SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-CODA-w11` | `HRS-CODA-w11` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 
 
 ```{r assign CODA w11, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w11_smoking','HRS.HRS-CODA-w11', variables=list('R11SMOKEN','R11SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_coda_w11','HRS.HRS-CODA-w11', variables=list('R11SMOKEN','R11SMOKEV'), missings = TRUE)
+HRS_coda_w11 <- opal.execute(o,'HRS_coda_w11')
 ```
 
 ```{r local CODA w11, echo=F}
-HRS_coda_w11_smoking <- opal.execute(o,'HRS_coda_w11_smoking')
-vbl <- HRS_coda_w11_smoking$R11SMOKEN
+vbl <- HRS_coda_w11$R11SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R11SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_coda_w11, aes(x=factor(R11SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_coda_w11_smoking$R11SMOKEV
+vbl <- HRS_coda_w11$R11SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R11SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_coda_w11_smoking, aes(x=factor(R11SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_coda_w11_smoking, aes(x=factor(R11SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_coda_w11, aes(x=factor(R11SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2688,13 +2104,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo CODA w11}
-HRS_ds_coda_w11 <- tibble(id=HRS_coda_w11_smoking$id)
+HRS_ds_coda_w11 <- tibble(id=HRS_coda_w11$id)
 HRS_ds_coda_w11$smoking <- rep(999,length(HRS_ds_coda_w11$id))
-HRS_ds_coda_w11$smoking[HRS_coda_w11_smoking$R11SMOKEV==0] <- 0
-HRS_ds_coda_w11$smoking[HRS_coda_w11_smoking$R11SMOKEN==0&HRS_coda_w11_smoking$R11SMOKEV==1] <- 1
-HRS_ds_coda_w11$smoking[HRS_coda_w11_smoking$R11SMOKEN==1] <- 2
-#HRS_ds_coda_w11$smoking <- Recode(HRS_coda_w11_smoking$R11SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_coda_w11$smoking <- labelled(HRS_ds_coda_w11$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_coda_w11$smoking[which(HRS_coda_w11$R11SMOKEV==0)] <- 0
+HRS_ds_coda_w11$smoking[which(HRS_coda_w11$R11SMOKEN==0&HRS_coda_w11$R11SMOKEV==1)] <- 1
+HRS_ds_coda_w11$smoking[which(HRS_coda_w11$R11SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -2708,8 +2124,8 @@ ggplot(HRS_ds_coda_w11, aes(x=factor(smoking))) + geom_bar(stat="count", width=0
 #### Validation
 ```{r crosstabulation CODA w11, echo=F}
 AfterH <- table(HRS_ds_coda_w11$smoking)
-X<-c(sum(na.omit(HRS_coda_w11_smoking$R11SMOKEV==0)),sum(na.omit(HRS_coda_w11_smoking$R11SMOKEN==0&HRS_coda_w11_smoking$R11SMOKEV==1)),sum(na.omit(HRS_coda_w11_smoking$R11SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_coda_w11_smoking$R11SMOKEV)))
+X<-c(sum(na.omit(HRS_coda_w11$R11SMOKEV==0)),sum(na.omit(HRS_coda_w11$R11SMOKEN==0&HRS_coda_w11$R11SMOKEV==1)),sum(na.omit(HRS_coda_w11$R11SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_coda_w11$R11SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R11SMOKEV=0->0","R11SMOKEN=0&R11SMOKEV=1->1","R11SMOKEN=1->2","NA->999") 
 kable(C)
@@ -2725,52 +2141,32 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R4SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-WB-w4`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R4SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-WB-w4`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
+| **Name** | `R4SMOKEN` | `R4SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-WB-w4` | `HRS-WB-w4` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 
 ```{r assign WB w4, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w4_smoking','HRS.HRS-WB-w4', variables=list('R4SMOKEN','R4SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_wb_w4','HRS.HRS-WB-w4', variables=list('R4SMOKEN','R4SMOKEV'), missings = TRUE)
+HRS_wb_w4 <- opal.execute(o,'HRS_wb_w4')
 ```
 
 ```{r local WB w4, echo=F}
-HRS_wb_w4_smoking <- opal.execute(o,'HRS_wb_w4_smoking')
-vbl <- HRS_wb_w4_smoking$R4SMOKEN
+vbl <- HRS_wb_w4$R4SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R4SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_wb_w4, aes(x=factor(R4SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_wb_w4_smoking$R4SMOKEV
+vbl <- HRS_wb_w4$R4SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R4SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_wb_w4_smoking, aes(x=factor(R4SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_wb_w4_smoking, aes(x=factor(R4SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_wb_w4, aes(x=factor(R4SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2783,13 +2179,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo WB w4}
-HRS_ds_wb_w4 <- tibble(id=HRS_wb_w4_smoking$id)
+HRS_ds_wb_w4 <- tibble(id=HRS_wb_w4$id)
 HRS_ds_wb_w4$smoking <- rep(999,length(HRS_ds_wb_w4$id))
-HRS_ds_wb_w4$smoking[HRS_wb_w4_smoking$R4SMOKEV==0] <- 0
-HRS_ds_wb_w4$smoking[HRS_wb_w4_smoking$R4SMOKEN==0&HRS_wb_w4_smoking$R4SMOKEV==1] <- 1
-HRS_ds_wb_w4$smoking[HRS_wb_w4_smoking$R4SMOKEN==1] <- 2
-#HRS_ds_wb_w4$smoking <- Recode(HRS_wb_w4_smoking$R4SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_wb_w4$smoking <- labelled(HRS_ds_wb_w4$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_wb_w4$smoking[which(HRS_wb_w4$R4SMOKEV==0)] <- 0
+HRS_ds_wb_w4$smoking[which(HRS_wb_w4$R4SMOKEN==0&HRS_wb_w4$R4SMOKEV==1)] <- 1
+HRS_ds_wb_w4$smoking[which(HRS_wb_w4$R4SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -2803,8 +2199,8 @@ ggplot(HRS_ds_wb_w4, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4,
 #### Validation
 ```{r crosstabulation WB w4, echo=F}
 AfterH <- table(HRS_ds_wb_w4$smoking)
-X<-c(sum(na.omit(HRS_wb_w4_smoking$R4SMOKEV==0)),sum(na.omit(HRS_wb_w4_smoking$R4SMOKEN==0&HRS_wb_w4_smoking$R4SMOKEV==1)),sum(na.omit(HRS_wb_w4_smoking$R4SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_wb_w4_smoking$R4SMOKEV)))
+X<-c(sum(na.omit(HRS_wb_w4$R4SMOKEV==0)),sum(na.omit(HRS_wb_w4$R4SMOKEN==0&HRS_wb_w4$R4SMOKEV==1)),sum(na.omit(HRS_wb_w4$R4SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_wb_w4$R4SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R4SMOKEV=0->0","R4SMOKEN=0&R4SMOKEV=1->1","R4SMOKEN=1->2","NA->999") 
 kable(C)
@@ -2817,52 +2213,30 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R5SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-WB-w5`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R5SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-WB-w5`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
+| **Name** | `R5SMOKEN` | `R5SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-WB-w5` | `HRS-WB-w5` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 ```{r assign WB w5, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w5_smoking','HRS.HRS-WB-w5', variables=list('R5SMOKEN','R5SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_wb_w5','HRS.HRS-WB-w5', variables=list('R5SMOKEN','R5SMOKEV'), missings = TRUE)
+HRS_wb_w5 <- opal.execute(o,'HRS_wb_w5')
 ```
 
 ```{r local WB w5, echo=F}
-HRS_wb_w5_smoking <- opal.execute(o,'HRS_wb_w5_smoking')
-vbl <- HRS_wb_w5_smoking$R5SMOKEN
+vbl <- HRS_wb_w5$R5SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R5SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_wb_w5, aes(x=factor(R5SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_wb_w5_smoking$R5SMOKEV
+vbl <- HRS_wb_w5$R5SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R5SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_wb_w5_smoking, aes(x=factor(R5SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_wb_w5_smoking, aes(x=factor(R5SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_wb_w5, aes(x=factor(R5SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2875,13 +2249,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo WB w5}
-HRS_ds_wb_w5 <- tibble(id=HRS_wb_w5_smoking$id)
+HRS_ds_wb_w5 <- tibble(id=HRS_wb_w5$id)
 HRS_ds_wb_w5$smoking <- rep(999,length(HRS_ds_wb_w5$id))
-HRS_ds_wb_w5$smoking[HRS_wb_w5_smoking$R5SMOKEV==0] <- 0
-HRS_ds_wb_w5$smoking[HRS_wb_w5_smoking$R5SMOKEN==0&HRS_wb_w5_smoking$R5SMOKEV==1] <- 1
-HRS_ds_wb_w5$smoking[HRS_wb_w5_smoking$R5SMOKEN==1] <- 2
-#HRS_ds_wb_w5$smoking <- Recode(HRS_wb_w5_smoking$R5SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_wb_w5$smoking <- labelled(HRS_ds_wb_w5$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_wb_w5$smoking[which(HRS_wb_w5$R5SMOKEV==0)] <- 0
+HRS_ds_wb_w5$smoking[which(HRS_wb_w5$R5SMOKEN==0&HRS_wb_w5$R5SMOKEV==1)] <- 1
+HRS_ds_wb_w5$smoking[which(HRS_wb_w5$R5SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -2895,8 +2269,8 @@ ggplot(HRS_ds_wb_w5, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4,
 #### Validation
 ```{r crosstabulation WB w5, echo=F}
 AfterH <- table(HRS_ds_wb_w5$smoking)
-X<-c(sum(na.omit(HRS_wb_w5_smoking$R5SMOKEV==0)),sum(na.omit(HRS_wb_w5_smoking$R5SMOKEN==0&HRS_wb_w5_smoking$R5SMOKEV==1)),sum(na.omit(HRS_wb_w5_smoking$R5SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_wb_w5_smoking$R5SMOKEV)))
+X<-c(sum(na.omit(HRS_wb_w5$R5SMOKEV==0)),sum(na.omit(HRS_wb_w5$R5SMOKEN==0&HRS_wb_w5$R5SMOKEV==1)),sum(na.omit(HRS_wb_w5$R5SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_wb_w5$R5SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R5SMOKEV=0->0","R5SMOKEN=0&R5SMOKEV=1->1","R5SMOKEN=1->2","NA->999") 
 kable(C)
@@ -2909,52 +2283,31 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R6SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-WB-w6`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R6SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-WB-w6`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
+| **Name** | `R6SMOKEN` | `R6SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-WB-w6` | `HRS-WB-w6` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 ```{r assign WB w6, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w6_smoking','HRS.HRS-WB-w6', variables=list('R6SMOKEN','R6SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_wb_w6','HRS.HRS-WB-w6', variables=list('R6SMOKEN','R6SMOKEV'), missings = TRUE)
+HRS_wb_w6 <- opal.execute(o,'HRS_wb_w6')
 ```
 
 ```{r local WB w6, echo=F}
-HRS_wb_w6_smoking <- opal.execute(o,'HRS_wb_w6_smoking')
-vbl <- HRS_wb_w6_smoking$R6SMOKEN
+vbl <- HRS_wb_w6$R6SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R6SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_wb_w6, aes(x=factor(R6SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_wb_w6_smoking$R6SMOKEV
+vbl <- HRS_wb_w6$R6SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R6SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_wb_w6_smoking, aes(x=factor(R6SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_wb_w6_smoking, aes(x=factor(R6SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_wb_w6, aes(x=factor(R6SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2967,13 +2320,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo WB w6}
-HRS_ds_wb_w6 <- tibble(id=HRS_wb_w6_smoking$id)
+HRS_ds_wb_w6 <- tibble(id=HRS_wb_w6$id)
 HRS_ds_wb_w6$smoking <- rep(999,length(HRS_ds_wb_w6$id))
-HRS_ds_wb_w6$smoking[HRS_wb_w6_smoking$R6SMOKEV==0] <- 0
-HRS_ds_wb_w6$smoking[HRS_wb_w6_smoking$R6SMOKEN==0&HRS_wb_w6_smoking$R6SMOKEV==1] <- 1
-HRS_ds_wb_w6$smoking[HRS_wb_w6_smoking$R6SMOKEN==1] <- 2
-#HRS_ds_wb_w6$smoking <- Recode(HRS_wb_w6_smoking$R6SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_wb_w6$smoking <- labelled(HRS_ds_wb_w6$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_wb_w6$smoking[which(HRS_wb_w6$R6SMOKEV==0)] <- 0
+HRS_ds_wb_w6$smoking[which(HRS_wb_w6$R6SMOKEN==0&HRS_wb_w6$R6SMOKEV==1)] <- 1
+HRS_ds_wb_w6$smoking[which(HRS_wb_w6$R6SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -2987,8 +2340,8 @@ ggplot(HRS_ds_wb_w6, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4,
 #### Validation
 ```{r crosstabulation WB w6, echo=F}
 AfterH <- table(HRS_ds_wb_w6$smoking)
-X<-c(sum(na.omit(HRS_wb_w6_smoking$R6SMOKEV==0)),sum(na.omit(HRS_wb_w6_smoking$R6SMOKEN==0&HRS_wb_w6_smoking$R6SMOKEV==1)),sum(na.omit(HRS_wb_w6_smoking$R6SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_wb_w6_smoking$R6SMOKEV)))
+X<-c(sum(na.omit(HRS_wb_w6$R6SMOKEV==0)),sum(na.omit(HRS_wb_w6$R6SMOKEN==0&HRS_wb_w6$R6SMOKEV==1)),sum(na.omit(HRS_wb_w6$R6SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_wb_w6$R6SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R6SMOKEV=0->0","R6SMOKEN=0&R6SMOKEV=1->1","R6SMOKEN=1->2","NA->999") 
 kable(C)
@@ -3001,52 +2354,30 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R7SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-WB-w7`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R7SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-WB-w7`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
+| **Name** | `R7SMOKEN` | `R7SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-WB-w7` | `HRS-WB-w7` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 ```{r assign WB w7, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w7_smoking','HRS.HRS-WB-w7', variables=list('R7SMOKEN','R7SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_wb_w7','HRS.HRS-WB-w7', variables=list('R7SMOKEN','R7SMOKEV'), missings = TRUE)
+HRS_wb_w7 <- opal.execute(o,'HRS_wb_w7')
 ```
 
 ```{r local WB w7, echo=F}
-HRS_wb_w7_smoking <- opal.execute(o,'HRS_wb_w7_smoking')
-vbl <- HRS_wb_w7_smoking$R7SMOKEN
+vbl <- HRS_wb_w7$R7SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R7SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_wb_w7, aes(x=factor(R7SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_wb_w7_smoking$R7SMOKEV
+vbl <- HRS_wb_w7$R7SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R7SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_wb_w7_smoking, aes(x=factor(R7SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_wb_w7_smoking, aes(x=factor(R7SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_wb_w7, aes(x=factor(R7SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -3059,13 +2390,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo WB w7}
-HRS_ds_wb_w7 <- tibble(id=HRS_wb_w7_smoking$id)
+HRS_ds_wb_w7 <- tibble(id=HRS_wb_w7$id)
 HRS_ds_wb_w7$smoking <- rep(999,length(HRS_ds_wb_w7$id))
-HRS_ds_wb_w7$smoking[HRS_wb_w7_smoking$R7SMOKEV==0] <- 0
-HRS_ds_wb_w7$smoking[HRS_wb_w7_smoking$R7SMOKEN==0&HRS_wb_w7_smoking$R7SMOKEV==1] <- 1
-HRS_ds_wb_w7$smoking[HRS_wb_w7_smoking$R7SMOKEN==1] <- 2
-#HRS_ds_wb_w7$smoking <- Recode(HRS_wb_w7_smoking$R7SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_wb_w7$smoking <- labelled(HRS_ds_wb_w7$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_wb_w7$smoking[which(HRS_wb_w7$R7SMOKEV==0)] <- 0
+HRS_ds_wb_w7$smoking[which(HRS_wb_w7$R7SMOKEN==0&HRS_wb_w7$R7SMOKEV==1)] <- 1
+HRS_ds_wb_w7$smoking[which(HRS_wb_w7$R7SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -3079,8 +2410,8 @@ ggplot(HRS_ds_wb_w7, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4,
 #### Validation
 ```{r crosstabulation WB w7, echo=F}
 AfterH <- table(HRS_ds_wb_w7$smoking)
-X<-c(sum(na.omit(HRS_wb_w7_smoking$R7SMOKEV==0)),sum(na.omit(HRS_wb_w7_smoking$R7SMOKEN==0&HRS_wb_w7_smoking$R7SMOKEV==1)),sum(na.omit(HRS_wb_w7_smoking$R7SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_wb_w7_smoking$R7SMOKEV)))
+X<-c(sum(na.omit(HRS_wb_w7$R7SMOKEV==0)),sum(na.omit(HRS_wb_w7$R7SMOKEN==0&HRS_wb_w7$R7SMOKEV==1)),sum(na.omit(HRS_wb_w7$R7SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_wb_w7$R7SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R7SMOKEV=0->0","R7SMOKEN=0&R7SMOKEV=1->1","R7SMOKEN=1->2","NA->999") 
 kable(C)
@@ -3093,52 +2424,33 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R8SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-WB-w8`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R8SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-WB-w8`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
+| **Name** | `R8SMOKEN` | `R8SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-WB-w8` | `HRS-WB-w8` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 
 
 ```{r assign WB w8, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w8_smoking','HRS.HRS-WB-w8', variables=list('R8SMOKEN','R8SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_wb_w8','HRS.HRS-WB-w8', variables=list('R8SMOKEN','R8SMOKEV'), missings = TRUE)
+HRS_wb_w8 <- opal.execute(o,'HRS_wb_w8')
 ```
 
 ```{r local WB w8, echo=F}
-HRS_wb_w8_smoking <- opal.execute(o,'HRS_wb_w8_smoking')
-vbl <- HRS_wb_w8_smoking$R8SMOKEN
+vbl <- HRS_wb_w8$R8SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R8SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_wb_w8, aes(x=factor(R8SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_wb_w8_smoking$R8SMOKEV
+vbl <- HRS_wb_w8$R8SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R8SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_wb_w8_smoking, aes(x=factor(R8SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_wb_w8_smoking, aes(x=factor(R8SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_wb_w8, aes(x=factor(R8SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -3151,13 +2463,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo WB w8}
-HRS_ds_wb_w8 <- tibble(id=HRS_wb_w8_smoking$id)
+HRS_ds_wb_w8 <- tibble(id=HRS_wb_w8$id)
 HRS_ds_wb_w8$smoking <- rep(999,length(HRS_ds_wb_w8$id))
-HRS_ds_wb_w8$smoking[HRS_wb_w8_smoking$R8SMOKEV==0] <- 0
-HRS_ds_wb_w8$smoking[HRS_wb_w8_smoking$R8SMOKEN==0&HRS_wb_w8_smoking$R8SMOKEV==1] <- 1
-HRS_ds_wb_w8$smoking[HRS_wb_w8_smoking$R8SMOKEN==1] <- 2
-#HRS_ds_wb_w8$smoking <- Recode(HRS_wb_w8_smoking$R8SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_wb_w8$smoking <- labelled(HRS_ds_wb_w8$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_wb_w8$smoking[which(HRS_wb_w8$R8SMOKEV==0)] <- 0
+HRS_ds_wb_w8$smoking[which(HRS_wb_w8$R8SMOKEN==0&HRS_wb_w8$R8SMOKEV==1)] <- 1
+HRS_ds_wb_w8$smoking[which(HRS_wb_w8$R8SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -3171,8 +2483,8 @@ ggplot(HRS_ds_wb_w8, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4,
 #### Validation
 ```{r crosstabulation WB w8, echo=F}
 AfterH <- table(HRS_ds_wb_w8$smoking)
-X<-c(sum(na.omit(HRS_wb_w8_smoking$R8SMOKEV==0)),sum(na.omit(HRS_wb_w8_smoking$R8SMOKEN==0&HRS_wb_w8_smoking$R8SMOKEV==1)),sum(na.omit(HRS_wb_w8_smoking$R8SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_wb_w8_smoking$R8SMOKEV)))
+X<-c(sum(na.omit(HRS_wb_w8$R8SMOKEV==0)),sum(na.omit(HRS_wb_w8$R8SMOKEN==0&HRS_wb_w8$R8SMOKEV==1)),sum(na.omit(HRS_wb_w8$R8SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_wb_w8$R8SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R8SMOKEV=0->0","R8SMOKEN=0&R8SMOKEV=1->1","R8SMOKEN=1->2","NA->999") 
 kable(C)
@@ -3186,51 +2498,31 @@ kable(C)
 
 
 
-
-| **Name** | `R9SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-WB-w9`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R9SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-WB-w9`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
+| **Name** | `R9SMOKEN` | `R9SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-WB-w9` | `HRS-WB-w9` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 ```{r assign WB w9, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w9_smoking','HRS.HRS-WB-w9', variables=list('R9SMOKEN','R9SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_wb_w9','HRS.HRS-WB-w9', variables=list('R9SMOKEN','R9SMOKEV'), missings = TRUE)
+HRS_wb_w9 <- opal.execute(o,'HRS_wb_w9')
 ```
 
 ```{r local WB w9, echo=F}
-HRS_wb_w9_smoking <- opal.execute(o,'HRS_wb_w9_smoking')
-vbl <- HRS_wb_w9_smoking$R9SMOKEN
+vbl <- HRS_wb_w9$R9SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R9SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_wb_w9, aes(x=factor(R9SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_wb_w9_smoking$R9SMOKEV
+vbl <- HRS_wb_w9$R9SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R9SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_wb_w9_smoking, aes(x=factor(R9SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_wb_w9_smoking, aes(x=factor(R9SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_wb_w9, aes(x=factor(R9SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -3243,13 +2535,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo WB w9}
-HRS_ds_wb_w9 <- tibble(id=HRS_wb_w9_smoking$id)
+HRS_ds_wb_w9 <- tibble(id=HRS_wb_w9$id)
 HRS_ds_wb_w9$smoking <- rep(999,length(HRS_ds_wb_w9$id))
-HRS_ds_wb_w9$smoking[HRS_wb_w9_smoking$R9SMOKEV==0] <- 0
-HRS_ds_wb_w9$smoking[HRS_wb_w9_smoking$R9SMOKEN==0&HRS_wb_w9_smoking$R9SMOKEV==1] <- 1
-HRS_ds_wb_w9$smoking[HRS_wb_w9_smoking$R9SMOKEN==1] <- 2
-#HRS_ds_wb_w9$smoking <- Recode(HRS_wb_w9_smoking$R9SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_wb_w9$smoking <- labelled(HRS_ds_wb_w9$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_wb_w9$smoking[which(HRS_wb_w9$R9SMOKEV==0)] <- 0
+HRS_ds_wb_w9$smoking[which(HRS_wb_w9$R9SMOKEN==0&HRS_wb_w9$R9SMOKEV==1)] <- 1
+HRS_ds_wb_w9$smoking[which(HRS_wb_w9$R9SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -3263,8 +2555,8 @@ ggplot(HRS_ds_wb_w9, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4,
 #### Validation
 ```{r crosstabulation WB w9, echo=F}
 AfterH <- table(HRS_ds_wb_w9$smoking)
-X<-c(sum(na.omit(HRS_wb_w9_smoking$R9SMOKEV==0)),sum(na.omit(HRS_wb_w9_smoking$R9SMOKEN==0&HRS_wb_w9_smoking$R9SMOKEV==1)),sum(na.omit(HRS_wb_w9_smoking$R9SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_wb_w9_smoking$R9SMOKEV)))
+X<-c(sum(na.omit(HRS_wb_w9$R9SMOKEV==0)),sum(na.omit(HRS_wb_w9$R9SMOKEN==0&HRS_wb_w9$R9SMOKEV==1)),sum(na.omit(HRS_wb_w9$R9SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_wb_w9$R9SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R9SMOKEV=0->0","R9SMOKEN=0&R9SMOKEV=1->1","R9SMOKEN=1->2","NA->999") 
 kable(C)
@@ -3278,53 +2570,31 @@ kable(C)
 
 #### Study-specific variable description
 
-
-
-
-| **Name** | `R10SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-WB-w10`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R10SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-WB-w10`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
+| **Name** | `R10SMOKEN` | `R10SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-WB-w10` | `HRS-WB-w10` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 ```{r assign WB w10, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w10_smoking','HRS.HRS-WB-w10', variables=list('R10SMOKEN','R10SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_wb_w10','HRS.HRS-WB-w10', variables=list('R10SMOKEN','R10SMOKEV'), missings = TRUE)
+HRS_wb_w10 <- opal.execute(o,'HRS_wb_w10')
 ```
 
 ```{r local WB w10, echo=F}
-HRS_wb_w10_smoking <- opal.execute(o,'HRS_wb_w10_smoking')
-vbl <- HRS_wb_w10_smoking$R10SMOKEN
+vbl <- HRS_wb_w10$R10SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R10SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_wb_w10, aes(x=factor(R10SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_wb_w10_smoking$R10SMOKEV
+vbl <- HRS_wb_w10$R10SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R10SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_wb_w10_smoking, aes(x=factor(R10SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_wb_w10_smoking, aes(x=factor(R10SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_wb_w10, aes(x=factor(R10SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -3337,13 +2607,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo WB w10}
-HRS_ds_wb_w10 <- tibble(id=HRS_wb_w10_smoking$id)
+HRS_ds_wb_w10 <- tibble(id=HRS_wb_w10$id)
 HRS_ds_wb_w10$smoking <- rep(999,length(HRS_ds_wb_w10$id))
-HRS_ds_wb_w10$smoking[HRS_wb_w10_smoking$R10SMOKEV==0] <- 0
-HRS_ds_wb_w10$smoking[HRS_wb_w10_smoking$R10SMOKEN==0&HRS_wb_w10_smoking$R10SMOKEV==1] <- 1
-HRS_ds_wb_w10$smoking[HRS_wb_w10_smoking$R10SMOKEN==1] <- 2
-#HRS_ds_wb_w10$smoking <- Recode(HRS_wb_w10_smoking$R10SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_wb_w10$smoking <- labelled(HRS_ds_wb_w10$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_wb_w10$smoking[which(HRS_wb_w10$R10SMOKEV==0)] <- 0
+HRS_ds_wb_w10$smoking[which(HRS_wb_w10$R10SMOKEN==0&HRS_wb_w10$R10SMOKEV==1)] <- 1
+HRS_ds_wb_w10$smoking[which(HRS_wb_w10$R10SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -3357,8 +2627,8 @@ ggplot(HRS_ds_wb_w10, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4
 #### Validation
 ```{r crosstabulation WB w10, echo=F}
 AfterH <- table(HRS_ds_wb_w10$smoking)
-X<-c(sum(na.omit(HRS_wb_w10_smoking$R10SMOKEV==0)),sum(na.omit(HRS_wb_w10_smoking$R10SMOKEN==0&HRS_wb_w10_smoking$R10SMOKEV==1)),sum(na.omit(HRS_wb_w10_smoking$R10SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_wb_w10_smoking$R10SMOKEV)))
+X<-c(sum(na.omit(HRS_wb_w10$R10SMOKEV==0)),sum(na.omit(HRS_wb_w10$R10SMOKEN==0&HRS_wb_w10$R10SMOKEV==1)),sum(na.omit(HRS_wb_w10$R10SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_wb_w10$R10SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R10SMOKEV=0->0","R10SMOKEN=0&R10SMOKEV=1->1","R10SMOKEN=1->2","NA->999") 
 kable(C)
@@ -3373,52 +2643,32 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R11SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-WB-w11`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R11SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-WB-w11`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
+| **Name** | `R11SMOKEN` | `R11SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-WB-w11` | `HRS-WB-w11` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 
 ```{r assign WB w11, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w11_smoking','HRS.HRS-WB-w11', variables=list('R11SMOKEN','R11SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_wb_w11','HRS.HRS-WB-w11', variables=list('R11SMOKEN','R11SMOKEV'), missings = TRUE)
+HRS_wb_w11 <- opal.execute(o,'HRS_wb_w11')
 ```
 
 ```{r local WB w11, echo=F}
-HRS_wb_w11_smoking <- opal.execute(o,'HRS_wb_w11_smoking')
-vbl <- HRS_wb_w11_smoking$R11SMOKEN
+vbl <- HRS_wb_w11$R11SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R11SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_wb_w11, aes(x=factor(R11SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_wb_w11_smoking$R11SMOKEV
+vbl <- HRS_wb_w11$R11SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R11SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_wb_w11_smoking, aes(x=factor(R11SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_wb_w11_smoking, aes(x=factor(R11SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_wb_w11, aes(x=factor(R11SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -3431,13 +2681,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo WB w11}
-HRS_ds_wb_w11 <- tibble(id=HRS_wb_w11_smoking$id)
+HRS_ds_wb_w11 <- tibble(id=HRS_wb_w11$id)
 HRS_ds_wb_w11$smoking <- rep(999,length(HRS_ds_wb_w11$id))
-HRS_ds_wb_w11$smoking[HRS_wb_w11_smoking$R11SMOKEV==0] <- 0
-HRS_ds_wb_w11$smoking[HRS_wb_w11_smoking$R11SMOKEN==0&HRS_wb_w11_smoking$R11SMOKEV==1] <- 1
-HRS_ds_wb_w11$smoking[HRS_wb_w11_smoking$R11SMOKEN==1] <- 2
-#HRS_ds_wb_w11$smoking <- Recode(HRS_wb_w11_smoking$R11SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_wb_w11$smoking <- labelled(HRS_ds_wb_w11$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_wb_w11$smoking[which(HRS_wb_w11$R11SMOKEV==0)] <- 0
+HRS_ds_wb_w11$smoking[which(HRS_wb_w11$R11SMOKEN==0&HRS_wb_w11$R11SMOKEV==1)] <- 1
+HRS_ds_wb_w11$smoking[which(HRS_wb_w11$R11SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -3451,8 +2701,8 @@ ggplot(HRS_ds_wb_w11, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4
 #### Validation
 ```{r crosstabulation WB w11, echo=F}
 AfterH <- table(HRS_ds_wb_w11$smoking)
-X<-c(sum(na.omit(HRS_wb_w11_smoking$R11SMOKEV==0)),sum(na.omit(HRS_wb_w11_smoking$R11SMOKEN==0&HRS_wb_w11_smoking$R11SMOKEV==1)),sum(na.omit(HRS_wb_w11_smoking$R11SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_wb_w11_smoking$R11SMOKEV)))
+X<-c(sum(na.omit(HRS_wb_w11$R11SMOKEV==0)),sum(na.omit(HRS_wb_w11$R11SMOKEN==0&HRS_wb_w11$R11SMOKEV==1)),sum(na.omit(HRS_wb_w11$R11SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_wb_w11$R11SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R11SMOKEV=0->0","R11SMOKEN=0&R11SMOKEV=1->1","R11SMOKEN=1->2","NA->999") 
 kable(C)
@@ -3467,52 +2717,30 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R7SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-EBB-w7`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R7SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-EBB-w7`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
+| **Name** | `R7SMOKEN` | `R7SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-EBB-w7` | `HRS-EBB-w7` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 ```{r assign EBB w7, echo=F}
-opal.assign.table.tibble(o, 'HRS_ebb_w7_smoking','HRS.HRS-EBB-w7', variables=list('R7SMOKEN','R7SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ebb_w7','HRS.HRS-EBB-w7', variables=list('R7SMOKEN','R7SMOKEV'), missings = TRUE)
+HRS_ebb_w7 <- opal.execute(o,'HRS_ebb_w7')
 ```
 
 ```{r local EBB w7, echo=F}
-HRS_ebb_w7_smoking <- opal.execute(o,'HRS_ebb_w7_smoking')
-vbl <- HRS_ebb_w7_smoking$R7SMOKEN
+vbl <- HRS_ebb_w7$R7SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R7SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ebb_w7, aes(x=factor(R7SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_ebb_w7_smoking$R7SMOKEV
+vbl <- HRS_ebb_w7$R7SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R7SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_ebb_w7_smoking, aes(x=factor(R7SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_ebb_w7_smoking, aes(x=factor(R7SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_ebb_w7, aes(x=factor(R7SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -3525,13 +2753,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo EBB w7}
-HRS_ds_ebb_w7 <- tibble(id=HRS_ebb_w7_smoking$id)
+HRS_ds_ebb_w7 <- tibble(id=HRS_ebb_w7$id)
 HRS_ds_ebb_w7$smoking <- rep(999,length(HRS_ds_ebb_w7$id))
-HRS_ds_ebb_w7$smoking[HRS_ebb_w7_smoking$R7SMOKEV==0] <- 0
-HRS_ds_ebb_w7$smoking[HRS_ebb_w7_smoking$R7SMOKEN==0&HRS_ebb_w7_smoking$R7SMOKEV==1] <- 1
-HRS_ds_ebb_w7$smoking[HRS_ebb_w7_smoking$R7SMOKEN==1] <- 2
-#HRS_ds_ebb_w7$smoking <- Recode(HRS_ebb_w7_smoking$R7SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_ebb_w7$smoking <- labelled(HRS_ds_ebb_w7$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_ebb_w7$smoking[which(HRS_ebb_w7$R7SMOKEV==0)] <- 0
+HRS_ds_ebb_w7$smoking[which(HRS_ebb_w7$R7SMOKEN==0&HRS_ebb_w7$R7SMOKEV==1)] <- 1
+HRS_ds_ebb_w7$smoking[which(HRS_ebb_w7$R7SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -3545,8 +2773,8 @@ ggplot(HRS_ds_ebb_w7, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4
 #### Validation
 ```{r crosstabulation EBB w7, echo=F}
 AfterH <- table(HRS_ds_ebb_w7$smoking)
-X<-c(sum(na.omit(HRS_ebb_w7_smoking$R7SMOKEV==0)),sum(na.omit(HRS_ebb_w7_smoking$R7SMOKEN==0&HRS_ebb_w7_smoking$R7SMOKEV==1)),sum(na.omit(HRS_ebb_w7_smoking$R7SMOKEN==1)))
-BeforeH <- c(X,length(HRS_ebb_w7_smoking$R7SMOKEV)-sum(X))
+X<-c(sum(na.omit(HRS_ebb_w7$R7SMOKEV==0)),sum(na.omit(HRS_ebb_w7$R7SMOKEN==0&HRS_ebb_w7$R7SMOKEV==1)),sum(na.omit(HRS_ebb_w7$R7SMOKEN==1)))
+BeforeH <- c(X,length(HRS_ebb_w7$R7SMOKEV)-sum(X))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R7SMOKEV=0->0","R7SMOKEN=0&R7SMOKEV=1->1","R7SMOKEN=1->2","NA->999") 
 kable(C)
@@ -3561,52 +2789,30 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R8SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-EBB-w8`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R8SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-EBB-w8`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
+| **Name** | `R8SMOKEN` | `R8SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-EBB-w8` | `HRS-EBB-w8` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 ```{r assign EBB w8, echo=F}
-opal.assign.table.tibble(o, 'HRS_ebb_w8_smoking','HRS.HRS-EBB-w8', variables=list('R8SMOKEN','R8SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ebb_w8','HRS.HRS-EBB-w8', variables=list('R8SMOKEN','R8SMOKEV'), missings = TRUE)
+HRS_ebb_w8 <- opal.execute(o,'HRS_ebb_w8')
 ```
 
 ```{r local EBB w8, echo=F}
-HRS_ebb_w8_smoking <- opal.execute(o,'HRS_ebb_w8_smoking')
-vbl <- HRS_ebb_w8_smoking$R8SMOKEN
+vbl <- HRS_ebb_w8$R8SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R8SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ebb_w8, aes(x=factor(R8SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_ebb_w8_smoking$R8SMOKEV
+vbl <- HRS_ebb_w8$R8SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R8SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_ebb_w8_smoking, aes(x=factor(R8SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_ebb_w8_smoking, aes(x=factor(R8SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_ebb_w8, aes(x=factor(R8SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -3619,13 +2825,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo EBB w8}
-HRS_ds_ebb_w8 <- tibble(id=HRS_ebb_w8_smoking$id)
+HRS_ds_ebb_w8 <- tibble(id=HRS_ebb_w8$id)
 HRS_ds_ebb_w8$smoking <- rep(999,length(HRS_ds_ebb_w8$id))
-HRS_ds_ebb_w8$smoking[HRS_ebb_w8_smoking$R8SMOKEV==0] <- 0
-HRS_ds_ebb_w8$smoking[HRS_ebb_w8_smoking$R8SMOKEN==0&HRS_ebb_w8_smoking$R8SMOKEV==1] <- 1
-HRS_ds_ebb_w8$smoking[HRS_ebb_w8_smoking$R8SMOKEN==1] <- 2
-#HRS_ds_ebb_w8$smoking <- Recode(HRS_ebb_w8_smoking$R8SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_ebb_w8$smoking <- labelled(HRS_ds_ebb_w8$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_ebb_w8$smoking[which(HRS_ebb_w8$R8SMOKEV==0)] <- 0
+HRS_ds_ebb_w8$smoking[which(HRS_ebb_w8$R8SMOKEN==0&HRS_ebb_w8$R8SMOKEV==1)] <- 1
+HRS_ds_ebb_w8$smoking[which(HRS_ebb_w8$R8SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -3639,8 +2845,8 @@ ggplot(HRS_ds_ebb_w8, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4
 #### Validation
 ```{r crosstabulation EBB w8, echo=F}
 AfterH <- table(HRS_ds_ebb_w8$smoking)
-X<-c(sum(na.omit(HRS_ebb_w8_smoking$R8SMOKEV==0)),sum(na.omit(HRS_ebb_w8_smoking$R8SMOKEN==0&HRS_ebb_w8_smoking$R8SMOKEV==1)),sum(na.omit(HRS_ebb_w8_smoking$R8SMOKEN==1)))
-BeforeH <- c(X,length(HRS_ebb_w8_smoking$R8SMOKEV)-sum(X))
+X<-c(sum(na.omit(HRS_ebb_w8$R8SMOKEV==0)),sum(na.omit(HRS_ebb_w8$R8SMOKEN==0&HRS_ebb_w8$R8SMOKEV==1)),sum(na.omit(HRS_ebb_w8$R8SMOKEN==1)))
+BeforeH <- c(X,length(HRS_ebb_w8$R8SMOKEV)-sum(X))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R8SMOKEV=0->0","R8SMOKEN=0&R8SMOKEV=1->1","R8SMOKEN=1->2","NA->999") 
 kable(C)
@@ -3654,53 +2860,32 @@ kable(C)
 
 #### Study-specific variable description
 
-
-
-
-| **Name** | `R9SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-EBB-w9`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R9SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-EBB-w9`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
+| **Name** | `R9SMOKEN` | `R9SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-EBB-w9` | `HRS-EBB-w9` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 
 ```{r assign EBB w9, echo=F}
-opal.assign.table.tibble(o, 'HRS_ebb_w9_smoking','HRS.HRS-EBB-w9', variables=list('R9SMOKEN','R9SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ebb_w9','HRS.HRS-EBB-w9', variables=list('R9SMOKEN','R9SMOKEV'), missings = TRUE)
+HRS_ebb_w9 <- opal.execute(o,'HRS_ebb_w9')
 ```
 
 ```{r local EBB w9, echo=F}
-HRS_ebb_w9_smoking <- opal.execute(o,'HRS_ebb_w9_smoking')
-vbl <- HRS_ebb_w9_smoking$R9SMOKEN
+vbl <- HRS_ebb_w9$R9SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R9SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ebb_w9, aes(x=factor(R9SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_ebb_w9_smoking$R9SMOKEV
+vbl <- HRS_ebb_w9$R9SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R9SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_ebb_w9_smoking, aes(x=factor(R9SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_ebb_w9_smoking, aes(x=factor(R9SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_ebb_w9, aes(x=factor(R9SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -3713,13 +2898,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo EBB w9}
-HRS_ds_ebb_w9 <- tibble(id=HRS_ebb_w9_smoking$id)
+HRS_ds_ebb_w9 <- tibble(id=HRS_ebb_w9$id)
 HRS_ds_ebb_w9$smoking <- rep(999,length(HRS_ds_ebb_w9$id))
-HRS_ds_ebb_w9$smoking[HRS_ebb_w9_smoking$R9SMOKEV==0] <- 0
-HRS_ds_ebb_w9$smoking[HRS_ebb_w9_smoking$R9SMOKEN==0&HRS_ebb_w9_smoking$R9SMOKEV==1] <- 1
-HRS_ds_ebb_w9$smoking[HRS_ebb_w9_smoking$R9SMOKEN==1] <- 2
-#HRS_ds_ebb_w9$smoking <- Recode(HRS_ebb_w9_smoking$R9SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_ebb_w9$smoking <- labelled(HRS_ds_ebb_w9$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_ebb_w9$smoking[which(HRS_ebb_w9$R9SMOKEV==0)] <- 0
+HRS_ds_ebb_w9$smoking[which(HRS_ebb_w9$R9SMOKEN==0&HRS_ebb_w9$R9SMOKEV==1)] <- 1
+HRS_ds_ebb_w9$smoking[which(HRS_ebb_w9$R9SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -3733,8 +2918,8 @@ ggplot(HRS_ds_ebb_w9, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.4
 #### Validation
 ```{r crosstabulation EBB w9, echo=F}
 AfterH <- table(HRS_ds_ebb_w9$smoking)
-X<-c(sum(na.omit(HRS_ebb_w9_smoking$R9SMOKEV==0)),sum(na.omit(HRS_ebb_w9_smoking$R9SMOKEN==0&HRS_ebb_w9_smoking$R9SMOKEV==1)),sum(na.omit(HRS_ebb_w9_smoking$R9SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_ebb_w9_smoking$R9SMOKEV)))
+X<-c(sum(na.omit(HRS_ebb_w9$R9SMOKEV==0)),sum(na.omit(HRS_ebb_w9$R9SMOKEN==0&HRS_ebb_w9$R9SMOKEV==1)),sum(na.omit(HRS_ebb_w9$R9SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_ebb_w9$R9SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R9SMOKEV=0->0","R9SMOKEN=0&R9SMOKEV=1->1","R9SMOKEN=1->2","NA->999") 
 kable(C)
@@ -3751,50 +2936,33 @@ kable(C)
 
 
 
-| **Name** | `R10SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-EBB-w10`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R10SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-EBB-w10`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
+| **Name** | `R10SMOKEN` | `R10SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-EBB-w10` | `HRS-EBB-w10` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 
 
 ```{r assign EBB w10, echo=F}
-opal.assign.table.tibble(o, 'HRS_ebb_w10_smoking','HRS.HRS-EBB-w10', variables=list('R10SMOKEN','R10SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ebb_w10','HRS.HRS-EBB-w10', variables=list('R10SMOKEN','R10SMOKEV'), missings = TRUE)
+HRS_ebb_w10 <- opal.execute(o,'HRS_ebb_w10')
 ```
 
 ```{r local EBB w10, echo=F}
-HRS_ebb_w10_smoking <- opal.execute(o,'HRS_ebb_w10_smoking')
-vbl <- HRS_ebb_w10_smoking$R10SMOKEN
+vbl <- HRS_ebb_w10$R10SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R10SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ebb_w10, aes(x=factor(R10SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_ebb_w10_smoking$R10SMOKEV
+vbl <- HRS_ebb_w10$R10SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R10SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_ebb_w10_smoking, aes(x=factor(R10SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_ebb_w10_smoking, aes(x=factor(R10SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_ebb_w10, aes(x=factor(R10SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -3807,13 +2975,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo EBB w10}
-HRS_ds_ebb_w10 <- tibble(id=HRS_ebb_w10_smoking$id)
+HRS_ds_ebb_w10 <- tibble(id=HRS_ebb_w10$id)
 HRS_ds_ebb_w10$smoking <- rep(999,length(HRS_ds_ebb_w10$id))
-HRS_ds_ebb_w10$smoking[HRS_ebb_w10_smoking$R10SMOKEV==0] <- 0
-HRS_ds_ebb_w10$smoking[HRS_ebb_w10_smoking$R10SMOKEN==0&HRS_ebb_w10_smoking$R10SMOKEV==1] <- 1
-HRS_ds_ebb_w10$smoking[HRS_ebb_w10_smoking$R10SMOKEN==1] <- 2
-#HRS_ds_ebb_w10$smoking <- Recode(HRS_ebb_w10_smoking$R10SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_ebb_w10$smoking <- labelled(HRS_ds_ebb_w10$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_ebb_w10$smoking[which(HRS_ebb_w10$R10SMOKEV==0)] <- 0
+HRS_ds_ebb_w10$smoking[which(HRS_ebb_w10$R10SMOKEN==0&HRS_ebb_w10$R10SMOKEV==1)] <- 1
+HRS_ds_ebb_w10$smoking[which(HRS_ebb_w10$R10SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -3827,8 +2995,8 @@ ggplot(HRS_ds_ebb_w10, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.
 #### Validation
 ```{r crosstabulation EBB w10, echo=F}
 AfterH <- table(HRS_ds_ebb_w10$smoking)
-X<-c(sum(na.omit(HRS_ebb_w10_smoking$R10SMOKEV==0)),sum(na.omit(HRS_ebb_w10_smoking$R10SMOKEN==0&HRS_ebb_w10_smoking$R10SMOKEV==1)),sum(na.omit(HRS_ebb_w10_smoking$R10SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_ebb_w10_smoking$R10SMOKEV)))
+X<-c(sum(na.omit(HRS_ebb_w10$R10SMOKEV==0)),sum(na.omit(HRS_ebb_w10$R10SMOKEN==0&HRS_ebb_w10$R10SMOKEV==1)),sum(na.omit(HRS_ebb_w10$R10SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_ebb_w10$R10SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R10SMOKEV=0->0","R10SMOKEN=0&R10SMOKEV=1->1","R10SMOKEN=1->2","NA->999") 
 kable(C)
@@ -3843,52 +3011,32 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R11SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-EBB-w11`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R11SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-EBB-w11`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
+| **Name** | `R11SMOKEN` | `R11SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-EBB-w11` | `HRS-EBB-w11` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 
 ```{r assign EBB w11, echo=F}
-opal.assign.table.tibble(o, 'HRS_ebb_w11_smoking','HRS.HRS-EBB-w11', variables=list('R11SMOKEN','R11SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ebb_w11','HRS.HRS-EBB-w11', variables=list('R11SMOKEN','R11SMOKEV'), missings = TRUE)
+HRS_ebb_w11 <- opal.execute(o,'HRS_ebb_w11')
 ```
 
 ```{r local EBB w11, echo=F}
-HRS_ebb_w11_smoking <- opal.execute(o,'HRS_ebb_w11_smoking')
-vbl <- HRS_ebb_w11_smoking$R11SMOKEN
+vbl <- HRS_ebb_w11$R11SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R11SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_ebb_w11, aes(x=factor(R11SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_ebb_w11_smoking$R11SMOKEV
+vbl <- HRS_ebb_w11$R11SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R11SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_ebb_w11_smoking, aes(x=factor(R11SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_ebb_w11_smoking, aes(x=factor(R11SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_ebb_w11, aes(x=factor(R11SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -3901,13 +3049,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo EBB w11}
-HRS_ds_ebb_w11 <- tibble(id=HRS_ebb_w11_smoking$id)
+HRS_ds_ebb_w11 <- tibble(id=HRS_ebb_w11$id)
 HRS_ds_ebb_w11$smoking <- rep(999,length(HRS_ds_ebb_w11$id))
-HRS_ds_ebb_w11$smoking[HRS_ebb_w11_smoking$R11SMOKEV==0] <- 0
-HRS_ds_ebb_w11$smoking[HRS_ebb_w11_smoking$R11SMOKEN==0&HRS_ebb_w11_smoking$R11SMOKEV==1] <- 1
-HRS_ds_ebb_w11$smoking[HRS_ebb_w11_smoking$R11SMOKEN==1] <- 2
-#HRS_ds_ebb_w11$smoking <- Recode(HRS_ebb_w11_smoking$R11SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_ebb_w11$smoking <- labelled(HRS_ds_ebb_w11$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_ebb_w11$smoking[which(HRS_ebb_w11$R11SMOKEV==0)] <- 0
+HRS_ds_ebb_w11$smoking[which(HRS_ebb_w11$R11SMOKEN==0&HRS_ebb_w11$R11SMOKEV==1)] <- 1
+HRS_ds_ebb_w11$smoking[which(HRS_ebb_w11$R11SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -3921,8 +3069,8 @@ ggplot(HRS_ds_ebb_w11, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.
 #### Validation
 ```{r crosstabulation EBB w11, echo=F}
 AfterH <- table(HRS_ds_ebb_w11$smoking)
-X<-c(sum(na.omit(HRS_ebb_w11_smoking$R11SMOKEV==0)),sum(na.omit(HRS_ebb_w11_smoking$R11SMOKEN==0&HRS_ebb_w11_smoking$R11SMOKEV==1)),sum(na.omit(HRS_ebb_w11_smoking$R11SMOKEN==1)))
-BeforeH <- c(X,length(HRS_ebb_w11_smoking$R11SMOKEV)-sum(X))
+X<-c(sum(na.omit(HRS_ebb_w11$R11SMOKEV==0)),sum(na.omit(HRS_ebb_w11$R11SMOKEN==0&HRS_ebb_w11$R11SMOKEV==1)),sum(na.omit(HRS_ebb_w11$R11SMOKEN==1)))
+BeforeH <- c(X,length(HRS_ebb_w11$R11SMOKEV)-sum(X))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R11SMOKEV=0->0","R11SMOKEN=0&R11SMOKEV=1->1","R11SMOKEN=1->2","NA->999") 
 kable(C)
@@ -3937,52 +3085,32 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R10SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-MBB-w10`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R10SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-MBB-w10`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
+| **Name** | `R10SMOKEN` | `R10SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-MBB-w10` | `HRS-MBB-w10` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 
 ```{r assign MBB w10, echo=F}
-opal.assign.table.tibble(o, 'HRS_mbb_w10_smoking','HRS.HRS-MBB-w10', variables=list('R10SMOKEN','R10SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_mbb_w10','HRS.HRS-MBB-w10', variables=list('R10SMOKEN','R10SMOKEV'), missings = TRUE)
+HRS_mbb_w10 <- opal.execute(o,'HRS_mbb_w10')
 ```
 
 ```{r local MBB w10, echo=F}
-HRS_mbb_w10_smoking <- opal.execute(o,'HRS_mbb_w10_smoking')
-vbl <- HRS_mbb_w10_smoking$R10SMOKEN
+vbl <- HRS_mbb_w10$R10SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R10SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_mbb_w10, aes(x=factor(R10SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_mbb_w10_smoking$R10SMOKEV
+vbl <- HRS_mbb_w10$R10SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R10SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_mbb_w10_smoking, aes(x=factor(R10SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_mbb_w10_smoking, aes(x=factor(R10SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_mbb_w10, aes(x=factor(R10SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -3995,13 +3123,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo MBB w10}
-HRS_ds_mbb_w10 <- tibble(id=HRS_mbb_w10_smoking$id)
+HRS_ds_mbb_w10 <- tibble(id=HRS_mbb_w10$id)
 HRS_ds_mbb_w10$smoking <- rep(999,length(HRS_ds_mbb_w10$id))
-HRS_ds_mbb_w10$smoking[HRS_mbb_w10_smoking$R10SMOKEV==0] <- 0
-HRS_ds_mbb_w10$smoking[HRS_mbb_w10_smoking$R10SMOKEN==0&HRS_mbb_w10_smoking$R10SMOKEV==1] <- 1
-HRS_ds_mbb_w10$smoking[HRS_mbb_w10_smoking$R10SMOKEN==1] <- 2
-#HRS_ds_mbb_w10$smoking <- Recode(HRS_mbb_w10_smoking$R10SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_mbb_w10$smoking <- labelled(HRS_ds_mbb_w10$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_mbb_w10$smoking[which(HRS_mbb_w10$R10SMOKEV==0)] <- 0
+HRS_ds_mbb_w10$smoking[which(HRS_mbb_w10$R10SMOKEN==0&HRS_mbb_w10$R10SMOKEV==1)] <- 1
+HRS_ds_mbb_w10$smoking[which(HRS_mbb_w10$R10SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -4015,8 +3143,8 @@ ggplot(HRS_ds_mbb_w10, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.
 #### Validation
 ```{r crosstabulation MBB w10, echo=F}
 AfterH <- table(HRS_ds_mbb_w10$smoking)
-X<-c(sum(na.omit(HRS_mbb_w10_smoking$R10SMOKEV==0)),sum(na.omit(HRS_mbb_w10_smoking$R10SMOKEN==0&HRS_mbb_w10_smoking$R10SMOKEV==1)),sum(na.omit(HRS_mbb_w10_smoking$R10SMOKEN==1)))
-BeforeH <- c(X,sum(is.na(HRS_mbb_w10_smoking$R10SMOKEV)))
+X<-c(sum(na.omit(HRS_mbb_w10$R10SMOKEV==0)),sum(na.omit(HRS_mbb_w10$R10SMOKEN==0&HRS_mbb_w10$R10SMOKEV==1)),sum(na.omit(HRS_mbb_w10$R10SMOKEN==1)))
+BeforeH <- c(X,sum(is.na(HRS_mbb_w10$R10SMOKEV)))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R10SMOKEV=0->0","R10SMOKEN=0&R10SMOKEV=1->1","R10SMOKEN=1->2","NA->999") 
 kable(C)
@@ -4030,52 +3158,33 @@ kable(C)
 #### Study-specific variable description
 
 
-
-
-| **Name** | `R11SMOKEN`|
-|-|-|
-| **Label** |`smokes now` |
-| **Table name** |`HRS-MBB-w11`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
-
-
-
-
-
-
-| **Name** | `R11SMOKEV`|
-|-|-|
-| **Label** |`smokes ever` |
-| **Table name** |`HRS-MBB-w11`|
-| **Categories** |`1 = Yes`<br/>`0 = No`|
-| **Missings** |`NA`|
-| **Description** |  |
-
-
+| **Name** | `R11SMOKEN` | `R11SMOKEV` |
+|-|-|-|
+| **Label** | `smokes now` | `smokes ever` |
+| **Table name** | `HRS-MBB-w11` | `HRS-MBB-w11` |
+| **Categories:**| `0 = No` <br/> `1 = Yes`| `0 = No` <br/> `1 = Yes`|
+| **Missings:**| `NA` | `NA` |
+| **Description** |  | |
 
 
 
 
 
 ```{r assign MBB w11, echo=F}
-opal.assign.table.tibble(o, 'HRS_mbb_w11_smoking','HRS.HRS-MBB-w11', variables=list('R11SMOKEN','R11SMOKEV'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_mbb_w11','HRS.HRS-MBB-w11', variables=list('R11SMOKEN','R11SMOKEV'), missings = TRUE)
+HRS_mbb_w11 <- opal.execute(o,'HRS_mbb_w11')
 ```
 
 ```{r local MBB w11, echo=F}
-HRS_mbb_w11_smoking <- opal.execute(o,'HRS_mbb_w11_smoking')
-vbl <- HRS_mbb_w11_smoking$R11SMOKEN
+vbl <- HRS_mbb_w11$R11SMOKEN
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R11SMOKEN")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(HRS_mbb_w11, aes(x=factor(R11SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
 
-vbl <- HRS_mbb_w11_smoking$R11SMOKEV
+vbl <- HRS_mbb_w11$R11SMOKEV
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "R11SMOKEV")
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(HRS_mbb_w11_smoking, aes(x=factor(R11SMOKEN))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Current smoker") + ylab("Frequency")
-ggplot(HRS_mbb_w11_smoking, aes(x=factor(R11SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
+ggplot(HRS_mbb_w11, aes(x=factor(R11SMOKEV))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Ever smoked") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -4088,13 +3197,13 @@ To compute the harmonize variable from the study-specific variable it has to be 
 * `NA into 999`
 
 ```{r harmo MBB w11}
-HRS_ds_mbb_w11 <- tibble(id=HRS_mbb_w11_smoking$id)
+HRS_ds_mbb_w11 <- tibble(id=HRS_mbb_w11$id)
 HRS_ds_mbb_w11$smoking <- rep(999,length(HRS_ds_mbb_w11$id))
-HRS_ds_mbb_w11$smoking[HRS_mbb_w11_smoking$R11SMOKEV==0] <- 0
-HRS_ds_mbb_w11$smoking[HRS_mbb_w11_smoking$R11SMOKEN==0&HRS_mbb_w11_smoking$R11SMOKEV==1] <- 1
-HRS_ds_mbb_w11$smoking[HRS_mbb_w11_smoking$R11SMOKEN==1] <- 2
-#HRS_ds_mbb_w11$smoking <- Recode(HRS_mbb_w11_smoking$R11SMOKEN, "1 = '2';2 = '0';5 = '1';-2 = '997';-1 = '998';NA = '999' ")
-HRS_ds_mbb_w11$smoking <- labelled(HRS_ds_mbb_w11$smoking, labels = c(Never_smoked=0, Ex_smoker=1, Current_smoker=2, Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HRS_ds_mbb_w11$smoking[which(HRS_mbb_w11$R11SMOKEV==0)] <- 0
+HRS_ds_mbb_w11$smoking[which(HRS_mbb_w11$R11SMOKEN==0&HRS_mbb_w11$R11SMOKEV==1)] <- 1
+HRS_ds_mbb_w11$smoking[which(HRS_mbb_w11$R11SMOKEN==1)] <- 2
+
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -4108,8 +3217,8 @@ ggplot(HRS_ds_mbb_w11, aes(x=factor(smoking))) + geom_bar(stat="count", width=0.
 #### Validation
 ```{r crosstabulation MBB w11, echo=F}
 AfterH <- table(HRS_ds_mbb_w11$smoking)
-X<-c(sum(na.omit(HRS_mbb_w11_smoking$R11SMOKEV==0)),sum(na.omit(HRS_mbb_w11_smoking$R11SMOKEN==0&HRS_mbb_w11_smoking$R11SMOKEV==1)),sum(na.omit(HRS_mbb_w11_smoking$R11SMOKEN==1)))
-BeforeH <- c(X,length(HRS_mbb_w11_smoking$R11SMOKEV)-sum(X))
+X<-c(sum(na.omit(HRS_mbb_w11$R11SMOKEV==0)),sum(na.omit(HRS_mbb_w11$R11SMOKEN==0&HRS_mbb_w11$R11SMOKEV==1)),sum(na.omit(HRS_mbb_w11$R11SMOKEN==1)))
+BeforeH <- c(X,length(HRS_mbb_w11$R11SMOKEV)-sum(X))
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("R11SMOKEV=0->0","R11SMOKEN=0&R11SMOKEV=1->1","R11SMOKEN=1->2","NA->999") 
 kable(C)
