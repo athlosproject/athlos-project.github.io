@@ -15,7 +15,7 @@ output:
 <!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
 ```{r setup, include=FALSE}
-source("../../setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
 <!-- # Loading DS description -->
@@ -50,9 +50,11 @@ TILDA_w1 <- opal.execute(o,'TILDA_w1')
 
 ```{r local w1, echo=F}
 vbl <- TILDA_w1$bh105
+vbl_miss <- c(-99,-98)
 kable(Continuous_summary(vbl, missing_values = c(-99,-98))[3], caption = 'bh105') 
 pander(Continuous_summary(vbl, missing_values = c(-99,-98))$summary, caption = "Summary")
-ggplot(TILDA_w1, aes(bh105)) + geom_histogram(stat="count", fill="steelblue") + xlab("Number of walks") + ylab("Frequency") + coord_cartesian(xlim = c(-.45,7.45))
+ggplot(TILDA_w1, aes(bh105)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+
 ```
 
 #### Harmonisation algorithm
@@ -68,11 +70,10 @@ To compute `t_walks` from the study-specific variable it has to be recoded as fo
 **R script:**
 
 ```{r harmo w1}
+
 TILDA_ds_w1 <- tibble(id=TILDA_w1$id)
-TILDA_ds_w1$t_walks <- rep(1,length(TILDA_w1$id))
-TILDA_ds_w1$t_walks[TILDA_w1$bh105==0] <- 0
-TILDA_ds_w1$t_walks[TILDA_w1$bh105==-98] <- 998
-TILDA_ds_w1$t_walks[TILDA_w1$bh105==-99] <- 997 
+TILDA_ds_w1$t_walks <- car::recode(TILDA_w1$bh105, "1:hi=1; 0=0;-98=998;-99=997;NA=999")
+
 ```
 
 #### Statistical description of the new harmonised variable

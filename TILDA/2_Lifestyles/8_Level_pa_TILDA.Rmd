@@ -15,7 +15,7 @@ output:
 <!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
 ```{r setup, include=FALSE}
-source("../../setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
 <!-- # Loading DS description -->
@@ -39,8 +39,8 @@ source('../../_DS_Rmd/level_paDS.R')
 |-|-|-|
 | **Label** | `During the last 7 days, on how many days did you do vigorous physical activity` | `During the last 7 days, on how many days did you do moderate physical activity` |
 | **Table name** | `TILDA-AMF-v16` | `TILDA-AMF-v16` |
-| **Categories:**| `continuous`| `continuous`|
-| **Missings:**| `-99 = refused` <br/> `-98 = don't know`| `-99 = refused` <br/>  `-98 = don't know`|
+| **Categories** | `continuous`| `continuous`|
+| **Missings** | `-99 = refused` <br/> `-98 = don't know`| `-99 = refused` <br/>  `-98 = don't know`|
 | **Description** |  | |
 
 
@@ -51,14 +51,18 @@ TILDA_w1 <- opal.execute(o,'TILDA_w1')
 
 ```{r local w1, echo=F}
 vbl <- TILDA_w1$bh101
+vbl_miss <- c(-99,-98)
 kable(Continuous_summary(vbl, missing_values = c(-99,-98))[3], caption = 'bh101') 
 pander(Continuous_summary(vbl, missing_values = c(-99,-98))$summary, caption = "Summary")
-ggplot(TILDA_w1, aes(bh101)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency") + coord_cartesian(ylim = c(0,7000), xlim = c(-.45,7.45))
+ggplot(TILDA_w1, aes(bh101)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+
 
 vbl <- TILDA_w1$bh103
+vbl_miss <- c(-99,-98)
 kable(Continuous_summary(vbl, missing_values = c(-99,-98))[3], caption = 'bh103') 
 pander(Continuous_summary(vbl, missing_values = c(-99,-98))$summary, caption = "Summary")
-ggplot(TILDA_w1, aes(bh103)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency") + coord_cartesian(ylim = c(0,5000), xlim = c(-.45,7.45))
+ggplot(TILDA_w1, aes(bh103)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+
 ```
 
 #### Harmonisation algorithm
@@ -76,13 +80,14 @@ The harmonized variable is the highest score of both measurements and to compute
 
 ```{r harmo w1}
 TILDA_ds_w1 <- tibble(id=TILDA_w1$id)
-TILDA_ds_w1$level_pa <- rep(888,length(TILDA_w1$id))
-TILDA_ds_w1$level_pa[TILDA_w1$bh101==0|TILDA_w1$bh103==0] <- 4
-TILDA_ds_w1$level_pa[TILDA_w1$bh101==1|TILDA_w1$bh103==1] <- 3
-TILDA_ds_w1$level_pa[TILDA_w1$bh101==2|TILDA_w1$bh103==2|TILDA_w1$bh101==3|TILDA_w1$bh103==3] <- 2
-TILDA_ds_w1$level_pa[TILDA_w1$bh101==4|TILDA_w1$bh103==4|TILDA_w1$bh101==5|TILDA_w1$bh103==5|TILDA_w1$bh101==6|TILDA_w1$bh103==6|TILDA_w1$bh101==7|TILDA_w1$bh103==7] <- 1
-TILDA_ds_w1$level_pa[TILDA_w1$bh101==-98|TILDA_w1$bh103==-98] <- 998
-TILDA_ds_w1$level_pa[TILDA_w1$bh101==-99|TILDA_w1$bh103==-99] <- 997 
+TILDA_ds_w1$level_pa <- rep(999,length(TILDA_w1$id))
+TILDA_ds_w1$level_pa[which(TILDA_w1$bh101==-98|TILDA_w1$bh103==-98)] <- 998
+TILDA_ds_w1$level_pa[which(TILDA_w1$bh101==-99|TILDA_w1$bh103==-99)] <- 997
+TILDA_ds_w1$level_pa[which(TILDA_w1$bh101==0|TILDA_w1$bh103==0)] <- 4
+TILDA_ds_w1$level_pa[which(TILDA_w1$bh101==1|TILDA_w1$bh103==1)] <- 3
+TILDA_ds_w1$level_pa[which(TILDA_w1$bh101 %in% c(2,3) | TILDA_w1$bh103 %in% c(2,3))] <- 2
+TILDA_ds_w1$level_pa[which(TILDA_w1$bh101 %in% c(4,5,6,7) | TILDA_w1$bh103 %in% c(4,5,6,7))] <- 1
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -96,25 +101,7 @@ ggplot(TILDA_ds_w1, aes(x=factor(level_pa))) + geom_bar(stat="count", width=0.4,
 
 #### Validation
 ```{r crosstabulation w1, echo=F}
-AfterH <- table(TILDA_ds_w1$level_pa)
-X <- c(sum(na.omit((TILDA_w1$bh101 == 4 | TILDA_w1$bh103 == 
-    4 | TILDA_w1$bh101 == 5 | TILDA_w1$bh103 == 5 | TILDA_w1$bh101 == 
-    6 | TILDA_w1$bh103 == 6 | TILDA_w1$bh101 == 7 | TILDA_w1$bh103 == 
-    7) & TILDA_w1$bh101 > -1 & TILDA_w1$bh103 > -1)), sum(na.omit((TILDA_w1$bh101 == 
-    2 | TILDA_w1$bh101 == 3) & (TILDA_w1$bh103 == 0 | TILDA_w1$bh103 == 
-    1)), na.omit((TILDA_w1$bh103 == 2 | TILDA_w1$bh103 == 
-    3) & (TILDA_w1$bh101 == 0 | TILDA_w1$bh101 == 1)), na.omit((TILDA_w1$bh101 == 
-    2 | TILDA_w1$bh101 == 3) & (TILDA_w1$bh103 == 2 | TILDA_w1$bh103 == 
-    3))), sum(na.omit(TILDA_w1$bh101 == 1 & TILDA_w1$bh103 == 
-    1), na.omit(TILDA_w1$bh101 == 0 & TILDA_w1$bh103 == 1), 
-    na.omit(TILDA_w1$bh101 == 1 & TILDA_w1$bh103 == 0)), sum(na.omit(TILDA_w1$bh101 == 
-    0 & TILDA_w1$bh103 == 0)), sum(na.omit(TILDA_w1$bh101 == 
-    -99 | TILDA_w1$bh103 == -99)), sum(na.omit(TILDA_w1$bh101 == 
-    -98 | TILDA_w1$bh103 == -98)))
-BeforeH <- c(X)
-C <- rbind(BeforeH, AfterH)
-colnames(C) <- c("4-7->1", "2-3->2", "1->3", "0->4", "-99->997", "-98->998")
-kable(C)
+
 ```
 
 
@@ -129,8 +116,8 @@ kable(C)
 |-|-|-|
 | **Label** | `During the last 7 days, on how many days did you do vigorous physical activity` | `During the last 7 days, on how many days did you do moderate physical activity` |
 | **Table name** | `TILDA-AMF-v23` | `TILDA-AMF-v23` |
-| **Categories:**| `continuous`| `continuous`|
-| **Missings:**| |  `-98 = don't know`|
+| **Categories** | `continuous`| `continuous`|
+| **Missings** | |  `-98 = don't know`|
 | **Description** |  | |
 
 
@@ -140,15 +127,19 @@ TILDA_w2 <- opal.execute(o,'TILDA_w2')
 ```
 
 ```{r local w2, echo=F}
+
 vbl <- TILDA_w2$bh101
+vbl_miss <- c(-98)
 kable(Continuous_summary(vbl, missing_values = c(-98))[3], caption = 'bh101') 
 pander(Continuous_summary(vbl, missing_values = c(-98))$summary, caption = "Summary")
-ggplot(TILDA_w2, aes(bh101)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+ggplot(TILDA_w2, aes(bh101)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab(ds_label) + ylab("Frequency")
 
 vbl <- TILDA_w2$bh103
+vbl_miss <- c(-98)
 kable(Continuous_summary(vbl, missing_values = c(-98))[3], caption = 'bh103') 
 pander(Continuous_summary(vbl, missing_values = c(-98))$summary, caption = "Summary")
-ggplot(TILDA_w2, aes(bh103)) + geom_histogram(stat="count", fill="steelblue") + xlab(ds_label) + ylab("Frequency")+ coord_cartesian(xlim =c(-.45,7.45)) 
+ggplot(TILDA_w2, aes(bh103)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab(ds_label) + ylab("Frequency")
+
 ```
 
 #### Harmonisation algorithm
@@ -165,12 +156,13 @@ The harmonized variable is the highest score of both measurements and to compute
 
 ```{r harmo w2}
 TILDA_ds_w2 <- tibble(id=TILDA_w2$id)
-TILDA_ds_w2$level_pa <- rep(888,length(TILDA_w2$id))
-TILDA_ds_w2$level_pa[TILDA_w2$bh101==0|TILDA_w2$bh103==0] <- 4
-TILDA_ds_w2$level_pa[TILDA_w2$bh101==1|TILDA_w2$bh103==1] <- 3
-TILDA_ds_w2$level_pa[TILDA_w2$bh101==2|TILDA_w2$bh103==2|TILDA_w2$bh101==3|TILDA_w2$bh103==3] <- 2
-TILDA_ds_w2$level_pa[TILDA_w2$bh101==4|TILDA_w2$bh103==4|TILDA_w2$bh101==5|TILDA_w2$bh103==5|TILDA_w2$bh101==6|TILDA_w2$bh103==6|TILDA_w2$bh101==7|TILDA_w2$bh103==7] <- 1
-TILDA_ds_w2$level_pa[TILDA_w2$bh101==-98|TILDA_w2$bh103==-98] <- 998
+TILDA_ds_w2$level_pa <- rep(999,length(TILDA_w2$id))
+TILDA_ds_w2$level_pa[which(TILDA_w2$bh101==-98|TILDA_w2$bh103==-98)] <- 998
+TILDA_ds_w2$level_pa[which(TILDA_w2$bh101==0|TILDA_w2$bh103==0)] <- 4
+TILDA_ds_w2$level_pa[which(TILDA_w2$bh101==1|TILDA_w2$bh103==1)] <- 3
+TILDA_ds_w2$level_pa[which(TILDA_w2$bh101 %in% c(2,3) | TILDA_w2$bh103 %in%  c(2,3))] <- 2
+TILDA_ds_w2$level_pa[which(TILDA_w2$bh101 %in% c(4,5,6,7) | TILDA_w2$bh103 %in% c(4,5,6,7))] <- 1
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -184,24 +176,7 @@ ggplot(TILDA_ds_w2, aes(x=factor(level_pa))) + geom_bar(stat="count", width=0.4,
 
 #### Validation
 ```{r crosstabulation w2, echo=F}
-AfterH <- table(TILDA_ds_w2$level_pa)
-X <- c(sum(na.omit((TILDA_w2$bh101 == 4 | TILDA_w2$bh103 == 
-    4 | TILDA_w2$bh101 == 5 | TILDA_w2$bh103 == 5 | TILDA_w2$bh101 == 
-    6 | TILDA_w2$bh103 == 6 | TILDA_w2$bh101 == 7 | TILDA_w2$bh103 == 
-    7) & TILDA_w2$bh101 > -1 & TILDA_w2$bh103 > -1)), sum(na.omit((TILDA_w2$bh101 == 
-    2 | TILDA_w2$bh101 == 3) & (TILDA_w2$bh103 == 0 | TILDA_w2$bh103 == 
-    1)), na.omit((TILDA_w2$bh103 == 2 | TILDA_w2$bh103 == 
-    3) & (TILDA_w2$bh101 == 0 | TILDA_w2$bh101 == 1)), na.omit((TILDA_w2$bh101 == 
-    2 | TILDA_w2$bh101 == 3) & (TILDA_w2$bh103 == 2 | TILDA_w2$bh103 == 
-    3))), sum(na.omit(TILDA_w2$bh101 == 1 & TILDA_w2$bh103 == 
-    1), na.omit(TILDA_w2$bh101 == 0 & TILDA_w2$bh103 == 1), 
-    na.omit(TILDA_w2$bh101 == 1 & TILDA_w2$bh103 == 0)), sum(na.omit(TILDA_w2$bh101 == 
-    0 & TILDA_w2$bh103 == 0)), sum(na.omit(TILDA_w2$bh101 == 
-    -98 | TILDA_w2$bh103 == -98)))
-BeforeH <- c(X)
-C <- rbind(BeforeH, AfterH)
-colnames(C) <- c("4-7->1", "2-3->2", "1->3", "0->4", "-98->998")
-kable(C)
+
 ```
 
 
@@ -266,7 +241,6 @@ kable(f.dbb)
 
 
 # Quality estimation
-[Comments on the quality of the new harmonised variable.]
 
 
 <!-- ########################################################## --> 
