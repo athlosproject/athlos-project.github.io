@@ -1,0 +1,116 @@
+---
+title: "Frequency of Vigorous Physical Activity"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/f_vig_paDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/f_vig_paDS.R')
+```
+
+
+
+# Data process
+
+## Finland
+
+### Wave 1 
+
+Not found
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `T11_KYS1_K24_4PV` |
+|-|-|
+| **Label** | `Vigorous and strenuous aerobic type exercise: days in a week` |
+| **Table name** | `t11_athlos_2017_02_27` |
+| **Categories:**| `continuous`|
+| **Missings:**| `NA` |
+| **Description** |  |
+
+```{r assign w2, echo=F}
+opal.assign.table.tibble(o, 'Health20002011_w2','Health2000-2011.t11_athlos_2017_02_27', variables=list('T11_KYS1_K24_4PV'), missings = TRUE)
+Health20002011_w2 <- opal.execute(o,'Health20002011_w2')
+```
+
+```{r local w2, echo=F}
+vbl <- Health20002011_w2$T11_KYS1_K24_4PV
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = names(Health20002011_w2)[2]) 
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(Health20002011_w2, aes(T11_KYS1_K24_4PV)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency") + coord_cartesian(xlim = c(0,8))
+```
+
+#### Harmonisation algorithm
+
+To compute `f_vig_pa` from the study-specific variable it has to be recoded as follows:
+
+* `0 into 0`
+* `1 into 1`
+* `2,3 into 2`
+* `4,5 into 3`
+* `6,7 into 4`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w2}
+Health20002011_ds_w2 <- tibble(id=Health20002011_w2$id)
+Health20002011_ds_w2$f_vig_pa <- car::recode(Health20002011_w2$T11_KYS1_K24_4PV, "3 = 2;4 = 3;5 = 3;6 = 4;7 = 4;NA = 999 ")
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w2, echo=F}
+vbl <- Health20002011_ds_w2$f_vig_pa
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(Health20002011_ds_w2, aes(x=factor(f_vig_pa))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w2, echo=F}
+AfterH <- table(Health20002011_ds_w2$f_vig_pa)
+X<-table(Health20002011_w2$T11_KYS1_K24_4PV)
+BeforeH <- c(X[1],sum(X[2:3]),sum(X[4:5]),sum(X[6:7]),sum(is.na(Health20002011_w2$T11_KYS1_K24_4PV)))
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("1->1","2,3->2","4,5->3","6,7->4","NA->999")  
+kable(C)
+```
+
+```{r importOPAL w2, echo=F}
+f_vig_pa <- Health20002011_ds_w2 
+save(f_vig_pa, file = "../RData/w2/f_vig_pa.RData")
+rm(f_vig_pa)
+```
+
+
+
+# Quality estimation
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

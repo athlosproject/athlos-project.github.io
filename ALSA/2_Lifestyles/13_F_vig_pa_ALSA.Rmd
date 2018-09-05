@@ -1,0 +1,738 @@
+---
+title: "Frequency of Vigorous Physical Activity"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/f_vig_paDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/f_vig_paDS.R')
+```
+
+
+
+
+# Data process
+
+
+## Australia
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `VIGEXC2W` |`vig_pa`|
+|-|-|-|
+| **Label** | `Vigor Sessions in past 2 weeks` |`Engage in vigorous exercise during the last 2 weeks`|
+| **Table name** | `ALSA-Wave1` |`vig_pa`|
+| **Categories:**| `continuous`|`0 = No`<br/>`1 = Yes`|
+| **Missings:**| `NA` | `991 = CAPI/interviewer error`<br/>`992 = Impute`<br/>`993 = Disable to measure`<br/>`994 = Not attempt/not done`<br/>`995 = Does not answer`<br/>`996 = Not applicable`<br/>`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing` |
+| **Description** |  |  |
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'ALSA_w1','ALSA.ALSA-Wave1', variables=list('VIGEXC2W'), missings = TRUE)
+ALSA_w1 <- opal.execute(o,'ALSA_w1')
+load(paste0(datafolder,"w1/vig_pa.RData"))
+ALSA_w1 <- left_join(ALSA_w1,vig_pa, by="id")
+rm(vig_pa)
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- ALSA_w1$VIGEXC2W
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = names(ALSA_w1)[2]) 
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA_w1, aes(VIGEXC2W)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- ALSA_w1$vig_pa
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "vig_pa")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(ALSA_w1, aes(x=factor(vig_pa))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+To compute `f_vig_pa` from the study-specific variable `VIGEXC2W` it has to be recoded as follows:
+
+* `VIGEXC2W/2`
+* `1 into 1`
+* `2,3 into 2`
+* `,4,5 into 3`
+* `>5 into 4`
+* `NA into 999`
+* `vig_pa == 0 into 0`
+
+**R script:**
+
+```{r harmo w1}
+
+ALSA_ds_w1 <- tibble(id=ALSA_w1$id)
+ALSA_ds_w1$f_vig_pa <- car::recode(ceiling(ALSA_w1$VIGEXC2W/2), "c(1) = 1; c(2,3) = 2; c(4,5) = 3; 6:hi = 4; NA = 999 ")
+ALSA_ds_w1$f_vig_pa[which(ALSA_w1$vig_pa == 0)] <- 0
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=F}
+vbl <- ALSA_ds_w1$f_vig_pa
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w1, aes(x=factor(f_vig_pa))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1, echo=F}
+
+```
+
+
+
+
+
+### Wave 2
+
+Not found
+
+
+
+
+### Wave 3
+
+#### Study-specific variable description
+
+| **Name** | `VIGEXCW3` |
+|-|-|
+| **Label** | `VIGOR SESSIONS IN PAST 2 WEEKS` |
+| **Table name** | `ALSA-Wave3` |
+| **Categories:**| `continuous`|
+| **Missings:**| `99`<br/>`NA` |
+| **Description** |  |
+
+```{r assign w3, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w3','ALSA.ALSA-Wave3', variables=list('VIGEXCW3'), missings = TRUE)
+ALSA_w3 <- opal.execute(o,'ALSA_w3')
+```
+
+```{r local w3, echo=F}
+vbl <- ALSA_w3$VIGEXCW3
+vbl_miss <- c(99)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = names(ALSA_w3)[2]) 
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(ALSA_w3, aes(VIGEXCW3)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+To compute `f_vig_pa` from the study-specific variable it has to be recoded as follows:
+
+* `VIGEXCW3/2`
+* `1 into 1`
+* `2,3 into 2`
+* `,4,5 into 3`
+* `>5 into 4`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w3}
+ALSA_ds_w3 <- tibble(id=ALSA_w3$id)
+ALSA_ds_w3$f_vig_pa <- car::recode(ceiling(ALSA_w3$VIGEXCW3/2), "50 = 999; c(1) = 1; c(2,3) = 2; c(4,5) = 3; 6:hi = 4; NA = 999 ")
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w3, echo=F}
+vbl <- ALSA_ds_w3$f_vig_pa
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w3, aes(x=factor(f_vig_pa))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w3, echo=F}
+
+```
+
+
+
+
+
+
+### Wave 4
+
+Not found
+
+
+### Wave 5
+
+Not found
+
+
+
+
+### Wave 6
+
+#### Study-specific variable description
+
+| **Name** | `VIGEXW6` |`vig_pa`|
+|-|-|-|
+| **Label** | `number of vigorous exercise sessions` |`Engage in vigorous exercise during the last 2 weeks`|
+| **Table name** | `ALSA-Wave6` |`vig_pa`|
+| **Categories:**| `continuous`|`0 = No`<br/>`1 = Yes`|
+| **Missings:**| `NA` | `991 = CAPI/interviewer error`<br/>`992 = Impute`<br/>`993 = Disable to measure`<br/>`994 = Not attempt/not done`<br/>`995 = Does not answer`<br/>`996 = Not applicable`<br/>`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing` |
+| **Description** |  |  |
+
+```{r assign w6, echo=F}
+
+opal.assign.table.tibble(o, 'ALSA_w6','ALSA.ALSA-Wave6', variables=list('VIGEXW6'), missings = TRUE)
+ALSA_w6 <- opal.execute(o,'ALSA_w6')
+load(paste0(datafolder,"w6/vig_pa.RData"))
+ALSA_w6 <- left_join(ALSA_w6,vig_pa, by="id")
+rm(vig_pa)
+
+```
+
+```{r local w6, echo=F}
+
+vbl <- ALSA_w6$VIGEXW6
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = names(ALSA_w6)[2]) 
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA_w6, aes(VIGEXW6)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- ALSA_w6$vig_pa
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "vig_pa")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(ALSA_w6, aes(x=factor(vig_pa))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+To compute `f_vig_pa` from the study-specific variable `VIGEXW6` it has to be recoded as follows:
+
+* `VIGEXCW6/2`
+* `1 into 1`
+* `2,3 into 2`
+* `,4,5 into 3`
+* `>5 into 4`
+* `NA into 999`
+* `vig_pa == 0 into 0`
+
+**R script:**
+
+```{r harmo w6}
+
+ALSA_ds_w6 <- tibble(id=ALSA_w6$id)
+ALSA_ds_w6$f_vig_pa <- car::recode(ceiling(ALSA_w6$VIGEXW6/2), "c(1) = 1; c(2,3) = 2; c(4,5) = 3; 6:hi = 4; NA = 999 ")
+ALSA_ds_w6$f_vig_pa[which(ALSA_w6$vig_pa == 0)] <- 0
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w6, echo=F}
+vbl <- ALSA_ds_w6$f_vig_pa
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w6, aes(x=factor(f_vig_pa))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w6, echo=F}
+
+```
+
+
+
+
+
+
+### Wave 7
+
+#### Study-specific variable description
+
+| **Name** | `vigexw7` |`vig_pa`|
+|-|-|-|
+| **Label** | `how many sessiosn of vigourous exercise in the past 2 weeks` |`Engage in vigorous exercise during the last 2 weeks`|
+| **Table name** | `ALSA-Wave7` |`vig_pa`|
+| **Categories:**| `continuous`|`0 = No`<br/>`1 = Yes`|
+| **Missings:**| `0 = Not answered` <br/> `99 = No vigorous exercise` <br/> `NA` | `991 = CAPI/interviewer error`<br/>`992 = Impute`<br/>`993 = Disable to measure`<br/>`994 = Not attempt/not done`<br/>`995 = Does not answer`<br/>`996 = Not applicable`<br/>`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing` |
+| **Description** |  |  |
+
+```{r assign w7, echo=F}
+
+opal.assign.table.tibble(o, 'ALSA_w7','ALSA.ALSA-Wave7', variables=list('vigexw7'), missings = TRUE)
+ALSA_w7 <- opal.execute(o,'ALSA_w7')
+load(paste0(datafolder,"w7/vig_pa.RData"))
+ALSA_w7 <- left_join(ALSA_w7,vig_pa, by="id")
+rm(vig_pa)
+
+```
+
+```{r local w7, echo=F}
+
+vbl <- ALSA_w7$vigexw7
+vbl_miss <- c(0,99)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = names(ALSA_w7)[2]) 
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(ALSA_w7, aes(vigexw7)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- ALSA_w7$vig_pa
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "vig_pa")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(ALSA_w7, aes(x=factor(vig_pa))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+To compute `f_vig_pa` from the study-specific variable `vigexw7` it has to be recoded as follows:
+
+* `99 into 0`
+* `vigexw7/2`
+* `1 into 1`
+* `2,3 into 2`
+* `,4,5 into 3`
+* `>5 into 4`
+* `NA into 999`
+* `0 into 995`
+* `vig_pa == 0 into 0`
+
+**R script:**
+
+```{r harmo w7}
+
+ALSA_ds_w7 <- tibble(id=ALSA_w7$id)
+ALSA_ds_w7$f_vig_pa <- car::recode(ceiling(ALSA_w7$vigexw7/2), "50 = 0 ;c(1) = 1; c(2,3) = 2; c(4,5) = 3; 6:hi = 4; NA = 999; 0 = 995 ")
+ALSA_ds_w7$f_vig_pa[which(ALSA_w7$vig_pa == 0)] <- 0
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w7, echo=F}
+vbl <- ALSA_ds_w7$f_vig_pa
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w7, aes(x=factor(f_vig_pa))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w7, echo=F}
+
+```
+
+
+
+
+### Wave 8
+
+Not found
+
+
+
+
+### Wave 9
+
+#### Study-specific variable description
+
+| **Name** | `VIGEXW9` |`vig_pa`|
+|-|-|-|
+| **Label** | `how many sessions of vigourous exercise in the past 2 weeks` |`Engage in vigorous exercise during the last 2 weeks`|
+| **Table name** | `ALSA-Wave9` |`vig_pa`|
+| **Categories:**| `continuous`|`0 = No`<br/>`1 = Yes`|
+| **Missings:**| `NA` | `991 = CAPI/interviewer error`<br/>`992 = Impute`<br/>`993 = Disable to measure`<br/>`994 = Not attempt/not done`<br/>`995 = Does not answer`<br/>`996 = Not applicable`<br/>`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing` |
+| **Description** |  |  |
+
+```{r assign w9, echo=F}
+
+opal.assign.table.tibble(o, 'ALSA_w9','ALSA.ALSA-Wave9', variables=list('VIGEXW9'), missings = TRUE)
+ALSA_w9 <- opal.execute(o,'ALSA_w9')
+load(paste0(datafolder,"w9/vig_pa.RData"))
+ALSA_w9 <- left_join(ALSA_w9,vig_pa, by="id")
+rm(vig_pa)
+
+```
+
+```{r local w9, echo=F}
+
+vbl <- ALSA_w9$VIGEXW9
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = names(ALSA_w9)[2]) 
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA_w9, aes(VIGEXW9)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- ALSA_w9$vig_pa
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "vig_pa")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(ALSA_w9, aes(x=factor(vig_pa))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+To compute `f_vig_pa` from the study-specific variable `VIGEXW9` it has to be recoded as follows:
+
+* `VIGEXW9/2`
+* `1 into 1`
+* `2,3 into 2`
+* `,4,5 into 3`
+* `>5 into 4`
+* `NA into 999`
+* `vig_pa == 0 into 0`
+
+**R script:**
+
+```{r harmo w9}
+
+ALSA_ds_w9 <- tibble(id=ALSA_w9$id)
+ALSA_ds_w9$f_vig_pa <- car::recode(ceiling(ALSA_w9$VIGEXW9/2), "c(1) = 1; c(2,3) = 2; c(4,5) = 3; 6:hi = 4; NA = 999 ")
+ALSA_ds_w9$f_vig_pa[which(ALSA_w9$vig_pa == 0)] <- 0
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w9, echo=F}
+vbl <- ALSA_ds_w9$f_vig_pa
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w9, aes(x=factor(f_vig_pa))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w9, echo=F}
+
+```
+
+
+
+### Wave 10
+
+Not found
+
+
+
+
+
+### Wave 11
+
+#### Study-specific variable description
+
+| **Name** | `VIGEXW11` |`vig_pa`|
+|-|-|-|
+| **Label** | `how many vigorous exercise sessions in past 2 weeks` |`Engage in vigorous exercise during the last 2 weeks`|
+| **Table name** | `ALSA-Wave11` |`vig_pa`|
+| **Categories:**| `continuous`|`0 = No`<br/>`1 = Yes`|
+| **Missings:**| `NA` | `991 = CAPI/interviewer error`<br/>`992 = Impute`<br/>`993 = Disable to measure`<br/>`994 = Not attempt/not done`<br/>`995 = Does not answer`<br/>`996 = Not applicable`<br/>`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing` |
+| **Description** |  |  |
+
+```{r assign w11, echo=F}
+
+opal.assign.table.tibble(o, 'ALSA_w11','ALSA.ALSA-Wave11', variables=list('VIGEXW11'), missings = TRUE)
+ALSA_w11 <- opal.execute(o,'ALSA_w11')
+load(paste0(datafolder,"w11/vig_pa.RData"))
+ALSA_w11 <- left_join(ALSA_w11,vig_pa, by="id")
+rm(vig_pa)
+
+```
+
+```{r local w11, echo=F}
+
+vbl <- ALSA_w11$VIGEXW11
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = names(ALSA_w11)[2]) 
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA_w11, aes(VIGEXW11)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency") + scale_x_continuous(breaks = c(0,2,4,6))
+
+vbl <- ALSA_w11$vig_pa
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "vig_pa")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(ALSA_w11, aes(x=factor(vig_pa))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+To compute `f_vig_pa` from the study-specific variable `VIGEXW11` it has to be recoded as follows:
+
+* `VIGEXW11/2`
+* `1 into 1`
+* `2,3 into 2`
+* `,4,5 into 3`
+* `>5 into 4`
+* `NA into 999`
+* `vig_pa == 0 into 0`
+
+**R script:**
+
+```{r harmo w11}
+
+ALSA_ds_w11 <- tibble(id=ALSA_w11$id)
+ALSA_ds_w11$f_vig_pa <- car::recode(ceiling(ALSA_w11$VIGEXW11/2), "c(1) = 1; c(2,3) = 2; c(4,5) = 3; 6:hi = 4; NA = 999 ")
+ALSA_ds_w11$f_vig_pa[which(ALSA_w11$vig_pa == 0)] <- 0
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w11, echo=F}
+vbl <- ALSA_ds_w11$f_vig_pa
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w11, aes(x=factor(f_vig_pa))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w11, echo=F}
+
+```
+
+
+
+### Wave 12
+
+#### Study-specific variable description
+
+| **Name** | `VIGEXW12` |`vig_pa`|
+|-|-|-|
+| **Label** | `how many vigorous exercise sessions in past 2 weeks` |`Engage in vigorous exercise during the last 2 weeks`|
+| **Table name** | `ALSA-Wave12` |`vig_pa`|`0 = No`<br/>`1 = Yes`|
+| **Categories:**| `continuous`|`0 = No`<br/>`1 = Yes`|
+| **Missings:**| `NA` |`991 = CAPI/interviewer error`<br/>`992 = Impute`<br/>`993 = Disable to measure`<br/>`994 = Not attempt/not done`<br/>`995 = Does not answer`<br/>`996 = Not applicable`<br/>`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing` |
+| **Description** |  |  |
+
+```{r assign w12, echo=F}
+
+opal.assign.table.tibble(o, 'ALSA_w12','ALSA.ALSA-Wave12', variables=list('VIGEXW12'), missings = TRUE)
+ALSA_w12 <- opal.execute(o,'ALSA_w12')
+load(paste0(datafolder,"w12/vig_pa.RData"))
+ALSA_w12 <- left_join(ALSA_w12,vig_pa, by="id")
+rm(vig_pa)
+
+```
+
+```{r local w12, echo=F}
+
+vbl <- ALSA_w12$VIGEXW12
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = names(ALSA_w12)[2]) 
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA_w12, aes(VIGEXW12)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency") 
+
+vbl <- ALSA_w12$vig_pa
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "vig_pa")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(ALSA_w12, aes(x=factor(vig_pa))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+To compute `f_vig_pa` from the study-specific variable `vig_pa` it has to be recoded as follows:
+
+* `VIGEXW12/2`
+* `1 into 1`
+* `2,3 into 2`
+* `,4,5 into 3`
+* `>5 into 4`
+* `NA into 999`
+* `vig_pa == 0 into 0`
+
+**R script:**
+
+```{r harmo w12}
+
+ALSA_ds_w12 <- tibble(id=ALSA_w12$id)
+ALSA_ds_w12$f_vig_pa <- car::recode(ceiling(ALSA_w12$VIGEXW12/2), "c(1) = 1; c(2,3) = 2; c(4,5) = 3; 6:hi = 4; NA = 999 ")
+ALSA_ds_w12$f_vig_pa[which(ALSA_w12$vig_pa == 0)] <- 0
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w12, echo=F}
+
+vbl <- ALSA_ds_w12$f_vig_pa
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w12, aes(x=factor(f_vig_pa))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+#### Validation
+```{r crosstabulation w12, echo=F}
+
+```
+
+
+
+### Wave 13
+
+Not found
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
+
+
+```{r helpfunctions, echo=F}
+
+
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles with categorical data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Labelling of categories (for categorical variables, only non-missing values)
+    aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:5])
+  # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+# Creation of summary tables for categorical data
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of columns with categories and labels
+  t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+  }
+  # Add sample size for each wave/population
+  t.hds[16,] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+  )
+  # Add wave/population names
+  names(t.hds)<-c("val", "label",lnames)
+  return(t.hds)
+  
+}
+
+# Creation of trajectories table for each population
+
+trajectories <- function(m.hds,vbl_name){
+  
+  # First wave data
+  dbb <- m.hds[[1]][,c("id",vbl_name)]
+  # Merge with next waves data
+  for(ind in 2:length(m.hds)){
+    dbb <- merge(dbb, m.hds[[ind]][,c("id",vbl_name)], by = "id", suffixes = c("", paste0(".",names(m.hds)[ind])), all = T)
+  }
+  names(dbb) <- c("id", names(m.hds))
+  
+  # Glue individual data through all waves into trajectories
+  v.dbb <- dbb[,2]
+  for(ind in 2:length(m.hds)){
+    v.dbb <- paste(v.dbb,dbb[,ind+1],sep="")
+  }
+  # Trajectories and frequencies
+  f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+  return(f.dbb)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
+}
+
+```
+
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+alsa.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"), w3 = c("w3","W3"), w4 = c("w4","W4"), w5 = c("w5","W5"), w6 = c("w6","W6"), w7 = c("w7","W7"), w8 = c("w8","W8"), w9 = c("w9","W9"), w10 = c("w10","W10"), w11 = c("w11","W11"), w12 = c("w12","W12"), w13 = c("w13","W13"))
+
+# Consider only harmonised waves
+l.hds <- lapply(alsa.cw, function(wname) if(exists(paste0("ALSA_ds_",wname[1]))){wname = list(get(paste0("ALSA_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],sapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb[f.dbb[,3]>=0.3,]))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+```
+
+
+
+
+
+
+
+
+# Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
