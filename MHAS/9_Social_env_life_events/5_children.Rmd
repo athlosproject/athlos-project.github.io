@@ -88,7 +88,6 @@ vari <- MHAS_w1_child$a20
 kable(Continuous_summary(var = vari, missing_values = c(88,99))[3], caption = 'a20')
 kable(Continuous_summary(vari, missing_values = c(88,99))[2], caption = "Values")
 pander(Continuous_summary(vari, missing_values = c(88,99))$summary, caption = "Summary")
-#Continuous_summary(var = MHAS_w1_child$a20, missing_values = NA)
 ggplot(filter(MHAS_w1_child,!vari %in% c(88,99,96)), aes(a20)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Number of children still alive") + ylab("Frequency")
 
 vbl <- MHAS_w1_trh$trh15
@@ -196,13 +195,13 @@ kable(C)
 #### Study-specific variable description
 
 
-| **Name** |`aa19`|`aa20`|
-|-|-|-|
-| **Label** |`How many children born alive do you have`|`Of those, how many still alive`|
-| **Table name** |`MHAS_2003`|`MHAS_2003`|
-| **Categories** |`continuous`|`continuous`<br/>`0 = None`<br/>`96 = All`|
-| **Missings** |`99 = Doesn't know`|`88 = Doesn't answer`<br/>`99 = Doesn't know`|
-| **Description** |  |  |
+| **Name** |`aa19`|`aa20`|`d4`|
+|-|-|-|-|
+| **Label** |`How many children born alive do you have`|`Of those, how many still alive`|`Person has living children`|
+| **Table name** |`MHAS_2003`|`MHAS_2003`|`MHAS_2003`|
+| **Categories** |`continuous`|`continuous`<br/>`0 = None`<br/>`96 = All`|`1 = Yes`<br/>`2 = No`|
+| **Missings** |`99 = Doesn't know`|`88 = Doesn't answer`<br/>`99 = Doesn't know`|`NA`|
+| **Description** |  |  |  |
 
 
 
@@ -226,7 +225,7 @@ kable(C)
 
 ```{r assign2, echo=F}
 
-opal.assign.table.tibble(o, 'MHAS_w2_child','Mexican Health Aging Study.MHAS_2003',variables=list('aa19','aa20'), missings = TRUE)
+opal.assign.table.tibble(o, 'MHAS_w2_child','Mexican Health Aging Study.MHAS_2003',variables=list('aa19','aa20','d4'), missings = TRUE)
 MHAS_w2_child <- opal.execute(o,'MHAS_w2_child')
 
 opal.assign.table.tibble(o, 'MHAS_w2_trh','Mexican Health Aging Study.sect_trh_2003',variables=list('trh17','trh1','cunicah'), missings = TRUE)
@@ -249,11 +248,16 @@ pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Su
 ggplot(filter(MHAS_w2_child,!vbl %in% vbl_miss), aes(aa19)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vari <-  MHAS_w2_child$aa20
-kable(Continuous_summary(vari, missing_values = c(88,99))[3], caption = attributes(vari)$`spss::shortName`) 
+kable(Continuous_summary(vari, missing_values = c(88,99))[3], caption = "aa20") 
 kable(Continuous_summary(vari, missing_values = c(88,99))[2], caption = "Values")
 pander(Continuous_summary(vari, missing_values = c(88,99))$summary, caption = "Summary")
 #Continuous_summary(var = MHAS_w2_child$aa20, missing_values = NA)
 ggplot(filter(MHAS_w2_child,!vari %in% c(88,99,96)), aes(aa20)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("How many of children are still alive") + ylab("Frequency")+scale_x_continuous(breaks = c(2,4,6,8,10,12))
+
+vbl <- MHAS_w2_child$d4
+kable(Categorical_summary(vbl, missing_values = NA)[3], caption = "d4") 
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(MHAS_w2_child, aes(x=factor(d4))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- MHAS_w2_trh$trh17
 vbl_miss <- c(88,99)
@@ -277,6 +281,8 @@ To recode the harmonised variable `child` from the study-specific variable `aa20
 
 * `aa19 == 0 into 0`
 * `1:30 or 96 into 1`
+* `d4 == 1 into 1`
+* `d4 == 2 into 0`
 * `NA into 999`
 
 
@@ -303,6 +309,7 @@ The interviewer manual specifies:
 # CHILD HARMONIZATION
 MHAS_ds_w2 <- tibble(id=MHAS_w2_child$id)
 MHAS_ds_w2$child <- car::recode(as.vector(MHAS_w2_child$aa20), "1:30='1'; 96='1'; 0='0'; NA='999'")
+MHAS_ds_w2$child[which(MHAS_ds_w2$child == 999)] <- car::recode(MHAS_w2_child$d4[which(MHAS_ds_w2$child == 999)],"2=0; NA=999")
 MHAS_ds_w2$child[which(MHAS_w2_child$aa19==0)] <- 0
 
 
@@ -693,7 +700,7 @@ rm(grchild)
 
 # Quality estimation
 
-In wave 2 the variables used have a lot of missings, but there are also the variables `d4` (`Person has living children`) or `t3h3` and `b3` (used in g2aging to count number of children). Another option would be to assume that if there are grandchildren, there are also living children, since the data on the grandchildren is got from variables asked to the children (could it be answered not by the children, but by proxies?).
+In wave 2 we use the variable `d4` since `aa19` and `aa20` have a lot of missings; there are also the variables `trh3` and `b3` (used in g2aging to count number of children). Another option would be to assume that if there are grandchildren, there are also living children, since the data on the grandchildren is got from variables asked to the children (could it be answered not by the children, but by proxies?).
 
 
 ```{r closeRsession, echo=FALSE} 
