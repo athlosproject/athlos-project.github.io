@@ -1,0 +1,126 @@
+---
+title: "Political activity - Voting"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+```{r setup, include=FALSE}
+source("../../setup.r")
+```
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/pol_votDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/pol_votDS.R')
+```
+
+<!-- ########################################################## --> 
+
+# Data process
+
+## Ireland
+
+### Wave 1 
+
+#### Study-specific variable description
+
+
+
+| **Name** |`SCQvote`|
+|-|-|
+| **Label** |`Vote in last general election?`|
+| **Table name**  |`TILDA-AMF-v16`|
+| **Categories** |`1 = yes`<br/>`2 = no`|
+| **Missings** |`-99 = No answered`<br/>`NA`|
+| **Description** |  |
+
+
+
+    
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'TILDA_w1','TILDA.TILDA-AMF-v16',variables=list('SCQvote'), missings = TRUE)
+TILDA_w1 <- opal.execute(o,'TILDA_w1')
+```
+
+```{r local1, echo=F}
+
+vbl <- TILDA_w1$SCQvote
+kable(Categorical_summary(vbl, missing_values = c(-99))[3], caption = "SCQvote")
+kable(Categorical_summary(vbl, missing_values = c(-99))[1], caption = "Category")
+ggplot(TILDA_w1, aes(x=factor(SCQvote))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Vote in last general election?") + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `1 into 1, 2 into 0, -99 into 995`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1}
+TILDA_ds_w1 <- tibble(id=TILDA_w1$id)
+TILDA_ds_w1$pol_vot <- car::recode(as.vector(TILDA_w1$SCQvote), "1='1'; 2='0'; -99='995'; NA='999'")
+TILDA_ds_w1$pol_vot <- labelled(TILDA_ds_w1$pol_vot, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=F}
+
+vbl <- TILDA_ds_w1$pol_vot
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(TILDA_ds_w1, aes(x=factor(pol_vot))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Voting?") + ylab("Frequency")
+
+```
+
+#### Validation
+```{r crosstabulation1, echo=F}
+AfterH <- table(TILDA_ds_w1$pol_vot)
+BeforeH <- table(TILDA_w1$SCQvote, useNA='ifany')[c(3,2,1,4)]
+C <- rbind(BeforeH,AfterH)
+colnames(C) <- c("2->0","1->1","-99->995","NA->999")
+kable(C)
+```
+
+
+
+```{r importOPAL w1, echo=F}
+label(TILDA_ds_w1$pol_vot) <- ds_label
+pol_vot <- TILDA_ds_w1 
+save(pol_vot, file = paste0(datafolder,"w1/pol_vot.RData"))
+rm(pol_vot)
+```
+
+
+
+### Wave 2
+
+Not found.
+
+
+
+
+# Quality estimation
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
