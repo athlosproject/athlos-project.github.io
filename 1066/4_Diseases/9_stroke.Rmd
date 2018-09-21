@@ -12,78 +12,20 @@ output:
       smooth_scroll: yes
 ---
 
+
+
 <!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
-
-
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-* Short name: `stroke`
-* Variable label: `Stroke`
-* Variable description: `Diagnosis of stroke or cerebral vascular disease since the last wave`
-* Domain: `Diseases`
-* Value type: `categorical`
-* Category coding:
-
-**Code** | **Category Label**
--------- | ------------------
-0        | NOT A stroke (cerebral vascular disease) 
-1        | A stroke (cerebral vascular disease)
-
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-* Short name: `stroke_age`
-* Variable label: `Age of each episode of stroke`
-* Variable description: `Age of each episode of stroke`
-* Domain: `Diseases`
-* Value type: `Continuous`
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-
-<!-- ########################################################## --> 
-<!-- # Global variables -->
-```{r global, include=FALSE, echo=F}
-miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
-ds_label <- "Stroke"
-ds_label_age <- "Age of each episode of stroke"
-cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
-cont_label <- cat_label[3:11]
-datafolder <- "../RData/"
-#sing_idlist <- c()
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/strokeDS.Rmd'}
 ```
-<!-- ########################################################## --> 
+```{r global, echo=F}
+source('../../_DS_Rmd/strokeDS.R')
+```
 
 
 
@@ -405,10 +347,6 @@ kable(C)
 
 
 
-### Wave 2
-
-
-Not found.
 
 
 
@@ -2385,88 +2323,316 @@ kable(C)
 
 
 
-## Descriptive statistics of the harmonised variable accross populations and waves
+
+<!--AUXILIAR FUNCTIONS-->
+
+
+
+```{r helpfunctions, echo=F}
+
+
+labelling <- function(l.hds,m.hds,vbl_name,ds_lab = ds_label){
+  
+  # Labelling of the tibbles with categorical data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    if(vbl_name %in% names(l.hds[[1]])){
+      # In the aux_object we copy the old tibble to recodify all missing values as NA.
+      aux_object <- l.hds[[name]]
+      # Labelling of variables
+      label(l.hds[[name]][[vbl_name]]) <- label(aux_object[[vbl_name]]) <- ds_lab
+      # Labelling of categories (for continues variables, only missing values)
+      l.hds[[name]][[vbl_name]] <- labelled(l.hds[[name]][[vbl_name]], labels = cat_label)
+      aux_object[[vbl_name]] <- car::recode(aux_object[[vbl_name]], "miss_values_vector=NA")
+      # Labelling of categories (for categorical variables, only non-missing values)
+      aux_object[[vbl_name]] <- labelled(aux_object[[vbl_name]], labels = cat_label[1:(length(cat_label)-9)])
+      # Saving the recodified tibble in list m.hds
+      m.hds[[name]] <- aux_object
+      rm(aux_object)
+    }
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+
+labelling_c <- function(l.hds,m.hds,vbl_name,ds_lab=ds_label){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    if(vbl_name %in% names(l.hds[[1]])){
+      # In the aux_object we copy the old tibble to recodify all missing values as NA.
+      aux_object <- l.hds[[name]]
+      # Labelling of variables
+      label(l.hds[[name]][[vbl_name]]) <- label(aux_object[[vbl_name]]) <- ds_lab
+      # Labelling of categories (for continues variables, only missing values)
+      l.hds[[name]][[vbl_name]] <- labelled(l.hds[[name]][[vbl_name]], labels = cont_label)
+      aux_object[[vbl_name]] <- car::recode(aux_object[[vbl_name]], "miss_values_vector=NA")
+      # Saving the recodified tibble in list m.hds
+      m.hds[[name]] <- aux_object
+      rm(aux_object)
+    }
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+
+# Creation of summary tables for categorical data
+
+summaries <- function(l.hds,m.hds,lnames,vbl_name){
+
+  # Creation of columns with categories and labels
+  t.hds <- frq(l.hds[[1]][vbl_name])[[1]][,c(1,2)] 
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    t.hds[2+i] <- frq(l.hds[[i]][vbl_name])[[1]][,4] 
+  }
+  # Add sample size for each wave/population
+  t.hds[2+length(cat_label),] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+  )
+  # Add wave/population names
+  names(t.hds)<-c("val", "label",lnames)
+  return(t.hds)
+  
+}
+
+
+# Creation of summary tables for continuous data
+
+summaries_c <- function(l.hds,m.hds,lnames,vbl_name){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][vbl_name])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[vbl_name]], missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][vbl_name])[1:6]
+    # Next, missing/no-missing values (the 1 in $values_table[1,] stands for absolute values, while a 2 would stand for percentages)
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[vbl_name]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][vbl_name]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+  
+}
+
+```
+
+
+
+```{r populations-waves, echo=F}
+
+
+# All study waves and populations with abbreviated and descriptive names
+
+b1066.cw <- list(cuba_w1 = c("cuba_w1","Cuba w1"), india_w1 = c("india_w1","India w1"), UCh_w1 = c("UCh_w1","Urban China w1"), RCh_w1 = c("RCh_w1","Rural China w1"), DR_w1 = c("DR_w1","Dominican Republic w1"), Ven_w1 = c("Ven_w1","Venezuela w1"), UP_w1 = c("UP_w1","Urban Peru w1"), RP_w1 = c("RP_w1","Rural Peru w1"), UM_w1 = c("UM_w1","Urban Mexico w1"), RM_w1 = c("RM_w1","Rural Mexico w1"), PR_w1 = c("PR_w1","Puerto Rico w1"))
+
+f1066.cw <- list(cuba_w2 = c("cuba_w2","Cuba w2"), UCh_w2 = c("UCh_w2","Urban China w2"), RCh_w2 = c("RCh_w2","Rural China w2"), DR_w2 = c("DR_w2","Dominican Republic w2"), Ven_w2 = c("Ven_w2","Venezuela w2"), UP_w2 = c("UP_w2","Urban Peru w2"), RP_w2 = c("RP_w2","Rural Peru w2"), UM_w2 = c("UM_w2","Urban Mexico w2"), RM_w2 = c("RM_w2","Rural Mexico w2"), PR_w2 = c("PR_w2","Puerto Rico w2"))
+
+
+```
+
+
+<!--Labelling and saving-->
+
+```{r, echo=FALSE}
+
+
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(b1066.cw, function(wname) if(exists(paste0("t1066_ds_",wname[1]))){wname = list(get(paste0("t1066_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_age_vbl,ds_label_age)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+blist <- lmlist # baseline list
+
+
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(f1066.cw, function(wname) if(exists(paste0("t1066_ds_",wname[1]))){wname = list(get(paste0("t1066_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_age_vbl,ds_label_age)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+flist <- lmlist # followup list
+
+
+```
+
+
+
+<!--Descriptives-->
+
+## Descriptive statistics of the harmonised variable `stroke` accross populations and waves
 
 Percentages of categories in each harmonised variable:
 
 
+```{r summ, echo=F}
 
 
+# Consider only harmonised waves
+l.hds <- lapply(b1066.cw, function(wname) if(hd_vbl %in% names(get0(paste0("t1066_ds_",wname[1])))){wname})
 
+nullw <- which(sapply(l.hds, is.null))
 
-```{r summ}
-
-lb.hds <- list(cuba_w1 = t1066_ds_cuba_w1, india_w1 = t1066_ds_india_w1, UCh_w1 = t1066_ds_UCh_w1, RCh_w1 = t1066_ds_RCh_w1, DR_w1 = t1066_ds_DR_w1, Ven_w1 = t1066_ds_Ven_w1, UP_w1 = t1066_ds_UP_w1, RP_w1 = t1066_ds_RP_w1, UM_w1 = t1066_ds_UM_w1, RM_w1 = t1066_ds_RM_w1, PR_w1 = t1066_ds_PR_w1)
-
-lf.hds <- list(cuba_w2 = t1066_ds_cuba_w2, UCh_w2 = t1066_ds_UCh_w2, RCh_w2 = t1066_ds_RCh_w2, DR_w2 = t1066_ds_DR_w2, Ven_w2 = t1066_ds_Ven_w2, UP_w2 = t1066_ds_UP_w2, RP_w2 = t1066_ds_RP_w2, UM_w2 = t1066_ds_UM_w2, RM_w2 = t1066_ds_RM_w2, PR_w2 = t1066_ds_PR_w2)
-
-for(name in names(lb.hds)) {
-  aux_object <- lb.hds[[name]]
-  label(lb.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
-  lb.hds[[name]][[2]] <- labelled(lb.hds[[name]][[2]], labels = cat_label)
-  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
-  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
-  m_name <- paste0("t1066_m_ds_",name)
-  assign(m_name, aux_object)
-  rm(aux_object)
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
 }
 
-for(name in names(lf.hds)) {
-  aux_object <- lf.hds[[name]]
-  label(lf.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
-  lf.hds[[name]][[2]] <- labelled(lf.hds[[name]][[2]], labels = cat_label)
-  label(lf.hds[[name]][[3]]) <- label(aux_object[[3]]) <- ds_label_age # Text value assigned at the DS description, at the top
-  lf.hds[[name]][[3]] <- labelled(lf.hds[[name]][[3]], labels = cont_label)
-  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
-  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
-  m_name <- paste0("t1066_m_ds_",name)
-  assign(m_name, aux_object)
-  rm(aux_object)
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- blist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- blist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
 }
 
-l.hds <- c(lb.hds,lf.hds)
 
 
-tb.hds <- frq(lb.hds[[1]][2])[[1]][,c(1,2)] 
-for (i in seq_along(lb.hds)){
-  tb.hds[2+i] <- frq(lb.hds[[i]][2])[[1]][,4] 
+
+# Consider only harmonised waves
+l.hds <- lapply(f1066.cw, function(wname) if(hd_vbl %in% names(get0(paste0("t1066_ds_",wname[1])))){wname})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
 }
-tb.hds[13,] <- c("n", "sample size", 
-             length(lb.hds[[1]][[2]]), length(lb.hds[[2]][[2]]) , length(lb.hds[[3]][[2]]), length(lb.hds[[4]][[2]]), length(lb.hds[[5]][[2]]), length(lb.hds[[6]][[2]]), length(lb.hds[[7]][[2]]), length(lb.hds[[8]][[2]]), length(lb.hds[[9]][[2]]), length(lb.hds[[10]][[2]]), length(lb.hds[[11]][[2]])
-             )
-names(tb.hds)<-c("val", "label", "cuba_w1", "india_w1", "UCh_w1", "RCh_w1","DR_w1","Ven_w1","UP_w1","RP_w1","UM_w1","RM_w1","PR_w1")
-kable(tb.hds)
 
-tf.hds <- frq(lf.hds[[1]][2])[[1]][,c(1,2)] 
-for (i in seq_along(lf.hds)){
-  tf.hds[2+i] <- frq(lf.hds[[i]][2])[[1]][,4] 
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- flist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- flist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
 }
-tf.hds[13,] <- c("n", "sample size", 
-             length(lf.hds[[1]][[2]]), length(lf.hds[[2]][[2]]) , length(lf.hds[[3]][[2]]), length(lf.hds[[4]][[2]]), length(lf.hds[[5]][[2]]), length(lf.hds[[6]][[2]]), length(lf.hds[[7]][[2]]), length(lf.hds[[8]][[2]]), length(lf.hds[[9]][[2]]), length(lf.hds[[10]][[2]])
-             )
-names(tf.hds)<-c("val", "label", "cuba_w2", "UCh_w2", "RCh_w2","DR_w2","Ven_w2","UP_w2","RP_w2","UM_w2","RM_w2","PR_w2")
-kable(tf.hds)
+
 
 ```
 
 
-<!-- ########################################################## --> 
-<!-- # Save -->
-```{r save, include=FALSE, echo=F}
 
-for(index in seq_along(l.hds)){
-  stroke <- l.hds[[index]]
-  save(stroke, file = paste0(datafolder,names(l.hds)[index],"/stroke.RData"))
+
+
+
+## Summary of descriptive statistics of the harmonised variable `stroke_age` accross populations and waves
+
+
+
+
+
+
+```{r summ_c, echo=F}
+
+
+# Consider only harmonised waves
+l.hds <- lapply(b1066.cw, function(wname) if(hd_age_vbl %in% names(get0(paste0("t1066_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
 }
 
-```
-<!-- ########################################################## --> 
 
-# Quality estimationç
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- blist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- blist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_age_vbl),caption=ds_label_age))
+}
+
+
+
+
+# Consider only harmonised waves
+l.hds <- lapply(f1066.cw, function(wname) if(hd_age_vbl %in% names(get0(paste0("t1066_ds_",wname[1])))){wname})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- flist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- flist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_age_vbl),caption=ds_label_age))
+}
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+# Quality estimation?
 
 No comments
 
-[Comments on the quality of the new harmonized variable. This section can be done in a later stage, once all variables are harmonized.]
 
 
 

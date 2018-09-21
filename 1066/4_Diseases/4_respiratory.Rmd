@@ -15,55 +15,15 @@ output:
 <!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
-
-
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-* Short name: `h_respiratory`
-* Variable label: `Chronic respiratory diseases such respiratory, CPD, COPD, bronchitis, emphysema`
-* Variable description: `The participant has one or more of the following respiratory diseases: respiratory, chronic bronchitis, emphysema, chronic pulmonary disease, chronic obstructive pulmonary disease`
-* Domain: `Diseases`
-* Value type: `categorical`
-* Category coding:
-
-**Code** | **Category Label**
--------- | ------------------
-0        | no respiratory disease
-1        | yes, respiratory disease
-
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-
-
-<!-- ########################################################## --> 
-<!-- # Global variables -->
-```{r global, include=FALSE, echo=F}
-miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
-ds_label <- "Chronic respiratory diseases such respiratory, CPD, COPD, bronchitis, emphysema"
-cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
-datafolder <- "../RData/"
-#sing_idlist <- c()
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/respiratoryDS.Rmd'}
 ```
-<!-- ########################################################## --> 
+```{r global, echo=F}
+source('../../_DS_Rmd/respiratoryDS.R')
+```
 
 
 
@@ -329,91 +289,6 @@ kable(C)
 ```
 
 
-
-### Wave 2
-
-
-#### Study-specific variable description
-
-| **Name** | `PRESP` |`COAD`|
-|-|-|-|
-| **Label** | `breathing problem` |`Chronic Obstructive Pulmonary Disease (COPD) - cough productive of sputum for at least 3 months per year`|
-| **Table name**  | `1066-India-Baseline` | `1066-India-Baseline` |
-| **Categories** | `0 = no problem`<br/>`1 = has problem, interferes not at all`<br/>`2 = has problem, interferes a little`<br/>`3 = has problem, interferes a lot` |`0 = does not met criteria for COPD`<br/>`1 = meets criteria for COPD`|
-| **Missings** | `NA` | `NA` |
-| **Description** |  |  |
-
-```{r assign india_w2, echo=F}
-
-opal.assign.table.tibble(o, 't1066_india_w2','10-66.1066-India-Baseline',variables=list('PRESP','COAD'), missings = T)
-t1066_india_w2 <- opal.execute(o,'t1066_india_w2')
-opal.assign.table.tibble(o, 't1066_india_w2_id','10-66.1066-India-Followup',variables=list('HOUSEID'), missings = TRUE)
-t1066_india_w2_id <- opal.execute(o,'t1066_india_w2_id')
-
-```
-
-```{r local india_w2, echo=F}
-
-t1066_india_w2 <- left_join(t1066_india_w2_id, t1066_india_w2, by = "id")[,c(1,3,4)]
-
-vbl <- t1066_india_w2$PRESP
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(t1066_india_w2)[2])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(t1066_india_w2, aes(x=factor(PRESP))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
-
-vbl <- t1066_india_w2$COAD
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(t1066_india_w2)[3])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(t1066_india_w2, aes(x=factor(COAD))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
-
-```
-
-
-#### Harmonisation algorithm
-
-To compute `h_respiratory` from the study-specific variable it has to be recoded as follows:
-
-* `change 1,2,3 into 1`
-* `all 0, NA into 999`
-
-**R script:**
-
-```{r harmo india_w2}
-
-t1066_ds_india_w2 <- tibble(id=t1066_india_w2$id)
-t1066_ds_india_w2$h_respiratory <- rep(999,length(t1066_india_w2$id))
-t1066_ds_india_w2$h_respiratory[which(t1066_india_w2$COAD == 1 | t1066_india_w2$PRESP %in% c(1,2,3))] <- 1
-```
-
-
-#### Statistics of the new harmonized variable
-
-```{r descript india_w2, echo=F}
-
-vbl <- t1066_ds_india_w2$h_respiratory
-kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
-kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
-kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
-ggplot(t1066_ds_india_w2, aes(x=factor(h_respiratory))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
-
-```
-
-
-#### Validation
-
-```{r crosstabulation india_w2, echo=F}
-
-AfterH <- table(t1066_ds_india_w2$h_respiratory)
-X <- c(
-  sum(t1066_india_w2$PRESP==0 & t1066_india_w2$COAD==0,na.rm=T),
-  sum(t1066_india_w2$COAD == 1 | t1066_india_w2$PRESP %in% c(1,2,3),na.rm=T)
-)
-BeforeH <- c(X[2],sum(X[1],length(t1066_india_w2$id)-sum(X)))
-C <- rbind(BeforeH,AfterH)
-colnames(C) <- c("some 1,2,3->1","otherwise->999")
-kable(C)
-
-```
 
 
 
@@ -1968,100 +1843,198 @@ kable(C)
 
 
 
-## Descriptive statistics of the harmonised variable accross populations and waves
+<!--AUXILIAR FUNCTIONS-->
+
+
+
+```{r helpfunctions, echo=F}
+
+
+labelling <- function(l.hds,m.hds,vbl_name,ds_lab = ds_label){
+  
+  # Labelling of the tibbles with categorical data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    if(vbl_name %in% names(l.hds[[1]])){
+      # In the aux_object we copy the old tibble to recodify all missing values as NA.
+      aux_object <- l.hds[[name]]
+      # Labelling of variables
+      label(l.hds[[name]][[vbl_name]]) <- label(aux_object[[vbl_name]]) <- ds_lab
+      # Labelling of categories (for continues variables, only missing values)
+      l.hds[[name]][[vbl_name]] <- labelled(l.hds[[name]][[vbl_name]], labels = cat_label)
+      aux_object[[vbl_name]] <- car::recode(aux_object[[vbl_name]], "miss_values_vector=NA")
+      # Labelling of categories (for categorical variables, only non-missing values)
+      aux_object[[vbl_name]] <- labelled(aux_object[[vbl_name]], labels = cat_label[1:(length(cat_label)-9)])
+      # Saving the recodified tibble in list m.hds
+      m.hds[[name]] <- aux_object
+      rm(aux_object)
+    }
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+
+labelling_c <- function(l.hds,m.hds,vbl_name,ds_lab=ds_label){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    if(vbl_name %in% names(l.hds[[1]])){
+      # In the aux_object we copy the old tibble to recodify all missing values as NA.
+      aux_object <- l.hds[[name]]
+      # Labelling of variables
+      label(l.hds[[name]][[vbl_name]]) <- label(aux_object[[vbl_name]]) <- ds_lab
+      # Labelling of categories (for continues variables, only missing values)
+      l.hds[[name]][[vbl_name]] <- labelled(l.hds[[name]][[vbl_name]], labels = cont_label)
+      aux_object[[vbl_name]] <- car::recode(aux_object[[vbl_name]], "miss_values_vector=NA")
+      # Saving the recodified tibble in list m.hds
+      m.hds[[name]] <- aux_object
+      rm(aux_object)
+    }
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+
+# Creation of summary tables for categorical data
+
+summaries <- function(l.hds,m.hds,lnames,vbl_name){
+
+  # Creation of columns with categories and labels
+  t.hds <- frq(l.hds[[1]][vbl_name])[[1]][,c(1,2)] 
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    t.hds[2+i] <- frq(l.hds[[i]][vbl_name])[[1]][,4] 
+  }
+  # Add sample size for each wave/population
+  t.hds[2+length(cat_label),] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+  )
+  # Add wave/population names
+  names(t.hds)<-c("val", "label",lnames)
+  return(t.hds)
+  
+}
+
+
+# Creation of summary tables for continuous data
+
+summaries_c <- function(l.hds,m.hds,lnames,vbl_name){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][vbl_name])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[vbl_name]], missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][vbl_name])[1:6]
+    # Next, missing/no-missing values (the 1 in $values_table[1,] stands for absolute values, while a 2 would stand for percentages)
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[vbl_name]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][vbl_name]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+  
+}
+
+```
+
+
+
+```{r populations-waves, echo=F}
+
+
+# All study waves and populations with abbreviated and descriptive names
+
+b1066.cw <- list(cuba_w1 = c("cuba_w1","Cuba w1"), india_w1 = c("india_w1","India w1"), UCh_w1 = c("UCh_w1","Urban China w1"), RCh_w1 = c("RCh_w1","Rural China w1"), DR_w1 = c("DR_w1","Dominican Republic w1"), Ven_w1 = c("Ven_w1","Venezuela w1"), UP_w1 = c("UP_w1","Urban Peru w1"), RP_w1 = c("RP_w1","Rural Peru w1"), UM_w1 = c("UM_w1","Urban Mexico w1"), RM_w1 = c("RM_w1","Rural Mexico w1"), PR_w1 = c("PR_w1","Puerto Rico w1"))
+
+f1066.cw <- list(cuba_w2 = c("cuba_w2","Cuba w2"), UCh_w2 = c("UCh_w2","Urban China w2"), RCh_w2 = c("RCh_w2","Rural China w2"), DR_w2 = c("DR_w2","Dominican Republic w2"), Ven_w2 = c("Ven_w2","Venezuela w2"), UP_w2 = c("UP_w2","Urban Peru w2"), RP_w2 = c("RP_w2","Rural Peru w2"), UM_w2 = c("UM_w2","Urban Mexico w2"), RM_w2 = c("RM_w2","Rural Mexico w2"), PR_w2 = c("PR_w2","Puerto Rico w2"))
+
+
+```
+
+
+
+## Descriptive statistics of the harmonised variable `h_respiratory` accross populations and waves
 
 Percentages of categories in each harmonised variable:
 
+```{r, echo=FALSE}
 
 
+# Consider only waves with some variable harmonised
 
+l.hds <- lapply(b1066.cw, function(wname) if(exists(paste0("t1066_ds_",wname[1]))){wname = list(get(paste0("t1066_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
 
-
-```{r summ}
-
-lb.hds <- list(cuba_w1 = t1066_ds_cuba_w1, india_w1 = t1066_ds_india_w1, UCh_w1 = t1066_ds_UCh_w1, RCh_w1 = t1066_ds_RCh_w1, DR_w1 = t1066_ds_DR_w1, Ven_w1 = t1066_ds_Ven_w1, UP_w1 = t1066_ds_UP_w1, RP_w1 = t1066_ds_RP_w1, UM_w1 = t1066_ds_UM_w1, RM_w1 = t1066_ds_RM_w1, PR_w1 = t1066_ds_PR_w1)
-
-lf.hds <- list(cuba_w2 = t1066_ds_cuba_w2, UCh_w2 = t1066_ds_UCh_w2, RCh_w2 = t1066_ds_RCh_w2, DR_w2 = t1066_ds_DR_w2, Ven_w2 = t1066_ds_Ven_w2, UP_w2 = t1066_ds_UP_w2, RP_w2 = t1066_ds_RP_w2, UM_w2 = t1066_ds_UM_w2, RM_w2 = t1066_ds_RM_w2, PR_w2 = t1066_ds_PR_w2)
-
-#l.hds <- list(cuba_w1 = t1066_ds_cuba_w1, cuba_w2 = t1066_ds_cuba_w2, india_w1 = t1066_ds_india_w1, india_w2 = t1066_ds_india_w2, UCh_w1 = t1066_ds_UCh_w1, UCh_w2 = t1066_ds_UCh_w2, RCh_w1 = t1066_ds_RCh_w1, RCh_w2 = t1066_ds_RCh_w2, DR_w1 = t1066_ds_DR_w1, DR_w2 = t1066_ds_DR_w2, Ven_w1 = t1066_ds_Ven_w1, Ven_w2 = t1066_ds_Ven_w2, UP_w1 = t1066_ds_UP_w1, UP_w2 = t1066_ds_UP_w2, RP_w1 = t1066_ds_RP_w1, RP_w2 = t1066_ds_RP_w2, UM_w1 = t1066_ds_UM_w1, UM_w2 = t1066_ds_UM_w2, RM_w1 = t1066_ds_RM_w1, RM_w2 = t1066_ds_RM_w2, PR_w1 = t1066_ds_PR_w1, PR_w2 = t1066_ds_PR_w2)
-
-for(name in names(lb.hds)) {
-  aux_object <- lb.hds[[name]]
-  label(lb.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
-  lb.hds[[name]][[2]] <- labelled(lb.hds[[name]][[2]], labels = cat_label)
-  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
-  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
-  m_name <- paste0("t1066_m_ds_",name)
-  assign(m_name, aux_object)
-  rm(aux_object)
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
 }
 
-label(t1066_ds_india_w2[[2]]) <- ds_label
-t1066_ds_india_w2[[2]] <- labelled(t1066_ds_india_w2[[2]], labels = cat_label)
+m.hds <- list()
 
-for(name in names(lf.hds)) {
-  aux_object <- lf.hds[[name]]
-  label(lf.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
-  lf.hds[[name]][[2]] <- labelled(lf.hds[[name]][[2]], labels = cat_label)
-  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
-  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
-  m_name <- paste0("t1066_m_ds_",name)
-  assign(m_name, aux_object)
-  rm(aux_object)
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
 }
 
-tb.hds <- frq(lb.hds[[1]][2])[[1]][,c(1,2)] 
-for (i in seq_along(lb.hds)){
-  tb.hds[2+i] <- frq(lb.hds[[i]][2])[[1]][,4] 
-}
-tb.hds[13,] <- c("n", "sample size", 
-             length(lb.hds[[1]][[2]]), length(lb.hds[[2]][[2]]) , length(lb.hds[[3]][[2]]), length(lb.hds[[4]][[2]]), length(lb.hds[[5]][[2]]), length(lb.hds[[6]][[2]]), length(lb.hds[[7]][[2]]), length(lb.hds[[8]][[2]]), length(lb.hds[[9]][[2]]), length(lb.hds[[10]][[2]]), length(lb.hds[[11]][[2]])
-             )
-names(tb.hds)<-c("val", "label", "cuba_w1", "india_w1", "UCh_w1", "RCh_w1","DR_w1","Ven_w1","UP_w1","RP_w1","UM_w1","RM_w1","PR_w1")
-kable(tb.hds)
 
-tf.hds <- frq(lf.hds[[1]][2])[[1]][,c(1,2)] 
-for (i in seq_along(lf.hds)){
-  tf.hds[2+i] <- frq(lf.hds[[i]][2])[[1]][,4] 
+
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(f1066.cw, function(wname) if(exists(paste0("t1066_ds_",wname[1]))){wname = list(get(paste0("t1066_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
 }
-tf.hds[13,] <- c("n", "sample size", 
-             length(lf.hds[[1]][[2]]), length(lf.hds[[2]][[2]]) , length(lf.hds[[3]][[2]]), length(lf.hds[[4]][[2]]), length(lf.hds[[5]][[2]]), length(lf.hds[[6]][[2]]), length(lf.hds[[7]][[2]]), length(lf.hds[[8]][[2]]), length(lf.hds[[9]][[2]]), length(lf.hds[[10]][[2]])
-             )
-names(tf.hds)<-c("val", "label", "cuba_w2", "UCh_w2", "RCh_w2","DR_w2","Ven_w2","UP_w2","RP_w2","UM_w2","RM_w2","PR_w2")
-kable(tf.hds)
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
 
 
 
 ```
 
-
-<!-- ########################################################## --> 
-<!-- # Save -->
-```{r save, include=FALSE, echo=F}
-
-for(index in seq_along(lb.hds)){
-  h_respiratory <- lb.hds[[index]]
-  save(h_respiratory, file = paste0(datafolder,names(lb.hds)[index],"/h_respiratory.RData"))
-}
-
-for(index in seq_along(lf.hds)){
-  h_respiratory <- lf.hds[[index]]
-  save(h_respiratory, file = paste0(datafolder,names(lf.hds)[index],"/h_respiratory.RData"))
-}
-
-h_respiratory <- t1066_ds_india_w2
-save(h_respiratory, file = paste0(datafolder,"india_w2/h_respiratory.RData"))
-
-
-```
-<!-- ########################################################## --> 
 
 # Quality estimation
 
 This variable contains information about "Breathlessness, difficulty breathing or asthma" and "Chronic Obstructive Pulmonary Disease (COPD)"
 
 
-[Comments on the quality of the new harmonized variable. This section can be done in a later stage, once all variables are harmonized.]
 
 
 
