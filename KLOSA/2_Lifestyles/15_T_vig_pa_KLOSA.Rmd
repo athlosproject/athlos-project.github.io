@@ -1,0 +1,439 @@
+---
+title: "Time of Vigorous Physical Activity"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/t_vig_paDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/t_vig_paDS.R')
+```
+
+
+
+# Data process
+
+## Korea
+
+### Wave 1
+
+#### Study-specific variable description
+
+| **Name** | `w01C099` |`n_vig_pa`|
+|-|-|-|
+| **Label** | `For how long do you work out per session?` |`Number of times during past 2 weeks engaging in vigorous exercise`|
+| **Table name** | `w01_main_e` |`n_vig_pa`|
+| **Categories:**| `continuous (minutes)`| `continuous`|
+| **Missings:**| `NA`|`991 = CAPI/interviewer error`<br/>`992 = Impute`<br/>`993 = Disable to measure`<br/>`994 = Not attempt/not done`<br/>`995 = Does not answer`<br/>`996 = Not applicable`<br/>`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing` |
+| **Description** |  |  |
+
+```{r assign w1, echo=F}
+opal.assign.table.tibble(o, 'KLOSA_w1','KLOSA.w01_main_e', variables=list('w01C099'), missings = TRUE)
+KLOSA_w1 <- opal.execute(o,'KLOSA_w1')
+load(paste0(datafolder,"w1/n_vig_pa.RData"))
+KLOSA_w1 <- left_join(KLOSA_w1,n_vig_pa, by="id")
+rm(n_vig_pa)
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- KLOSA_w1$w01C099
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = names(KLOSA_w1)[2]) 
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(KLOSA_w1, aes(w01C099)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency") 
+
+vbl <- KLOSA_w1$n_vig_pa
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = names(KLOSA_w1)[3]) 
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(KLOSA_w1, aes(n_vig_pa)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency") 
+
+```
+
+#### Harmonisation algorithm
+
+To compute `t_vig_pa` from the study-specific variables they have to be recoded as follows:
+
+* `w01C099*n_vig_pa`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w1}
+KLOSA_ds_w1 <- tibble(id=KLOSA_w1$id)
+KLOSA_ds_w1$t_vig_pa <- rep(999,length(KLOSA_w1$id))
+KLOSA_ds_w1$t_vig_pa[which(KLOSA_w1$n_vig_pa %in% miss_values_vector)] <- KLOSA_w1$n_vig_pa[which(KLOSA_w1$n_vig_pa %in% miss_values_vector)]
+KLOSA_ds_w1$t_vig_pa[which(!KLOSA_w1$n_vig_pa %in% miss_values_vector)] <- KLOSA_w1$w01C099[which(!KLOSA_w1$n_vig_pa %in% miss_values_vector)]*KLOSA_w1$n_vig_pa[which(!KLOSA_w1$n_vig_pa %in% miss_values_vector)]
+KLOSA_ds_w1$t_vig_pa[which(KLOSA_w1$n_vig_pa==0)] <- 0
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=F}
+
+vbl <- KLOSA_ds_w1$t_vig_pa
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(KLOSA_ds_w1, aes(t_vig_pa)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab(ds_label) + ylab("Frequency")
+
+```
+
+#### Validation
+```{r crosstabulation w1, echo=F}
+```
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `w02C112` |`n_vig_pa`|
+|-|-|-|
+| **Label** | `How long do you work out per session?` |`Number of times during past 2 weeks engaging in vigorous exercise`|
+| **Table name** | `w02_main_e_spss` |`n_vig_pa`|
+| **Categories:**| `continuous (minutes)`|`continuous`|
+| **Missings:**| `NA`|`991 = CAPI/interviewer error`<br/>`992 = Impute`<br/>`993 = Disable to measure`<br/>`994 = Not attempt/not done`<br/>`995 = Does not answer`<br/>`996 = Not applicable`<br/>`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing` |
+| **Description** |  |  |
+
+```{r assign w2, echo=F}
+
+opal.assign.table.tibble(o, 'KLOSA_w2','KLOSA.w02_main_e_spss', variables=list('w02C112'), missings = TRUE)
+KLOSA_w2 <- opal.execute(o,'KLOSA_w2')
+load(paste0(datafolder,"w2/n_vig_pa.RData"))
+KLOSA_w2 <- left_join(KLOSA_w2,n_vig_pa, by="id")
+rm(n_vig_pa)
+
+```
+
+```{r local w2, echo=F}
+
+vbl <- KLOSA_w2$w02C112
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = names(KLOSA_w2)[2]) 
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(KLOSA_w2, aes(w02C112)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- KLOSA_w2$n_vig_pa
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = names(KLOSA_w2)[3]) 
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(KLOSA_w2, aes(n_vig_pa)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency") 
+
+```
+
+#### Harmonisation algorithm
+
+To compute `t_vig_pa` from the study-specific variables they have to be recoded as follows:
+
+* `w02C112*n_vig_pa`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w2}
+KLOSA_ds_w2 <- tibble(id=KLOSA_w2$id)
+KLOSA_ds_w2$t_vig_pa <- rep(999,length(KLOSA_w2$id))
+KLOSA_ds_w2$t_vig_pa[which(KLOSA_w2$n_vig_pa %in% miss_values_vector)] <- KLOSA_w2$n_vig_pa[which(KLOSA_w2$n_vig_pa %in% miss_values_vector)]
+KLOSA_ds_w2$t_vig_pa[which(!KLOSA_w2$n_vig_pa %in% miss_values_vector)] <- KLOSA_w2$w02C112[which(!KLOSA_w2$n_vig_pa %in% miss_values_vector)]*KLOSA_w2$n_vig_pa[which(!KLOSA_w2$n_vig_pa %in% miss_values_vector)]
+KLOSA_ds_w2$t_vig_pa[which(KLOSA_w2$n_vig_pa==0)] <- 0
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w2, echo=F}
+
+vbl <- KLOSA_ds_w2$t_vig_pa
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(KLOSA_ds_w2, aes(t_vig_pa)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab(ds_label) + ylab("Frequency")
+
+```
+
+#### Validation
+```{r crosstabulation w2, echo=F}
+```
+
+
+
+
+### Wave 3
+
+#### Study-specific variable description
+
+| **Name** | `w03C112` |`n_vig_pa`|
+|-|-|-|
+| **Label** | `How long do you work out per session?` |`Number of times during past 2 weeks engaging in vigorous exercise`|
+| **Table name** | `w03_main_e_spss_albert` |`n_vig_pa`|
+| **Categories:**| `continuous (minutes)`|`continuous`|
+| **Missings:**| `-9 = Don’t know` <br/> `NA`|`991 = CAPI/interviewer error`<br/>`992 = Impute`<br/>`993 = Disable to measure`<br/>`994 = Not attempt/not done`<br/>`995 = Does not answer`<br/>`996 = Not applicable`<br/>`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing` |
+| **Description** |  |  |
+
+```{r assign w3, echo=F}
+
+opal.assign.table.tibble(o, 'KLOSA_w3','KLOSA.w03_main_e_spss_albert', variables=list('w03C112'), missings = TRUE)
+KLOSA_w3 <- opal.execute(o,'KLOSA_w3')
+# The id's in the third wave add a '.0' at the end of the id's at the previous waves. We correct this. Note that gregexpr("\\.0",ids) == nchar(ids)-1
+KLOSA_w3$id <- substr(KLOSA_w3$id,1,nchar(KLOSA_w3$id)-2)
+load(paste0(datafolder,"w3/n_vig_pa.RData"))
+KLOSA_w3 <- left_join(KLOSA_w3,n_vig_pa, by="id")
+rm(n_vig_pa)
+
+```
+
+```{r local w3, echo=F}
+
+vbl <- KLOSA_w3$w03C112
+vbl_miss <- c(-9)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = names(KLOSA_w3)[2]) 
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(KLOSA_w3, aes(w03C112)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency") 
+
+vbl <- KLOSA_w3$n_vig_pa
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = names(KLOSA_w3)[3]) 
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(KLOSA_w3, aes(n_vig_pa)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency") 
+
+```
+
+#### Harmonisation algorithm
+
+To compute `t_vig_pa` from the study-specific variables they have to be recoded as follows:
+
+* `w03C112*n_vig_pa`
+* `-9 into 998`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w3}
+KLOSA_ds_w3 <- tibble(id=KLOSA_w3$id)
+KLOSA_ds_w3$t_vig_pa <- rep(999,length(KLOSA_w3$id))
+KLOSA_ds_w3$t_vig_pa[which(KLOSA_w3$n_vig_pa %in% miss_values_vector)] <- KLOSA_w3$n_vig_pa[which(KLOSA_w3$n_vig_pa %in% miss_values_vector)]
+KLOSA_ds_w3$t_vig_pa[which(KLOSA_w3$w03C112 == -9)] <- 998
+KLOSA_ds_w3$t_vig_pa[which(!KLOSA_w3$n_vig_pa %in% miss_values_vector & KLOSA_w3$w03C112 != -9)] <- KLOSA_w3$w03C112[which(!KLOSA_w3$n_vig_pa %in% miss_values_vector & KLOSA_w3$w03C112 != -9)]*KLOSA_w3$n_vig_pa[which(!KLOSA_w3$n_vig_pa %in% miss_values_vector & KLOSA_w3$w03C112 != -9)]
+KLOSA_ds_w3$t_vig_pa[which(KLOSA_w3$n_vig_pa==0)] <- 0
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w3, echo=F}
+vbl <- KLOSA_ds_w3$t_vig_pa
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(KLOSA_ds_w3, aes(t_vig_pa)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab(ds_label) + ylab("Frequency")
+
+```
+
+#### Validation
+```{r crosstabulation w3, echo=F}
+```
+
+
+
+
+### Wave 4
+
+#### Study-specific variable description
+
+| **Name** | `w04C112` |`n_vig_pa`|
+|-|-|-|
+| **Label** | `How long do you work out per session?` |`Number of times during past 2 weeks engaging in vigorous exercise`|
+| **Table name** | `w04_main_e_spss` |`n_vig_pa`|
+| **Categories:**| `continuous (minutes)`|`continuous`|
+| **Missings:**| `NA`|`991 = CAPI/interviewer error`<br/>`992 = Impute`<br/>`993 = Disable to measure`<br/>`994 = Not attempt/not done`<br/>`995 = Does not answer`<br/>`996 = Not applicable`<br/>`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing` |
+| **Description** |  |  |
+
+```{r assign w4, echo=F}
+opal.assign.table.tibble(o, 'KLOSA_w4','KLOSA.w04_main_e_spss', variables=list('w04C112'), missings = TRUE)
+KLOSA_w4 <- opal.execute(o,'KLOSA_w4')
+load(paste0(datafolder,"w4/n_vig_pa.RData"))
+KLOSA_w4 <- left_join(KLOSA_w4,n_vig_pa, by="id")
+rm(n_vig_pa)
+
+```
+
+```{r local w4, echo=F}
+
+vbl <- KLOSA_w4$w04C112
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = names(KLOSA_w4)[2]) 
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(KLOSA_w4, aes(w04C112)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency") 
+
+vbl <- KLOSA_w4$n_vig_pa
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = names(KLOSA_w4)[3]) 
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(KLOSA_w4, aes(n_vig_pa)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency") 
+
+```
+
+#### Harmonisation algorithm
+
+To compute `t_vig_pa` from the study-specific variables they have to be recoded as follows:
+
+* `w04C112*n_vig_pa`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo w4}
+KLOSA_ds_w4 <- tibble(id=KLOSA_w4$id)
+KLOSA_ds_w4$t_vig_pa <- rep(999,length(KLOSA_w4$id))
+KLOSA_ds_w4$t_vig_pa[which(KLOSA_w4$n_vig_pa %in% miss_values_vector)] <- KLOSA_w4$n_vig_pa[which(KLOSA_w4$n_vig_pa %in% miss_values_vector)]
+KLOSA_ds_w4$t_vig_pa[which(!KLOSA_w4$n_vig_pa %in% miss_values_vector)] <- KLOSA_w4$w04C112[which(!KLOSA_w4$n_vig_pa %in% miss_values_vector)]*KLOSA_w4$n_vig_pa[which(!KLOSA_w4$n_vig_pa %in% miss_values_vector)]
+KLOSA_ds_w4$t_vig_pa[which(KLOSA_w4$n_vig_pa==0)] <- 0
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w4, echo=F}
+
+vbl <- KLOSA_ds_w4$t_vig_pa
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(KLOSA_ds_w4, aes(t_vig_pa)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab(ds_label) + ylab("Frequency")
+
+```
+
+#### Validation
+```{r crosstabulation w4, echo=F}
+```
+
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+```{r helpfunctions, echo=F}
+
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+# Creation of summary tables for continuous data
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][2])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[2]],missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][2])[1:6]
+    # Next, missing/no-missing values
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[2]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][2]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
+}
+
+```
+
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+klosa.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"), w3 = c("w3","W3"), w4 = c("w4","W4"))
+
+# Consider only harmonised waves
+l.hds <- lapply(klosa.cw, function(wname) if(exists(paste0("KLOSA_ds_",wname[1]))){wname = list(get(paste0("KLOSA_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing summaries
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+```
+
+
+
+
+
+
+
+# Quality estimation
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
