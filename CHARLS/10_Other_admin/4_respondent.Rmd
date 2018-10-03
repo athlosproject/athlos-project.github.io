@@ -1,0 +1,121 @@
+---
+title: "Respondent"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup.r")
+source("../CHARLS_ids.R")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/respondentDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/respondentDS.R')
+```
+
+
+
+# Data process
+
+## China
+
+### Wave 1
+
+#### Study-specific variable description
+
+
+| **Name** | `mainr` |
+|-|-|
+| **Label** | `Main R or Spouse`|
+| **Table name**  | `weight_wave1`| 
+| **Categories** | `0 = Spouse`<br/>`1 = MainR` |
+| **Description** |  |
+
+
+```{r assign1, echo=F}
+
+
+opal.assign.table.tibble(o, 'CHARLS_w1_id','CHARLS.CHARLS_w1_ids',variables=list('var'), missings = TRUE)
+CHARLS_w1_id <- opal.execute(o,'CHARLS_w1_id')
+
+opal.assign.table.tibble(o, 'CHARLS_w1_w','CHARLS.weight_wave1',variables=list('mainr'), missings = T)
+CHARLS_w1_w <- opal.execute(o,'CHARLS_w1_w')
+
+# Correction of a wrong ID:
+CHARLS_w1_w$id[which(paste0(substr(CHARLS_w1_id$id,1,9),substr(CHARLS_w1_id$id,11,12))!=CHARLS_w1_w$id)] <- paste0(substr(CHARLS_w1_id$id[which(paste0(substr(CHARLS_w1_id$id,1,9),substr(CHARLS_w1_id$id,11,12))!=CHARLS_w1_w$id)],1,9),substr(CHARLS_w1_id$id[which(paste0(substr(CHARLS_w1_id$id,1,9),substr(CHARLS_w1_id$id,11,12))!=CHARLS_w1_w$id)],11,12))
+
+CHARLS_w1_w$oldid <- CHARLS_w1_w$id
+CHARLS_w1_w$id <- CHARLS_ids(ids = CHARLS_w1_w$oldid)
+
+
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- CHARLS_w1_w$mainr
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "mainr")
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w1_w, aes(x=factor(mainr))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+### Harmonization algorithm
+
+**R script:**
+
+```{r harmo1}
+
+CHARLS_ds_w1   <- tibble(id=CHARLS_w1_w$id)
+CHARLS_ds_w1$respondent <- car::recode(CHARLS_w1_w$mainr,"0=1;1=0")
+
+```
+
+### Statistics of the new harmonised variable
+```{r descript1, echo=F}
+
+vbl <- CHARLS_ds_w1$respondent
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(CHARLS_ds_w1, aes(x=factor(respondent))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+
+## Wave 2
+
+Not found.
+
+
+# Quality estimation
+
+
+
+```{r save, echo=FALSE}
+respondent <- CHARLS_ds_w1
+save(respondent, file = "../RData/w1/respondent.RData")
+rm(respondent)
+
+
+```
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+
+
