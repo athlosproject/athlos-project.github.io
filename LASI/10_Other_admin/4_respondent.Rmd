@@ -1,0 +1,134 @@
+---
+title: "Respondent"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/respondentDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/respondentDS.R')
+```
+
+
+
+
+# Data process
+
+## India
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `age` |`marital_status`|
+|-|-|-|
+| **Label** | `Age` |`Current marital status`|
+| **Table name** | `age` |`marital_status`|
+| **Categories:**| `continuous` |`1 = Single`<br/>`2 = Married-cohabitating`<br/>`3 = Divorced-separated`br/>`4 = Widow`|
+| **Missings:**| `999 = Missing` |  |
+| **Description** |  |   |
+
+
+```{r assign w1, echo=F}
+
+load(paste0(datafolder,"w1/age",".RData"))
+load(paste0(datafolder,"w1/sex",".RData"))
+load(paste0(datafolder,"w1/marital_status",".RData"))
+LASI_w1 <- left_join(age,marital_status,by="id")
+LASI_w1 <- left_join(LASI_w1,sex,by="id")
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- LASI_w1$age
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[3], caption = names(LASI_w1)[2])
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(LASI_w1, aes(age)) + geom_bar(stat="count", width=0.4, fill="steelblue",data = .%>% filter(!vbl %in% miss_values_vector)) + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- LASI_w1$marital_status
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = names(LASI_w1)[3])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(LASI_w1, aes(x=factor(marital_status))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+To compute `respondent` from the study-specific variable it has to be recoded as follows:
+
+* `age-eligible respondent at least 45 years of age are participants`
+* `otherwise are spouses or other depending on the marital status`
+
+**R script:**
+
+```{r harmo w1}
+LASI_ds_w1 <- tibble(id=LASI_w1$id)
+LASI_ds_w1$respondent <- car::recode(LASI_w1$age, "45:hi = 0; lo:44 = 1")
+LASI_ds_w1$respondent[which(LASI_w1$age<45 & LASI_w1$marital_status!=2)] <-2
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=F}
+vbl <- LASI_ds_w1$respondent
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(LASI_ds_w1, aes(x=factor(respondent))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1, echo=F}
+```
+
+```{r importOPAL w1, echo=F}
+respondent <- LASI_ds_w1 
+save(respondent, file = "../RData/w1/respondent.RData")
+rm(respondent)
+```
+
+
+
+
+# Quality estimation
+
+The LASI design document tells:
+
+> Of the 1683 individuals who completed an individual interview, 1486 respondents were over 45 years of age. The 197 who were not age-eligible were female spouses of age-qualifying participants.
+
+Note that individuals over 45 years old also can be spouses, but they are eligible, and therefore they are considered participants.
+
+On the other hand, our data do not correspond with this description. There are individuals being less than 45 years old non-female or that are non-married. In the latter case, we assign them the respondent category `Other`.
+
+```{r echo=F}
+
+kable(frq(LASI_w1$sex[which(LASI_w1$age<45)]),align = 'c',caption = 'Sex of individuals less than 45 (0 = Female; 1 = Male)')
+
+kable(frq(LASI_w1$marital_status[which(LASI_w1$age<45)]),align = 'c',caption = 'Marital status of individuals less than 45')
+
+kable(LASI_w1[which(LASI_w1$age<45 & LASI_w1$marital_status!=2),], align = 'c', caption = 'Non-married individuals less than 45 years old')
+
+```
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
