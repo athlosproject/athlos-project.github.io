@@ -11,88 +11,64 @@ output:
       collapsed: yes
       smooth_scroll: yes
 ---
-  
-<!-- ########################################################## --> 
 
+<!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_albert.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-* Name: `obesity`
-* Label: `Precense of obesity based in Body Mass Index classification according to the WHO BMI classification (http://apps.who.int/bmi/index.jsp?introPage=intro_3.html): BMI value equal to or above 30Kg/m^2.`
-* Type of variable: `categorical`
-* Categories: 
-    + `0 = not obese`
-    + `1 = obese`
-* Missings: 
-    + `991 = CAPI/interviewer error`
-    + `992 = Impute`
-    + `993 = Disable to measure`
-    + `994 = Not attempt/not done`
-    + `995 = Does not answer`
-    + `996 = Not applicable`
-    + `997 = Refuse`
-    + `998 = Do not know`
-    + `999 = Missing` 
-* Comments: `the BMI variable should be created by dividing weight and hiegh variables by means of the following equation= weight (kg)/height(m)^2. Then, the Obesity variable should be generated according to the WHO cutoff point for BMI classification.`
-
-
-```{r lab, echo=FALSE}
-ds_label <- "Precense of obesity based in Body Mass Index classification according to the WHO BMI classification (http://apps.who.int/bmi/index.jsp?introPage=intro_3.html): BMI value equal to or above 30Kg/m^2"
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/obesityDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/obesityDS.R')
 ```
 
-### Data process
+# Data process
 
-#### Cuba
+## Cuba
 
-##### Wave 1
+### Wave 1
 
-There is no varibale. 
+There is no variable. 
 
 
-##### Wave 2
+### Wave 2
 
-###### Study-specific variable description
+#### Study-specific variable description
 
-The study-specific variables elected to be harmonised are:
-
-* Name: `bmi`
-* Label: `Body Mass Index calculated as weight (kg)/height(m)^2`
-* Type of variable: `countinous`
-* Missings: 
-    + `991 = CAPI/interviewer error`
-    + `992 = Impute`
-    + `993 = Disable to measure`
-    + `994 = Not attempt/not done`
-    + `995 = Does not answer`
-    + `996 = Not applicable`
-    + `997 = Refuse`
-    + `998 = Do not know`
-    + `999 = Missing`
+| **Name** |`bmi`|
+|-|-|
+| **Label** |`Body Mass Index calculated as weight (kg)/height(m)^2`|
+| **Table name** |`t1066_cuba_w2_hd`|
+| **Type of variable** |`continuous`|
+| **Missings** |`991 = CAPI/interviewer error`<br/>`992 = Impute`<br/>`993 = Disable to measure`<br/>`994 = Not attempt/not done`<br/>`995 = Does not answer`<br/>`996 = Not applicable`<br/>`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing`|
+| **Description** |  |
     
-```{r assign_cuba2, include=FALSE}
-opal.assign.table.tibble(o, 't1066_bmi','_Athlos_Harm_Dataset.t1066_ds_cuba_w2',
-                         variables=list('bmi'), missings = TRUE)
-t1066_bmi <- opal.execute(o,'t1066_bmi')
+```{r assign_cuba2, echo=FALSE}
+
+# Generally one should do:
+#opal.assign.table.tibble(o, 't1066_bmi','10-66_HD.t1066_cuba_w2_hd', variables=list('bmi'), missings = TRUE)
+#t1066_bmi <- opal.execute(o,'t1066_bmi')
+
+# Inside:
+load(paste0(datafolder,"cuba_w2/bmi",".RData"))
+t1066_bmi <- bmi
+rm(bmi)
 t1066_bmi$bmi <- as.numeric(t1066_bmi$bmi)
 ```
 
-```{r local_cuba2}
-Continuous_summary(t1066_bmi[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(t1066_bmi, aes(x=t1066_bmi[[2]])) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,70)
+```{r local_cuba2, echo=F}
+vbl <- t1066_bmi$bmi
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "bmi")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(t1066_bmi, aes(bmi)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("BMI") + ylab("Frequency") 
 ```
 
-###### Harmonisation algorithm
-To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+#### Harmonisation algorithm
+To compute the harmonised variable from the study-specific variable it has to be recoded as follows:
 
 * `BMI<30 into 0` 
 * `BMI>=30 into 1`
@@ -101,19 +77,22 @@ To compute the harmonize variable from the study-specific variable it has to be 
 ```{r harmo_cuba2}
 t1066_ds_cuba_w2 <- tibble(id=t1066_bmi$id)
 t1066_ds_cuba_w2$obesity <- car::recode(t1066_bmi[[2]], "lo:29.9999999=0; 30:900=1; NA=999")
-t1066_ds_cuba_w2$obesity <- labelled(t1066_ds_cuba_w2[[2]], labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+t1066_ds_cuba_w2$obesity <- labelled(t1066_ds_cuba_w2$obesity, labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
-###### Statistical description of the new harmonised variable
-```{r descript_cuba2}
-Categorical_summary(var = t1066_ds_cuba_w2[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(t1066_ds_cuba_w2, aes(x=factor(t1066_ds_cuba_w2[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
+#### Statistical description of the new harmonised variable
+```{r descript_cuba2, echo=F}
+vari <- t1066_ds_cuba_w2$obesity
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = "bmi")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_cuba_w2, aes(x=factor(obesity))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
 ```
 
-###### Validation
-```{r crosstab_cuba2}
+#### Validation
+```{r crosstab_cuba2, echo=F}
 BeforeH <- c(sum(na.omit(t1066_bmi[[2]])<30),sum(na.omit(t1066_bmi[[2]])>=30 & na.omit(t1066_bmi[[2]])<=900), sum(na.omit(t1066_bmi[[2]])==999))
-AfterH <- table(t1066_ds_cuba_w2[[2]], useNA = "ifany")
+AfterH <- table(t1066_ds_cuba_w2$obesity, useNA = "ifany")
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("<30->0",">=30->1", "999") 
 kable(C)
@@ -125,59 +104,63 @@ rm(t1066_bmi)
 ```
 
 
-#### India
+## India
 
-##### Wave 1
+### Wave 1
 
-There is no varibale. 
-
-
-##### Wave 2
-
-There is no varibale. 
+There is no variable. 
 
 
-#### Urban China
+### Wave 2
 
-##### Wave 1
-
-There is no varibale. 
+There is no variable. 
 
 
-##### Wave 2
+## Urban China
 
-###### Study-specific variable description
+### Wave 1
 
-The study-specific variables elected to be harmonised are:
+There is no variable. 
 
-* Name: `bmi`
-* Label: `Body Mass Index calculated as weight (kg)/height(m)^2`
-* Type of variable: `countinous`
-* Missings: 
-    + `991 = CAPI/interviewer error`
-    + `992 = Impute`
-    + `993 = Disable to measure`
-    + `994 = Not attempt/not done`
-    + `995 = Does not answer`
-    + `996 = Not applicable`
-    + `997 = Refuse`
-    + `998 = Do not know`
-    + `999 = Missing`
+
+### Wave 2
+
+#### Study-specific variable description
+
+
+
+| **Name** |`bmi`|
+|-|-|
+| **Label** |`Body Mass Index calculated as weight (kg)/height(m)^2`|
+| **Table name** |`t1066_UCh_w2_hd`|
+| **Type of variable** |`continuous`|
+| **Missings** |`991 = CAPI/interviewer error`<br/>`992 = Impute`<br/>`993 = Disable to measure`<br/>`994 = Not attempt/not done`<br/>`995 = Does not answer`<br/>`996 = Not applicable`<br/>`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing`|
+| **Description** |  |
+
     
 ```{r assign_UCh2, include=FALSE}
-opal.assign.table.tibble(o, 't1066_bmi','_Athlos_Harm_Dataset.t1066_ds_UCh_w2',
-                         variables=list('bmi'), missings = TRUE)
-t1066_bmi <- opal.execute(o,'t1066_bmi')
+
+# Generally one should do:
+#opal.assign.table.tibble(o, 't1066_bmi','10-66_HD.t1066_UCh_w2_hd', variables=list('bmi'), missings = TRUE)
+#t1066_bmi <- opal.execute(o,'t1066_bmi')
+
+# Inside:
+load(paste0(datafolder,"UCh_w2/bmi",".RData"))
+t1066_bmi <- bmi
+rm(bmi)
 t1066_bmi$bmi <- as.numeric(t1066_bmi$bmi)
 ```
 
-```{r local_UCh2}
-Continuous_summary(t1066_bmi[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(t1066_bmi, aes(t1066_bmi[[2]])) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("BMI") + ylab("Frequency")
+```{r local_UCh2, echo=F}
+vbl <- t1066_bmi$bmi
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "bmi")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(t1066_bmi, aes(bmi)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("BMI") + ylab("Frequency") 
 ```
 
-###### Harmonisation algorithm
-To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+#### Harmonisation algorithm
+To compute the harmonised variable from the study-specific variable it has to be recoded as follows:
 
 * `BMI<30 into 0` 
 * `BMI>=30 into 1`
@@ -186,19 +169,22 @@ To compute the harmonize variable from the study-specific variable it has to be 
 ```{r harmo_UCh2}
 t1066_ds_UCh_w2 <- tibble(id=t1066_bmi$id)
 t1066_ds_UCh_w2$obesity <- car::recode(t1066_bmi[[2]], "lo:29.9999999=0; 30:900=1; NA=999")
-t1066_ds_UCh_w2$obesity <- labelled(t1066_ds_UCh_w2[[2]], labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+t1066_ds_UCh_w2$obesity <- labelled(t1066_ds_UCh_w2$obesity, labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
-###### Statistical description of the new harmonised variable
-```{r descript_UCh2}
-Categorical_summary(var = t1066_ds_UCh_w2[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(t1066_ds_UCh_w2, aes(x=factor(t1066_ds_UCh_w2[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
+#### Statistical description of the new harmonised variable
+```{r descript_UCh2, echo=F}
+vari <- t1066_ds_UCh_w2$obesity
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = "bmi")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_UCh_w2, aes(x=factor(obesity))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
 ```
 
-###### Validation
-```{r crosstab_UCh2}
+#### Validation
+```{r crosstab_UCh2, echo=F}
 BeforeH <- c(sum(na.omit(t1066_bmi[[2]])<30),sum(na.omit(t1066_bmi[[2]])>=30 & na.omit(t1066_bmi[[2]])<=900), sum(na.omit(t1066_bmi[[2]])==999))
-AfterH <- table(t1066_ds_UCh_w2[[2]], useNA = "ifany")
+AfterH <- table(t1066_ds_UCh_w2$obesity, useNA = "ifany")
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("<30->0",">=30->1","999") 
 kable(C)
@@ -212,47 +198,51 @@ rm(t1066_bmi)
 
 
 
-#### Rural China
+## Rural China
 
-##### Wave 1
+### Wave 1
 
-There is no varibale. 
+There is no variable. 
 
 
-##### Wave 2
+### Wave 2
 
-###### Study-specific variable description
+#### Study-specific variable description
 
-The study-specific variables elected to be harmonised are:
 
-* Name: `bmi`
-* Label: `Body Mass Index calculated as weight (kg)/height(m)^2`
-* Type of variable: `countinous`
-* Missings: 
-    + `991 = CAPI/interviewer error`
-    + `992 = Impute`
-    + `993 = Disable to measure`
-    + `994 = Not attempt/not done`
-    + `995 = Does not answer`
-    + `996 = Not applicable`
-    + `997 = Refuse`
-    + `998 = Do not know`
-    + `999 = Missing`
+
+| **Name** |`bmi`|
+|-|-|
+| **Label** |`Body Mass Index calculated as weight (kg)/height(m)^2`|
+| **Table name** |`t1066_RCh_w2_hd`|
+| **Type of variable** |`continuous`|
+| **Missings** |`991 = CAPI/interviewer error`<br/>`992 = Impute`<br/>`993 = Disable to measure`<br/>`994 = Not attempt/not done`<br/>`995 = Does not answer`<br/>`996 = Not applicable`<br/>`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing`|
+| **Description** |  |
+
     
 ```{r assign_RCh2, include=FALSE}
-opal.assign.table.tibble(o, 't1066_bmi','_Athlos_Harm_Dataset.t1066_ds_RCh_w2',
-                         variables=list('bmi'), missings = TRUE)
-t1066_bmi <- opal.execute(o,'t1066_bmi')
+
+# Generally one should do:
+#opal.assign.table.tibble(o, 't1066_bmi','10-66_HD.t1066_RCh_w2_hd', variables=list('bmi'), missings = TRUE)
+#t1066_bmi <- opal.execute(o,'t1066_bmi')
+
+# Inside:
+load(paste0(datafolder,"RCh_w2/bmi",".RData"))
+t1066_bmi <- bmi
+rm(bmi)
 t1066_bmi$bmi <- as.numeric(t1066_bmi$bmi)
 ```
 
-```{r local_RCh2}
-Continuous_summary(t1066_bmi[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(t1066_bmi, aes(x=factor(t1066_bmi[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("BMI") + ylab("Frequency")
+```{r local_RCh2, echo=F}
+vbl <- t1066_bmi$bmi
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "bmi")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(t1066_bmi, aes(bmi)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("BMI") + ylab("Frequency") 
 ```
 
-###### Harmonisation algorithm
-To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+#### Harmonisation algorithm
+To compute the harmonised variable from the study-specific variable it has to be recoded as follows:
 
 * `BMI<30 into 0` 
 * `BMI>=30 into 1`
@@ -261,19 +251,22 @@ To compute the harmonize variable from the study-specific variable it has to be 
 ```{r harmo_RCh2}
 t1066_ds_RCh_w2 <- tibble(id=t1066_bmi$id)
 t1066_ds_RCh_w2$obesity <- car::recode(t1066_bmi[[2]], "lo:29.9999999=0; 30:900=1; NA=999")
-t1066_ds_RCh_w2$obesity <- labelled(t1066_ds_RCh_w2[[2]], labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+t1066_ds_RCh_w2$obesity <- labelled(t1066_ds_RCh_w2$obesity, labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
-###### Statistical description of the new harmonised variable
-```{r descript_RCh2}
-Categorical_summary(var = t1066_ds_RCh_w2[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(t1066_ds_RCh_w2, aes(x=factor(t1066_ds_RCh_w2[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
+#### Statistical description of the new harmonised variable
+```{r descript_RCh2, echo=F}
+vari <- t1066_ds_RCh_w2$obesity
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = "bmi")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_RCh_w2, aes(x=factor(obesity))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
 ```
 
-###### Validation
-```{r crosstab_RCh2}
+#### Validation
+```{r crosstab_RCh2, echo=F}
 BeforeH <- c(sum(na.omit(t1066_bmi[[2]])<30),sum(na.omit(t1066_bmi[[2]])>=30 & na.omit(t1066_bmi[[2]])<=900), sum(na.omit(t1066_bmi[[2]])==999))
-AfterH <- table(t1066_ds_RCh_w2[[2]], useNA = "ifany")
+AfterH <- table(t1066_ds_RCh_w2$obesity, useNA = "ifany")
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("<30->0",">=30->1", "999") 
 kable(C)
@@ -286,47 +279,51 @@ rm(t1066_bmi)
 
 
 
-#### Dominican Republic
+## Dominican Republic
 
-##### Wave 1
+### Wave 1
 
-There is no varibale. 
+There is no variable. 
 
 
-##### Wave 2
+### Wave 2
 
-###### Study-specific variable description
+#### Study-specific variable description
 
-The study-specific variables elected to be harmonised are:
 
-* Name: `bmi`
-* Label: `Body Mass Index calculated as weight (kg)/height(m)^2`
-* Type of variable: `countinous`
-* Missings: 
-    + `991 = CAPI/interviewer error`
-    + `992 = Impute`
-    + `993 = Disable to measure`
-    + `994 = Not attempt/not done`
-    + `995 = Does not answer`
-    + `996 = Not applicable`
-    + `997 = Refuse`
-    + `998 = Do not know`
-    + `999 = Missing`
+
+| **Name** |`bmi`|
+|-|-|
+| **Label** |`Body Mass Index calculated as weight (kg)/height(m)^2`|
+| **Table name** |`t1066_DR_w2_hd`|
+| **Type of variable** |`continuous`|
+| **Missings** |`991 = CAPI/interviewer error`<br/>`992 = Impute`<br/>`993 = Disable to measure`<br/>`994 = Not attempt/not done`<br/>`995 = Does not answer`<br/>`996 = Not applicable`<br/>`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing`|
+| **Description** |  |
+
     
 ```{r assign_DR2, include=FALSE}
-opal.assign.table.tibble(o, 't1066_bmi','_Athlos_Harm_Dataset.t1066_ds_DR_w2',
-                         variables=list('bmi'), missings = TRUE)
-t1066_bmi <- opal.execute(o,'t1066_bmi')
+
+# Generally one should do:
+#opal.assign.table.tibble(o, 't1066_bmi','10-66_HD.t1066_DR_w2_hd', variables=list('bmi'), missings = TRUE)
+#t1066_bmi <- opal.execute(o,'t1066_bmi')
+
+# Inside:
+load(paste0(datafolder,"DR_w2/bmi",".RData"))
+t1066_bmi <- bmi
+rm(bmi)
 t1066_bmi$bmi <- as.numeric(t1066_bmi$bmi)
 ```
 
-```{r local_DR2}
-Continuous_summary(t1066_bmi[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(t1066_bmi, aes(x=factor(t1066_bmi[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("BMI") + ylab("Frequency") 
+```{r local_DR2, echo=F}
+vbl <- t1066_bmi$bmi
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "bmi")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(t1066_bmi, aes(bmi)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("BMI") + ylab("Frequency")  
 ```
 
-###### Harmonisation algorithm
-To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+#### Harmonisation algorithm
+To compute the harmonised variable from the study-specific variable it has to be recoded as follows:
 
 * `BMI<30 into 0` 
 * `BMI>=30 into 1`
@@ -335,19 +332,22 @@ To compute the harmonize variable from the study-specific variable it has to be 
 ```{r harmo_DR2}
 t1066_ds_DR_w2 <- tibble(id=t1066_bmi$id)
 t1066_ds_DR_w2$obesity <- car::recode(t1066_bmi[[2]], "lo:29.9999999=0; 30:900=1; NA=999")
-t1066_ds_DR_w2$obesity <- labelled(t1066_ds_DR_w2[[2]], labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+t1066_ds_DR_w2$obesity <- labelled(t1066_ds_DR_w2$obesity, labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
-###### Statistical description of the new harmonised variable
-```{r descript_DR2}
-Categorical_summary(var = t1066_ds_DR_w2[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(t1066_ds_DR_w2, aes(x=factor(t1066_ds_DR_w2[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
+#### Statistical description of the new harmonised variable
+```{r descript_DR2, echo=F}
+vari <- t1066_ds_DR_w2$obesity
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = "bmi")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_DR_w2, aes(x=factor(obesity))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
 ```
 
-###### Validation
-```{r crosstab_DR2}
+#### Validation
+```{r crosstab_DR2, echo=F}
 BeforeH <- c(sum(na.omit(t1066_bmi[[2]])<30),sum(na.omit(t1066_bmi[[2]])>=30 & na.omit(t1066_bmi[[2]])<=900), sum(na.omit(t1066_bmi[[2]])==999))
-AfterH <- table(t1066_ds_DR_w2[[2]], useNA = "ifany")
+AfterH <- table(t1066_ds_DR_w2$obesity, useNA = "ifany")
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("<30->0",">=30->1","999") 
 kable(C)
@@ -359,47 +359,50 @@ rm(t1066_bmi)
 ```
 
 
-#### Venezuela
+## Venezuela
 
-##### Wave 1
+### Wave 1
 
-There is no varibale. 
+There is no variable. 
 
 
-##### Wave 2
+### Wave 2
 
-###### Study-specific variable description
+#### Study-specific variable description
 
-The study-specific variables elected to be harmonised are:
 
-* Name: `bmi`
-* Label: `Body Mass Index calculated as weight (kg)/height(m)^2`
-* Type of variable: `countinous`
-* Missings: 
-    + `991 = CAPI/interviewer error`
-    + `992 = Impute`
-    + `993 = Disable to measure`
-    + `994 = Not attempt/not done`
-    + `995 = Does not answer`
-    + `996 = Not applicable`
-    + `997 = Refuse`
-    + `998 = Do not know`
-    + `999 = Missing`
+| **Name** |`bmi`|
+|-|-|
+| **Label** |`Body Mass Index calculated as weight (kg)/height(m)^2`|
+| **Table name** |`t1066_Ven_w2_hd`|
+| **Type of variable** |`continuous`|
+| **Missings** |`991 = CAPI/interviewer error`<br/>`992 = Impute`<br/>`993 = Disable to measure`<br/>`994 = Not attempt/not done`<br/>`995 = Does not answer`<br/>`996 = Not applicable`<br/>`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing`|
+| **Description** |  |
+
     
 ```{r assign_V2, include=FALSE}
-opal.assign.table.tibble(o, 't1066_bmi','_Athlos_Harm_Dataset.t1066_ds_Ven_w2',
-                         variables=list('bmi'), missings = TRUE)
-t1066_bmi <- opal.execute(o,'t1066_bmi')
+
+# Generally one should do:
+#opal.assign.table.tibble(o, 't1066_bmi','10-66_HD.t1066_Ven_w2_hd', variables=list('bmi'), missings = TRUE)
+#t1066_bmi <- opal.execute(o,'t1066_bmi')
+
+# Inside:
+load(paste0(datafolder,"Ven_w2/bmi",".RData"))
+t1066_bmi <- bmi
+rm(bmi)
 t1066_bmi$bmi <- as.numeric(t1066_bmi$bmi)
 ```
 
-```{r local_V2}
-Continuous_summary(t1066_bmi[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(t1066_bmi, aes(x=factor(t1066_bmi[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("BMI") + ylab("Frequency")
+```{r local_V2, echo=F}
+vbl <- t1066_bmi$bmi
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "bmi")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(t1066_bmi, aes(bmi)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("BMI") + ylab("Frequency") 
 ```
 
-###### Harmonisation algorithm
-To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+#### Harmonisation algorithm
+To compute the harmonised variable from the study-specific variable it has to be recoded as follows:
 
 * `BMI<30 into 0` 
 * `NA into 999`
@@ -407,19 +410,22 @@ To compute the harmonize variable from the study-specific variable it has to be 
 ```{r harmo_V2}
 t1066_ds_Ven_w2 <- tibble(id=t1066_bmi$id)
 t1066_ds_Ven_w2$obesity <- car::recode(t1066_bmi[[2]], "lo:29.9999999=0; 30:900=1; NA=999")
-t1066_ds_Ven_w2$obesity <- labelled(t1066_ds_Ven_w2[[2]], labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+t1066_ds_Ven_w2$obesity <- labelled(t1066_ds_Ven_w2$obesity, labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
-###### Statistical description of the new harmonised variable
-```{r descript_V2}
-Categorical_summary(var = t1066_ds_Ven_w2[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+#### Statistical description of the new harmonised variable
+```{r descript_V2, echo=F}
+vari <- t1066_ds_Ven_w2$obesity
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = "bmi")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(t1066_ds_Ven_w2, aes(x=factor(obesity))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
 ```
 
-###### Validation
-```{r crosstab_V2}
+#### Validation
+```{r crosstab_V2, echo=F}
 BeforeH <- c(sum(na.omit(t1066_bmi[[2]])<30),sum(na.omit(t1066_bmi[[2]])>=30 & na.omit(t1066_bmi[[2]])<=900), sum(na.omit(t1066_bmi[[2]])==999))
-AfterH <- table(t1066_ds_Ven_w2[[2]], useNA = "ifany")
+AfterH <- table(t1066_ds_Ven_w2$obesity, useNA = "ifany")
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("<30->0",">=30->1","999") 
 kable(C)
@@ -432,47 +438,51 @@ rm(t1066_bmi)
 ```
 
 
-#### Urban Peru
+## Urban Peru
 
-##### Wave 1
+### Wave 1
 
-There is no varibale. 
+There is no variable. 
 
 
-##### Wave 2
+### Wave 2
 
-###### Study-specific variable description
+#### Study-specific variable description
 
-The study-specific variables elected to be harmonised are:
 
-* Name: `bmi`
-* Label: `Body Mass Index calculated as weight (kg)/height(m)^2`
-* Type of variable: `countinous`
-* Missings: 
-    + `991 = CAPI/interviewer error`
-    + `992 = Impute`
-    + `993 = Disable to measure`
-    + `994 = Not attempt/not done`
-    + `995 = Does not answer`
-    + `996 = Not applicable`
-    + `997 = Refuse`
-    + `998 = Do not know`
-    + `999 = Missing`
+
+| **Name** |`bmi`|
+|-|-|
+| **Label** |`Body Mass Index calculated as weight (kg)/height(m)^2`|
+| **Table name** |`t1066_UP_w2_hd`|
+| **Type of variable** |`continuous`|
+| **Missings** |`991 = CAPI/interviewer error`<br/>`992 = Impute`<br/>`993 = Disable to measure`<br/>`994 = Not attempt/not done`<br/>`995 = Does not answer`<br/>`996 = Not applicable`<br/>`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing`|
+| **Description** |  |
+
     
 ```{r assign_UP2, include=FALSE}
-opal.assign.table.tibble(o, 't1066_bmi','_Athlos_Harm_Dataset.t1066_ds_UP_w2',
-                         variables=list('bmi'), missings = TRUE)
-t1066_bmi <- opal.execute(o,'t1066_bmi')
+
+# Generally one should do:
+#opal.assign.table.tibble(o, 't1066_bmi','10-66_HD.t1066_UP_w2_hd', variables=list('bmi'), missings = TRUE)
+#t1066_bmi <- opal.execute(o,'t1066_bmi')
+
+# Inside:
+load(paste0(datafolder,"UP_w2/bmi",".RData"))
+t1066_bmi <- bmi
+rm(bmi)
 t1066_bmi$bmi <- as.numeric(t1066_bmi$bmi)
 ```
 
-```{r local_UP2}
-Continuous_summary(t1066_bmi[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(t1066_bmi, aes(x=factor(t1066_bmi[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("BMI") + ylab("Frequency")
+```{r local_UP2, echo=F}
+vbl <- t1066_bmi$bmi
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "bmi")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(t1066_bmi, aes(bmi)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("BMI") + ylab("Frequency") 
 ```
 
-###### Harmonisation algorithm
-To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+#### Harmonisation algorithm
+To compute the harmonised variable from the study-specific variable it has to be recoded as follows:
 
 * `BMI<30 into 0` 
 * `BMI>=30 into 1`
@@ -481,19 +491,22 @@ To compute the harmonize variable from the study-specific variable it has to be 
 ```{r harmo_UP2}
 t1066_ds_UP_w2 <- tibble(id=t1066_bmi$id)
 t1066_ds_UP_w2$obesity <- car::recode(t1066_bmi[[2]], "lo:29.9999999=0; 30:900=1; NA=999")
-t1066_ds_UP_w2$obesity <- labelled(t1066_ds_UP_w2[[2]], labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+t1066_ds_UP_w2$obesity <- labelled(t1066_ds_UP_w2$obesity, labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
-###### Statistical description of the new harmonised variable
-```{r descript_UP2}
-Categorical_summary(var = t1066_ds_UP_w2[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+#### Statistical description of the new harmonised variable
+```{r descript_UP2, echo=F}
+vari <- t1066_ds_UP_w2$obesity
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = "bmi")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(t1066_ds_UP_w2, aes(x=factor(obesity))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
 ```
 
-###### Validation
-```{r crosstab_UP2}
+#### Validation
+```{r crosstab_UP2, echo=F}
 BeforeH <- c(sum(na.omit(t1066_bmi[[2]])<30),sum(na.omit(t1066_bmi[[2]])>=30 & na.omit(t1066_bmi[[2]])<=900), sum(na.omit(t1066_bmi[[2]])==999))
-AfterH <- table(t1066_ds_UP_w2[[2]], useNA = "ifany")
+AfterH <- table(t1066_ds_UP_w2$obesity, useNA = "ifany")
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("<30->0",">=30->1","999") 
 kable(C)
@@ -506,47 +519,51 @@ rm(t1066_bmi)
 ```
 
 
-#### Rural Peru
+## Rural Peru
 
-##### Wave 1
+### Wave 1
 
-There is no varibale. 
+There is no variable. 
 
 
-##### Wave 2
+### Wave 2
 
-###### Study-specific variable description
+#### Study-specific variable description
 
-The study-specific variables elected to be harmonised are:
 
-* Name: `bmi`
-* Label: `Body Mass Index calculated as weight (kg)/height(m)^2`
-* Type of variable: `countinous`
-* Missings: 
-    + `991 = CAPI/interviewer error`
-    + `992 = Impute`
-    + `993 = Disable to measure`
-    + `994 = Not attempt/not done`
-    + `995 = Does not answer`
-    + `996 = Not applicable`
-    + `997 = Refuse`
-    + `998 = Do not know`
-    + `999 = Missing`
+
+| **Name** |`bmi`|
+|-|-|
+| **Label** |`Body Mass Index calculated as weight (kg)/height(m)^2`|
+| **Table name** |`t1066_RP_w2_hd`|
+| **Type of variable** |`continuous`|
+| **Missings** |`991 = CAPI/interviewer error`<br/>`992 = Impute`<br/>`993 = Disable to measure`<br/>`994 = Not attempt/not done`<br/>`995 = Does not answer`<br/>`996 = Not applicable`<br/>`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing`|
+| **Description** |  |
+
     
 ```{r assign_RP2, include=FALSE}
-opal.assign.table.tibble(o, 't1066_bmi','_Athlos_Harm_Dataset.t1066_ds_RP_w2',
-                         variables=list('bmi'), missings = TRUE)
-t1066_bmi <- opal.execute(o,'t1066_bmi')
+
+# Generally one should do:
+#opal.assign.table.tibble(o, 't1066_bmi','10-66_HD.t1066_RP_w2_hd', variables=list('bmi'), missings = TRUE)
+#t1066_bmi <- opal.execute(o,'t1066_bmi')
+
+# Inside:
+load(paste0(datafolder,"RP_w2/bmi",".RData"))
+t1066_bmi <- bmi
+rm(bmi)
 t1066_bmi$bmi <- as.numeric(t1066_bmi$bmi)
 ```
 
-```{r local_RP2}
-Continuous_summary(t1066_bmi[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(t1066_bmi, aes(x=factor(t1066_bmi[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("BMI") + ylab("Frequency")
+```{r local_RP2, echo=F}
+vbl <- t1066_bmi$bmi
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "bmi")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(t1066_bmi, aes(bmi)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("BMI") + ylab("Frequency") 
 ```
 
-###### Harmonisation algorithm
-To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+#### Harmonisation algorithm
+To compute the harmonised variable from the study-specific variable it has to be recoded as follows:
 
 * `BMI<30 into 0` 
 * `BMI>=30 into 1`
@@ -555,19 +572,22 @@ To compute the harmonize variable from the study-specific variable it has to be 
 ```{r harmo_RP2}
 t1066_ds_RP_w2 <- tibble(id=t1066_bmi$id)
 t1066_ds_RP_w2$obesity <- car::recode(t1066_bmi[[2]], "lo:29.9999999=0; 30:900=1; NA=999")
-t1066_ds_RP_w2$obesity <- labelled(t1066_ds_RP_w2[[2]], labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+t1066_ds_RP_w2$obesity <- labelled(t1066_ds_RP_w2$obesity, labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
-###### Statistical description of the new harmonised variable
-```{r descript_RP2}
-Categorical_summary(var = t1066_ds_RP_w2[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+#### Statistical description of the new harmonised variable
+```{r descript_RP2, echo=F}
+vari <- t1066_ds_RP_w2$obesity
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = "bmi")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(t1066_ds_RP_w2, aes(x=factor(obesity))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
 ```
 
-###### Validation
-```{r crosstab_RP2}
+#### Validation
+```{r crosstab_RP2, echo=F}
 BeforeH <- c(sum(na.omit(t1066_bmi[[2]])<30),sum(na.omit(t1066_bmi[[2]])>=30 & na.omit(t1066_bmi[[2]])<=900), sum(na.omit(t1066_bmi[[2]])==999))
-AfterH <- table(t1066_ds_RP_w2[[2]], useNA = "ifany")
+AfterH <- table(t1066_ds_RP_w2$obesity, useNA = "ifany")
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("<30->0",">=30->1","999") 
 kable(C)
@@ -579,47 +599,51 @@ kable(C)
 rm(t1066_bmi)
 ```
 
-#### Urban Mexico
+## Urban Mexico
 
-##### Wave 1
+### Wave 1
 
-There is no varibale. 
+There is no variable. 
 
 
-##### Wave 2
+### Wave 2
 
-###### Study-specific variable description
+#### Study-specific variable description
 
-The study-specific variables elected to be harmonised are:
 
-* Name: `bmi`
-* Label: `Body Mass Index calculated as weight (kg)/height(m)^2`
-* Type of variable: `countinous`
-* Missings: 
-    + `991 = CAPI/interviewer error`
-    + `992 = Impute`
-    + `993 = Disable to measure`
-    + `994 = Not attempt/not done`
-    + `995 = Does not answer`
-    + `996 = Not applicable`
-    + `997 = Refuse`
-    + `998 = Do not know`
-    + `999 = Missing`
+
+| **Name** |`bmi`|
+|-|-|
+| **Label** |`Body Mass Index calculated as weight (kg)/height(m)^2`|
+| **Table name** |`t1066_UM_w2_hd`|
+| **Type of variable** |`continuous`|
+| **Missings** |`991 = CAPI/interviewer error`<br/>`992 = Impute`<br/>`993 = Disable to measure`<br/>`994 = Not attempt/not done`<br/>`995 = Does not answer`<br/>`996 = Not applicable`<br/>`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing`|
+| **Description** |  |
+
     
 ```{r assign_UM2, include=FALSE}
-opal.assign.table.tibble(o, 't1066_bmi','_Athlos_Harm_Dataset.t1066_ds_UM_w2',
-                         variables=list('bmi'), missings = TRUE)
-t1066_bmi <- opal.execute(o,'t1066_bmi')
+
+# Generally one should do:
+#opal.assign.table.tibble(o, 't1066_bmi','10-66_HD.t1066_UM_w2_hd', variables=list('bmi'), missings = TRUE)
+#t1066_bmi <- opal.execute(o,'t1066_bmi')
+
+# Inside:
+load(paste0(datafolder,"UM_w2/bmi",".RData"))
+t1066_bmi <- bmi
+rm(bmi)
 t1066_bmi$bmi <- as.numeric(t1066_bmi$bmi)
 ```
 
-```{r local_UM2}
-Continuous_summary(t1066_bmi[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(t1066_bmi, aes(x=factor(t1066_bmi[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("BMI") + ylab("Frequency")
+```{r local_UM2, echo=F}
+vbl <- t1066_bmi$bmi
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "bmi")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(t1066_bmi, aes(bmi)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("BMI") + ylab("Frequency") 
 ```
 
-###### Harmonisation algorithm
-To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+#### Harmonisation algorithm
+To compute the harmonised variable from the study-specific variable it has to be recoded as follows:
 
 * `BMI<30 into 0` 
 * `BMI>=30 into 1`
@@ -628,19 +652,22 @@ To compute the harmonize variable from the study-specific variable it has to be 
 ```{r harmo_UM2}
 t1066_ds_UM_w2 <- tibble(id=t1066_bmi$id)
 t1066_ds_UM_w2$obesity <- car::recode(t1066_bmi[[2]], "lo:29.9999999=0; 30:900=1; NA=999")
-t1066_ds_UM_w2$obesity <- labelled(t1066_ds_UM_w2[[2]], labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+t1066_ds_UM_w2$obesity <- labelled(t1066_ds_UM_w2$obesity, labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
-###### Statistical description of the new harmonised variable
-```{r descript_UM2}
-Categorical_summary(var = t1066_ds_UM_w2[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+#### Statistical description of the new harmonised variable
+```{r descript_UM2, echo=F}
+vari <- t1066_ds_UM_w2$obesity
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = "bmi")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(t1066_ds_UM_w2, aes(x=factor(obesity))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
 ```
 
-###### Validation
-```{r crosstab_UM2}
+#### Validation
+```{r crosstab_UM2, echo=F}
 BeforeH <- c(sum(na.omit(t1066_bmi[[2]])<30),sum(na.omit(t1066_bmi[[2]])>=30 & na.omit(t1066_bmi[[2]])<=900), sum(sum(na.omit(t1066_bmi[[2]])==999), sum(is.na(t1066_bmi[[2]]))))
-AfterH <- table(t1066_ds_UM_w2[[2]], useNA = "ifany")
+AfterH <- table(t1066_ds_UM_w2$obesity, useNA = "ifany")
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("<30->0",">=30->1","NA->999") 
 kable(C)
@@ -653,47 +680,51 @@ rm(t1066_bmi)
 ```
 
 
-#### Rural Mexico
+## Rural Mexico
 
-##### Wave 1
+### Wave 1
 
-There is no varibale. 
+There is no variable. 
 
 
-##### Wave 2
+### Wave 2
 
-###### Study-specific variable description
+#### Study-specific variable description
 
-The study-specific variables elected to be harmonised are:
 
-* Name: `bmi`
-* Label: `Body Mass Index calculated as weight (kg)/height(m)^2`
-* Type of variable: `countinous`
-* Missings: 
-    + `991 = CAPI/interviewer error`
-    + `992 = Impute`
-    + `993 = Disable to measure`
-    + `994 = Not attempt/not done`
-    + `995 = Does not answer`
-    + `996 = Not applicable`
-    + `997 = Refuse`
-    + `998 = Do not know`
-    + `999 = Missing`
+
+| **Name** |`bmi`|
+|-|-|
+| **Label** |`Body Mass Index calculated as weight (kg)/height(m)^2`|
+| **Table name** |`t1066_RM_w2_hd`|
+| **Type of variable** |`continuous`|
+| **Missings** |`991 = CAPI/interviewer error`<br/>`992 = Impute`<br/>`993 = Disable to measure`<br/>`994 = Not attempt/not done`<br/>`995 = Does not answer`<br/>`996 = Not applicable`<br/>`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing`|
+| **Description** |  |
+
     
 ```{r assign_RM2, include=FALSE}
-opal.assign.table.tibble(o, 't1066_bmi','_Athlos_Harm_Dataset.t1066_ds_RM_w2',
-                         variables=list('bmi'), missings = TRUE)
-t1066_bmi <- opal.execute(o,'t1066_bmi')
+
+# Generally one should do:
+#opal.assign.table.tibble(o, 't1066_bmi','10-66_HD.t1066_RM_w2_hd', variables=list('bmi'), missings = TRUE)
+#t1066_bmi <- opal.execute(o,'t1066_bmi')
+
+# Inside:
+load(paste0(datafolder,"RM_w2/bmi",".RData"))
+t1066_bmi <- bmi
+rm(bmi)
 t1066_bmi$bmi <- as.numeric(t1066_bmi$bmi)
 ```
 
-```{r local_RM2}
-Continuous_summary(t1066_bmi[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(t1066_bmi, aes(x=factor(t1066_bmi[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("BMI") + ylab("Frequency")
+```{r local_RM2, echo=F}
+vbl <- t1066_bmi$bmi
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "bmi")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(t1066_bmi, aes(bmi)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("BMI") + ylab("Frequency") 
 ```
 
-###### Harmonisation algorithm
-To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+#### Harmonisation algorithm
+To compute the harmonised variable from the study-specific variable it has to be recoded as follows:
 
 * `BMI<30 into 0` 
 * `BMI>=30 into 1`
@@ -702,19 +733,22 @@ To compute the harmonize variable from the study-specific variable it has to be 
 ```{r harmo_RM2}
 t1066_ds_RM_w2 <- tibble(id=t1066_bmi$id)
 t1066_ds_RM_w2$obesity <- car::recode(t1066_bmi[[2]], "lo:29.9999999=0; 30:900=1; NA=999")
-t1066_ds_RM_w2$obesity <- labelled(t1066_ds_RM_w2[[2]], labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+t1066_ds_RM_w2$obesity <- labelled(t1066_ds_RM_w2$obesity, labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
-###### Statistical description of the new harmonised variable
-```{r descript_RM2}
-Categorical_summary(var = t1066_ds_RM_w2[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+#### Statistical description of the new harmonised variable
+```{r descript_RM2, echo=F}
+vari <- t1066_ds_RM_w2$obesity
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = "bmi")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(t1066_ds_RM_w2, aes(x=factor(obesity))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
 ```
 
-###### Validation
-```{r crosstab_RM2}
+#### Validation
+```{r crosstab_RM2, echo=F}
 BeforeH <- c(sum(na.omit(t1066_bmi[[2]])<30),sum(na.omit(t1066_bmi[[2]])>=30 & na.omit(t1066_bmi[[2]])<=900), sum(na.omit(t1066_bmi[[2]])==999))
-AfterH <- table(t1066_ds_RM_w2[[2]], useNA = "ifany")
+AfterH <- table(t1066_ds_RM_w2$obesity, useNA = "ifany")
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("<30->0",">=30->1","999") 
 kable(C)
@@ -727,47 +761,50 @@ rm(t1066_bmi)
 ```
 
 
-#### Puerto Rico
+## Puerto Rico
 
-##### Wave 1
+### Wave 1
 
-There is no varibale. 
+There is no variable. 
 
 
-##### Wave 2
+### Wave 2
 
-###### Study-specific variable description
+#### Study-specific variable description
 
-The study-specific variables elected to be harmonised are:
 
-* Name: `bmi`
-* Label: `Body Mass Index calculated as weight (kg)/height(m)^2`
-* Type of variable: `countinous`
-* Missings: 
-    + `991 = CAPI/interviewer error`
-    + `992 = Impute`
-    + `993 = Disable to measure`
-    + `994 = Not attempt/not done`
-    + `995 = Does not answer`
-    + `996 = Not applicable`
-    + `997 = Refuse`
-    + `998 = Do not know`
-    + `999 = Missing`
+| **Name** |`bmi`|
+|-|-|
+| **Label** |`Body Mass Index calculated as weight (kg)/height(m)^2`|
+| **Table name** |`t1066_PR_w2_hd`|
+| **Type of variable** |`continuous`|
+| **Missings** |`991 = CAPI/interviewer error`<br/>`992 = Impute`<br/>`993 = Disable to measure`<br/>`994 = Not attempt/not done`<br/>`995 = Does not answer`<br/>`996 = Not applicable`<br/>`997 = Refuse`<br/>`998 = Do not know`<br/>`999 = Missing`|
+| **Description** |  |
+
     
 ```{r assign_PR2, include=FALSE}
-opal.assign.table.tibble(o, 't1066_bmi','_Athlos_Harm_Dataset.t1066_ds_PR_w2',
-                         variables=list('bmi'), missings = TRUE)
-t1066_bmi <- opal.execute(o,'t1066_bmi')
+
+# Generally one should do:
+#opal.assign.table.tibble(o, 't1066_bmi','10-66_HD.t1066_PR_w2_hd', variables=list('bmi'), missings = TRUE)
+#t1066_bmi <- opal.execute(o,'t1066_bmi')
+
+# Inside:
+load(paste0(datafolder,"PR_w2/bmi",".RData"))
+t1066_bmi <- bmi
+rm(bmi)
 t1066_bmi$bmi <- as.numeric(t1066_bmi$bmi)
 ```
 
-```{r local_PR2}
-Continuous_summary(t1066_bmi[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(t1066_bmi, aes(x=factor(t1066_bmi[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("BMI") + ylab("Frequency")
+```{r local_PR2, echo=F}
+vbl <- t1066_bmi$bmi
+vbl_miss <- miss_values_vector
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "bmi")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(t1066_bmi, aes(bmi)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("BMI") + ylab("Frequency") 
 ```
 
-###### Harmonisation algorithm
-To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+#### Harmonisation algorithm
+To compute the harmonised variable from the study-specific variable it has to be recoded as follows:
 
 * `BMI<30 into 0` 
 * `BMI>=30 into 1`
@@ -776,19 +813,22 @@ To compute the harmonize variable from the study-specific variable it has to be 
 ```{r harmo_PR2}
 t1066_ds_PR_w2 <- tibble(id=t1066_bmi$id)
 t1066_ds_PR_w2$obesity <- car::recode(t1066_bmi[[2]], "lo:29.9999999=0; 30:900=1; NA=999")
-t1066_ds_PR_w2$obesity <- labelled(t1066_ds_PR_w2[[2]], labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+t1066_ds_PR_w2$obesity <- labelled(t1066_ds_PR_w2$obesity, labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
-###### Statistical description of the new harmonised variable
-```{r descript_PR2}
-Categorical_summary(var = t1066_ds_PR_w2[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+#### Statistical description of the new harmonised variable
+```{r descript_PR2, echo=F}
+vari <- t1066_ds_PR_w2$obesity
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = "bmi")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(t1066_ds_PR_w2, aes(x=factor(obesity))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
 ```
 
-###### Validation
-```{r crosstab_PR2}
+#### Validation
+```{r crosstab_PR2, echo=F}
 BeforeH <- c(sum(na.omit(t1066_bmi[[2]])<30),sum(na.omit(t1066_bmi[[2]])>=30 & na.omit(t1066_bmi[[2]])<=900), sum(na.omit(t1066_bmi[[2]])==999))
-AfterH <- table(t1066_ds_PR_w2[[2]], useNA = "ifany")
+AfterH <- table(t1066_ds_PR_w2$obesity, useNA = "ifany")
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c("<30->0",">=30->1","999") 
 kable(C)
@@ -805,20 +845,125 @@ rm(t1066_bmi)
 
 Percentages of categories in each harmonised variable by cohort and wave:
 
-```{r summ}
 
-# Table HRS
-l.hds <- list(t1066_ds_cuba_w2 = t1066_ds_cuba_w2 , t1066_ds_UCh_w2 = t1066_ds_UCh_w2, t1066_ds_RCh_w2 = t1066_ds_RCh_w2, t1066_ds_DR_w2=t1066_ds_DR_w2, t1066_ds_Ven_w2=t1066_ds_Ven_w2, t1066_ds_UP_w2=t1066_ds_UP_w2, t1066_ds_RP_w2=t1066_ds_RP_w2, t1066_ds_UM_w2=t1066_ds_UM_w2, t1066_ds_RM_w2=t1066_ds_RM_w2, t1066_ds_PR_w2=t1066_ds_PR_w2)
+```{r helpfunctions, echo=F}
 
-t.hds <- frq(l.hds[[2]][2])[[1]][,c(1,2)] 
-for (i in 1:length(l.hds)){
-  t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles with categorical data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Labelling of categories (for categorical variables, only non-missing values)
+    aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
 }
-t.hds[13,] <- c("n", "sample size", 
-             length(l.hds[[1]][[2]]), length(l.hds[[2]][[2]]) , length(l.hds[[3]][[2]]), length(l.hds[[4]][[2]]), length(l.hds[[5]][[2]]), length(l.hds[[6]][[2]]), length(l.hds[[7]][[2]]), length(l.hds[[8]][[2]]), length(l.hds[[9]][[2]]), length(l.hds[[10]][[2]]) )
-names(t.hds)<-c("val", "label", "Cuba_w2", "UrbanChina_W2", "RuralChina_W2", "DominicanRepublic_W2", "Venezuela_W2", "UrbanPeru_W2", "RuralPeru_W2", "UrbanMexico_W2", "RuralMexico_W2", "PuertoRico_W2")
-kable(t.hds)
+
+# Creation of summary tables for categorical data
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of columns with categories and labels
+  t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+  }
+  # Add sample size for each wave/population
+  t.hds[13,] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+  )
+  # Add wave/population names
+  names(t.hds)<-c("val", "label",lnames)
+  return(t.hds)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
+}
+
 ```
+
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+b1066.cw <- list(cuba_w1 = c("cuba_w1","Cuba w1"), india_w1 = c("india_w1","India w1"), UCh_w1 = c("UCh_w1","Urban China w1"), RCh_w1 = c("RCh_w1","Rural China w1"), DR_w1 = c("DR_w1","Dominican Republic w1"), Ven_w1 = c("Ven_w1","Venezuela w1"), UP_w1 = c("UP_w1","Urban Peru w1"), RP_w1 = c("RP_w1","Rural Peru w1"), UM_w1 = c("UM_w1","Urban Mexico w1"), RM_w1 = c("RM_w1","Rural Mexico w1"), PR_w1 = c("PR_w1","Puerto Rico w1"))
+
+f1066.cw <- list(cuba_w2 = c("cuba_w2","Cuba w2"), UCh_w2 = c("UCh_w2","Urban China w2"), RCh_w2 = c("RCh_w2","Rural China w2"), DR_w2 = c("DR_w2","Dominican Republic w2"), Ven_w2 = c("Ven_w2","Venezuela w2"), UP_w2 = c("UP_w2","Urban Peru w2"), RP_w2 = c("RP_w2","Rural Peru w2"), UM_w2 = c("UM_w2","Urban Mexico w2"), RM_w2 = c("RM_w2","Rural Mexico w2"), PR_w2 = c("PR_w2","Puerto Rico w2"))
+
+
+# Consider only harmonised waves
+l.hds <- lapply(b1066.cw, function(wname) if(exists(paste0("t1066_ds_",wname[1]))){wname = list(get(paste0("t1066_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+
+# Consider only harmonised waves
+l.hds <- lapply(f1066.cw, function(wname) if(exists(paste0("t1066_ds_",wname[1]))){wname = list(get(paste0("t1066_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+```
+
 
 
 
@@ -828,49 +973,6 @@ Obesity was calculated by using the BMI cutoff>=30kg/m2 following the WHO
 classification. Finally, the resulting BMI variable was coded as follows: 
 BMI>30kg/m2 =1 (obese); BMI<30kg/m2 =0 (not obese) to generate two categories.
 
-
-```{r save, echo=FALSE}
-obesity <- t1066_ds_cuba_w2
-save(obesity, file = "../RData/cuba_w2/obesity.RData")
-rm(obesity)
-
-obesity <- t1066_ds_UCh_w2
-save(obesity, file = "../RData/UCh_w2/obesity.RData")
-rm(obesity)
-
-obesity <- t1066_ds_RCh_w2
-save(obesity, file = "../RData/RCh_w2/obesity.RData")
-rm(obesity)
-
-obesity <- t1066_ds_DR_w2
-save(obesity, file = "../RData/DR_w2/obesity.RData")
-rm(obesity)
-
-obesity <- t1066_ds_Ven_w2
-save(obesity, file = "../RData/Ven_w2/obesity.RData")
-rm(obesity)
-
-obesity <- t1066_ds_UP_w2
-save(obesity, file = "../RData/UP_w2/obesity.RData")
-rm(obesity)
-
-obesity <- t1066_ds_RP_w2
-save(obesity, file = "../RData/RP_w2/obesity.RData")
-rm(obesity)
-
-obesity <- t1066_ds_UM_w2
-save(obesity, file = "../RData/UM_w2/obesity.RData")
-rm(obesity)
-
-obesity <- t1066_ds_RM_w2
-save(obesity, file = "../RData/RM_w2/obesity.RData")
-rm(obesity)
-
-obesity <- t1066_ds_PR_w2
-save(obesity, file = "../RData/PR_w2/obesity.RData")
-rm(obesity)
-
-```
 
 
 
