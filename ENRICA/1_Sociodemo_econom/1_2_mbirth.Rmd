@@ -96,22 +96,6 @@ kable(C)
 
 
 
-```{r importOPAL1, echo=F}
-
-#opal.assign.data(o, 'ENRICA_ds_w1', ENRICA_ds_w1)
-#opal.symbol_import(o,'ENRICA_ds_w1', project='_Athlos_Harm_Dataset')
-mbirth <- ENRICA_ds_w1
-save(mbirth, file = "../RData/w1/mbirth.RData")
-rm(mbirth)
-
-ENRICA_m_ds_w1 <- ENRICA_ds_w1
-ENRICA_m_ds_w1$mbirth <- car::recode(ENRICA_m_ds_w1$mbirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'ENRICA_m_ds_w1', ENRICA_m_ds_w1)
-#opal.symbol_import(o,'ENRICA_m_ds_w1', project='_Athlos_Harm_Dataset')
-```
-
-
-
 
 
 
@@ -181,22 +165,6 @@ kable(C)
 
 
 
-```{r importOPAL2, echo=F}
-
-#opal.assign.data(o, 'ENRICA_ds_w2', ENRICA_ds_w2)
-#opal.symbol_import(o,'ENRICA_ds_w2', project='_Athlos_Harm_Dataset')
-mbirth <- ENRICA_ds_w2
-save(mbirth, file = "../RData/w2/mbirth.RData")
-rm(mbirth)
-
-ENRICA_m_ds_w2 <- ENRICA_ds_w2
-ENRICA_m_ds_w2$mbirth <- car::recode(ENRICA_m_ds_w2$mbirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'ENRICA_m_ds_w2', ENRICA_m_ds_w2)
-#opal.symbol_import(o,'ENRICA_m_ds_w2', project='_Athlos_Harm_Dataset')
-```
-
-
-
 
 ### Wave 3 
 
@@ -263,20 +231,6 @@ kable(C)
 
 
 
-```{r importOPAL3, echo=F}
-
-#opal.assign.data(o, 'ENRICA_ds_w3', ENRICA_ds_w3)
-#opal.symbol_import(o,'ENRICA_ds_w3', project='_Athlos_Harm_Dataset')
-mbirth <- ENRICA_ds_w3
-save(mbirth, file = "../RData/w3/mbirth.RData")
-rm(mbirth)
-
-ENRICA_m_ds_w3 <- ENRICA_ds_w3
-ENRICA_m_ds_w3$mbirth <- car::recode(ENRICA_m_ds_w3$mbirth, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'ENRICA_m_ds_w3', ENRICA_m_ds_w3)
-#opal.symbol_import(o,'ENRICA_m_ds_w3', project='_Athlos_Harm_Dataset')
-```
-
 
 
 
@@ -285,37 +239,94 @@ ENRICA_m_ds_w3$mbirth <- car::recode(ENRICA_m_ds_w3$mbirth, "c(991, 992, 993, 99
 
 ## Summary of descriptive statistics of the harmonised variable accross populations and waves
 
+```{r helpfunctions, echo=F}
+
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+# Creation of summary tables for continuous data
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][2])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[2]],missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][2])[1:6]
+    # Next, missing/no-missing values
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[2]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][2]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
+}
+
+```
 
 
 
 
 ```{r summ, echo=F}
 
-l.hds <- list(w1 = ENRICA_ds_w1, w2 = ENRICA_ds_w2, w3 = ENRICA_ds_w3)
+# All study waves and populations with abbreviated and descriptive names
+
+
+enrica.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"), w3 = c("w3","W3"), w4 = c("w4","W4"), w5 = c("w5","W5"), w6 = c("w6","W6"), w7 = c("w7","W7"))
+
+# Consider only harmonised waves
+l.hds <- lapply(enrica.cw, function(wname) if(exists(paste0("ENRICA_ds_",wname[1]))){wname = list(get(paste0("ENRICA_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
 m.hds <- list()
 
-for(name in names(l.hds)) {
-  aux_object <- l.hds[[name]]
-  label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
-  l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
-  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
-  aux_object[[2]] <- labelled(aux_object[[2]], labels = cont_label)
-  m_name <- paste0("ENRICA_m_ds_",name)
-  assign(m_name, aux_object)
-  m.hds[[name]] <- get(paste0("ENRICA_m_ds_",name))
-  rm(aux_object)
-}
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
 
-t.summ <- summary(m.hds[[1]][2])[1:6]
-t.hds <- substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1)
-for (i in seq_along(l.hds)){
-  t.summ <- summary(m.hds[[i]][2])[1:6]
-  t.hds <- cbind(t.hds,as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))))
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing summaries
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
 }
-t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
-
-dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][2]))[[2]],names(l.hds))
-kable(t.hds,caption=ds_label)
 
 
 
