@@ -11,46 +11,19 @@ output:
       collapsed: yes
       smooth_scroll: yes
 ---
-  
+
 <!-- ########################################################## --> 
-
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
-
-
-
-
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-
-* Short name: `age`
-* Variable label: `age`
-* Variable description: `Age of participant at each wave`
-* Domain: `Socio-demographic and economic characteristics`
-* Value type: `continuous`
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/ageDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/ageDS.R')
+```
 
 
 # Data process
@@ -73,16 +46,16 @@ The description of harmonised variable is the following:
 
 
 ```{r assign_aksst1, echo=F}
-opal.assign.table.tibble(o, 'JSTAR_aksst_w1_age','JSTAR_datasets_restricted.jstar_2007_5cities',
-                         variables=list('respondent_age_year'), missings = TRUE)
+opal.assign.table.tibble(o, 'JSTAR_aksst_w1_age','JSTAR_datasets_restricted.jstar_2007_5cities',variables=list('respondent_age_year'), missings = TRUE)
+JSTAR_aksst_w1_age <- opal.execute(o,'JSTAR_aksst_w1_age')
+
 ```
 
 ```{r local_aksst1, echo=F}
-JSTAR_aksst_w1_age <- opal.execute(o,'JSTAR_aksst_w1_age')
 vari <- JSTAR_aksst_w1_age$respondent_age_year
-kable(Continuous_summary(vari, missing_values = NA)[3], caption = "respondent_age_year")
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = label(vari))
 pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
-ggplot(JSTAR_aksst_w1_age, aes(respondent_age_year)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+ggplot(JSTAR_aksst_w1_age, aes(respondent_age_year)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -93,18 +66,18 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_aksst1}
-JSTAR_aksst_ds_w1 <- tibble(id=JSTAR_aksst_w1_age$id)
-JSTAR_aksst_ds_w1$age <- car::recode(JSTAR_aksst_w1_age$respondent_age_year, "NA=999")
-JSTAR_aksst_ds_w1$age <- labelled(JSTAR_aksst_ds_w1$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+JSTAR_ds_aksst_w1 <- tibble(id=JSTAR_aksst_w1_age$id)
+JSTAR_ds_aksst_w1$age <- car::recode(JSTAR_aksst_w1_age$respondent_age_year, "NA=999")
+JSTAR_ds_aksst_w1$age <- labelled(JSTAR_ds_aksst_w1$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
 ```{r descript_aksst1, echo=F}
-vari <- JSTAR_aksst_ds_w1$age
-kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "age")
-kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "values")
-pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(JSTAR_aksst_ds_w1, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") + xlim(46, 77)
+vari <- JSTAR_ds_aksst_w1$age
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = "age")
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(JSTAR_ds_aksst_w1, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") + xlim(46, 77)
 ```
 
 #### Validation
@@ -113,21 +86,6 @@ ggplot(JSTAR_aksst_ds_w1, aes(age)) + geom_histogram(stat="count", fill="steelbl
 
 
 
-
-
-```{r importOPAL_aksst1, echo=F}
-
-#opal.assign.data(o, 'JSTAR_aksst_ds_w1', JSTAR_aksst_ds_w1)
-#opal.symbol_import(o,'JSTAR_aksst_ds_w1', project='_Athlos_Harm_Dataset')
-age <- JSTAR_aksst_ds_w1
-save(age, file = "../RData/aksst_w1/age.RData")
-rm(age)
-
-JSTAR_aksst_m_ds_w1 <- JSTAR_aksst_ds_w1
-JSTAR_aksst_m_ds_w1$age <- car::recode(JSTAR_aksst_m_ds_w1$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'JSTAR_aksst_m_ds_w1', JSTAR_aksst_m_ds_w1)
-#opal.symbol_import(o,'JSTAR_aksst_m_ds_w1', project='_Athlos_Harm_Dataset')
-```
 
 
 
@@ -141,71 +99,66 @@ JSTAR_aksst_m_ds_w1$age <- car::recode(JSTAR_aksst_m_ds_w1$age, "c(991, 992, 993
 
 
 
-| **Name** | `respondent_age_year` |
-|-|-|
-| **Label** | `RESPONDENT AGE YEAR` |
-| **Table name** |`jstar_2009_5cities`|
-| **Missings** |`NA`|
-| **Description** |  |
+| **Name** | `respondent_age_year` |`living_status`|
+|-|-|-|
+| **Label** | `RESPONDENT AGE YEAR` |`Living status`|
+| **Table name** |`jstar_2009_5cities`|`jstar_aksst_w2_hd`|
+| **Categories** |`continuous`|`0 = Alive`<br/>`1 = Dead`<br/>`2 = Dropout/unknown`|
+| **Missings** |`NA`|  |
+| **Description** |  |  |
 
 
 ```{r assign_aksst2, echo=F}
-opal.assign.table.tibble(o, 'JSTAR_aksst_w2_age','JSTAR_datasets_restricted.jstar_2009_5cities',
-                         variables=list('respondent_age_year'), missings = TRUE)
+opal.assign.table.tibble(o, 'JSTAR_aksst_w2_age','JSTAR_datasets_restricted.jstar_2009_5cities', variables=list('respondent_age_year'), missings = TRUE)
+JSTAR_aksst_w2_age <- opal.execute(o,'JSTAR_aksst_w2_age')
+
+opal.assign.table.tibble(o, 'JSTAR_aksst_w2','JSTAR_HD.jstar_aksst_w2_hd', variables=list('living_status'), missings = TRUE)
+JSTAR_aksst_w2 <- opal.execute(o,'JSTAR_aksst_w2')
+
+JSTAR_aksst_w2_age <- left_join(JSTAR_aksst_w2_age,JSTAR_aksst_w2,by="id")
+
 ```
 
 ```{r local_aksst2, echo=F}
-JSTAR_aksst_w2_age <- opal.execute(o,'JSTAR_aksst_w2_age')
 vari <- JSTAR_aksst_w2_age$respondent_age_year
-kable(Continuous_summary(vari, missing_values = NA)[3], caption = "respondent_age_year")
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = label(vari))
 pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
-ggplot(JSTAR_aksst_w2_age, aes(respondent_age_year)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+ggplot(JSTAR_aksst_w2_age, aes(respondent_age_year)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- JSTAR_aksst_w2_age$living_status
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_aksst_w2_age, aes(living_status)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 ```
 
 #### Harmonisation algorithm
 The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
 
 * `NA into 999`
+* `living_status = Dead or Dropout into 996`
 
 **R script:**
 
 ```{r harmo_aksst2}
-JSTAR_aksst_ds_w2 <- tibble(id=JSTAR_aksst_w2_age$id)
-JSTAR_aksst_ds_w2$age <- car::recode(JSTAR_aksst_w2_age$respondent_age_year, "NA=999")
-JSTAR_aksst_ds_w2$age <- labelled(JSTAR_aksst_ds_w2$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+JSTAR_ds_aksst_w2 <- tibble(id=JSTAR_aksst_w2_age$id)
+JSTAR_ds_aksst_w2$age <- car::recode(JSTAR_aksst_w2_age$respondent_age_year, "NA=999")
+JSTAR_ds_aksst_w2$age[which(JSTAR_aksst_w2_age$living_status %in% c(1,2))] <- 996
+
 ```
 
 #### Statistics of the new harmonised variable
 ```{r descript_aksst2, echo=F}
-vari <- JSTAR_aksst_ds_w2$age
-kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "age")
-kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "values")
-pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(JSTAR_aksst_ds_w2, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") + xlim(52, 78)
+vari <- JSTAR_ds_aksst_w2$age
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = "age")
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(JSTAR_ds_aksst_w2, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") + xlim(52, 78)
 ```
 
 #### Validation
 ```{r crosstabulation_aksst2, echo=F}
 ```
-
-
-
-
-
-```{r importOPAL_aksst2, echo=F}
-
-#opal.assign.data(o, 'JSTAR_aksst_ds_w2', JSTAR_aksst_ds_w2)
-#opal.symbol_import(o,'JSTAR_aksst_ds_w2', project='_Athlos_Harm_Dataset')
-age <- JSTAR_aksst_ds_w2
-save(age, file = "../RData/aksst_w2/age.RData")
-rm(age)
-
-JSTAR_aksst_m_ds_w2 <- JSTAR_aksst_ds_w2
-JSTAR_aksst_m_ds_w2$age <- car::recode(JSTAR_aksst_m_ds_w2$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'JSTAR_aksst_m_ds_w2', JSTAR_aksst_m_ds_w2)
-#opal.symbol_import(o,'JSTAR_aksst_m_ds_w2', project='_Athlos_Harm_Dataset')
-```
-
 
 
 
@@ -218,70 +171,64 @@ JSTAR_aksst_m_ds_w2$age <- car::recode(JSTAR_aksst_m_ds_w2$age, "c(991, 992, 993
 
 
 
-| **Name** | `respondent_age_year` |
-|-|-|
-| **Label** | `RESPONDENT AGE YEAR` |
-| **Table name** |`jstar_2011_5cities`|
-| **Missings** |`NA`|
-| **Description** |  |
+| **Name** | `respondent_age_year` |`living_status`|
+|-|-|-|
+| **Label** | `RESPONDENT AGE YEAR` |`Living status`|
+| **Table name** |`jstar_2011_5cities`|`jstar_aksst_w3_hd`|
+| **Categories** |`continuous`|`0 = Alive`<br/>`1 = Dead`<br/>`2 = Dropout/unknown`|
+| **Missings** |`NA`|  |
+| **Description** |  |  |
 
 
 ```{r assign_aksst3, echo=F}
-opal.assign.table.tibble(o, 'JSTAR_aksst_w3_age','JSTAR_datasets_restricted.jstar_2011_5cities',
-                         variables=list('respondent_age_year'), missings = TRUE)
+opal.assign.table.tibble(o, 'JSTAR_aksst_w3_age','JSTAR_datasets_restricted.jstar_2011_5cities',variables=list('respondent_age_year'), missings = TRUE)
+JSTAR_aksst_w3_age <- opal.execute(o,'JSTAR_aksst_w3_age')
+
+opal.assign.table.tibble(o, 'JSTAR_aksst_w3','JSTAR_HD.jstar_aksst_w3_hd', variables=list('living_status'), missings = TRUE)
+JSTAR_aksst_w3 <- opal.execute(o,'JSTAR_aksst_w3')
+
+JSTAR_aksst_w3_age <- left_join(JSTAR_aksst_w3_age,JSTAR_aksst_w3,by="id")
 ```
 
 ```{r local_aksst3, echo=F}
-JSTAR_aksst_w3_age <- opal.execute(o,'JSTAR_aksst_w3_age')
 vari <- JSTAR_aksst_w3_age$respondent_age_year
-kable(Continuous_summary(vari, missing_values = NA)[3], caption = "respondent_age_year")
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = label(vari))
 pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
-ggplot(JSTAR_aksst_w3_age, aes(respondent_age_year)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+ggplot(JSTAR_aksst_w3_age, aes(respondent_age_year)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- JSTAR_aksst_w3_age$living_status
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_aksst_w3_age, aes(living_status)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
 The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
 
 * `NA into 999`
+* `living_status = Dead or Dropout into 996`
 
 **R script:**
 
 ```{r harmo_aksst3}
-JSTAR_aksst_ds_w3 <- tibble(id=JSTAR_aksst_w3_age$id)
-JSTAR_aksst_ds_w3$age <- car::recode(JSTAR_aksst_w3_age$respondent_age_year, "NA=999")
-JSTAR_aksst_ds_w3$age <- labelled(JSTAR_aksst_ds_w3$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+JSTAR_ds_aksst_w3 <- tibble(id=JSTAR_aksst_w3_age$id)
+JSTAR_ds_aksst_w3$age <- car::recode(JSTAR_aksst_w3_age$respondent_age_year, "NA=999")
+JSTAR_ds_aksst_w3$age[which(JSTAR_aksst_w3_age$living_status %in% c(1,2))] <- 996
 ```
 
 #### Statistics of the new harmonised variable
 ```{r descript_aksst3, echo=F}
-vari <- JSTAR_aksst_ds_w3$age
-kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "age")
-kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "values")
-pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(JSTAR_aksst_ds_w3, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") + xlim(54, 80)
+vari <- JSTAR_ds_aksst_w3$age
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = "age")
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(JSTAR_ds_aksst_w3, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") + xlim(54, 80)
 ```
 
 #### Validation
 ```{r crosstabulation_aksst3, echo=F}
 ```
 
-
-
-
-
-```{r importOPAL_aksst3, echo=F}
-
-#opal.assign.data(o, 'JSTAR_aksst_ds_w3', JSTAR_aksst_ds_w3)
-#opal.symbol_import(o,'JSTAR_aksst_ds_w3', project='_Athlos_Harm_Dataset')
-age <- JSTAR_aksst_ds_w3
-save(age, file = "../RData/aksst_w3/age.RData")
-rm(age)
-
-JSTAR_aksst_m_ds_w3 <- JSTAR_aksst_ds_w3
-JSTAR_aksst_m_ds_w3$age <- car::recode(JSTAR_aksst_m_ds_w3$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'JSTAR_aksst_m_ds_w3', JSTAR_aksst_m_ds_w3)
-#opal.symbol_import(o,'JSTAR_aksst_m_ds_w3', project='_Athlos_Harm_Dataset')
-```
 
 
 
@@ -304,16 +251,15 @@ JSTAR_aksst_m_ds_w3$age <- car::recode(JSTAR_aksst_m_ds_w3$age, "c(991, 992, 993
 
 
 ```{r assign_tn1, echo=F}
-opal.assign.table.tibble(o, 'JSTAR_tn_w1_age','JSTAR_datasets_restricted.jstar_2009_2cities',
-                         variables=list('respondent_age_year'), missings = TRUE)
+opal.assign.table.tibble(o, 'JSTAR_tn_w1_age','JSTAR_datasets_restricted.jstar_2009_2cities',variables=list('respondent_age_year'), missings = TRUE)
+JSTAR_tn_w1_age <- opal.execute(o,'JSTAR_tn_w1_age')
 ```
 
 ```{r local_tn1, echo=F}
-JSTAR_tn_w1_age <- opal.execute(o,'JSTAR_tn_w1_age')
 vari <- JSTAR_tn_w1_age$respondent_age_year
-kable(Continuous_summary(vari, missing_values = NA)[3], caption = "respondent_age_year")
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = label(vari))
 pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
-ggplot(JSTAR_tn_w1_age, aes(respondent_age_year)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+ggplot(JSTAR_tn_w1_age, aes(respondent_age_year)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -324,41 +270,24 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_tn1}
-JSTAR_tn_ds_w1 <- tibble(id=JSTAR_tn_w1_age$id)
-JSTAR_tn_ds_w1$age <- car::recode(JSTAR_tn_w1_age$respondent_age_year, "NA=999")
-JSTAR_tn_ds_w1$age <- labelled(JSTAR_tn_ds_w1$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+JSTAR_ds_tn_w1 <- tibble(id=JSTAR_tn_w1_age$id)
+JSTAR_ds_tn_w1$age <- car::recode(JSTAR_tn_w1_age$respondent_age_year, "NA=999")
+JSTAR_ds_tn_w1$age <- labelled(JSTAR_ds_tn_w1$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
 ```{r descript_tn1, echo=F}
-vari <- JSTAR_tn_ds_w1$age
-kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "age")
-kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "values")
-pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(JSTAR_tn_ds_w1, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") + xlim(50, 76)
+vari <- JSTAR_ds_tn_w1$age
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = "age")
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(JSTAR_ds_tn_w1, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") + xlim(50, 76)
 ```
 
 #### Validation
 ```{r crosstabulation_tn1, echo=F}
 ```
 
-
-
-
-
-```{r importOPAL_tn1, echo=F}
-
-#opal.assign.data(o, 'JSTAR_tn_ds_w1', JSTAR_tn_ds_w1)
-#opal.symbol_import(o,'JSTAR_tn_ds_w1', project='_Athlos_Harm_Dataset')
-age <- JSTAR_tn_ds_w1
-save(age, file = "../RData/tn_w1/age.RData")
-rm(age)
-
-JSTAR_tn_m_ds_w1 <- JSTAR_tn_ds_w1
-JSTAR_tn_m_ds_w1$age <- car::recode(JSTAR_tn_m_ds_w1$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'JSTAR_tn_m_ds_w1', JSTAR_tn_m_ds_w1)
-#opal.symbol_import(o,'JSTAR_tn_m_ds_w1', project='_Athlos_Harm_Dataset')
-```
 
 
 
@@ -380,61 +309,56 @@ JSTAR_tn_m_ds_w1$age <- car::recode(JSTAR_tn_m_ds_w1$age, "c(991, 992, 993, 994,
 
 
 ```{r assign_tn2, echo=F}
-opal.assign.table.tibble(o, 'JSTAR_tn_w2_age','JSTAR_datasets_restricted.jstar_2011_2cities',
-                         variables=list('respondent_age_year'), missings = TRUE)
+opal.assign.table.tibble(o, 'JSTAR_tn_w2_age','JSTAR_datasets_restricted.jstar_2011_2cities',variables=list('respondent_age_year'), missings = TRUE)
+JSTAR_tn_w2_age <- opal.execute(o,'JSTAR_tn_w2_age')
+
+opal.assign.table.tibble(o, 'JSTAR_tn_w2','JSTAR_HD.jstar_tn_w2_hd', variables=list('living_status'), missings = TRUE)
+JSTAR_tn_w2 <- opal.execute(o,'JSTAR_tn_w2')
+
+JSTAR_tn_w2_age <- left_join(JSTAR_tn_w2_age,JSTAR_tn_w2,by="id")
+
 ```
 
 ```{r local_tn2, echo=F}
-JSTAR_tn_w2_age <- opal.execute(o,'JSTAR_tn_w2_age')
 vari <- JSTAR_tn_w2_age$respondent_age_year
-kable(Continuous_summary(vari, missing_values = NA)[3], caption = "respondent_age_year")
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = label(vari))
 pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
-ggplot(JSTAR_tn_w2_age, aes(respondent_age_year)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+ggplot(JSTAR_tn_w2_age, aes(respondent_age_year)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- JSTAR_tn_w2_age$living_status
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_tn_w2_age, aes(living_status)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 ```
 
 #### Harmonisation algorithm
 The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
 
 * `NA into 999`
+* `living_status = Dead or Dropout into 996`
 
 **R script:**
 
 ```{r harmo_tn2}
-JSTAR_tn_ds_w2 <- tibble(id=JSTAR_tn_w2_age$id)
-JSTAR_tn_ds_w2$age <- car::recode(JSTAR_tn_w2_age$respondent_age_year, "NA=999")
-JSTAR_tn_ds_w2$age <- labelled(JSTAR_tn_ds_w2$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+JSTAR_ds_tn_w2 <- tibble(id=JSTAR_tn_w2_age$id)
+JSTAR_ds_tn_w2$age <- car::recode(JSTAR_tn_w2_age$respondent_age_year, "NA=999")
+JSTAR_ds_tn_w2$age[which(JSTAR_tn_w2_age$living_status %in% c(1,2))] <- 996
 ```
 
 #### Statistics of the new harmonised variable
 ```{r descript_tn2, echo=F}
-vari <- JSTAR_tn_ds_w2$age
-kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "age")
-kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "values")
-pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(JSTAR_tn_ds_w2, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") + xlim(52, 78)
+vari <- JSTAR_ds_tn_w2$age
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = "age")
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(JSTAR_ds_tn_w2, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") + xlim(52, 78)
 ```
 
 #### Validation
 ```{r crosstabulation_tn2, echo=F}
 ```
 
-
-
-
-
-```{r importOPAL_tn2, echo=F}
-
-#opal.assign.data(o, 'JSTAR_tn_ds_w2', JSTAR_tn_ds_w2)
-#opal.symbol_import(o,'JSTAR_tn_ds_w2', project='_Athlos_Harm_Dataset')
-age <- JSTAR_tn_ds_w2
-save(age, file = "../RData/tn_w2/age.RData")
-rm(age)
-
-JSTAR_tn_m_ds_w2 <- JSTAR_tn_ds_w2
-JSTAR_tn_m_ds_w2$age <- car::recode(JSTAR_tn_m_ds_w2$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'JSTAR_tn_m_ds_w2', JSTAR_tn_m_ds_w2)
-#opal.symbol_import(o,'JSTAR_tn_m_ds_w2', project='_Athlos_Harm_Dataset')
-```
 
 
 
@@ -448,25 +372,41 @@ JSTAR_tn_m_ds_w2$age <- car::recode(JSTAR_tn_m_ds_w2$age, "c(991, 992, 993, 994,
 
 
 
-| **Name** | `respondent_age_year` |
-|-|-|
-| **Label** | `RESPONDENT AGE YEAR` |
-| **Table name** |`jstar_2011_3cities`|
-| **Missings** |`NA`|
-| **Description** |  |
+| **Name** | `respondent_age_year` |`ybirth`|`yintw`|
+|-|-|-|-|
+| **Label** | `RESPONDENT AGE YEAR` |`Year of birth`|`Year of interview`|
+| **Table name** |`jstar_2011_3cities`|`jstar_cth_w1_hd`|`jstar_cth_w1_hd`|
+| **Missings** |`NA`|  |  |
+| **Description** |  |  |  |
 
 
 ```{r assign_cth1, echo=F}
-opal.assign.table.tibble(o, 'JSTAR_cth_w1_age','JSTAR_datasets_restricted.jstar_2011_3cities',
-                         variables=list('respondent_age_year'), missings = TRUE)
+opal.assign.table.tibble(o, 'JSTAR_cth_w1_age','JSTAR_datasets_restricted.jstar_2011_3cities', variables=list('respondent_age_year'), missings = TRUE)
+JSTAR_cth_w1_age <- opal.execute(o,'JSTAR_cth_w1_age')
+
+opal.assign.table.tibble(o, 'JSTAR_cth_w1_yb','JSTAR_HD.jstar_cth_w1_hd', variables=list('ybirth','yintw'), missings = TRUE)
+JSTAR_cth_w1_yb <- opal.execute(o,'JSTAR_cth_w1_yb')
+
+JSTAR_cth_w1_age <- left_join(JSTAR_cth_w1_age,JSTAR_cth_w1_yb)
+
 ```
 
 ```{r local_cth1, echo=F}
-JSTAR_cth_w1_age <- opal.execute(o,'JSTAR_cth_w1_age')
 vari <- JSTAR_cth_w1_age$respondent_age_year
-kable(Continuous_summary(vari, missing_values = NA)[3], caption = "respondent_age_year")
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = label(vari))
 pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
-ggplot(JSTAR_cth_w1_age, aes(respondent_age_year)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") 
+ggplot(JSTAR_cth_w1_age, aes(respondent_age_year)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency") 
+
+vari <- JSTAR_cth_w1_age$ybirth
+kable(Continuous_summary(vari, missing_values = NA)[3], caption = "ybirth")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(JSTAR_cth_w1_age, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency") 
+
+vari <- JSTAR_cth_w1_age$yintw
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "yintw")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Summary")
+ggplot(JSTAR_cth_w1_age, aes(factor(yintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency") 
+
 ```
 
 #### Harmonisation algorithm
@@ -477,18 +417,19 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_cth1}
-JSTAR_cth_ds_w1 <- tibble(id=JSTAR_cth_w1_age$id)
-JSTAR_cth_ds_w1$age <- car::recode(JSTAR_cth_w1_age$respondent_age_year, "NA='999'")
-JSTAR_cth_ds_w1$age <- labelled(JSTAR_cth_ds_w1$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+JSTAR_ds_cth_w1 <- tibble(id=JSTAR_cth_w1_age$id)
+JSTAR_ds_cth_w1$age <- car::recode(JSTAR_cth_w1_age$respondent_age_year, "NA='999'")
+JSTAR_ds_cth_w1$age[which(JSTAR_ds_cth_w1$age %in% miss_values_vector)] <- JSTAR_cth_w1_age$yintw[which(JSTAR_ds_cth_w1$age %in% miss_values_vector)] - JSTAR_cth_w1_age$ybirth[which(JSTAR_ds_cth_w1$age %in% miss_values_vector)]
+JSTAR_ds_cth_w1$age <- labelled(JSTAR_ds_cth_w1$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
 ```{r descript_cth1, echo=F}
-vari <- JSTAR_cth_ds_w1$age
-kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "age")
-kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "values")
-pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(JSTAR_cth_ds_w1, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") + xlim(48, 75)
+vari <- JSTAR_ds_cth_w1$age
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = "age")
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(JSTAR_ds_cth_w1, aes(age)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") + xlim(48, 75)
 ```
 
 #### Validation
@@ -499,19 +440,114 @@ ggplot(JSTAR_cth_ds_w1, aes(age)) + geom_histogram(stat="count", fill="steelblue
 
 
 
-```{r importOPAL_cth1, echo=F}
 
-#opal.assign.data(o, 'JSTAR_cth_ds_w1', JSTAR_cth_ds_w1)
-#opal.symbol_import(o,'JSTAR_cth_ds_w1', project='_Athlos_Harm_Dataset')
-age <- JSTAR_cth_ds_w1
-save(age, file = "../RData/cth_w1/age.RData")
-rm(age)
 
-JSTAR_cth_m_ds_w1 <- JSTAR_cth_ds_w1
-JSTAR_cth_m_ds_w1$age <- car::recode(JSTAR_cth_m_ds_w1$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'JSTAR_cth_m_ds_w1', JSTAR_cth_m_ds_w1)
-#opal.symbol_import(o,'JSTAR_cth_m_ds_w1', project='_Athlos_Harm_Dataset')
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+```{r helpfunctions, echo=F}
+
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+# Creation of summary tables for continuous data
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][2])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[2]],missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][2])[1:6]
+    # Next, missing/no-missing values
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[2]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][2]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
+}
+
 ```
+
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+jstar.cw <- list(aksst_w1 = c("aksst_w1","AKSST w1"), aksst_w2 = c("aksst_w2","AKSST w2"), aksst_w3 = c("aksst_w3","AKSST w3"), tn_w1 = c("tn_w1","TN w1"), tn_w2 = c("tn_w2","TN w2"), cth_w1 = c("cth_w1","CTH w1"))
+
+# Consider only harmonised waves
+l.hds <- lapply(jstar.cw, function(wname) if(exists(paste0("JSTAR_ds_",wname[1]))){wname = list(get(paste0("JSTAR_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing summaries
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+```
+
+
+
+
+
+
+
+
+
 
 
 

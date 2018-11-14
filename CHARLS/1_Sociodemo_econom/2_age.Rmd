@@ -226,11 +226,12 @@ kable(CHARLS_w1_age[which(!is.na(CHARLS_w1_age$proff) & CHARLS_w1_age$proff!=0),
 
 #### Study-specific variable description
 
-| **Name** | `ba004` |`mbirth`|`ybirth`|`iyear`|`imonth`|
-|----------|------------|-|-|-|-|
-| **Label** | `Your Age` | `Month of birth`|`Year of birth`|`Interview Year`|`Interview Month`|
-| **Table name** | `Demographic_Background_wave2` | `charls_w2_hd`\*|`charls_w2_hd`\*|`Weights_modif_albert_wave2`|`Weights_modif_albert_wave2`|
-| **Description** |  |  |  |  |  |
+| **Name** | `ba004` |`mbirth`|`ybirth`|`iyear`|`imonth`|`living_status`|
+|----------|------|------|-|-|-|-|
+| **Label** | `Your Age` | `Month of birth`|`Year of birth`|`Interview Year`|`Interview Month`|`Living status`|
+| **Table name** | `Demographic_Background_wave2` | `charls_w2_hd`\*|`charls_w2_hd`\*|`Weights_modif_albert_wave2`|`Weights_modif_albert_wave2`|`charls_w2_hd`\*|
+| **Categories** |`continuous`|`continuous`|`continuous`|`continuous`|`continuous`|`0 = Alive`<br/>`1 = Dead`<br/>`2 = Dropout/unknown`|
+| **Description** |  |  |  |  |  |  |
 
 \* These tables are not extracted from the database CHARLS, but from ATHLOS. They contain already harmonised variables.
 
@@ -240,7 +241,7 @@ kable(CHARLS_w1_age[which(!is.na(CHARLS_w1_age$proff) & CHARLS_w1_age$proff!=0),
 opal.assign.table.tibble(o, 'CHARLS_w2_age2','CHARLS.Demographic_Background_wave2', variables=list('ba004'), missings = TRUE)
 CHARLS_w2_age2 <- opal.execute(o,'CHARLS_w2_age2')
 
-opal.assign.table.tibble(o, 'CHARLS_w2_birth2','CHARLS_HD.charls_w2_hd', variables=list('mbirth','ybirth'), missings = TRUE)
+opal.assign.table.tibble(o, 'CHARLS_w2_birth2','CHARLS_HD.charls_w2_hd', variables=list('mbirth','ybirth','living_status'), missings = TRUE)
 CHARLS_w2_birth2 <- opal.execute(o,'CHARLS_w2_birth2')
 
 
@@ -300,6 +301,7 @@ CHARLS_w2_yinter <- Add_indiv(old = CHARLS_w2_yinter2, new = CHARLS_w2_id)
 
 CHARLS_w2_age$month_of_birth <- CHARLS_w2_birth$mbirth
 CHARLS_w2_age$year_of_birth <- CHARLS_w2_birth$ybirth
+CHARLS_w2_age$living_status <- CHARLS_w2_birth$living_status
 CHARLS_w2_age$iyear <- CHARLS_w2_yinter$iyear
 CHARLS_w2_age$iyear[is.na(CHARLS_w2_age$iyear)] <- 2013
 CHARLS_w2_age$imonth <- CHARLS_w2_yinter$imonth
@@ -333,6 +335,11 @@ kable(Continuous_summary(vari, missing_values = NA)[3], caption = "imonth")
 pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
 ggplot(CHARLS_w2_age, aes(x=factor(imonth))) + geom_histogram(stat="count", fill="steelblue") + xlab("month of interview") + ylab("Frequency")
 
+vari <- CHARLS_w2_age$living_status
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w2_age, aes(x=factor(living_status))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 
 ```
 
@@ -342,6 +349,8 @@ The harmonized variable is the same than the study-specific variable, but the mi
 * `NA into 999`
 
 It is going to compute the age using the formula date_of_interview - date_of_birth because the study-specific variable has 99.65% of missing data. 
+
+* `living_status = Dead or Dropout into 996`
 
 **R script:**
 
@@ -386,7 +395,9 @@ CHARLS_w2_age$age_c <- comp_age(y_birth=CHARLS_w2_age$year_of_birth , m_birth=CH
 
 CHARLS_ds_w2 <- tibble(id=CHARLS_w2_age$id)
 CHARLS_ds_w2$age <- car::recode(CHARLS_w2_age$age_c, "NA=999")
-CHARLS_ds_w2$age <- labelled(CHARLS_ds_w2$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+CHARLS_ds_w2$age[which(CHARLS_w2_age$living_status %in% c(1,2))] <- 996
+
 ```
 
 
