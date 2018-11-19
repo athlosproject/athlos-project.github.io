@@ -11,45 +11,19 @@ output:
       collapsed: yes
       smooth_scroll: yes
 ---
-  
+
 <!-- ########################################################## --> 
-
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
 ```{r setup, include=FALSE}
-source("../../setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
-
-
-
-
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-
-* Short name: `age`
-* Variable label: `age`
-* Variable description: `Age of participant at each wave`
-* Domain: `Socio-demographic and economic characteristics`
-* Value type: `continuous`
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/ageDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/ageDS.R')
+```
 
 
 # Data process
@@ -113,21 +87,6 @@ ggplot(KLOSA_ds_w1, aes(age)) + geom_histogram(stat="count", fill="steelblue") +
 
 
 
-```{r importOPAL1, echo=F}
-
-#opal.assign.data(o, 'KLOSA_ds_w1', KLOSA_ds_w1)
-#opal.symbol_import(o,'KLOSA_ds_w1', project='_Athlos_Harm_Dataset')
-age <- KLOSA_ds_w1
-save(age, file = "../RData/w1/age.RData")
-rm(age)
-
-KLOSA_m_ds_w1 <- KLOSA_ds_w1
-KLOSA_m_ds_w1$age <- car::recode(KLOSA_m_ds_w1$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'KLOSA_m_ds_w1', KLOSA_m_ds_w1)
-#opal.symbol_import(o,'KLOSA_m_ds_w1', project='_Athlos_Harm_Dataset')
-```
-
-
 
 
 
@@ -183,23 +142,6 @@ ggplot(KLOSA_ds_w2, aes(age)) + geom_histogram(stat="count", fill="steelblue") +
 ```{r crosstabulation2, echo=F}
 ```
 
-
-
-
-
-```{r importOPAL2, echo=F}
-
-#opal.assign.data(o, 'KLOSA_ds_w2', KLOSA_ds_w2)
-#opal.symbol_import(o,'KLOSA_ds_w2', project='_Athlos_Harm_Dataset')
-age <- KLOSA_ds_w2
-save(age, file = "../RData/w2/age.RData")
-rm(age)
-
-KLOSA_m_ds_w2 <- KLOSA_ds_w2
-KLOSA_m_ds_w2$age <- car::recode(KLOSA_m_ds_w2$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'KLOSA_m_ds_w2', KLOSA_m_ds_w2)
-#opal.symbol_import(o,'KLOSA_m_ds_w2', project='_Athlos_Harm_Dataset')
-```
 
 
 
@@ -267,23 +209,6 @@ ggplot(KLOSA_ds_w3, aes(age)) + geom_histogram(stat="count", fill="steelblue") +
 
 
 
-```{r importOPAL3, echo=F}
-
-#opal.assign.data(o, 'KLOSA_ds_w3', KLOSA_ds_w3)
-#opal.symbol_import(o,'KLOSA_ds_w3', project='_Athlos_Harm_Dataset')
-age <- KLOSA_ds_w3
-save(age, file = "../RData/w3/age.RData")
-rm(age)
-
-KLOSA_m_ds_w3 <- KLOSA_ds_w3
-KLOSA_m_ds_w3$age <- car::recode(KLOSA_m_ds_w3$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'KLOSA_m_ds_w3', KLOSA_m_ds_w3)
-#opal.symbol_import(o,'KLOSA_m_ds_w3', project='_Athlos_Harm_Dataset')
-```
-
-
-
-
 
 
 ### Wave 4 
@@ -342,19 +267,107 @@ ggplot(KLOSA_ds_w4, aes(age)) + geom_histogram(stat="count", fill="steelblue") +
 
 
 
-```{r importOPAL4, echo=F}
 
-#opal.assign.data(o, 'KLOSA_ds_w4', KLOSA_ds_w4)
-#opal.symbol_import(o,'KLOSA_ds_w4', project='_Athlos_Harm_Dataset')
-age <- KLOSA_ds_w4
-save(age, file = "../RData/w4/age.RData")
-rm(age)
 
-KLOSA_m_ds_w4 <- KLOSA_ds_w4
-KLOSA_m_ds_w4$age <- car::recode(KLOSA_m_ds_w4$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'KLOSA_m_ds_w4', KLOSA_m_ds_w4)
-#opal.symbol_import(o,'KLOSA_m_ds_w4', project='_Athlos_Harm_Dataset')
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+```{r helpfunctions, echo=F}
+
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+# Creation of summary tables for continuous data
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][2])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[2]],missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][2])[1:6]
+    # Next, missing/no-missing values
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[2]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][2]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
+}
+
 ```
+
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+klosa.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"), w3 = c("w3","W3"), w4 = c("w4","W4"))
+
+# Consider only harmonised waves
+l.hds <- lapply(klosa.cw, function(wname) if(exists(paste0("KLOSA_ds_",wname[1]))){wname = list(get(paste0("KLOSA_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing summaries
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+```
+
+
+
+
 
 
 
