@@ -11,45 +11,19 @@ output:
       collapsed: yes
       smooth_scroll: yes
 ---
-  
+
 <!-- ########################################################## --> 
-
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
-
-
-
-
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-
-* Short name: `age`
-* Variable label: `age`
-* Variable description: `Age of participant at each wave`
-* Domain: `Socio-demographic and economic characteristics`
-* Value type: `continuous`
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/ageDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/ageDS.R')
+```
 
 # Data process
 
@@ -109,62 +83,133 @@ ggplot(MHAS_ds_w1, aes(age)) + geom_histogram(stat="count", fill="steelblue") + 
 
 
 
-```{r importOPAL1, echo=F}
-
-#opal.assign.data(o, 'MHAS_ds_w1', MHAS_ds_w1)
-#opal.symbol_import(o,'MHAS_ds_w1', project='_Athlos_Harm_Dataset')
-age <- MHAS_ds_w1
-save(age, file = "../RData/w1/age.RData")
-rm(age)
-
-MHAS_m_ds_w1 <- MHAS_ds_w1
-MHAS_m_ds_w1$age <- car::recode(MHAS_m_ds_w1$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'MHAS_m_ds_w1', MHAS_m_ds_w1)
-#opal.symbol_import(o,'MHAS_m_ds_w1', project='_Athlos_Harm_Dataset')
-```
-
-
-
 
 
 ### Wave 2 
 
 #### Study-specific variable description
 
-| **Name** | `a2` |
-|-|-|
-| **Label** | `Respondent's Age` |
-| **Table name** | `MHAS-2003` |
-| **Missings** | `888 = Doesn't Answer; 999 = Doesn't Know` |
-| **Description** |  |
+| **Name** | `a2` |`living_status`|`mbirth`|`ybirth`|`mintw`|`yintw`|
+|-|-|-|-|-|-|-|
+| **Label** | `Respondent's Age` |`Living status`|`Month of birth`|`Year of birth`|`Month of interview`|`Year of interview`|
+| **Table name** | `MHAS-2003` |`mhas_w2_hd`|`mhas_w2_hd`|`mhas_w2_hd`|`mhas_w2_hd`|`mhas_w2_hd`|
+| **Categories** |`continuous`|`0 = Alive`<br/>`1 = Dead`<br/>`2 = Dropout/unknown`|`continuous`|`continuous`|`continuous`|`continuous`|
+| **Missings** | `888 = Doesn't Answer; 999 = Doesn't Know` |  |`998 = Do not know`<br/>`999 = Missing`|`998 = Do not know`<br/>`999 = Missing`|  |`999 = Missing`|
+| **Description** |  |  |  |  |  |  |
 
 
 ```{r assign2, echo=F}
-opal.assign.table.tibble(o, 'MHAS_w2_age','Mexican Health Aging Study.MHAS_2003',
-                         variables=list('a2'), missings = TRUE)
+
+opal.assign.table.tibble(o, 'MHAS_w2_age','Mexican Health Aging Study.MHAS_2003', variables=list('a2'), missings = TRUE)
+MHAS_w2_age <- opal.execute(o,'MHAS_w2_age')
+
+load(paste0(datafolder,"w2/living_status",".RData"))
+MHAS_w2_age <- left_join(MHAS_w2_age,living_status, by = "id")
+rm(living_status)
+
+
+load(paste0(datafolder,"w2/mbirth",".RData"))
+MHAS_w2_age <- left_join(MHAS_w2_age,mbirth, by = "id")
+rm(mbirth)
+
+load(paste0(datafolder,"w2/ybirth",".RData"))
+MHAS_w2_age <- left_join(MHAS_w2_age,ybirth, by = "id")
+rm(ybirth)
+
+load(paste0(datafolder,"w2/mintw",".RData"))
+MHAS_w2_age <- left_join(MHAS_w2_age,mintw, by = "id")
+rm(mintw)
+
+load(paste0(datafolder,"w2/yintw",".RData"))
+MHAS_w2_age <- left_join(MHAS_w2_age,yintw, by = "id")
+rm(yintw)
+
 ```
 
 ```{r local2, echo=F}
-MHAS_w2_age <- opal.execute(o,'MHAS_w2_age')
+
 vari <- MHAS_w2_age$a2
 kable(Continuous_summary(vari, missing_values = c(888,999))[3], caption = "a2")
 pander(Continuous_summary(vari, missing_values = c(888,999))$summary, caption = "Summary")
 ggplot(MHAS_w2_age, aes(a2)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")+xlim(20,115)
+
+vari <- MHAS_w2_age$living_status
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w2_age, aes(x=factor(living_status))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- MHAS_w2_age$mbirth
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = "mbirth")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w2_age, aes(x=factor(mbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- MHAS_w2_age$ybirth
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[3], caption = "ybirth")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(MHAS_w2_age, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vari %in% miss_values_vector)) + xlab(label(vari)) + ylab("Frequency")
+
+vari <- MHAS_w2_age$mintw
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = "mintw")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w2_age, aes(x=factor(mintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- MHAS_w2_age$yintw
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = "yintw")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w2_age, aes(x=factor(yintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 ```
 
 #### Harmonisation algorithm
-The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+The harmonized variable is the same than the study-specific variable `a2`, but the missing values have to be recoded as follows:
 
 * `recode 888 'Doesn't Answer' as 995`
 * `recode 999 'Doesn't Know' as 998`
 * `NA into 999`
- 
+* `age (wave 2) = date of interview of wave 2 - date of birth`
+* `living_status == Dead or Dropout into 996`
 
 **R script:**
 
 ```{r harmo2}
 MHAS_ds_w2 <- tibble(id=MHAS_w2_age$id)
 MHAS_ds_w2$age <- car::recode(MHAS_w2_age$a2, "888=995; 999=998; NA=999")
+
+
+
+
+#function to compute the age
+comp_age <- function(y_birth, m_birth, a_year, a_month, miss){
+  N <- length(y_birth)
+  #first, it's computed the age of all
+  age <- rep(NA,N)
+  age[which(a_month<m_birth)] <- (a_year[which(a_month<m_birth)]-y_birth[which(a_month<m_birth)])-1
+  age[which(a_month>=m_birth)] <- a_year[which(a_month>=m_birth)]-y_birth[which(a_month>=m_birth)]
+  age[which(m_birth>900)] <- a_year[which(m_birth>900)]-y_birth[which(m_birth>900)]
+  
+  #It's emphasized the individues having missing
+  
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(y_birth==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(a_year==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+  
+  
+  age
+
+}
+
+cage <- comp_age(y_birth=MHAS_w2_age$ybirth, m_birth=MHAS_w2_age$mbirth , a_year=MHAS_w2_age$yintw, a_month=MHAS_w2_age$mintw, miss=miss_values_vector)
+MHAS_ds_w2$age[which(MHAS_ds_w2$age %in% miss_values_vector & !cage %in% miss_values_vector)] <- cage[which(MHAS_ds_w2$age %in% miss_values_vector & !cage %in% miss_values_vector)]
+
+MHAS_ds_w2$age[which(MHAS_w2_age$living_status %in% c(1,2))] <- 996
 MHAS_ds_w2$age <- labelled(MHAS_ds_w2$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
@@ -185,62 +230,130 @@ ggplot(MHAS_ds_w2, aes(age)) + geom_histogram(stat="count", fill="steelblue") + 
 
 
 
-```{r importOPAL2, echo=F}
-
-#opal.assign.data(o, 'MHAS_ds_w2', MHAS_ds_w2)
-#opal.symbol_import(o,'MHAS_ds_w2', project='_Athlos_Harm_Dataset')
-age <- MHAS_ds_w2
-save(age, file = "../RData/w2/age.RData")
-rm(age)
-
-MHAS_m_ds_w2 <- MHAS_ds_w2
-MHAS_m_ds_w2$age <- car::recode(MHAS_m_ds_w2$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'MHAS_m_ds_w2', MHAS_m_ds_w2)
-#opal.symbol_import(o,'MHAS_m_ds_w2', project='_Athlos_Harm_Dataset')
-```
-
-
-
-
-
 
 ### Wave 3 
 
 #### Study-specific variable description
 
-| **Name** | `age_12` |
-|-|-|
-| **Label** | `Age` |
-| **Table name** | `MHAS_2012_new` |
-| **Missings** | `999 = Doesn't Know` |
-| **Description** |  |
+| **Name** | `age_12` |`living_status`|`mbirth`|`ybirth`|`mintw`|`yintw`|
+|-|-|-|-|-|-|-|
+| **Label** | `Age` |`Living status`|`Month of birth`|`Year of birth`|`Month of interview`|`Year of interview`|
+| **Table name** | `MHAS_2012_new` |`mhas_w3_hd`|`mhas_w3_hd`|`mhas_w3_hd`|`mhas_w3_hd`|`mhas_w3_hd`|
+| **Categories** |`continuous`|`0 = Alive`<br/>`1 = Dead`<br/>`2 = Dropout/unknown`|`continuous`|`continuous`|`continuous`|`continuous`|
+| **Missings** | `999 = Doesn't Know` |  |`998 = Do not know`<br/>`999 = Missing`|`998 = Do not know`<br/>`999 = Missing`|`999 = Missing`|`999 = Missing`|
+| **Description** |  |  |  |  |  |  |
 
 
 
 ```{r assign3, echo=F}
-opal.assign.table.tibble(o, 'MHAS_w3_age','Mexican Health Aging Study.MHAS_2012_new',
-                         variables=list('age_12'), missings = TRUE)
+opal.assign.table.tibble(o, 'MHAS_w3_age','Mexican Health Aging Study.MHAS_2012_new',variables=list('age_12'), missings = TRUE)
+MHAS_w3_age <- opal.execute(o,'MHAS_w3_age')
+
+load(paste0(datafolder,"w3/living_status",".RData"))
+MHAS_w3_age <- left_join(MHAS_w3_age,living_status, by = "id")
+rm(living_status)
+
+
+load(paste0(datafolder,"w3/mbirth",".RData"))
+MHAS_w3_age <- left_join(MHAS_w3_age,mbirth, by = "id")
+rm(mbirth)
+
+load(paste0(datafolder,"w3/ybirth",".RData"))
+MHAS_w3_age <- left_join(MHAS_w3_age,ybirth, by = "id")
+rm(ybirth)
+
+load(paste0(datafolder,"w3/mintw",".RData"))
+MHAS_w3_age <- left_join(MHAS_w3_age,mintw, by = "id")
+rm(mintw)
+
+load(paste0(datafolder,"w3/yintw",".RData"))
+MHAS_w3_age <- left_join(MHAS_w3_age,yintw, by = "id")
+rm(yintw)
+
 ```
 
 ```{r local3, echo=F}
-MHAS_w3_age <- opal.execute(o,'MHAS_w3_age')
 vari <- MHAS_w3_age$age_12
 kable(Continuous_summary(vari, missing_values = c(999))[3], caption = "age_12")
 pander(Continuous_summary(vari, missing_values = c(999))$summary, caption = "Summary")
 ggplot(MHAS_w3_age, aes(age_12)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")+xlim(25,115)
+
+vari <- MHAS_w3_age$living_status
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "living_status")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(MHAS_w3_age, aes(x=factor(living_status))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- MHAS_w3_age$mbirth
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = "mbirth")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w3_age, aes(x=factor(mbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- MHAS_w3_age$ybirth
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[3], caption = "ybirth")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(MHAS_w3_age, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vari %in% miss_values_vector)) + xlab(label(vari)) + ylab("Frequency")
+
+vari <- MHAS_w3_age$mintw
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = "mintw")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w3_age, aes(x=factor(mintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- MHAS_w3_age$yintw
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = "yintw")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w3_age, aes(x=factor(yintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 ```
 
 #### Harmonisation algorithm
-The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+The harmonized variable is the same than the study-specific variable `age_12`, but the missing values have to be recoded as follows:
 
 * `recode 999 'Doesn't Know' as 998`
 * `NA into 999`
+* `age (wave 3) = date of interview of wave 3 - date of birth`
+* `living_status == Dead or Dropout into 996`
 
 **R script:**
 
 ```{r harmo3}
 MHAS_ds_w3 <- tibble(id=MHAS_w3_age$id)
 MHAS_ds_w3$age <- car::recode(MHAS_w3_age$age_12, "999=998; NA=999")
+
+
+
+#function to compute the age
+comp_age <- function(y_birth, m_birth, a_year, a_month, miss){
+  N <- length(y_birth)
+  #first, it's computed the age of all
+  age <- rep(NA,N)
+  age[which(a_month<m_birth)] <- (a_year[which(a_month<m_birth)]-y_birth[which(a_month<m_birth)])-1
+  age[which(a_month>=m_birth)] <- a_year[which(a_month>=m_birth)]-y_birth[which(a_month>=m_birth)]
+  age[which(m_birth>900)] <- a_year[which(m_birth>900)]-y_birth[which(m_birth>900)]
+  
+  #It's emphasized the individues having missing
+  
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(y_birth==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(a_year==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+  
+  
+  age
+
+}
+
+cage <- comp_age(y_birth=MHAS_w3_age$ybirth, m_birth=MHAS_w3_age$mbirth , a_year=MHAS_w3_age$yintw, a_month=MHAS_w3_age$mintw, miss=miss_values_vector)
+MHAS_ds_w3$age[which(MHAS_ds_w3$age %in% miss_values_vector & !cage %in% miss_values_vector)] <- cage[which(MHAS_ds_w3$age %in% miss_values_vector & !cage %in% miss_values_vector)]
+
+
+MHAS_ds_w3$age[which(MHAS_w3_age$living_status %in% c(1,2))] <- 996
 MHAS_ds_w3$age <- labelled(MHAS_ds_w3$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
@@ -261,19 +374,111 @@ ggplot(MHAS_ds_w3, aes(age)) + geom_histogram(stat="count", fill="steelblue") + 
 
 
 
-```{r importOPAL3, echo=F}
 
-#opal.assign.data(o, 'MHAS_ds_w3', MHAS_ds_w3)
-#opal.symbol_import(o,'MHAS_ds_w3', project='_Athlos_Harm_Dataset')
-age <- MHAS_ds_w3
-save(age, file = "../RData/w3/age.RData")
-rm(age)
 
-MHAS_m_ds_w3 <- MHAS_ds_w3
-MHAS_m_ds_w3$age <- car::recode(MHAS_m_ds_w3$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'MHAS_m_ds_w3', MHAS_m_ds_w3)
-#opal.symbol_import(o,'MHAS_m_ds_w3', project='_Athlos_Harm_Dataset')
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+```{r helpfunctions, echo=F}
+
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+# Creation of summary tables for continuous data
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][2])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[2]],missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][2])[1:6]
+    # Next, missing/no-missing values
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[2]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][2]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
+}
+
 ```
+
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+mhas.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"), w3 = c("w3","W3"))
+
+# Consider only harmonised waves
+l.hds <- lapply(mhas.cw, function(wname) if(exists(paste0("MHAS_ds_",wname[1]))){wname = list(get(paste0("MHAS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing summaries
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+```
+
+
+
+
+
+
 
 
 # Quality estimation
