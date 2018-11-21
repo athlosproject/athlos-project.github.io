@@ -11,52 +11,19 @@ output:
       collapsed: yes
       smooth_scroll: yes
 ---
-  
-<!-- ########################################################## --> 
 
+<!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
-
-
-
-
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-
-* Short name: `age`
-* Variable label: `Age`
-* Variable description: `Age of participant at each wave`
-* Domain: `Socio-demographic and economic characteristics`
-* Value type: `continuous`
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-
-```{r lab, echo=FALSE}
-ds_label <- "Age"
-ds_label_all <- "Age of participant at each wave"
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/ageDS.Rmd'}
 ```
-
+```{r global, echo=F}
+source('../../_DS_Rmd/ageDS.R')
+```
 
 # Data process
 
@@ -119,22 +86,6 @@ ggplot(TILDA_ds_w1, aes(age)) + geom_histogram(stat="count", fill="steelblue") +
 
 
 
-```{r importOPAL1, echo=F}
-label(TILDA_ds_w1$age) <- ds_label_all
-age <- TILDA_ds_w1
-save(age, file = "../RData/w1/age.RData")
-#opal.assign.data(o, 'TILDA_ds_w1', TILDA_ds_w1)
-#opal.symbol_import(o,'TILDA_ds_w1', project='_Athlos_Harm_Dataset')
-
-TILDA_m_ds_w1 <- TILDA_ds_w1
-TILDA_m_ds_w1$age <- car::recode(TILDA_m_ds_w1$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'TILDA_m_ds_w1', TILDA_m_ds_w1)
-#opal.symbol_import(o,'TILDA_m_ds_w1', project='_Athlos_Harm_Dataset')
-```
-
-
-
-
 ### Wave 2 
 
 #### Study-specific variable description
@@ -191,28 +142,110 @@ ggplot(TILDA_ds_w2, aes(age)) + geom_histogram(stat="count", fill="steelblue") +
 
 
 
-```{r importOPAL2, echo=F}
-label(TILDA_ds_w2$age) <- ds_label_all
-age <- TILDA_ds_w2
-save(age, file = "../RData/w2/age.RData")
-#opal.assign.data(o, 'TILDA_ds_w2', TILDA_ds_w2)
-#opal.symbol_import(o,'TILDA_ds_w2', project='_Athlos_Harm_Dataset')
 
-TILDA_m_ds_w2 <- TILDA_ds_w2
-TILDA_m_ds_w2$age <- car::recode(TILDA_m_ds_w2$age, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'TILDA_m_ds_w2', TILDA_m_ds_w2)
-#opal.symbol_import(o,'TILDA_m_ds_w2', project='_Athlos_Harm_Dataset')
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+```{r helpfunctions, echo=F}
+
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+# Creation of summary tables for continuous data
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][2])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[2]],missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][2])[1:6]
+    # Next, missing/no-missing values
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[2]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][2]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
+}
+
 ```
 
 
 
-# Quality estimation
-The study 10-66 collects the date in baseline interview, 
-but not all populations have the exact "date" at follow-up. 
-In order to have the age at followup, we have to sum to age at baseline (age)
-the number of years between baseline interview and follow-up interview. 
-The number of years between waves are different for each population so some bias might be expected.
 
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+tilda.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"))
+
+# Consider only harmonised waves
+l.hds <- lapply(tilda.cw, function(wname) if(exists(paste0("TILDA_ds_",wname[1]))){wname = list(get(paste0("TILDA_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing summaries
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+```
+
+
+
+
+# Quality estimation
+
+No comments.
 
 ```{r closeRsession, echo=FALSE}
 opal.logout(o)
