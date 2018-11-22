@@ -1,5 +1,5 @@
 ---
-title: "BMI: Body Mass Index"
+title: "BMI"
 output:
   html_document:
     highlight: tango
@@ -13,40 +13,18 @@ output:
 ---
 
 <!-- ########################################################## --> 
-
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/bmiDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/bmiDS.R')
+```
 
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-
-* Short name: `bmi`
-* Variable label: `Body Mass Index calculated as weight (kg)/height(m)^2`
-* Variable description: `the BMI variable should be created by dividing weight and heigh variables with the following equation= weight (kg)/height(m)^2`
-* Domain: `Physical measures `
-* Value type: `Continuous`
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
 
 
 
@@ -54,13 +32,38 @@ The description of harmonised variable is the following:
 
 # Data process
 
+```{r function}
+compute_bmi <- function(Heigth, Weigth, miss, heigth_m = TRUE){
+  Heigth <- car::recode(Heigth, "NA=999")
+  Weigth <- car::recode(Weigth, "NA=999")
+  
+  
+  if(heigth_m){
+    # height measured in meters
+    bmi <- Weigth/(Heigth^2)
+    
+    bmi[Heigth==999] <- 999
+    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
+    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
+    
+    bmi[Weigth==999] <- 999
+    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
+    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
+  } else {
+    # height measured in centimeters
+    bmi <- Weigth/((Heigth/100)^2)
+    
+    bmi[Heigth==999] <- 999
+    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
+    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
+    
+    bmi[Weigth==999] <- 999
+    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
+    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
+  }
+  bmi
+}
 
-
-
-
-
-```{r, dataDirectory, echo=FALSE}
-datafolder <- "../RData"
 ```
 
 ## SHARE
@@ -74,36 +77,39 @@ datafolder <- "../RData"
 |----------|------------|-|
 | **Label** | `weight of respondent` | `how tall are you?` |
 | **Table name** | `sharew1_rel2-6-0_ph` |`sharew1_rel2-6-0_ph` |
+| **Units** |`kg`|`cm`|
 | **Missings** | `-2 = refusal; -1 = don't know` | `-2 = refusal; -1 = don't know` |
 | **Description** |  |  |
 
 
 
 ```{r assign1, echo=F}
-opal.assign.table.tibble(o, 'SHARE_w1_bmi','SHARE.sharew1_rel2-6-0_ph',
-                         variables=list('ph012_', 'ph013_'), missings = TRUE)
+opal.assign.table.tibble(o, 'SHARE_w1_bmi','SHARE.sharew1_rel2-6-0_ph',variables=list('ph012_', 'ph013_'), missings = TRUE)
+SHARE_w1_bmi <- opal.execute(o,'SHARE_w1_bmi')
 ```
 
 ```{r local1, echo=F}
-SHARE_w1_bmi <- opal.execute(o,'SHARE_w1_bmi')
 
 vari <- SHARE_w1_bmi$ph012_
+vbl_miss <- c(-2,-1)
 kable(Continuous_summary(vari, missing_values = c(-2, -1))[3], caption = "ph012_")
 pander(Continuous_summary(vari, missing_values = c(-2, -1))$summary, caption = "Summary")
-ggplot(SHARE_w1_bmi, aes(ph012_)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency") + xlim(50,100)
+ggplot(SHARE_w1_bmi, aes(ph012_)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vari %in% vbl_miss)) + xlab("Weight") + ylab("Frequency")
 
 vari <- SHARE_w1_bmi$ph013_
+vbl_miss <- c(-2,-1)
 kable(Continuous_summary(vari, missing_values = c(-2, -1))[3], caption = "ph013_")
 pander(Continuous_summary(vari, missing_values = c(-2, -1))$summary, caption = "Summary")
-ggplot(SHARE_w1_bmi, aes(ph013_)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+ggplot(SHARE_w1_bmi, aes(ph013_)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vari %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
 ```
 
-The individuals with weight lower than 30 are going to be consider as mistakes and they are going to be recoded as 999.
 
 #### Harmonisation algorithm
 The harmonized variable will be calculate from the study-specific variables using this formula
 
-bmi=weight/height^2
+bmi=weight(kg)/height(m)^2
+
+The individuals with weight lower than 30 are going to be consider as mistakes and they are going to be recoded as 999.
 
 The missing values have to be recoded as follows:
 
@@ -114,33 +120,6 @@ The missing values have to be recoded as follows:
 **R script:**
 
 ```{r harmo1}
-compute_bmi <- function(Heigth, Weigth, miss, heigth_m = TRUE){
-  Heigth <- car::recode(Heigth, "NA=999")
-  Weigth <- car::recode(Weigth, "NA=999")
-  
-  if(heigth_m){
-    bmi <- Weigth/(Heigth^2)
-    
-    bmi[Heigth==999] <- 999
-    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
-    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
-    
-    bmi[Weigth==999] <- 999
-    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
-    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
-  } else {
-    bmi <- Weigth/((Heigth/100)^2)
-    
-    bmi[Heigth==999] <- 999
-    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
-    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
-    
-    bmi[Weigth==999] <- 999
-    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
-    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
-  }
-  bmi
-}
 
 SHARE_w1_bmi$ph012_ <- car::recode(SHARE_w1_bmi$ph012_, "1:10=NA")
 
@@ -156,31 +135,16 @@ SHARE_ds_w1$bmi <- labelled(SHARE_ds_w1$bmi, labels = c("Missing"=999, "Do not k
 #### Statistics of the new harmonised variable
 ```{r descript1, echo=F}
 vari <- SHARE_ds_w1$bmi
-kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "bmi")
-kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "values")
-pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(SHARE_ds_w1, aes(bmi)) + geom_histogram(stat="bin", fill="steelblue",binwidth = 0.1 ) + xlab("BMI") + ylab("Frequency") + xlim(10,80)
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = "bmi")
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SHARE_ds_w1, aes(bmi)) + geom_histogram(stat="bin", fill="steelblue",binwidth = 0.1, data = .%>% filter(!vari %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Validation
 ```{r crosstabulation1, echo=F}
-kable(SHARE_w1_bmi[which(SHARE_w1_bmi$bmi>70 & SHARE_w1_bmi$bmi<900),],align = 'c',caption = 'There are unusual values that are upper than 70:')
+kable(SHARE_w1_bmi[which(SHARE_w1_bmi$bmi>70 & SHARE_w1_bmi$bmi<900),],align = 'c',caption = 'There are unusual values that are higher than 70:')
 ```
-
-
-
-
-
-```{r importOPAL1, echo=F}
-#opal.assign.data(o, 'SHARE_ds_w1', SHARE_ds_w1)
-#opal.symbol_import(o,'SHARE_ds_w1', project='_Athlos_Harm_Dataset')
-
-SHARE_m_ds_w1 <- SHARE_ds_w1
-SHARE_m_ds_w1$bmi <- car::recode(SHARE_m_ds_w1$bmi, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'SHARE_m_ds_w1', SHARE_m_ds_w1)
-#opal.symbol_import(o,'SHARE_m_ds_w1', project='_Athlos_Harm_Dataset')
-```
-
 
 
 
@@ -195,36 +159,45 @@ SHARE_m_ds_w1$bmi <- car::recode(SHARE_m_ds_w1$bmi, "c(991, 992, 993, 994, 995, 
 |----------|------------|-|
 | **Label** | `weight of respondent` | `how tall are you?` |
 | **Table name** | `sharew2_rel2-6-0_ph` |`sharew2_rel2-6-0_ph` |
+| **Units** |`kg`|`cm`|
 | **Missings** | `-2 = refusal; -1 = don't know` | `-2 = refusal; -1 = don't know` |
 | **Description** |  |  |
 
 
 
 ```{r assign2, echo=F}
-opal.assign.table.tibble(o, 'SHARE_w2_bmi','SHARE.sharew2_rel2-6-0_ph',
-                         variables=list('ph012_', 'ph013_'), missings = TRUE)
+opal.assign.table.tibble(o, 'SHARE_w2_bmi','SHARE.sharew2_rel2-6-0_ph',variables=list('ph012_', 'ph013_'), missings = TRUE)
+SHARE_w2_bmi <- opal.execute(o,'SHARE_w2_bmi')
 ```
 
 ```{r local2, echo=F}
-SHARE_w2_bmi <- opal.execute(o,'SHARE_w2_bmi')
 
 vari <- SHARE_w2_bmi$ph012_
+vbl_miss <- c(-2,-1)
 kable(Continuous_summary(vari, missing_values = c(-2, -1))[3], caption = "ph012_")
 pander(Continuous_summary(vari, missing_values = c(-2, -1))$summary, caption = "Summary")
-ggplot(SHARE_w1_bmi, aes(ph012_)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency") + xlim(30,220)
+ggplot(SHARE_w2_bmi, aes(ph012_)) + geom_bar(stat="count", fill="steelblue",width = 0.4, data = .%>% filter(!vari %in% c(vbl_miss,-3,11111111))) + xlab("Weight") + ylab("Frequency")
 
 vari <- SHARE_w2_bmi$ph013_
+vbl_miss <- c(-2,-1)
 kable(Continuous_summary(vari, missing_values = c(-2, -1))[3], caption = "ph013_")
 pander(Continuous_summary(vari, missing_values = c(-2, -1))$summary, caption = "Summary")
-ggplot(SHARE_w2_bmi, aes(ph013_)) + geom_bar(stat="count", fill="steelblue",width = 0.4) + xlab("Height") + ylab("Frequency")
+ggplot(SHARE_w2_bmi, aes(ph013_)) + geom_bar(stat="count", fill="steelblue",width = 0.4, data = .%>% filter(!vari %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
 ```
 
-In the weight variable there is a value -3 that is going to be consider as a mistake and it will be recoded as 999. There are also values from 1 to 10 that are going to be consider as an other mistake and they will be recoded as 999. Finally, there is a value 111111111 that is going to be considered as a mistake and it will be recoded as 999. 
 
 #### Harmonisation algorithm
 The harmonized variable will be calculate from the study-specific variables using this formula
 
 bmi=weight/height^2
+
+In the weight variable the values -3, 1 to 10 and 11111111 are going to be considered as mistakes and they will be recoded as 999. 
+
+Height values between 1 and 2 are assumed to be measured in meters.
+Height values between 10 and 20 are assumed to be measured in decimeters.
+
+Other height values lower than 60 are going to be considered as mistakes and they will be recoded as 999.
+
 
 The missing values have to be recoded as follows:
 
@@ -235,37 +208,20 @@ The missing values have to be recoded as follows:
 **R script:**
 
 ```{r harmo2}
-compute_bmi <- function(Heigth, Weigth, miss, heigth_m = TRUE){
-  Heigth <- car::recode(Heigth, "NA=999")
-  Weigth <- car::recode(Weigth, "NA=999")
-  
-  if(heigth_m){
-    bmi <- Weigth/(Heigth^2)
-    
-    bmi[Heigth==999] <- 999
-    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
-    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
-    
-    bmi[Weigth==999] <- 999
-    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
-    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
-  } else {
-    bmi <- Weigth/((Heigth/100)^2)
-    
-    bmi[Heigth==999] <- 999
-    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
-    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
-    
-    bmi[Weigth==999] <- 999
-    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
-    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
-  }
-  bmi
-}
 
 SHARE_w2_bmi$ph012_ <- car::recode(SHARE_w2_bmi$ph012_, "-3=NA; 1:10=NA; 11111111=NA")
 
-SHARE_w2_bmi$bmi <- compute_bmi(Heigth = SHARE_w2_bmi$ph013_, 
+SHARE_w2_bmi$height <- SHARE_w2_bmi$ph013_
+
+SHARE_w2_bmi$height[which(SHARE_w2_bmi$ph013_>=1 & SHARE_w2_bmi$ph013_<2)] <- SHARE_w2_bmi$ph013_[which(SHARE_w2_bmi$ph013_>=1 & SHARE_w2_bmi$ph013_<2)]*100
+
+SHARE_w2_bmi$height[which(SHARE_w2_bmi$ph013_>=10 & SHARE_w2_bmi$ph013_<20)] <- SHARE_w2_bmi$ph013_[which(SHARE_w2_bmi$ph013_>=10 & SHARE_w2_bmi$ph013_<20)]*10
+
+SHARE_w2_bmi$height <- car::recode(SHARE_w2_bmi$height, "0:60=NA")
+
+
+
+SHARE_w2_bmi$bmi <- compute_bmi(Heigth = SHARE_w2_bmi$height, 
                         Weigth = SHARE_w2_bmi$ph012_, miss = c(-2, -1), 
                         heigth_m = FALSE)
 
@@ -278,30 +234,28 @@ SHARE_ds_w2$bmi <- labelled(SHARE_ds_w2$bmi, labels = c("Missing"=999, "Do not k
 #### Statistics of the new harmonised variable
 ```{r descript2, echo=F}
 vari <- SHARE_ds_w2$bmi
-kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "bmi")
-kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "values")
-pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(SHARE_ds_w2, aes(bmi)) + geom_histogram(stat="bin", fill="steelblue",binwidth = 0.1) + xlab("BMI") + ylab("Frequency") + xlim(10,100)
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = "bmi")
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SHARE_ds_w2, aes(bmi)) + geom_histogram(stat="bin", fill="steelblue",binwidth = 0.1, data = .%>% filter(!vari %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Validation
 ```{r crosstabulation2, echo=F}
-kable(SHARE_w2_bmi[which((SHARE_w2_bmi$bmi<12 & SHARE_w2_bmi$bmi>-1) | (SHARE_w2_bmi$bmi>70 & SHARE_w2_bmi$bmi<900)),],align = 'c',caption = 'There are unusual values that are lower than 12 or upper than 70:')
+
+
+pander(Continuous_summary(SHARE_w2_bmi$bmi[which((SHARE_w2_bmi$ph013_>=1 & SHARE_w2_bmi$ph013_<2) | (SHARE_w2_bmi$ph013_>=10 & SHARE_w2_bmi$ph013_<20))],missing_values = c(-1,-2,999))$summary, caption = 'BMI summary of individuals with transformed values from meters or decimeters to centimeters')
+
+kable(SHARE_w2_bmi[which(((SHARE_w2_bmi$ph013_>=1 & SHARE_w2_bmi$ph013_<2) | (SHARE_w2_bmi$ph013_>=10 & SHARE_w2_bmi$ph013_<20)) & SHARE_w2_bmi$bmi>60 & SHARE_w2_bmi$bmi<990),], align='c', caption = 'From the same subset of individuals than above, those with harmonised bmi higher than 60')
+
+kable(SHARE_w2_bmi[which(!((SHARE_w2_bmi$ph013_>=1 & SHARE_w2_bmi$ph013_<2) | (SHARE_w2_bmi$ph013_>=10 & SHARE_w2_bmi$ph013_<20)) & SHARE_w2_bmi$bmi>60 & SHARE_w2_bmi$bmi<990),], align='c', caption = 'From the complementary subset of individuals, those with harmonised bmi higher than 60')
+
+kable(SHARE_w2_bmi[which((SHARE_w2_bmi$bmi<12 & SHARE_w2_bmi$bmi>-1) | (SHARE_w2_bmi$bmi>70 & SHARE_w2_bmi$bmi<900)),],align = 'c',caption = 'In general there are unusual values that are lower than 12 or higher than 70:')
+
 ```
 
 
 
-
-
-```{r importOPAL2, echo=F}
-#opal.assign.data(o, 'SHARE_ds_w2', SHARE_ds_w2)
-#opal.symbol_import(o,'SHARE_ds_w2', project='_Athlos_Harm_Dataset')
-
-SHARE_m_ds_w2 <- SHARE_ds_w2
-SHARE_m_ds_w2$bmi <- car::recode(SHARE_m_ds_w2$bmi, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'SHARE_m_ds_w2', SHARE_m_ds_w2)
-#opal.symbol_import(o,'SHARE_m_ds_w2', project='_Athlos_Harm_Dataset')
-```
 
 
 
@@ -322,36 +276,44 @@ There is no variable.
 |----------|------------|-|
 | **Label** | `weight of respondent` | `how tall are you?` |
 | **Table name** | `sharew4_rel1-1-1_ph` |`sharew4_rel1-1-1_ph` |
+| **Units** |`kg`|`cm`|
 | **Missings** | `-2 = refusal; -1 = don't know` | `-2 = refusal; -1 = don't know` |
 | **Description** |  |  |
 
 
 
 ```{r assign4, echo=F}
-opal.assign.table.tibble(o, 'SHARE_w4_bmi','SHARE.sharew4_rel1-1-1_ph',
-                         variables=list('ph012_', 'ph013_'), missings = TRUE)
+opal.assign.table.tibble(o, 'SHARE_w4_bmi','SHARE.sharew4_rel1-1-1_ph',variables=list('ph012_', 'ph013_'), missings = TRUE)
+SHARE_w4_bmi <- opal.execute(o,'SHARE_w4_bmi')
 ```
 
 ```{r local4, echo=F}
-SHARE_w4_bmi <- opal.execute(o,'SHARE_w4_bmi')
 
 vari <- SHARE_w4_bmi$ph012_
+vbl_miss <- c(-2,-1)
 kable(Continuous_summary(vari, missing_values = c(-2, -1))[3], caption = "ph012_")
 pander(Continuous_summary(vari, missing_values = c(-2, -1))$summary, caption = "Summary")
-ggplot(SHARE_w4_bmi, aes(ph012_)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency") + xlim(30,220)
+ggplot(SHARE_w4_bmi, aes(ph012_)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vari %in% vbl_miss)) + xlab("Weight") + ylab("Frequency")
 
 vari <- SHARE_w4_bmi$ph013_
+vbl_miss <- c(-2,-1)
 kable(Continuous_summary(vari, missing_values = c(-2, -1))[3], caption = "ph013_")
 pander(Continuous_summary(vari, missing_values = c(-2, -1))$summary, caption = "Summary")
-ggplot(SHARE_w4_bmi, aes(ph013_)) + geom_bar(stat="count", fill="steelblue",width = 0.4) + xlab("Height") + ylab("Frequency")
+ggplot(SHARE_w4_bmi, aes(ph013_)) + geom_bar(stat="count", fill="steelblue",width = 0.4, data = .%>% filter(!vari %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
 ```
 
-The individuals with weight values from 0 to 18 that are going to be consider as a mistake and they will be recoded as 999.
 
 #### Harmonisation algorithm
 The harmonized variable will be calculate from the study-specific variables using this formula
 
 bmi=weight/height^2
+
+The individuals with weight values from 0 to 18 that are going to be consider as a mistake and they will be recoded as 999.
+
+Height values between 1 and 2 are assumed to be measured in meters.
+Height values between 10 and 20 are assumed to be measured in decimeters.
+
+Other height values lower than 60 are going to be considered as mistakes and they will be recoded as 999. 
 
 The missing values have to be recoded as follows:
 
@@ -362,37 +324,19 @@ The missing values have to be recoded as follows:
 **R script:**
 
 ```{r harmo4}
-compute_bmi <- function(Heigth, Weigth, miss, heigth_m = TRUE){
-  Heigth <- car::recode(Heigth, "NA=999")
-  Weigth <- car::recode(Weigth, "NA=999")
-  
-  if(heigth_m){
-    bmi <- Weigth/(Heigth^2)
-    
-    bmi[Heigth==999] <- 999
-    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
-    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
-    
-    bmi[Weigth==999] <- 999
-    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
-    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
-  } else {
-    bmi <- Weigth/((Heigth/100)^2)
-    
-    bmi[Heigth==999] <- 999
-    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
-    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
-    
-    bmi[Weigth==999] <- 999
-    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
-    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
-  }
-  bmi
-}
 
 SHARE_w4_bmi$ph012_ <- car::recode(SHARE_w4_bmi$ph012_, "0:18=NA")
 
-SHARE_w4_bmi$bmi <- compute_bmi(Heigth = SHARE_w4_bmi$ph013_, 
+SHARE_w4_bmi$height <- SHARE_w4_bmi$ph013_
+
+SHARE_w4_bmi$height[which(SHARE_w4_bmi$ph013_>=1 & SHARE_w4_bmi$ph013_<2)] <- SHARE_w4_bmi$ph013_[which(SHARE_w4_bmi$ph013_>=1 & SHARE_w4_bmi$ph013_<2)]*100
+
+SHARE_w4_bmi$height[which(SHARE_w4_bmi$ph013_>=10 & SHARE_w4_bmi$ph013_<20)] <- SHARE_w4_bmi$ph013_[which(SHARE_w4_bmi$ph013_>=10 & SHARE_w4_bmi$ph013_<20)]*10
+
+SHARE_w4_bmi$height <- car::recode(SHARE_w4_bmi$height, "0:59=NA")
+
+
+SHARE_w4_bmi$bmi <- compute_bmi(Heigth = SHARE_w4_bmi$height, 
                         Weigth = SHARE_w4_bmi$ph012_, miss = c(-2, -1), 
                         heigth_m = FALSE)
 
@@ -404,30 +348,29 @@ SHARE_ds_w4$bmi <- labelled(SHARE_ds_w4$bmi, labels = c("Missing"=999, "Do not k
 #### Statistics of the new harmonised variable
 ```{r descript4, echo=F}
 vari <- SHARE_ds_w4$bmi
-kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "bmi")
-kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "values")
-pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(SHARE_ds_w4, aes(bmi)) + geom_histogram(stat="bin", fill="steelblue",binwidth = 0.1) + xlab("BMI") + ylab("Frequency") + xlim(10,100)
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = "bmi")
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SHARE_ds_w4, aes(bmi)) + geom_histogram(stat="bin", fill="steelblue",binwidth = 0.1, data = .%>% filter(!vari %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Validation
 ```{r crosstabulation4, echo=F}
-kable(SHARE_w4_bmi[which((SHARE_w4_bmi$bmi<12 & SHARE_w4_bmi$bmi>-1) | (SHARE_w4_bmi$bmi>70 & SHARE_w4_bmi$bmi<900)),],align = 'c',caption = 'There are unusual values that are lower than 12 or upper than 70:')
+
+pander(Continuous_summary(SHARE_w4_bmi$bmi[which((SHARE_w4_bmi$ph013_>=1 & SHARE_w4_bmi$ph013_<2) | (SHARE_w4_bmi$ph013_>=10 & SHARE_w4_bmi$ph013_<20))],missing_values = c(-1,-2,999))$summary, caption = 'BMI summary of individuals with transformed values from meters or decimeters to centimeters')
+
+kable(SHARE_w4_bmi[which(((SHARE_w4_bmi$ph013_>=1 & SHARE_w4_bmi$ph013_<2) | (SHARE_w4_bmi$ph013_>=10 & SHARE_w4_bmi$ph013_<20)) & SHARE_w4_bmi$bmi>60 & SHARE_w4_bmi$bmi<990),], align='c', caption = 'From the same subset of individuals than above, those with harmonised bmi higher than 60')
+
+kable(SHARE_w4_bmi[which(!((SHARE_w4_bmi$ph013_>=1 & SHARE_w4_bmi$ph013_<2) | (SHARE_w4_bmi$ph013_>=10 & SHARE_w4_bmi$ph013_<20)) & SHARE_w4_bmi$bmi>60 & SHARE_w4_bmi$bmi<990),], align='c', caption = 'From the complementary subset of individuals, those with harmonised bmi higher than 60')
+
+
+kable(SHARE_w4_bmi[which((SHARE_w4_bmi$bmi<12 & SHARE_w4_bmi$bmi>-1) | (SHARE_w4_bmi$bmi>70 & SHARE_w4_bmi$bmi<900)),],align = 'c',caption = 'In general, there are unusual values that are lower than 12 or higher than 70:')
+
 ```
 
 
 
 
-
-```{r importOPAL4, echo=F}
-#opal.assign.data(o, 'SHARE_ds_w4', SHARE_ds_w4)
-#opal.symbol_import(o,'SHARE_ds_w4', project='_Athlos_Harm_Dataset')
-
-SHARE_m_ds_w4 <- SHARE_ds_w4
-SHARE_m_ds_w4$bmi <- car::recode(SHARE_m_ds_w4$bmi, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'SHARE_m_ds_w4', SHARE_m_ds_w4)
-#opal.symbol_import(o,'SHARE_m_ds_w4', project='_Athlos_Harm_Dataset')
-```
 
 
 
@@ -442,35 +385,43 @@ SHARE_m_ds_w4$bmi <- car::recode(SHARE_m_ds_w4$bmi, "c(991, 992, 993, 994, 995, 
 |----------|------------|-|
 | **Label** | `weight of respondent` | `how tall are you?` |
 | **Table name** | `sharew5_rel1-0-0_ph` |`sharew5_rel1-0-0_ph` |
+| **Units** |`kg`|`cm`|
 | **Missings** | `-2 = refusal; -1 = don't know` | `-2 = refusal; -1 = don't know` |
 | **Description** |  |  |
 
     
 ```{r assign5, echo=F}
-opal.assign.table.tibble(o, 'SHARE_w5_bmi','SHARE.sharew5_rel1-0-0_ph',
-                         variables=list('ph012_', 'ph013_'), missings = TRUE)
+opal.assign.table.tibble(o, 'SHARE_w5_bmi','SHARE.sharew5_rel1-0-0_ph',variables=list('ph012_', 'ph013_'), missings = TRUE)
+SHARE_w5_bmi <- opal.execute(o,'SHARE_w5_bmi')
 ```
 
 ```{r local5, echo=F}
-SHARE_w5_bmi <- opal.execute(o,'SHARE_w5_bmi')
 
 vari <- SHARE_w5_bmi$ph012_
+vbl_miss <- c(-2,-1)
 kable(Continuous_summary(vari, missing_values = c(-2, -1))[3], caption = "ph012_")
 pander(Continuous_summary(vari, missing_values = c(-2, -1))$summary, caption = "Summary")
-ggplot(SHARE_w5_bmi, aes(ph012_)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency") + xlim(30,220)
+ggplot(SHARE_w5_bmi, aes(ph012_)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vari %in% vbl_miss)) + xlab("Weight") + ylab("Frequency") 
 
 vari <- SHARE_w5_bmi$ph013_
+vbl_miss <- c(-2,-1)
 kable(Continuous_summary(vari, missing_values = c(-2, -1))[3], caption = "ph013_")
 pander(Continuous_summary(vari, missing_values = c(-2, -1))$summary, caption = "Summary")
-ggplot(SHARE_w5_bmi, aes(ph013_)) + geom_bar(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+ggplot(SHARE_w5_bmi, aes(ph013_)) + geom_bar(stat="count", fill="steelblue", data = .%>% filter(!vari %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
 ```
 
-The individues with weigth values from 0 to 18 that are going to be consider as a mistake and they will be recoded as 999.
 
 #### Harmonisation algorithm
 The harmonized variable will be calculate from the study-specific variables using this formula
 
 bmi=weight/height^2
+
+The individues with weigth values from 0 to 18 that are going to be consider as a mistake and they will be recoded as 999.
+
+Height values between 1 and 2 are assumed to be measured in meters.
+Height values between 10 and 20 are assumed to be measured in decimeters.
+
+Other height values lower than 60 are going to be considered as mistakes and they will be recoded as 999. 
 
 The missing values have to be recoded as follows:
 
@@ -481,39 +432,21 @@ The missing values have to be recoded as follows:
 **R script:**
 
 ```{r harmo5}
+
 SHARE_w5_bmi$ph012_ <- car::recode(SHARE_w5_bmi$ph012_, "0:18=NA")
-compute_bmi <- function(Heigth, Weigth, miss, heigth_m = TRUE){
-  Heigth <- car::recode(Heigth, "NA=999")
-  Weigth <- car::recode(Weigth, "NA=999")
-  
-  if(heigth_m){
-    bmi <- Weigth/(Heigth^2)
-    
-    bmi[Heigth==999] <- 999
-    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
-    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
-    
-    bmi[Weigth==999] <- 999
-    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
-    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
-  } else {
-    bmi <- Weigth/((Heigth/100)^2)
-    
-    bmi[Heigth==999] <- 999
-    bmi[Heigth==miss[1]] <- Heigth[Heigth==miss[1]]
-    bmi[Heigth==miss[2]] <- Heigth[Heigth==miss[2]]
-    
-    bmi[Weigth==999] <- 999
-    bmi[Weigth==miss[1]] <- Weigth[Weigth==miss[1]]
-    bmi[Weigth==miss[2]] <- Weigth[Weigth==miss[2]]
-  }
-  bmi <- round(bmi,3)
-}
 
 
+SHARE_w5_bmi$height <- SHARE_w5_bmi$ph013_
 
-SHARE_w5_bmi$bmi <- compute_bmi(Heigth = SHARE_w5_bmi$ph013_, 
-                        Weigth = SHARE_w5_bmi$ph012_, miss = c(-2, -1, 0), 
+SHARE_w5_bmi$height[which(SHARE_w5_bmi$ph013_>=1 & SHARE_w5_bmi$ph013_<2)] <- SHARE_w5_bmi$ph013_[which(SHARE_w5_bmi$ph013_>=1 & SHARE_w5_bmi$ph013_<2)]*100
+
+SHARE_w5_bmi$height[which(SHARE_w5_bmi$ph013_>=10 & SHARE_w5_bmi$ph013_<20)] <- SHARE_w5_bmi$ph013_[which(SHARE_w5_bmi$ph013_>=10 & SHARE_w5_bmi$ph013_<20)]*10
+
+SHARE_w5_bmi$height <- car::recode(SHARE_w5_bmi$height, "0:59=NA")
+
+
+SHARE_w5_bmi$bmi <- compute_bmi(Heigth = SHARE_w5_bmi$height, 
+                        Weigth = SHARE_w5_bmi$ph012_, miss = c(-2, -1), 
                         heigth_m = FALSE)
 
 
@@ -525,15 +458,26 @@ SHARE_ds_w5$bmi <- labelled(SHARE_ds_w5$bmi, labels = c("Missing"=999, "Do not k
 #### Statistics of the new harmonised variable
 ```{r descript5, echo=F}
 vari <- SHARE_ds_w5$bmi
-kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "bmi")
-kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "values")
-pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(SHARE_ds_w5, aes(bmi)) + geom_histogram(stat="bin", fill="steelblue",binwidth = 0.1) + xlab("BMI") + ylab("Frequency") + xlim(10,100)
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = "bmi")
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SHARE_ds_w5, aes(bmi)) + geom_histogram(stat="bin", fill="steelblue",binwidth = 0.1, data = .%>% filter(!vari %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency")
+
 ```
 
 #### Validation
 ```{r crosstabulation5, echo=F}
-kable(SHARE_w5_bmi[which((SHARE_w5_bmi$bmi<12 & SHARE_w5_bmi$bmi>-1) | (SHARE_w5_bmi$bmi>70 & SHARE_w5_bmi$bmi<900)),],align = 'c',caption = 'There are unusual values that are lower than 12 or upper than 70:')
+
+
+pander(Continuous_summary(SHARE_w5_bmi$bmi[which((SHARE_w5_bmi$ph013_>=1 & SHARE_w5_bmi$ph013_<2) | (SHARE_w5_bmi$ph013_>=10 & SHARE_w5_bmi$ph013_<20))],missing_values = c(-1,-2,999))$summary, caption = 'BMI summary of individuals with transformed values from meters or decimeters to centimeters')
+
+kable(SHARE_w5_bmi[which(((SHARE_w5_bmi$ph013_>=1 & SHARE_w5_bmi$ph013_<2) | (SHARE_w5_bmi$ph013_>=10 & SHARE_w5_bmi$ph013_<20)) & SHARE_w5_bmi$bmi>60 & SHARE_w5_bmi$bmi<990),], align='c', caption = 'From the same subset of individuals than above, those with harmonised bmi higher than 60')
+
+kable(SHARE_w5_bmi[which(!((SHARE_w5_bmi$ph013_>=1 & SHARE_w5_bmi$ph013_<2) | (SHARE_w5_bmi$ph013_>=10 & SHARE_w5_bmi$ph013_<20)) & SHARE_w5_bmi$bmi>60 & SHARE_w5_bmi$bmi<990),], align='c', caption = 'From the complementary subset of individuals, those with harmonised bmi higher than 60')
+
+
+
+kable(SHARE_w5_bmi[which((SHARE_w5_bmi$bmi<12 & SHARE_w5_bmi$bmi>-1) | (SHARE_w5_bmi$bmi>70 & SHARE_w5_bmi$bmi<900)),],align = 'c',caption = 'There are unusual values that are lower than 12 or higher than 70:')
 ```
 
 
@@ -541,36 +485,104 @@ kable(SHARE_w5_bmi[which((SHARE_w5_bmi$bmi<12 & SHARE_w5_bmi$bmi>-1) | (SHARE_w5
 
 
 
-```{r importOPAL5, echo=F}
-#opal.assign.data(o, 'SHARE_ds_w5', SHARE_ds_w5)
-#opal.symbol_import(o,'SHARE_ds_w5', project='_Athlos_Harm_Dataset')
 
-SHARE_m_ds_w5 <- SHARE_ds_w5
-SHARE_m_ds_w5$bmi <- car::recode(SHARE_m_ds_w5$bmi, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'SHARE_m_ds_w5', SHARE_m_ds_w5)
-#opal.symbol_import(o,'SHARE_m_ds_w5', project='_Athlos_Harm_Dataset')
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+```{r helpfunctions, echo=F}
+
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+# Creation of summary tables for continuous data
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][2])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[2]],missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][2])[1:6]
+    # Next, missing/no-missing values
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[2]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][2]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
+}
+
 ```
 
 
-```{r,  echo=FALSE}
-bmi <- SHARE_ds_w1
-save(bmi, file = paste0(datafolder, "/w1/bmi.RData"))
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+share.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"), w3 = c("w3","W3"), w4 = c("w4","W4"), w5 = c("w5","W5"))
+
+# Consider only harmonised waves
+l.hds <- lapply(share.cw, function(wname) if(exists(paste0("SHARE_ds_",wname[1]))){wname = list(get(paste0("SHARE_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing summaries
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
 ```
 
-```{r,  echo=FALSE}
-bmi <- SHARE_ds_w2
-save(bmi, file = paste0(datafolder, "/w2/bmi.RData"))
-```
-
-```{r,  echo=FALSE}
-bmi <- SHARE_ds_w4
-save(bmi, file = paste0(datafolder, "/w4/bmi.RData"))
-```
-
-```{r,  echo=FALSE}
-bmi <- SHARE_ds_w5
-save(bmi, file = paste0(datafolder, "/w5/bmi.RData"))
-```
 
 
 
