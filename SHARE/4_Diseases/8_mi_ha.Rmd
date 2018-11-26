@@ -472,7 +472,7 @@ labelling <- function(l.hds,m.hds,vbl_name,ds_lab = ds_label){
   # Labelling of the tibbles with categorical data and creating new tibbles with all missings recodified as NA
 
   for(name in names(l.hds)) {
-    if(vbl_name %in% names(l.hds[[1]])){
+    if(vbl_name %in% names(l.hds[[name]])){
       # In the aux_object we copy the old tibble to recodify all missing values as NA.
       aux_object <- l.hds[[name]]
       # Labelling of variables
@@ -497,14 +497,15 @@ labelling_c <- function(l.hds,m.hds,vbl_name,ds_lab=ds_label){
   # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
 
   for(name in names(l.hds)) {
-    if(vbl_name %in% names(l.hds[[1]])){
+    if(vbl_name %in% names(l.hds[[name]])){
       # In the aux_object we copy the old tibble to recodify all missing values as NA.
-      aux_object <- l.hds[[name]]
+      aux_object <- m.hds[[name]]
       # Labelling of variables
       label(l.hds[[name]][[vbl_name]]) <- label(aux_object[[vbl_name]]) <- ds_lab
       # Labelling of categories (for continues variables, only missing values)
       l.hds[[name]][[vbl_name]] <- labelled(l.hds[[name]][[vbl_name]], labels = cont_label)
       aux_object[[vbl_name]] <- car::recode(aux_object[[vbl_name]], "miss_values_vector=NA")
+      aux_object[[vbl_name]] <- remove_val_labels(aux_object[[vbl_name]])
       # Saving the recodified tibble in list m.hds
       m.hds[[name]] <- aux_object
       rm(aux_object)
@@ -558,6 +559,30 @@ summaries_c <- function(l.hds,m.hds,lnames,vbl_name){
   
 }
 
+
+
+# Creation of trajectories table for each population
+
+trajectories <- function(m.hds,vbl_name){
+  
+  # First wave data
+  dbb <- m.hds[[1]][,c("id",vbl_name)]
+  # Merge with next waves data
+  for(ind in 2:length(m.hds)){
+    dbb <- merge(dbb, m.hds[[ind]][,c("id",vbl_name)], by = "id", suffixes = c("", paste0(".",names(m.hds)[ind])), all = T)
+  }
+  names(dbb) <- c("id", names(m.hds))
+  
+  # Glue individual data through all waves into trajectories
+  v.dbb <- dbb[,2]
+  for(ind in 2:length(m.hds)){
+    v.dbb <- paste(v.dbb,dbb[,ind+1],sep="")
+  }
+  # Trajectories and frequencies
+  f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+  return(f.dbb)
+  
+}
 
 # Save data tables
 
@@ -649,6 +674,10 @@ if(length(l.hds)>0){
   
   # Printing table of categories
   print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb))
+
 }
 
 
