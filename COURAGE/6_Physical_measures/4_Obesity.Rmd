@@ -11,82 +11,58 @@ output:
       collapsed: yes
       smooth_scroll: yes
 ---
-  
-<!-- ########################################################## --> 
 
+<!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/Rmds/setup_albert.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-* Name: `obesity`
-* Label: `Precense of obesity based in Body Mass Index classification according to the WHO BMI classification (http://apps.who.int/bmi/index.jsp?introPage=intro_3.html): BMI value equal to or above 30Kg/m^2.`
-* Type of variable: `categorical`
-* Categories: 
-    + `0 = not obese`
-    + `1 = obese`
-* Missings: 
-    + `991 = CAPI/interviewer error`
-    + `992 = Impute`
-    + `993 = Disable to measure`
-    + `994 = Not attempt/not done`
-    + `995 = Does not answer`
-    + `996 = Not applicable`
-    + `997 = Refuse`
-    + `998 = Do not know`
-    + `999 = Missing`
-*Comments: `the BMI variable should be created by dividing weight and hiegh variables by means of the following equation= weight (kg)/height(m)^2. Then, the Obesity variable should be generated according to the WHO cutoff point for BMI classification.`
-
-
-```{r lab, echo=FALSE}
-ds_label <- "Precense of obesity based in Body Mass Index classification according to the WHO BMI classification (http://apps.who.int/bmi/index.jsp?introPage=intro_3.html): BMI value equal to or above 30Kg/m^2"
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/obesityDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/obesityDS.R')
 ```
 
-### Data process
 
-#### Finnish
+# Data process
 
-##### Wave 1
+## Finland
 
-###### Study-specific variable description
+### Wave 1
 
-The study-specific variables elected to be harmonised are:
+#### Study-specific variable description
 
-* Name: `bmi`
-* Label: `Body Mass Index calculated as weight (kg)/height(m)^2`
-* Type of variable: `countinous`
-* Missings: 
-    + `991 = CAPI/interviewer error`
-    + `992 = Impute`
-    + `993 = Disable to measure`
-    + `994 = Not attempt/not done`
-    + `995 = Does not answer`
-    + `996 = Not applicable`
-    + `997 = Refuse`
-    + `998 = Do not know`
-    + `999 = Missing`
+| **Name** |`bmi`|
+|-|-|
+| **Label** |`Body Mass Index calculated as weight (kg)/height(m)^2`|
+| **Table name** |`courage_fin_w1_hd`|
+| **Units** |`kg/m^2`|
+| **Missings** |`999 = Missing`|
+| **Description** |  |
+
     
 ```{r assign_fi1, include=FALSE}
-opal.assign.table.tibble(o, 'COURAGE_bmi','_Athlos_Harm_Dataset.COURAGE_ds_fin_w1',
-                         variables=list('bmi'), missings = TRUE)
-COURAGE_bmi <- opal.execute(o,'COURAGE_bmi')
+
+load(paste0(datafolder,"fin_w1/bmi",".RData"))
+COURAGE_bmi <- bmi
 COURAGE_bmi$bmi <- as.numeric(COURAGE_bmi$bmi)
+rm(bmi)
+
 ```
 
-```{r local_fi1}
-Continuous_summary(COURAGE_bmi[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(COURAGE_bmi, aes(x=COURAGE_bmi[[2]])) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("BMI") + ylab("Frequency")
+```{r local_fi1, echo=F}
+
+vbl <- COURAGE_bmi$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = "bmi")
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(COURAGE_bmi, aes(bmi)) + geom_histogram(stat="bin", binwidth = 0.4, fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency")
+
 ```
 
-###### Harmonisation algorithm
+#### Harmonisation algorithm
 To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
 
 * `BMI<30 into 0` 
@@ -95,23 +71,23 @@ To compute the harmonize variable from the study-specific variable it has to be 
 
 ```{r harmo_fi1}
 COURAGE_ds_fin_w1 <- tibble(id=COURAGE_bmi$id)
-COURAGE_ds_fin_w1$obesity <- car::recode(COURAGE_bmi[[2]], "lo:29.9999999=0; 30:900=1; NA=999")
-COURAGE_ds_fin_w1$obesity <- labelled(COURAGE_ds_fin_w1[[2]], labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+COURAGE_ds_fin_w1$obesity <- NA
+COURAGE_ds_fin_w1$obesity[which(COURAGE_bmi$bmi %in% miss_values_vector)] <- COURAGE_bmi$bmi[which(COURAGE_bmi$bmi %in% miss_values_vector)]
+COURAGE_ds_fin_w1$obesity[which(!COURAGE_bmi$bmi %in% miss_values_vector)] <- car::recode(COURAGE_bmi$bmi[which(!COURAGE_bmi$bmi %in% miss_values_vector)], "lo:29.9999999=0; 30:hi=1; NA=999")
 ```
 
-###### Statistical description of the new harmonised variable
-```{r descript_fi1}
-Categorical_summary(var = COURAGE_ds_fin_w1[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+#### Statistical description of the new harmonised variable
+```{r descript_fi1, echo=F}
+vari <- COURAGE_ds_fin_w1$obesity
+kable(Categorical_summary(var = vari, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(COURAGE_ds_fin_w1, aes(x=factor(obesity))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
 ```
 
-###### Validation
-```{r crosstab_fi1}
-BeforeH <- c(sum(na.omit(COURAGE_bmi[[2]])<30),sum(na.omit(COURAGE_bmi[[2]])>=30 & na.omit(COURAGE_bmi[[2]])<=900), sum(na.omit(COURAGE_bmi[[2]])==999))
-AfterH <- table(COURAGE_ds_fin_w1[[2]], useNA = "ifany")
-C <- rbind(BeforeH,AfterH)
-colnames(C) <- c("<30->0",">=30->1","999") 
-kable(C)
+#### Validation
+```{r crosstab_fi1, echo=F}
+
 ```
 
 
@@ -122,41 +98,40 @@ rm(COURAGE_bmi)
 ```
 
 
-#### Polish
+## Poland
 
-##### Wave 1
+### Wave 1
 
-###### Study-specific variable description
+#### Study-specific variable description
 
-The study-specific variables elected to be harmonised are:
+| **Name** |`bmi`|
+|-|-|
+| **Label** |`Body Mass Index calculated as weight (kg)/height(m)^2`|
+| **Table name** |`courage_pol_w1_hd`|
+| **Units** |`kg/m^2`|
+| **Missings** |`993 = Disable to measure`<br/>`997 = Refuse`<br/>`999 = Missing`|
+| **Description** |  |
 
-* Name: `bmi`
-* Label: `Body Mass Index calculated as weight (kg)/height(m)^2`
-* Type of variable: `countinous`
-* Missings: 
-    + `991 = CAPI/interviewer error`
-    + `992 = Impute`
-    + `993 = Disable to measure`
-    + `994 = Not attempt/not done`
-    + `995 = Does not answer`
-    + `996 = Not applicable`
-    + `997 = Refuse`
-    + `998 = Do not know`
-    + `999 = Missing`
     
 ```{r assign_pol1, include=FALSE}
-opal.assign.table.tibble(o, 'COURAGE_bmi','_Athlos_Harm_Dataset.COURAGE_ds_pol_w1',
-                         variables=list('bmi'), missings = TRUE)
-COURAGE_bmi <- opal.execute(o,'COURAGE_bmi')
+
+load(paste0(datafolder,"pol_w1/bmi",".RData"))
+COURAGE_bmi <- bmi
 COURAGE_bmi$bmi <- as.numeric(COURAGE_bmi$bmi)
+rm(bmi)
+
 ```
 
-```{r local_pol1}
-Continuous_summary(COURAGE_bmi[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(COURAGE_bmi, aes(COURAGE_bmi[[2]])) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("BMI") + ylab("Frequency")
+```{r local_pol1, echo=F}
+
+vbl <- COURAGE_bmi$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = "bmi")
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(COURAGE_bmi, aes(bmi)) + geom_histogram(stat="bin", binwidth = 0.4, fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency")
 ```
 
-###### Harmonisation algorithm
+#### Harmonisation algorithm
 To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
 
 * `BMI<30 into 0` 
@@ -165,23 +140,23 @@ To compute the harmonize variable from the study-specific variable it has to be 
 
 ```{r harmo_pol1}
 COURAGE_ds_pol_w1 <- tibble(id=COURAGE_bmi$id)
-COURAGE_ds_pol_w1$obesity <- car::recode(COURAGE_bmi[[2]], "lo:29.9999999=0; 30:900=1; NA=999; 1000:hi=999")
-COURAGE_ds_pol_w1$obesity <- labelled(COURAGE_ds_pol_w1[[2]], labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+COURAGE_ds_pol_w1$obesity <- NA
+COURAGE_ds_pol_w1$obesity[which(COURAGE_bmi$bmi %in% miss_values_vector)] <- COURAGE_bmi$bmi[which(COURAGE_bmi$bmi %in% miss_values_vector)]
+COURAGE_ds_pol_w1$obesity[which(!COURAGE_bmi$bmi %in% miss_values_vector)] <- car::recode(COURAGE_bmi$bmi[which(!COURAGE_bmi$bmi %in% miss_values_vector)], "lo:29.9999999=0; 30:hi=1; NA=999")
 ```
 
-###### Statistical description of the new harmonised variable
-```{r descript_pol1}
-Categorical_summary(var = COURAGE_ds_pol_w1[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+#### Statistical description of the new harmonised variable
+```{r descript_pol1, echo=F}
+vari <- COURAGE_ds_pol_w1$obesity
+kable(Categorical_summary(var = vari, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(COURAGE_ds_pol_w1, aes(x=factor(obesity))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
 ```
 
-###### Validation
-```{r crosstab_pol1}
-BeforeH <- c(sum(na.omit(COURAGE_bmi[[2]])<30),sum(na.omit(COURAGE_bmi[[2]])>=30 & na.omit(COURAGE_bmi[[2]])<=900),sum(na.omit(COURAGE_bmi[[2]])==993), sum(na.omit(COURAGE_bmi[[2]])==997), sum(c(sum(na.omit(COURAGE_bmi[[2]])==999), sum(is.na(COURAGE_bmi[[2]])), sum(na.omit(COURAGE_bmi[[2]])>=1000) ) ))
-AfterH <- table(COURAGE_ds_pol_w1[[2]], useNA = "ifany")
-C <- rbind(BeforeH,AfterH)
-colnames(C) <- c("<30->0",">=30->1","993", "997", "999") 
-kable(C)
+#### Validation
+```{r crosstab_pol1, echo=F}
+
 ```
 
 
@@ -193,39 +168,38 @@ rm(COURAGE_bmi)
 
 
 
-##### Wave 2
+### Wave 2
 
-###### Study-specific variable description
+#### Study-specific variable description
 
-The study-specific variables elected to be harmonised are:
+| **Name** |`bmi`|
+|-|-|
+| **Label** |`Body Mass Index calculated as weight (kg)/height(m)^2`|
+| **Table name** |`courage_pol_w2_hd`|
+| **Units** |`kg/m^2`|
+| **Missings** |`993 = Disable to measure`<br/>`997 = Refuse`<br/>`999 = Missing`|
+| **Description** |  |
 
-* Name: `bmi`
-* Label: `Body Mass Index calculated as weight (kg)/height(m)^2`
-* Type of variable: `countinous`
-* Missings: 
-    + `991 = CAPI/interviewer error`
-    + `992 = Impute`
-    + `993 = Disable to measure`
-    + `994 = Not attempt/not done`
-    + `995 = Does not answer`
-    + `996 = Not applicable`
-    + `997 = Refuse`
-    + `998 = Do not know`
-    + `999 = Missing`
     
 ```{r assign_pol2, include=FALSE}
-opal.assign.table.tibble(o, 'COURAGE_bmi','_Athlos_Harm_Dataset.COURAGE_ds_pol_w2',
-                         variables=list('bmi'), missings = TRUE)
-COURAGE_bmi <- opal.execute(o,'COURAGE_bmi')
+
+load(paste0(datafolder,"pol_w2/bmi",".RData"))
+COURAGE_bmi <- bmi
 COURAGE_bmi$bmi <- as.numeric(COURAGE_bmi$bmi)
+rm(bmi)
 ```
 
-```{r local_pol2}
-Continuous_summary(COURAGE_bmi[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(COURAGE_bmi, aes(COURAGE_bmi[[2]])) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("BMI") + ylab("Frequency")
+```{r local_pol2, echo=F}
+
+vbl <- COURAGE_bmi$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = "bmi")
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(COURAGE_bmi, aes(bmi)) + geom_histogram(stat="bin", binwidth = 0.4, fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency")
+
 ```
 
-###### Harmonisation algorithm
+#### Harmonisation algorithm
 To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
 
 * `BMI<30 into 0` 
@@ -234,23 +208,23 @@ To compute the harmonize variable from the study-specific variable it has to be 
 
 ```{r harmo_pol2}
 COURAGE_ds_pol_w2 <- tibble(id=COURAGE_bmi$id)
-COURAGE_ds_pol_w2$obesity <- car::recode(COURAGE_bmi[[2]], "lo:29.9999999=0; 30:900=1; NA=999; 1000:hi")
-COURAGE_ds_pol_w2$obesity <- labelled(COURAGE_ds_pol_w2[[2]], labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+COURAGE_ds_pol_w2$obesity <- NA
+COURAGE_ds_pol_w2$obesity[which(COURAGE_bmi$bmi %in% miss_values_vector)] <- COURAGE_bmi$bmi[which(COURAGE_bmi$bmi %in% miss_values_vector)]
+COURAGE_ds_pol_w2$obesity[which(!COURAGE_bmi$bmi %in% miss_values_vector)] <- car::recode(COURAGE_bmi$bmi[which(!COURAGE_bmi$bmi %in% miss_values_vector)], "lo:29.9999999=0; 30:hi=1; NA=999")
 ```
 
-###### Statistical description of the new harmonised variable
-```{r descript_pol2}
-Categorical_summary(var = COURAGE_ds_pol_w2[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+#### Statistical description of the new harmonised variable
+```{r descript_pol2, echo=F}
+vari <- COURAGE_ds_pol_w2$obesity
+kable(Categorical_summary(var = vari, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(COURAGE_ds_pol_w2, aes(x=factor(obesity))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
 ```
 
-###### Validation
-```{r crosstab_pol2}
-BeforeH <- c(sum(na.omit(COURAGE_bmi[[2]])<30),sum(na.omit(COURAGE_bmi[[2]])>=30 & na.omit(COURAGE_bmi[[2]])<=900), sum(na.omit(COURAGE_bmi[[2]])==993), sum(na.omit(COURAGE_bmi[[2]])==997), sum(c(sum(na.omit(COURAGE_bmi[[2]])==999), sum(is.na(COURAGE_bmi[[2]])) ) ))
-AfterH <- table(COURAGE_ds_pol_w2[[2]], useNA = "ifany")
-C <- rbind(BeforeH,AfterH)
-colnames(C) <- c("<30->0",">=30->1", "993", "997", "999") 
-kable(C)
+#### Validation
+```{r crosstab_pol2, echo=F}
+
 ```
 
 
@@ -262,41 +236,43 @@ rm(COURAGE_bmi)
 
 
 
-#### Spain 
+## Spain 
 
-##### Wave 1
+### Wave 1
 
-###### Study-specific variable description
+#### Study-specific variable description
 
-The study-specific variables elected to be harmonised are:
+| **Name** |`bmi`|
+|-|-|
+| **Label** |`Body Mass Index calculated as weight (kg)/height(m)^2`|
+| **Table name** |`courage_spain_w1_hd`|
+| **Units** |`kg/m^2`|
+| **Missings** |`993 = Disable to measure`<br/>`997 = Refuse`<br/>`999 = Missing`|
+| **Description** |  |
 
-* Name: `bmi`
-* Label: `Body Mass Index calculated as weight (kg)/height(m)^2`
-* Type of variable: `countinous`
-* Missings: 
-    + `991 = CAPI/interviewer error`
-    + `992 = Impute`
-    + `993 = Disable to measure`
-    + `994 = Not attempt/not done`
-    + `995 = Does not answer`
-    + `996 = Not applicable`
-    + `997 = Refuse`
-    + `998 = Do not know`
-    + `999 = Missing`
+
     
 ```{r assign_spain1, include=FALSE}
-opal.assign.table.tibble(o, 'COURAGE_bmi','_Athlos_Harm_Dataset.COURAGE_ds_spain_w1',
-                         variables=list('bmi'), missings = TRUE)
-COURAGE_bmi <- opal.execute(o,'COURAGE_bmi')
+
+load(paste0(datafolder,"spain_w1/bmi",".RData"))
+COURAGE_bmi <- bmi
 COURAGE_bmi$bmi <- as.numeric(COURAGE_bmi$bmi)
+rm(bmi)
+
+
 ```
 
-```{r local_spain1}
-Continuous_summary(COURAGE_bmi[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(COURAGE_bmi, aes(x=factor(COURAGE_bmi[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("BMI") + ylab("Frequency")
+```{r local_spain1, echo=F}
+
+vbl <- COURAGE_bmi$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = "bmi")
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(COURAGE_bmi, aes(bmi)) + geom_histogram(stat="bin", binwidth = 0.4, fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency")
+
 ```
 
-###### Harmonisation algorithm
+#### Harmonisation algorithm
 To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
 
 * `BMI<30 into 0` 
@@ -305,23 +281,23 @@ To compute the harmonize variable from the study-specific variable it has to be 
 
 ```{r harmo_spain1}
 COURAGE_ds_spain_w1 <- tibble(id=COURAGE_bmi$id)
-COURAGE_ds_spain_w1$obesity <- car::recode(COURAGE_bmi[[2]], "lo:29.9999999=0; 30:900=1; NA=999")
-COURAGE_ds_spain_w1$obesity <- labelled(COURAGE_ds_spain_w1[[2]], labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+COURAGE_ds_spain_w1$obesity <- NA
+COURAGE_ds_spain_w1$obesity[which(COURAGE_bmi$bmi %in% miss_values_vector)] <- COURAGE_bmi$bmi[which(COURAGE_bmi$bmi %in% miss_values_vector)]
+COURAGE_ds_spain_w1$obesity[which(!COURAGE_bmi$bmi %in% miss_values_vector)] <- car::recode(COURAGE_bmi$bmi[which(!COURAGE_bmi$bmi %in% miss_values_vector)], "lo:29.9999999=0; 30:hi=1; NA=999")
 ```
 
-###### Statistical description of the new harmonised variable
-```{r descript_spain1}
-Categorical_summary(var = COURAGE_ds_spain_w1[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+#### Statistical description of the new harmonised variable
+```{r descript_spain1, echo=F}
+vari <- COURAGE_ds_spain_w1$obesity
+kable(Categorical_summary(var = vari, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(COURAGE_ds_spain_w1, aes(x=factor(obesity))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
 ```
 
-###### Validation
-```{r crosstab_spain1}
-BeforeH <- c(sum(na.omit(COURAGE_bmi[[2]])<30),sum(na.omit(COURAGE_bmi[[2]])>=30 & na.omit(COURAGE_bmi[[2]])<=900), sum(na.omit(COURAGE_bmi[[2]])==993), sum(na.omit(COURAGE_bmi[[2]])==997), sum(c(sum(na.omit(COURAGE_bmi[[2]])==999), sum(is.na(COURAGE_bmi[[2]])) ) ))
-AfterH <- table(COURAGE_ds_spain_w1[[2]], useNA = "ifany")
-C <- rbind(BeforeH,AfterH)
-colnames(C) <- c("<30->0",">=30->1", "993", "997", "999") 
-kable(C)
+#### Validation
+```{r crosstab_spain1, echo=F}
+
 ```
 
 
@@ -332,36 +308,36 @@ rm(COURAGE_bmi)
 ```
 
 
-##### Wave 2
+### Wave 2
 
-###### Study-specific variable description
+#### Study-specific variable description
 
-The study-specific variables elected to be harmonised are:
+| **Name** |`bmi`|
+|-|-|
+| **Label** |`Body Mass Index calculated as weight (kg)/height(m)^2`|
+| **Table name** |`courage_spain_w2_hd`|
+| **Units** |`kg/m^2`|
+| **Missings** |`993 = Disable to measure`<br/>`997 = Refuse`<br/>`999 = Missing`|
+| **Description** |  |
 
-* Name: `bmi`
-* Label: `Body Mass Index calculated as weight (kg)/height(m)^2`
-* Type of variable: `countinous`
-* Missings: 
-    + `991 = CAPI/interviewer error`
-    + `992 = Impute`
-    + `993 = Disable to measure`
-    + `994 = Not attempt/not done`
-    + `995 = Does not answer`
-    + `996 = Not applicable`
-    + `997 = Refuse`
-    + `998 = Do not know`
-    + `999 = Missing`
-    
+
 ```{r assign_spain2, include=FALSE}
-opal.assign.table.tibble(o, 'COURAGE_bmi','_Athlos_Harm_Dataset.COURAGE_ds_spain_w2',
-                         variables=list('bmi'), missings = TRUE)
-COURAGE_bmi <- opal.execute(o,'COURAGE_bmi')
+
+load(paste0(datafolder,"spain_w2/bmi",".RData"))
+COURAGE_bmi <- bmi
 COURAGE_bmi$bmi <- as.numeric(COURAGE_bmi$bmi)
+rm(bmi)
+
 ```
 
-```{r local_spain2}
-Continuous_summary(COURAGE_bmi[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(COURAGE_bmi, aes(x=factor(COURAGE_bmi[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("BMI") + ylab("Frequency")
+```{r local_spain2, echo=F}
+
+vbl <- COURAGE_bmi$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = "bmi")
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(COURAGE_bmi, aes(bmi)) + geom_histogram(stat="bin", binwidth = 0.4, fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency")
+
 ```
 
 ###### Harmonisation algorithm
@@ -373,23 +349,23 @@ To compute the harmonize variable from the study-specific variable it has to be 
 
 ```{r harmo_spain2}
 COURAGE_ds_spain_w2 <- tibble(id=COURAGE_bmi$id)
-COURAGE_ds_spain_w2$obesity <- car::recode(COURAGE_bmi[[2]], "lo:29.9999999=0; 30:900=1; NA=999")
-COURAGE_ds_spain_w2$obesity <- labelled(COURAGE_ds_spain_w2[[2]], labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+COURAGE_ds_spain_w2$obesity <- NA
+COURAGE_ds_spain_w2$obesity[which(COURAGE_bmi$bmi %in% miss_values_vector)] <- COURAGE_bmi$bmi[which(COURAGE_bmi$bmi %in% miss_values_vector)]
+COURAGE_ds_spain_w2$obesity[which(!COURAGE_bmi$bmi %in% miss_values_vector)] <- car::recode(COURAGE_bmi$bmi[which(!COURAGE_bmi$bmi %in% miss_values_vector)], "lo:29.9999999=0; 30:hi=1; NA=999")
 ```
 
 ###### Statistical description of the new harmonised variable
-```{r descript_spain2}
-Categorical_summary(var = COURAGE_ds_spain_w2[[2]], missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(COURAGE_ds_spain_w2, aes(x=factor(obesity))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
+```{r descript_spain2, echo=F}
+vari <- COURAGE_ds_spain_w1$obesity
+kable(Categorical_summary(var = vari, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(COURAGE_ds_spain_w1, aes(x=factor(obesity))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
 ```
 
 ###### Validation
-```{r crosstab_spain2}
-BeforeH <- c(sum(na.omit(COURAGE_bmi[[2]])<30),sum(na.omit(COURAGE_bmi[[2]])>=30 & na.omit(COURAGE_bmi[[2]])<=900), sum(na.omit(COURAGE_bmi[[2]])==993), sum(na.omit(COURAGE_bmi[[2]])==997), sum(c(sum(na.omit(COURAGE_bmi[[2]])==999), sum(is.na(COURAGE_bmi[[2]])) ) ))
-AfterH <- table(COURAGE_ds_spain_w2[[2]], useNA = "ifany")
-C <- rbind(BeforeH,AfterH)
-colnames(C) <- c("<30->0",">=30->1", "993", "997", "999") 
-kable(C)
+```{r crosstab_spain2, echo=F}
+
 ```
 
 
@@ -400,6 +376,140 @@ rm(COURAGE_bmi)
 ```
 
 
+
+
+
+
+## Descriptive statistics of the harmonised variable accross populations and waves
+
+Percentages of categories in each harmonised variable by cohort:
+
+
+
+
+
+
+
+```{r helpfunctions, echo=F}
+
+
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles with categorical data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Labelling of categories (for categorical variables, only non-missing values)
+    aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+# Creation of summary tables for categorical data
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of columns with categories and labels
+  t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+  }
+  # Add sample size for each wave/population
+  t.hds[13,] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+  )
+  # Add wave/population names
+  names(t.hds)<-c("val", "label",lnames)
+  return(t.hds)
+  
+}
+
+# Creation of trajectories table for each population
+
+trajectories <- function(m.hds,vbl_name){
+  
+  # First wave data
+  dbb <- m.hds[[1]][,c("id",vbl_name)]
+  # Merge with next waves data
+  for(ind in 2:length(m.hds)){
+    dbb <- merge(dbb, m.hds[[ind]][,c("id",vbl_name)], by = "id", suffixes = c("", paste0(".",names(m.hds)[ind])), all = T)
+  }
+  names(dbb) <- c("id", names(m.hds))
+  
+  # Glue individual data through all waves into trajectories
+  v.dbb <- dbb[,2]
+  for(ind in 2:length(m.hds)){
+    v.dbb <- paste(v.dbb,dbb[,ind+1],sep="")
+  }
+  # Trajectories and frequencies
+  f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+  return(f.dbb)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
+}
+
+```
+
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+courage.cw <- list(fin_w1 = c("fin_w1","Finland w1"), pol_w1 = c("pol_w1","Poland w1"), pol_w2 = c("pol_w2","Poland w2"), spain_w1 = c("spain_w1","Spain w1"), spain_w2 = c("spain_w2","Spain w2"))
+
+# Consider only harmonised waves
+l.hds <- lapply(courage.cw, function(wname) if(exists(paste0("COURAGE_ds_",wname[1]))){wname = list(get(paste0("COURAGE_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+```
+
+
+
+
+
+
 # Quality estimation
 Once BMI has been calculated using weight (Kg) and Height (m^2),
 Obesity was calculated by using the BMI cutoff>=30kg/m2 following the WHO 
@@ -407,27 +517,6 @@ classification. Finally, the resulting BMI variable was coded as follows:
 BMI>30kg/m2 =1 (obese); BMI<30kg/m2 =0 (not obese) to generate two categories.
 
 
-```{r save, echo=FALSE}
-obesity <- COURAGE_ds_spain_w1
-save(obesity, file = "../RData/spain_w1/obesity.RData")
-rm(obesity)
-
-obesity <- COURAGE_ds_spain_w2
-save(obesity, file = "../RData/spain_w2/obesity.RData")
-rm(obesity)
-
-obesity <- COURAGE_ds_pol_w1
-save(obesity, file = "../RData/pol_w1/obesity.RData")
-rm(obesity)
-
-obesity <- COURAGE_ds_pol_w2
-save(obesity, file = "../RData/pol_w2/obesity.RData")
-rm(obesity)
-
-obesity <- COURAGE_ds_fin_w1
-save(obesity, file = "../RData/fin_w1/obesity.RData")
-rm(obesity)
-```
 
 
 ```{r closeRsession, echo=FALSE} 

@@ -11,61 +11,49 @@ output:
       collapsed: yes
       smooth_scroll: yes
 ---
-  
-<!-- ########################################################## --> 
 
+<!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/Rmds/setup_albert.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
-
-
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-  
-* Name: `weight`
-* Label: `weight of the participant in kg`
-* Type of variable: `countinous`
-* Missings: 
-    + `991 = CAPI/interviewer error`
-    + `992 = Impute`
-    + `993 = Disable to measure`
-    + `994 = Not attempt/not done`
-    + `995 = Does not answer`
-    + `996 = Not applicable`
-    + `997 = Refuse`
-    + `998 = Do not know`
-    + `999 = Missing`
-* Comments: `Weight should be collected in kilograms. It should be determined wheather the  variable was collected through a self reported measure or an athropometric test.`
-
-### COURAGE - Finnish - Wave 1 
-
-#### Study-specific variables
-
-The study-specific variable elected to be harmonised is:
-
-* Name: `q2507_weight`
-* Label: `weight`
-* Type of variable: `countinous`
-* Missings
-    + `997 = Disable to measure`
-    + `998 = Refusal`
-
-```{r assign_fin}
-opal.assign.table.tibble(o, 'COURAGE_fin_w1_weig','Courage.Courage_Finland_w1',
-                         variables=list('q2507_weight'), missings = TRUE)
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/weightDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/weightDS.R')
 ```
 
-```{r local_fin}
-COURAGE_fin_w1_weig <- opal.execute(o,'COURAGE_fin_w1_weig')
-Continuous_summary(var = COURAGE_fin_w1_weig$q2507_weight, missing_values = c(997,998))
-ggplot(COURAGE_fin_w1_weig, aes(q2507_weight)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency")
+# Data process
+
+## Finland
+
+### Wave 1 
+
+#### Study-specific variable description
+
+
+
+| **Name** |`q2507_weight`|
+|-|-|
+| **Label** |`weight`|
+| **Table name** |`Courage_Finland_w1`|
+| **Units** |`kg`|
+| **Missings** |`997 = Disable to measure`<br/>`998 = Refusal`|
+| **Description** |  |
+
+```{r assign_fin, echo=F}
+opal.assign.table.tibble(o, 'COURAGE_fin_w1','Courage.Courage_Finland_w1',variables=list('q2507_weight'), missings = TRUE)
+COURAGE_fin_w1 <- opal.execute(o,'COURAGE_fin_w1')
+```
+
+```{r local_fin, echo=F}
+vbl <- COURAGE_fin_w1$q2507_weight
+vbl_miss <- c(997,998)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "q2507_weight")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(COURAGE_fin_w1, aes(q2507_weight)) + geom_histogram(stat="count", fill="steelblue",data = .%>% filter(!vbl %in% vbl_miss)) + xlab("Weight") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -74,25 +62,31 @@ The harmonized variable is the same than the study-specific variable, but the mi
 * `NA into 999`
 * `997 into 993`
 * `998 into 997`
+* `q2507_weight<30 into 999`
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo_fin}
-COURAGE_ds_fin_w1 <- tibble(id=COURAGE_fin_w1_weig$id)
-COURAGE_ds_fin_w1$weight <- car::recode(COURAGE_fin_w1_weig$q2507_weight, "NA=999; 997=993; 998=997")
+COURAGE_ds_fin_w1 <- tibble(id=COURAGE_fin_w1$id)
+COURAGE_ds_fin_w1$weight <- car::recode(COURAGE_fin_w1$q2507_weight, "NA=999; 997=993; 998=997; 0:30=999")
 COURAGE_ds_fin_w1$weight <- labelled(COURAGE_ds_fin_w1$weight, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript_fin}
-Continuous_summary(var = COURAGE_ds_fin_w1$weight, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(COURAGE_ds_fin_w1, aes(weight)) + geom_histogram(stat="count", fill="steelblue") + xlab("weight") + ylab("Frequency") 
+```{r descript_fin, echo=F}
+vbl <- COURAGE_ds_fin_w1$weight
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(COURAGE_ds_fin_w1, aes(weight)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("weight") + ylab("Frequency") 
 ```
 
 #### Validation
-There are unusual values lowers than 30
-```{r crosstabulation_fin}
-COURAGE_ds_fin_w1[which(COURAGE_ds_fin_w1$weight<30),]
+
+There are unusual values lower than 30
+```{r crosstabulation_fin, echo=F}
+
+kable(COURAGE_fin_w1[which(COURAGE_fin_w1$q2507_weight<30),])
 ```
 
 
@@ -100,32 +94,38 @@ COURAGE_ds_fin_w1[which(COURAGE_ds_fin_w1$weight<30),]
 
 
 
-### COURAGE - Polish - Wave 1 
+## Poland
 
-#### Study-specific variables
+### Wave 1 
 
-The study-specific variable elected to be harmonised is:
+#### Study-specific variable description
 
-* Name: `q2507_weight`
-* Label: `weight`
-* Type of variable: `countinous`
-* Missings
-    + `997 = Disable to measure`
-    + `998 = Refusal`
 
-```{r assign_pol1}
-opal.assign.table.tibble(o, 'COURAGE_pol_w1_weig','Courage.Courage_Poland_w1',
-                         variables=list('q2507_weight'), missings = TRUE)
+
+| **Name** |`q2507_weight`|
+|-|-|
+| **Label** |`weight`|
+| **Table name** |`Courage_Poland_w1`|
+| **Units** |`kg`|
+| **Missings** |`997 = Disable to measure`<br/>`998 = Refusal`|
+| **Description** |  |
+
+
+
+```{r assign_pol1, echo=F}
+opal.assign.table.tibble(o, 'COURAGE_pol_w1','Courage.Courage_Poland_w1', variables=list('q2507_weight'), missings = TRUE)
+COURAGE_pol_w1 <- opal.execute(o,'COURAGE_pol_w1')
 ```
 
-```{r local_pol1}
-COURAGE_pol_w1_weig <- opal.execute(o,'COURAGE_pol_w1_weig')
-Continuous_summary(var = COURAGE_pol_w1_weig$q2507_weight, missing_values = c(997,998))
-ggplot(COURAGE_pol_w1_weig, aes(q2507_weight)) + geom_histogram(stat="count", fill="steelblue") + xlab("weight") + ylab("Frequency") + xlim(10,160)
-ggplot(COURAGE_pol_w1_weig, aes(q2507_weight)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency") + xlim(460,1198) + ylim(0,6)
+```{r local_pol1, echo=F}
+vbl <- COURAGE_pol_w1$q2507_weight
+vbl_miss <- c(997,998)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "q2507_weight")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(COURAGE_pol_w1, aes(q2507_weight)) + geom_histogram(stat="count", fill="steelblue",data = .%>% filter(!vbl %in% vbl_miss)) + xlab("weight") + ylab("Frequency")+xlim(29,200)
+
 ```
 
-This variables have values from 10 untill 8740. I consider 35 as a minimum weigth and 160 as a maximum weigth that a person can have. 
 
 #### Harmonisation algorithm
 The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
@@ -133,54 +133,71 @@ The harmonized variable is the same than the study-specific variable, but the mi
 * `NA into 999`
 * `997 into 993`
 * `998 into 997`
+* `q2507_weight<30 into 999`
+* `q2507_weight` between 400 and 1200 is considered to be measured in [hectograms](https://www.bipm.org/en/measurement-units/) instead of kilograms
+* `q2507_weight == 8740` is considered to be measured in [decagrams](https://www.bipm.org/en/measurement-units/) instead of kilograms
 
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo_pol1}
-COURAGE_ds_pol_w1 <- tibble(id=COURAGE_pol_w1_weig$id)
-COURAGE_ds_pol_w1$weight <- car::recode(COURAGE_pol_w1_weig$q2507_weight, "161:hi=999; lo:34=999; NA=999; 997=993; 998=997")
-COURAGE_ds_pol_w1$weight <- labelled(COURAGE_ds_pol_w1$weight, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+COURAGE_ds_pol_w1 <- tibble(id=COURAGE_pol_w1$id)
+
+COURAGE_pol_w1$q2507_weight[which(COURAGE_pol_w1$q2507_weight>400 & !COURAGE_pol_w1$q2507_weight %in% c(997,998))] <- COURAGE_pol_w1$q2507_weight[which(COURAGE_pol_w1$q2507_weight>400 & !COURAGE_pol_w1$q2507_weight %in% c(997,998))]*0.1
+
+COURAGE_pol_w1$q2507_weight[which(COURAGE_pol_w1$q2507_weight==874)] <- COURAGE_pol_w1$q2507_weight[which(COURAGE_pol_w1$q2507_weight==874)]*0.1
+
+COURAGE_ds_pol_w1$weight <- car::recode(as.numeric(COURAGE_pol_w1$q2507_weight), " lo:30=999; NA=999; 997=993; 998=997")
+
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript_pol1}
-Continuous_summary(var = COURAGE_ds_pol_w1$weight, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(COURAGE_ds_pol_w1, aes(weight)) + geom_histogram(stat="count", fill="steelblue") + xlab("weight") + ylab("Frequency") + xlim(35,160)
+```{r descript_pol1, echo=F}
+
+vbl <- COURAGE_ds_pol_w1$weight
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(COURAGE_ds_pol_w1, aes(weight)) + geom_histogram(stat="bin", fill="steelblue", binwidth=0.4, data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("weight") + ylab("Frequency") 
+
 ```
 
 #### Validation
-There are some unusual values that are lower than 30 and upper than 250 kg
-```{r crosstabulation_pol1}
-COURAGE_pol_w1_weig[which(COURAGE_pol_w1_weig$q2507_weight<30 | (COURAGE_pol_w1_weig$q2507_weight>250 & COURAGE_pol_w1_weig$q2507_weight<900)),]
+There are some unusual values that are lower than 30 and higher than 250 kg
+```{r crosstabulation_pol1, echo=F}
+kable(COURAGE_pol_w1[which(COURAGE_pol_w1$q2507_weight<30 | (COURAGE_pol_w1$q2507_weight>250 & !COURAGE_pol_w1$q2507_weight %in% c(997,998))),])
 ```
 
 
 
+### Wave 2 
+
+#### Study-specific variable description
 
 
-### COURAGE - Polish - Wave 2 
 
-#### Study-specific variables
+| **Name** |`q2507_weight_s1`|
+|-|-|
+| **Label** |`weight`|
+| **Table name** |`Courage_Poland_w2`|
+| **Units** |`kg`|
+| **Missings** |`997 = Disable to measure`<br/>`998 = Refusal`|
+| **Description** |  |
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `q2507_weight_s1`
-* Label: `weight`
-* Type of variable: `countinous`
-* Missings
-    + `997 = Disable to measure`
-    + `998 = Refusal`
 
-```{r assign_pol2}
-opal.assign.table.tibble(o, 'COURAGE_pol_w2_weig','Courage.Courage_Poland_w2',
-                         variables=list('q2507_weight_s1'), missings = TRUE)
+
+```{r assign_pol2, echo=F}
+opal.assign.table.tibble(o, 'COURAGE_pol_w2','Courage.Courage_Poland_w2', variables=list('q2507_weight_s1'), missings = TRUE)
+COURAGE_pol_w2 <- opal.execute(o,'COURAGE_pol_w2')
 ```
 
-```{r local_pol2}
-COURAGE_pol_w2_weig <- opal.execute(o,'COURAGE_pol_w2_weig')
-Continuous_summary(var = COURAGE_pol_w2_weig$q2507_weight_s1, missing_values = c(997,998))
-ggplot(COURAGE_pol_w2_weig, aes(q2507_weight_s1)) + geom_histogram(stat="count", fill="steelblue") + xlab("weight") + ylab("Frequency")
+```{r local_pol2, echo=F}
+vbl <- COURAGE_pol_w2$q2507_weight_s1
+vbl_miss <- c(997,998)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "q2507_weight_s1")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(COURAGE_pol_w2, aes(q2507_weight_s1)) + geom_histogram(stat="count", fill="steelblue",data = .%>% filter(!vbl %in% vbl_miss)) + xlab("weight") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -190,22 +207,26 @@ The harmonized variable is the same than the study-specific variable, but the mi
 * `997 into 993`
 * `998 into 997`
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo_pol2}
-COURAGE_ds_pol_w2 <- tibble(id=COURAGE_pol_w2_weig$id)
-COURAGE_ds_pol_w2$weight <- car::recode(COURAGE_pol_w2_weig$q2507_weight_s1, "NA=999; 997=993; 998=997")
+COURAGE_ds_pol_w2 <- tibble(id=COURAGE_pol_w2$id)
+COURAGE_ds_pol_w2$weight <- car::recode(COURAGE_pol_w2$q2507_weight_s1, "NA=999; 997=993; 998=997")
 COURAGE_ds_pol_w2$weight <- labelled(COURAGE_ds_pol_w2$weight, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript_pol2}
-Continuous_summary(var = COURAGE_ds_pol_w2$weight, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(COURAGE_ds_pol_w2, aes(weight)) + geom_histogram(stat="count", fill="steelblue") + xlab("weight") + ylab("Frequency") +xlim(39,176)
+```{r descript_pol2, echo=F}
+vbl <- COURAGE_ds_pol_w2$weight
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(COURAGE_ds_pol_w2, aes(weight)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("weight") + ylab("Frequency")
+
 ```
 
 #### Validation
-```{r crosstabulation_pol2}
+```{r crosstabulation_pol2, echo=F}
 
 ```
 
@@ -213,31 +234,36 @@ ggplot(COURAGE_ds_pol_w2, aes(weight)) + geom_histogram(stat="count", fill="stee
 
 
 
-### COURAGE - Spain - Wave 1 
+## Spain
 
-#### Study-specific variables
+### Wave 1 
 
-The study-specific variable elected to be harmonised is:
+#### Study-specific variable description
 
-* Name: `q2507_weight`
-* Label: `weight`
-* Type of variable: `countinous`
-* Missings
-    + `997 = Disable to measure`
-    + `998 = Refusal`
 
-```{r assign_spain1}
-opal.assign.table.tibble(o, 'COURAGE_spain_w1_weig','Courage.Courage_Spain_w1',
-                         variables=list('q2507_weight'), missings = TRUE)
+
+| **Name** |`q2507_weight`|
+|-|-|
+| **Label** |`weight`|
+| **Table name** |`Courage_Spain_w1`|
+| **Units** |`kg`|
+| **Missings** |`997 = Disable to measure`<br/>`998 = Refusal`|
+| **Description** |  |
+
+
+```{r assign_spain1, echo=F}
+opal.assign.table.tibble(o, 'COURAGE_spain_w1','Courage.Courage_Spain_w1', variables=list('q2507_weight'), missings = TRUE)
+COURAGE_spain_w1 <- opal.execute(o,'COURAGE_spain_w1')
 ```
 
-```{r local_spain1}
-COURAGE_spain_w1_weig <- opal.execute(o,'COURAGE_spain_w1_weig')
-Continuous_summary(var = COURAGE_spain_w1_weig$q2507_weight, missing_values = c(997,998, 889))
-ggplot(COURAGE_spain_w1_weig, aes(q2507_weight)) + geom_histogram(stat="count", fill="steelblue") + xlab("weight") + ylab("Frequency")
+```{r local_spain1, echo=F}
+vbl <- COURAGE_spain_w1$q2507_weight
+vbl_miss <- c(997,998)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "q2507_weight")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(COURAGE_spain_w1, aes(q2507_weight)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% c(889,vbl_miss))) + xlab("weight") + ylab("Frequency")
 ```
 
-There are values 889 that are going to be considered as a missing and They are going to be recoded as 999.
 
 #### Harmonisation algorithm
 The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
@@ -245,24 +271,29 @@ The harmonized variable is the same than the study-specific variable, but the mi
 * `NA into 999`
 * `997 into 993`
 * `998 into 997`
+There are values 889 that are going to be considered as mistake instead of 998, therefore they will be recoded as 997.
 
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo_spain1}
-COURAGE_ds_spain_w1 <- tibble(id=COURAGE_spain_w1_weig$id)
-COURAGE_ds_spain_w1$weight <- car::recode(COURAGE_spain_w1_weig$q2507_weight, "c(NA, 889)=999; 997=993; 998=997")
+COURAGE_ds_spain_w1 <- tibble(id=COURAGE_spain_w1$id)
+COURAGE_ds_spain_w1$weight <- car::recode(COURAGE_spain_w1$q2507_weight, "889=997; NA=999; 997=993; 998=997")
 COURAGE_ds_spain_w1$weight <- labelled(COURAGE_ds_spain_w1$weight, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript_spain1}
-Continuous_summary(var = COURAGE_ds_spain_w1$weight, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(COURAGE_ds_spain_w1, aes(weight)) + geom_histogram(stat="count", fill="steelblue") + xlab("weight") + ylab("Frequency") + xlim(36,153)
+```{r descript_spain1, echo=F}
+vbl <- COURAGE_ds_spain_w1$weight
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(COURAGE_ds_spain_w1, aes(weight)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("weight") + ylab("Frequency")
+
 ```
 
 #### Validation
-```{r crosstabulation_spain1}
+```{r crosstabulation_spain1, echo=F}
 ```
 
 
@@ -270,28 +301,31 @@ ggplot(COURAGE_ds_spain_w1, aes(weight)) + geom_histogram(stat="count", fill="st
 
 
 
-### COURAGE - Spain - Wave 2 
+### Wave 2 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `q2507_weight_s1`
-* Label: `weight`
-* Type of variable: `countinous`
-* Missings
-    + `997 = Disable to measure`
-    + `998 = Refusal`
 
-```{r assign_spain2}
-opal.assign.table.tibble(o, 'COURAGE_spain_w2_weig','Courage.Courage_Spain_w2_1',
-                         variables=list('q2507_weight_s1'), missings = TRUE)
+| **Name** |`q2507_weight_s1`|
+|-|-|
+| **Label** |`weight`|
+| **Table name** |`Courage_Spain_w2_1`|
+| **Units** |`kg`|
+| **Missings** |`997 = Disable to measure`<br/>`998 = Refusal`|
+| **Description** |  |
+
+```{r assign_spain2, echo=F}
+opal.assign.table.tibble(o, 'COURAGE_spain_w2','Courage.Courage_Spain_w2_1',variables=list('q2507_weight_s1'), missings = TRUE)
+COURAGE_spain_w2 <- opal.execute(o,'COURAGE_spain_w2')
 ```
 
-```{r local_spain2}
-COURAGE_spain_w2_weig <- opal.execute(o,'COURAGE_spain_w2_weig')
-Continuous_summary(var = COURAGE_spain_w2_weig$q2507_weight_s1, missing_values = c(997,998))
-ggplot(COURAGE_spain_w2_weig, aes(q2507_weight_s1)) + geom_histogram(stat="count", fill="steelblue") + xlab("weight") + ylab("Frequency")
+```{r local_spain2, echo=F}
+vbl <- COURAGE_spain_w2$q2507_weight_s1
+vbl_miss <- c(997,998)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "q2507_weight_s1")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(COURAGE_spain_w2, aes(q2507_weight_s1)) + geom_histogram(stat="count", fill="steelblue",data = .%>% filter(!vbl %in% vbl_miss)) + xlab("weight") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -302,51 +336,136 @@ The harmonized variable is the same than the study-specific variable, but the mi
 * `998 into 997`
 
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo_spain2}
-COURAGE_ds_spain_w2 <- tibble(id=COURAGE_spain_w2_weig$id)
-COURAGE_ds_spain_w2$weight <- car::recode(COURAGE_spain_w2_weig$q2507_weight_s1, "NA=999; 997=993; 998=997")
+COURAGE_ds_spain_w2 <- tibble(id=COURAGE_spain_w2$id)
+COURAGE_ds_spain_w2$weight <- car::recode(COURAGE_spain_w2$q2507_weight_s1, "NA=999; 997=993; 998=997")
 COURAGE_ds_spain_w2$weight <- labelled(COURAGE_ds_spain_w2$weight, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript_spain2}
-Continuous_summary(var = COURAGE_ds_spain_w2$weight, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(COURAGE_ds_spain_w2, aes(weight)) + geom_histogram(stat="count", fill="steelblue") + xlab("weight") + ylab("Frequency") 
+```{r descript_spain2, echo=F}
+vbl <- COURAGE_ds_spain_w2$weight
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(COURAGE_ds_spain_w2, aes(weight)) + geom_histogram(stat="bin", fill="steelblue",binwidth = 0.4,data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("weight") + ylab("Frequency") 
 ```
 
 #### Validation
-```{r crosstabulation_spain2}
+```{r crosstabulation_spain2, echo=F}
 ```
+
+
+
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+```{r helpfunctions, echo=F}
+
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+# Creation of summary tables for continuous data
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][2])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[2]],missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][2])[1:6]
+    # Next, missing/no-missing values
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[2]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][2]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
+}
+
+```
+
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+courage.cw <- list(fin_w1 = c("fin_w1","Finland w1"), pol_w1 = c("pol_w1","Poland w1"), pol_w2 = c("pol_w2","Poland w2"), spain_w1 = c("spain_w1","Spain w1"), spain_w2 = c("spain_w2","Spain w2"))
+
+# Consider only harmonised waves
+l.hds <- lapply(courage.cw, function(wname) if(exists(paste0("COURAGE_ds_",wname[1]))){wname = list(get(paste0("COURAGE_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing summaries
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+```
+
+
+
 
 # Quality estimation
 Anthropometric measure.
 
 
-
-
-```{r save, echo=FALSE}
-weight <- COURAGE_ds_spain_w1
-save(weight, file = "../RData/spain_w1/weight.RData")
-rm(weight)
-
-weight <- COURAGE_ds_spain_w2
-save(weight, file = "../RData/spain_w2/weight.RData")
-rm(weight)
-
-weight <- COURAGE_ds_pol_w1
-save(weight, file = "../RData/pol_w1/weight.RData")
-rm(weight)
-
-weight <- COURAGE_ds_pol_w2
-save(weight, file = "../RData/pol_w2/weight.RData")
-rm(weight)
-
-weight <- COURAGE_ds_fin_w1
-save(weight, file = "../RData/fin_w1/weight.RData")
-rm(weight)
-```
 
 
 ```{r closeRsession, echo=FALSE} 

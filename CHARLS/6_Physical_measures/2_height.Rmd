@@ -1,68 +1,49 @@
 ---
 title: "Height"
-output: 
+output:
   html_document:
-    theme: united
     highlight: tango
-    toc: true
+    number_sections: yes
+    theme: united
+    toc: yes
     toc_depth: 6
     toc_float:
-      collapsed: true
-      smooth_scroll: true
-    number_sections: true
+      collapsed: yes
+      smooth_scroll: yes
 ---
 
 <!-- ########################################################## --> 
-
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
-
-
-```{r setup, include=FALSE, echo=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_albert.r")
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/CHARLS/CHARLS_ids.r")
+```{r setup, include=FALSE}
+source("../../setup.r")
+source("../CHARLS_ids.R")
 ```
-
 <!-- ########################################################## --> 
-
-# Description of DataSchema variable 
-
-The description of harmonised variable is the following:
-  
-* Name: `height`
-* Label: `height of the participant`
-* Type of variable: `countinous`
-* Missings: 
-    + `991 = CAPI/interviewer error`
-    + `992 = Impute`
-    + `993 = Disable to measure`
-    + `994 = Not attempt/not done`
-    + `995 = Does not answer`
-    + `996 = Not applicable`
-    + `997 = Refuse`
-    + `998 = Do not know`
-    + `999 = Missing`
-* Comments: `Antropomeric measure for height should be measured in centimeters.`
-
-
-```{r lab, echo=FALSE}
-ds_label <- "height"
-ds_label_all <- "height of the participant in centimeters"
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/heightDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/heightDS.R')
 ```
 
 # Data process
 
-## CHARLS
+## China
 
 ### Wave 1 
 
 #### Study-specific variable description
 
 
-* Name: `qi002`
-* Label: `Height`
-* Type of variable: `countinous`
+| **Name** |`qi002`|
+|-|-|
+| **Label** |`Height`|
+| **Table name** |`biomarkers_wave1`|
+| **Units** |`cm`|
+| **Missings** |`993 = R tried but was unable`|
+| **Description** |  |
+
+
 
 ```{r assign1, echo=FALSE}
 opal.assign.table.tibble(o, 'CHARLS_w1_heig2','CHARLS.biomarkers_wave1',
@@ -96,11 +77,14 @@ CHARLS_w1_heig <- Add_indiv(old = CHARLS_w1_heig2, new = CHARLS_w1_id)
 ```
 
 ```{r local1, echo=FALSE}
+
 vari <- CHARLS_w1_heig$qi002
+vbl_miss <- c(993)
 kable(Continuous_summary(var = vari, missing_values = c(993))[3], caption = ds_label)
 kable(Continuous_summary(vari, missing_values = c(993))[2], caption = "Values")
 pander(Continuous_summary(vari, missing_values = c(993))$summary, caption = "Summary")
-ggplot(CHARLS_w1_heig, aes(qi002)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+ggplot(CHARLS_w1_heig, aes(qi002)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vari %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
+
 ```
 
 #### Harmonisation algorithm
@@ -108,23 +92,29 @@ The harmonized variable is the same than the study-specific variable, but the mi
 
 * `keep 993 into 993`
 * `NA into 999`
-
+* `qi002 < 2 assumed to be measured in metres into qi002*100`
+* `10<qi002 < 20 assumed to be measured in decimetres into qi002*10`
+* `else, qi002<60 into 999`
 
 **R script:**
 
 ```{r harmo1}
 CHARLS_ds_w1 <- tibble(id=CHARLS_w1_heig$id)
-CHARLS_ds_w1$height <- car::recode(CHARLS_w1_heig$qi002, "NA=999")
+CHARLS_w1_heig$qi002[which(CHARLS_w1_heig$qi002<2)] <- CHARLS_w1_heig$qi002[which(CHARLS_w1_heig$qi002<2)]*100
+CHARLS_w1_heig$qi002[which(CHARLS_w1_heig$qi002<20)] <- CHARLS_w1_heig$qi002[which(CHARLS_w1_heig$qi002<20)]*10
+
+CHARLS_ds_w1$height <- car::recode(CHARLS_w1_heig$qi002, "0:59=999; NA=999")
 CHARLS_ds_w1$height <- labelled(CHARLS_ds_w1$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
 ```{r descript1, echo=FALSE}
 vari <- CHARLS_ds_w1$height
-kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
-kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
-pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(CHARLS_ds_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue") + xlab("height") + ylab("Frequency") + xlim(90,200) 
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(CHARLS_ds_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vari %in% miss_values_vector)) + xlab("height") + ylab("Frequency")
+
 ```
 
 #### Validation
@@ -141,11 +131,15 @@ kable(CHARLS_ds_w1[which(CHARLS_ds_w1$height<100),])
 
 #### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `qi002`
-* Label: `Height`
-* Type of variable: `countinous`
+| **Name** |`qi002`|
+|-|-|
+| **Label** |`Height`|
+| **Table name** |`Biomarker_wave2`|
+| **Units** |`cm`|
+| **Missings** |`993 = R tried but was unable`|
+| **Description** |  |
+
 
 ```{r assign2, echo=FALSE}
 opal.assign.table.tibble(o, 'CHARLS_w2_heig2','CHARLS.Biomarker_wave2',
@@ -177,10 +171,11 @@ CHARLS_w2_heig <- Add_indiv(old = CHARLS_w2_heig2, new = CHARLS_w2_id)
 
 ```{r local2, echo=FALSE}
 vari <- CHARLS_w2_heig$qi002
+vbl_miss <- c(993)
 kable(Continuous_summary(var = vari, missing_values = c(993))[3], caption = ds_label)
 kable(Continuous_summary(vari, missing_values = c(993))[2], caption = "Values")
 pander(Continuous_summary(vari, missing_values = c(993))$summary, caption = "Summary")
-ggplot(CHARLS_w2_heig, aes(qi002)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+ggplot(CHARLS_w2_heig, aes(qi002)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vari %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
 ```
 
 
@@ -188,23 +183,28 @@ ggplot(CHARLS_w2_heig, aes(qi002)) + geom_histogram(stat="count", fill="steelblu
 The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
 
 * `NA into 999`
+* `qi002 < 2 assumed to be measured in metres into qi002*100`
+* `else, qi002<60 into 999`
 
 
 **R script:**
 
 ```{r harmo2}
 CHARLS_ds_w2 <- tibble(id=CHARLS_w2_heig$id)
-CHARLS_ds_w2$height <- car::recode(CHARLS_w2_heig$qi002, "NA=999")
+CHARLS_w2_heig$qi002[which(CHARLS_w2_heig$qi002<2)] <- CHARLS_w2_heig$qi002[which(CHARLS_w2_heig$qi002<2)]*100
+
+CHARLS_ds_w2$height <- car::recode(CHARLS_w2_heig$qi002, "0:59=999;NA=999")
 CHARLS_ds_w2$height <- labelled(CHARLS_ds_w2$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
 ```{r descript2, echo=FALSE}
 vari <- CHARLS_ds_w2$height
-kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
-kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
-pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(CHARLS_ds_w2, aes(height)) + geom_histogram(stat="count", fill="steelblue") + xlab("height") + ylab("Frequency") + xlim(100,200) 
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(CHARLS_ds_w2, aes(height)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vari %in% miss_values_vector)) + xlab("height") + ylab("Frequency")
+
 ```
 
 #### Validation
@@ -215,19 +215,114 @@ kable(CHARLS_ds_w2[which(CHARLS_ds_w2$height<100),])
 
 
 
-# Quality control
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+```{r helpfunctions, echo=F}
+
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+# Creation of summary tables for continuous data
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][2])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[2]],missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][2])[1:6]
+    # Next, missing/no-missing values
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[2]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][2]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
+}
+
+```
+
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+charls.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"))
+
+# Consider only harmonised waves
+l.hds <- lapply(charls.cw, function(wname) if(exists(paste0("CHARLS_ds_",wname[1]))){wname = list(get(paste0("CHARLS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing summaries
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+```
+
+
+
+
+
+
+
+
+
+# Quality estimation
 No comments.
 
-
-```{r save, echo=FALSE}
-height <- CHARLS_ds_w1
-save(height, file = "../RData/w1/height.RData")
-rm(height)
-
-height <- CHARLS_ds_w2
-save(height, file = "../RData/w2/height.RData")
-rm(height)
-```
 
 ```{r closeRsession, echo=FALSE} 
 opal.logout(o)

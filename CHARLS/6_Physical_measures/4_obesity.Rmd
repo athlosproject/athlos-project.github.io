@@ -1,90 +1,68 @@
 ---
 title: "Obesity"
-output: 
+output:
   html_document:
-    theme: united
     highlight: tango
-    toc: true
+    number_sections: yes
+    theme: united
+    toc: yes
     toc_depth: 6
     toc_float:
-      collapsed: true
-      smooth_scroll: true
-    number_sections: true
+      collapsed: yes
+      smooth_scroll: yes
 ---
 
 <!-- ########################################################## --> 
-
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
-
-
-```{r setup, include=FALSE, echo=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_albert.r")
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/CHARLS/CHARLS_ids.r")
+```{r setup, include=FALSE}
+source("../../setup.r")
+source("../CHARLS_ids.R")
 ```
-
 <!-- ########################################################## --> 
-
-# Description of DataSchema variable 
-
-The description of harmonised variable is the following:
-
-* Name: `obesity`
-* Label: `Precense of obesity based in Body Mass Index classification according to the WHO BMI classification (http://apps.who.int/bmi/index.jsp?introPage=intro_3.html): BMI value equal to or above 30Kg/m^2.`
-* Type of variable: `categorical`
-* Categories: 
-    + `0 = not obese`
-    + `1 = obese`
-* Missings: 
-    + `991 = CAPI/interviewer error`
-    + `992 = Impute`
-    + `993 = Disable to measure`
-    + `994 = Not attempt/not done`
-    + `995 = Does not answer`
-    + `996 = Not applicable`
-    + `997 = Refuse`
-    + `998 = Do not know`
-    + `999 = Missing`
-* Comments: `the BMI variable should be created by dividing weight and hiegh variables by means of the following equation= weight (kg)/height(m)^2. Then, the Obesity variable should be generated according to the WHO cutoff point for BMI classification.`
-
-
-
-```{r lab, echo=FALSE}
-ds_label <- "obesity"
-ds_label_all <- "Precense of obesity based in Body Mass Index classification according to the WHO BMI classification (http://apps.who.int/bmi/index.jsp?introPage=intro_3.html): BMI value equal to or above 30Kg/m^2"
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/obesityDS.Rmd'}
 ```
+```{r global, echo=F}
+source('../../_DS_Rmd/obesityDS.R')
+```
+
 
 # Data process
 
-## CHARLS
+## China
 
 ### Wave 1 
 
 #### Study-specific variable description
 
-The study-specific variables elected to be harmonised are:
 
-* Name: `bmi`
-* Label: `Body Mass Index calculated as weight (kg)/height(m)^2`
-* Type of variable: `countinous`
-* Missings
-   + `NA` 
+| **Name** |`bmi`|
+|-|-|
+| **Label** |`Body Mass Index calculated as weight (kg)/height(m)^2`|
+| **Table name** |`charls_w1_hd`|
+| **Type of variable** |`continuous`|
+| **Missings** |`993 = Disable to measure`<br/>`999 = Missing`|
+| **Description** |  |
 
 ```{r read1, echo=FALSE}
+
 load("../RData/w1/bmi.RData")
 CHARLS_obe <- bmi
 #opal.assign.table.tibble(o, 'CHARLS_obe','_Athlos_Harm_Dataset.CHARLS_m_ds_w1', variables=list('bmi'), missings = TRUE)
 #CHARLS_obe <- opal.execute(o,'CHARLS_obe')
 CHARLS_obe[[2]] <- as.numeric(CHARLS_obe[[2]])
+rm(bmi)
+
 ```
 
 ```{r local11, echo=FALSE}
+
 vari <- CHARLS_obe[[2]]
-kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
-kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
-pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(CHARLS_obe, aes(x=factor(CHARLS_obe[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("BMI") + ylab("Frequency")
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = "bmi")
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(CHARLS_obe, aes(bmi)) + geom_histogram(stat="bin", binwidth = 0.4, fill="steelblue", data = .%>% filter(!vari %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency")
+
 ```
 
 #### Harmonisation algorithm
@@ -98,27 +76,26 @@ To compute the harmonize variable from the study-specific variable it has to be 
 **R script:**
 
 ```{r harmo11}
+
 CHARLS_ds_w1 <- tibble(id=CHARLS_obe$id)
-CHARLS_ds_w1$obesity <- car::recode(CHARLS_obe[[2]], "lo:29.9999999=0; 30:hi=1; NA=999")
-CHARLS_ds_w1$obesity <- labelled(CHARLS_ds_w1[[2]], labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+CHARLS_ds_w1$obesity <- NA
+CHARLS_ds_w1$obesity[which(CHARLS_obe$bmi %in% miss_values_vector)] <- CHARLS_obe$bmi[which(CHARLS_obe$bmi %in% miss_values_vector)]
+CHARLS_ds_w1$obesity[which(!CHARLS_obe$bmi %in% miss_values_vector)] <- car::recode(CHARLS_obe$bmi[which(!CHARLS_obe$bmi %in% miss_values_vector)], "lo:29.9999999=0; 30:hi=1; NA=999")
+
 ```
 
 #### Statistical description of the new harmonised variable
 ```{r descript11, echo=FALSE}
 vari <- CHARLS_ds_w1$obesity
-kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
-kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
-pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(CHARLS_ds_w1, aes(x=factor(CHARLS_ds_w1[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
+kable(Categorical_summary(var = vari, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(CHARLS_ds_w1, aes(x=factor(obesity))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
 ```
 
 #### Validation
 ```{r crosstab11, echo=FALSE}
-BeforeH <- c(sum(na.omit(CHARLS_obe[[2]])<30),sum(na.omit(CHARLS_obe[[2]])>=30), sum(is.na(CHARLS_obe[[2]])))
-AfterH <- table(CHARLS_ds_w1[[2]], useNA = "ifany")
-C <- rbind(BeforeH,AfterH)
-colnames(C) <- c("<30->0",">=30->1","NA->999") 
-kable(C)
+
 ```
 
 
@@ -132,28 +109,31 @@ rm(CHARLS_obe)
 
 #### Study-specific variable description
 
-The study-specific variables elected to be harmonised are:
-
-* Name: `bmi`
-* Label: `Body Mass Index calculated as weight (kg)/height(m)^2`
-* Type of variable: `countinous`
-* Missings
-   + `NA` 
+| **Name** |`bmi`|
+|-|-|
+| **Label** |`Body Mass Index calculated as weight (kg)/height(m)^2`|
+| **Table name** |`charls_w2_hd`|
+| **Type of variable** |`continuous`|
+| **Missings** |`993 = Disable to measure`<br/>`999 = Missing`|
+| **Description** |  |
 
 ```{r read2, echo=FALSE}
+
 load("../RData/w2/bmi.RData")
 CHARLS_obe <- bmi
 #opal.assign.table.tibble(o, 'CHARLS_obe','_Athlos_Harm_Dataset.CHARLS_m_ds_w2', variables=list('bmi'), missings = TRUE)
 #CHARLS_obe <- opal.execute(o,'CHARLS_obe')
 CHARLS_obe[[2]] <- as.numeric(CHARLS_obe[[2]])
+rm(bmi)
+
 ```
 
 ```{r local2, echo=FALSE}
 vari <- CHARLS_obe[[2]]
-kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
-kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
-pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(CHARLS_obe, aes(x=factor(CHARLS_obe[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("BMI") + ylab("Frequency")
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = "bmi")
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(CHARLS_obe, aes(bmi)) + geom_histogram(stat="bin", binwidth = 0.4, fill="steelblue", data = .%>% filter(!vari %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -167,87 +147,188 @@ To compute the harmonize variable from the study-specific variable it has to be 
 **R script:**
 
 ```{r harmo2}
+
 CHARLS_ds_w2 <- tibble(id=CHARLS_obe$id)
-CHARLS_ds_w2$obesity <- car::recode(CHARLS_obe[[2]], "lo:29.9999999=0; 30:hi=1; NA=999")
-CHARLS_ds_w2$obesity <- labelled(CHARLS_ds_w2[[2]], labels = c("not obese"=0, "obese"=1,  "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+CHARLS_ds_w2$obesity <- NA
+CHARLS_ds_w2$obesity[which(CHARLS_obe$bmi %in% miss_values_vector)] <- CHARLS_obe$bmi[which(CHARLS_obe$bmi %in% miss_values_vector)]
+CHARLS_ds_w2$obesity[which(!CHARLS_obe$bmi %in% miss_values_vector)] <- car::recode(CHARLS_obe$bmi[which(!CHARLS_obe$bmi %in% miss_values_vector)], "lo:29.9999999=0; 30:hi=1; NA=999")
+
 ```
 
 #### Statistical description of the new harmonised variable
 ```{r descript2, echo=FALSE}
 vari <- CHARLS_ds_w2$obesity
-kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
-kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
-pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(CHARLS_ds_w2, aes(x=factor(CHARLS_ds_w2[[2]]))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
+kable(Categorical_summary(var = vari, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(CHARLS_ds_w2, aes(x=factor(obesity))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Obesity") + ylab("Frequency")
 ```
 
 #### Validation
 ```{r crosstab2, echo=FALSE}
-BeforeH <- c(sum(na.omit(CHARLS_obe[[2]])<30),sum(na.omit(CHARLS_obe[[2]])>=30), sum(is.na(CHARLS_obe[[2]])))
-AfterH <- table(CHARLS_ds_w2[[2]], useNA = "ifany")
-C <- rbind(BeforeH,AfterH)
-colnames(C) <- c("<30->0",">=30->1","NA->999") 
-kable(C)
+
 ```
 
 
 
 
-<!--- ############################################### Import to OPAL ###########################################-->
-```{r importOPAL, echo=FALSE}
-CHARLS_m_ds_w1   <- CHARLS_ds_w1
-CHARLS_m_ds_w2   <- CHARLS_ds_w2
-
-l.hds <- list(CHARLS_ds_w1 = CHARLS_ds_w1 , CHARLS_ds_w2 = CHARLS_ds_w2)
-
-m.hds <- list(CHARLS_m_ds_w1 = CHARLS_m_ds_w1 , CHARLS_m_ds_w2 = CHARLS_m_ds_w2)
 
 
-for(i in 1:length(l.hds)) {
-  label(l.hds[[i]][[2]]) <- label(m.hds[[i]][[2]]) <- ds_label_all # Text value assigned at the DS description, at the top.
-    
-  m.hds[[i]][[2]] <- car::recode(m.hds[[i]][[2]], "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-  m.hds[[i]][[2]] <- labelled(m.hds[[i]][[2]], labels = c("not obese"=0, "obese"=1))
 
- 
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories.
+
+
+
+
+```{r helpfunctions, echo=F}
+
+
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles with categorical data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Labelling of categories (for categorical variables, only non-missing values)
+    aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+# Creation of summary tables for categorical data
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of columns with categories and labels
+  t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+  }
+  # Add sample size for each wave/population
+  t.hds[13,] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+  )
+  # Add wave/population names
+  names(t.hds)<-c("val", "label",lnames)
+  return(t.hds)
+  
+}
+
+# Creation of trajectories table for each population
+
+trajectories <- function(m.hds,vbl_name){
+  
+  # First wave data
+  dbb <- m.hds[[1]][,c("id",vbl_name)]
+  # Merge with next waves data
+  for(ind in 2:length(m.hds)){
+    dbb <- merge(dbb, m.hds[[ind]][,c("id",vbl_name)], by = "id", suffixes = c("", paste0(".",names(m.hds)[ind])), all = T)
+  }
+  names(dbb) <- c("id", names(m.hds))
+  
+  # Glue individual data through all waves into trajectories
+  v.dbb <- dbb[,2]
+  for(ind in 2:length(m.hds)){
+    v.dbb <- paste(v.dbb,dbb[,ind+1],sep="")
+  }
+  # Trajectories and frequencies
+  f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+  return(f.dbb)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
 
 }
 
 ```
 
 
-### Descriptive statistics of the harmonised variable accross populations and waves
 
-Percentages of categories in each harmonised variable by cohort and wave:
 
-```{r summ, echo=FALSE}
 
-# Table HRS
-t.hds <- frq(l.hds[[2]][2])[[1]][,c(1,2)] 
-for (i in 1:length(l.hds)){
-  t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+charls.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"))
+
+# Consider only harmonised waves
+l.hds <- lapply(charls.cw, function(wname) if(exists(paste0("CHARLS_ds_",wname[1]))){wname = list(get(paste0("CHARLS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
 }
-t.hds[13,] <- c("n", "sample size", 
-             length(l.hds[[1]][[2]]), length(l.hds[[2]][[2]]))
-names(t.hds)<-c("val", "label", "Wave1", "Wave2")
-kable(t.hds)
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
 ```
 
-# Quality control
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Quality estimation
+
+
 Once BMI has been calculated using weight (Kg) and Height (m^2),
 Obesity was calculated by using the BMI cutoff>=30kg/m2 following the WHO 
 classification. Finally, the resulting BMI variable was coded as follows: 
 BMI>30kg/m2 =1 (obese); BMI<30kg/m2 =0 (not obese) to generate two categories.
-
-```{r save, echo=FALSE}
-obesity <- CHARLS_ds_w1
-save(obesity, file = "../RData/w1/obesity.RData")
-rm(obesity)
-
-obesity <- CHARLS_ds_w2
-save(obesity, file = "../RData/w2/obesity.RData")
-rm(obesity)
-```
 
 ```{r closeRsession, echo=FALSE} 
 opal.logout(o)
