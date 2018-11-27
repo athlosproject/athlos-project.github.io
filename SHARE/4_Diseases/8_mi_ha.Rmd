@@ -379,7 +379,7 @@ kable(Categorical_summary(vbl, missing_values = c(-1,-2))[1], caption = "Categor
 ggplot(SHARE_w5, aes(x=factor(ph006d1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- SHARE_w5$ph009_1
-kable(Continuous_summary(var = vbl, missing_values = c(-1,-2))[3], caption = names(SHARE_w5)[4])
+kable(Continuous_summary(var = vbl, missing_values = c(-1,-2))[3], caption = names(SHARE_w5)[3])
 pander(Continuous_summary(vbl, missing_values = c(-1,-2))$summary, caption = "Summary")
 ggplot(SHARE_w5, aes(ph009_1)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(0,95)
 
@@ -420,7 +420,7 @@ SHARE_ds_w5$mi_ha <- car::recode(SHARE_w5$ph006d1, "-2=997;-1=998;NA = 999")
 # Continuous variable harmonization
 SHARE_ds_w5$mi_ha_age <- rep(999,length(SHARE_ds_w5$id))
 SHARE_ds_w5$mi_ha_age[which(SHARE_ds_w5$mi_ha==0)] <- 996
-SHARE_ds_w5$mi_ha_age[which(SHARE_ds_w5$mi_ha==1 & (SHARE_w5$ph006d1_w1==0 | is.na(SHARE_w5$ph006d1_w1)) & (SHARE_w5$ph006d1_w2==0 | is.na(SHARE_w5$ph006d1_w2)) & (SHARE_w5$ph006d1_w4==0 | is.na(SHARE_w5$ph006d1_w4)))] <- car::recode(SHARE_w4$ph009_1[which(SHARE_ds_w5$mi_ha==1 & (SHARE_w5$ph006d1_w1==0 | is.na(SHARE_w5$ph006d1_w1)) & (SHARE_w5$ph006d1_w2==0 | is.na(SHARE_w5$ph006d1_w2)) & (SHARE_w5$ph006d1_w4==0 | is.na(SHARE_w5$ph006d1_w4)))],"-1=998; -2=997; NA=999")
+SHARE_ds_w5$mi_ha_age[which(SHARE_ds_w5$mi_ha==1 & (SHARE_w5$ph006d1_w1==0 | is.na(SHARE_w5$ph006d1_w1)) & (SHARE_w5$ph006d1_w2==0 | is.na(SHARE_w5$ph006d1_w2)) & (SHARE_w5$ph006d1_w4==0 | is.na(SHARE_w5$ph006d1_w4)))] <- car::recode(SHARE_w5$ph009_1[which(SHARE_ds_w5$mi_ha==1 & (SHARE_w5$ph006d1_w1==0 | is.na(SHARE_w5$ph006d1_w1)) & (SHARE_w5$ph006d1_w2==0 | is.na(SHARE_w5$ph006d1_w2)) & (SHARE_w5$ph006d1_w4==0 | is.na(SHARE_w5$ph006d1_w4)))],"-1=998; -2=997; NA=999")
 
 ```
 
@@ -731,7 +731,41 @@ if(length(l.hds)>0){
 
 # Quality estimation
 
-No comments
+
+There are individuals whose diagnostic age appear to be zero. Since we have no more information about that, we keep their data.
+
+```{r echo=F}
+
+
+
+l.hds <- list(w1 = SHARE_w1, w2 = SHARE_w2, w4 = SHARE_w4, w5 = SHARE_w5)
+
+pdbb <- merge(SHARE_w1[,c("id","ph009_1")], SHARE_w2[,c("id","ph009_1")], by="id", suffixes = c(".w1",".w2"), all=T)
+pdbb <- merge(pdbb,SHARE_w4[,c("id","ph009_1")], by="id", all=T)
+pdbb <- merge(pdbb, SHARE_w5[,c("id","ph009_1")], by="id", suffixes = c(".w4",".w5"), all=T)
+names(pdbb) <- c("id", "w1", "w2","w4","w5")
+
+pdbb$val0 <- sapply(pdbb$id,function(ind) TRUE %in% (pdbb[pdbb$id==ind,2:5]==0))
+
+
+qdbb <- pdbb[pdbb$val0==TRUE,]
+
+kable(qdbb, align = 'c', caption = 'Individuals whose diagnostic age is 0 in some wave')
+
+
+dbb <- merge(SHARE_ds_w1[,c("id","mi_ha")], SHARE_ds_w2[,c("id","mi_ha")], by="id", suffixes = c(".w1",".w2"), all=T)
+dbb <- merge(dbb,SHARE_ds_w4[,c("id","mi_ha")], by="id", all=T)
+dbb <- merge(dbb, SHARE_ds_w5[,c("id","mi_ha")], by="id", suffixes = c(".w4",".w5"), all=T)
+dbb <- merge(dbb,SHARE_ds_w1[,c("id","mi_ha_age")], by="id", all=T)
+dbb <- merge(dbb,SHARE_ds_w2[,c("id","mi_ha_age")], by="id", suffixes = c(".w1",".w2"), all=T)
+dbb <- merge(dbb,SHARE_ds_w4[,c("id","mi_ha_age")], by="id", all=T)
+dbb <- merge(dbb,SHARE_ds_w5[,c("id","mi_ha_age")], by="id", suffixes = c(".w4",".w5"), all=T)
+names(dbb) <- c("id", "w1", "w2","w4","w5", "w1 age", "w2 age","w4 age","w5 age")
+
+
+kable(dbb[dbb$id %in% qdbb$id,], align='c', caption = 'Final harmonisation data of those individuals')
+
+```
 
 
 
