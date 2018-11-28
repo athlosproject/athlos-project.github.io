@@ -15,76 +15,15 @@ output:
 <!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
-
-
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-* Short name: `h_cpd`
-* Variable label: `History of chronic pulmonary disorders`
-* Variable description: `history of chronic pulmonary disease`
-* Domain: `Diseases`
-* Value type: `categorical`
-* Category coding:
-
-**Code** | **Category Label**
--------- | ------------------
-0        | NO chronic pulmonary disease
-1        | chronic pulmonary disease
-
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-* Short name: `h_cpd_age`
-* Variable label: `Age first diagnosed chronic pulmonary disease`
-* Variable description: `The age first told had chronic lung disease diagnosis`
-* Domain: `Diseases`
-* Value type: `Continuous`
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-
-<!-- ########################################################## --> 
-<!-- # Global variables -->
-```{r global, include=FALSE, echo=F}
-miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
-ds_label <- "History of chronic pulmonary disorders"
-ds_label_age <- "Age first diagnosed chronic pulmonary disease"
-cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
-cont_label <- cat_label[3:11]
-datafolder <- "../RData/"
-#sing_idlist <- c()
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/cpdDS.Rmd'}
 ```
-<!-- ########################################################## --> 
-
+```{r global, echo=F}
+source('../../_DS_Rmd/cpdDS.R')
+```
 
 
 # Data process
@@ -6144,7 +6083,13 @@ rm(HRS_mbb_w11)
 
 
 
-## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable `h_cpd` accross populations and waves
 
 Two tables are generated: 
 
@@ -6152,181 +6097,643 @@ Two tables are generated:
 
 2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
 
-**R script:**
+<!--AUXILIAR FUNCTIONS-->
 
-```{r summ}
+```{r helpfunctions, echo=FALSE}
 
-lb.hrs <- list(hrs_w1 = HRS_ds_hrs_w1, ahead_w2 = HRS_ds_ahead_w2, coda_w4 = HRS_ds_coda_w4, wb_w4 = HRS_ds_wb_w4, ebb_w7 = HRS_ds_ebb_w7, mbb_w10 = HRS_ds_mbb_w10)
 
-lf.hrs <- list(hrs_w2 = HRS_ds_hrs_w2, hrs_w3 = HRS_ds_hrs_w3, hrs_w4 = HRS_ds_hrs_w4, hrs_w5 = HRS_ds_hrs_w5, hrs_w6 = HRS_ds_hrs_w6, hrs_w7 = HRS_ds_hrs_w7, hrs_w8 = HRS_ds_hrs_w8, hrs_w9 = HRS_ds_hrs_w9, hrs_w10 = HRS_ds_hrs_w10, hrs_w11 = HRS_ds_hrs_w11, ahead_w3 = HRS_ds_ahead_w3, ahead_w4 = HRS_ds_ahead_w4, ahead_w5 = HRS_ds_ahead_w5, ahead_w6 = HRS_ds_ahead_w6, ahead_w7 = HRS_ds_ahead_w7, ahead_w8 = HRS_ds_ahead_w8, ahead_w9 = HRS_ds_ahead_w9, ahead_w10 = HRS_ds_ahead_w10, ahead_w11 = HRS_ds_ahead_w11, coda_w5 = HRS_ds_coda_w5, coda_w6 = HRS_ds_coda_w6, coda_w7 = HRS_ds_coda_w7, coda_w8 = HRS_ds_coda_w8, coda_w9 = HRS_ds_coda_w9, coda_w10 = HRS_ds_coda_w10, coda_w11 = HRS_ds_coda_w11, wb_w5 = HRS_ds_wb_w5, wb_w6 = HRS_ds_wb_w6, wb_w7 = HRS_ds_wb_w7, wb_w8 = HRS_ds_wb_w8, wb_w9 = HRS_ds_wb_w9, wb_w10 = HRS_ds_wb_w10, wb_w11 = HRS_ds_wb_w11, ebb_w8 = HRS_ds_ebb_w8, ebb_w9 = HRS_ds_ebb_w9, ebb_w10 = HRS_ds_ebb_w10, ebb_w11 = HRS_ds_ebb_w11, mbb_w11 = HRS_ds_mbb_w11)
+labelling <- function(l.hds,m.hds,vbl_name,ds_lab = ds_label){
+  
+  # Labelling of the tibbles with categorical data and creating new tibbles with all missings recodified as NA
 
-###################
+  for(name in names(l.hds)) {
+    if(vbl_name %in% names(l.hds[[name]])){
+      # In the aux_object we copy the old tibble to recodify all missing values as NA.
+      aux_object <- l.hds[[name]]
+      # Labelling of variables
+      label(l.hds[[name]][[vbl_name]]) <- label(aux_object[[vbl_name]]) <- ds_lab
+      # Labelling of categories (for continues variables, only missing values)
+      l.hds[[name]][[vbl_name]] <- labelled(l.hds[[name]][[vbl_name]], labels = cat_label)
+      aux_object[[vbl_name]] <- car::recode(aux_object[[vbl_name]], "miss_values_vector=NA")
+      # Labelling of categories (for categorical variables, only non-missing values)
+      aux_object[[vbl_name]] <- labelled(aux_object[[vbl_name]], labels = cat_label[1:(length(cat_label)-9)])
+      # Saving the recodified tibble in list m.hds
+      m.hds[[name]] <- aux_object
+      rm(aux_object)
+    }
+  }
+  return(list(l.hds,m.hds))
 
-for(name in names(lb.hrs)) {
-  m_name <- paste0("HRS_m_ds_",name)
-  aux_object <- lb.hrs[[name]]
-  label(lb.hrs[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
-  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
-  lb.hrs[[name]][[2]] <- labelled(lb.hrs[[name]][[2]], labels = cat_label)
-  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
-  assign(m_name, aux_object)
-  rm(aux_object)
 }
 
-for(name in names(lf.hrs)) {
-  m_name <- paste0("HRS_m_ds_",name)
-  aux_object <- lf.hrs[[name]]
-  label(lf.hrs[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
-  label(lf.hrs[[name]][[3]]) <- label(aux_object[[3]]) <- ds_label_age # Text value assigned at the DS description, at the top
-  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
-  lf.hrs[[name]][[2]] <- labelled(lf.hrs[[name]][[2]], labels = cat_label)
-  lf.hrs[[name]][[3]] <- labelled(lf.hrs[[name]][[3]], labels = cont_label)
-  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
-  assign(m_name, aux_object)
-  rm(aux_object)
+
+labelling_c <- function(l.hds,m.hds,vbl_name,ds_lab=ds_label){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    
+    if(vbl_name %in% names(l.hds[[name]])){
+      # In the aux_object we copy the old tibble to recodify all missing values as NA.
+      aux_object <- m.hds[[name]]
+      # Labelling of variables
+      label(l.hds[[name]][[vbl_name]]) <- label(aux_object[[vbl_name]]) <- ds_lab
+      # Labelling of categories (for continues variables, only missing values)
+      l.hds[[name]][[vbl_name]] <- labelled(l.hds[[name]][[vbl_name]], labels = cont_label)
+      aux_object[[vbl_name]] <- car::recode(aux_object[[vbl_name]], "miss_values_vector=NA")
+      aux_object[[vbl_name]] <- remove_val_labels(aux_object[[vbl_name]])
+      # Saving the recodified tibble in list m.hds
+      m.hds[[name]] <- aux_object
+      rm(aux_object)
+    }
+  }
+  return(list(l.hds,m.hds))
+
 }
 
-##################################
 
-mb.hrs <- list(hrs_w1 = HRS_m_ds_hrs_w1, ahead_w2 = HRS_m_ds_ahead_w2, coda_w4 = HRS_m_ds_coda_w4, wb_w4 = HRS_m_ds_wb_w4, ebb_w7 = HRS_m_ds_ebb_w7, mbb_w10 = HRS_m_ds_mbb_w10)
 
-mf.hrs <- list(hrs_w2 = HRS_m_ds_hrs_w2, hrs_w3 = HRS_m_ds_hrs_w3, hrs_w4 = HRS_m_ds_hrs_w4, hrs_w5 = HRS_m_ds_hrs_w5, hrs_w6 = HRS_m_ds_hrs_w6, hrs_w7 = HRS_m_ds_hrs_w7, hrs_w8 = HRS_m_ds_hrs_w8, hrs_w9 = HRS_m_ds_hrs_w9, hrs_w10 = HRS_m_ds_hrs_w10, hrs_w11 = HRS_m_ds_hrs_w11, ahead_w3 = HRS_m_ds_ahead_w3, ahead_w4 = HRS_m_ds_ahead_w4, ahead_w5 = HRS_m_ds_ahead_w5, ahead_w6 = HRS_m_ds_ahead_w6, ahead_w7 = HRS_m_ds_ahead_w7, ahead_w8 = HRS_m_ds_ahead_w8, ahead_w9 = HRS_m_ds_ahead_w9, ahead_w10 = HRS_m_ds_ahead_w10, ahead_w11 = HRS_m_ds_ahead_w11, coda_w5 = HRS_m_ds_coda_w5, coda_w6 = HRS_m_ds_coda_w6, coda_w7 = HRS_m_ds_coda_w7, coda_w8 = HRS_m_ds_coda_w8, coda_w9 = HRS_m_ds_coda_w9, coda_w10 = HRS_m_ds_coda_w10, coda_w11 = HRS_m_ds_coda_w11, wb_w5 = HRS_m_ds_wb_w5, wb_w6 = HRS_m_ds_wb_w6, wb_w7 = HRS_m_ds_wb_w7, wb_w8 = HRS_m_ds_wb_w8, wb_w9 = HRS_m_ds_wb_w9, wb_w10 = HRS_m_ds_wb_w10, wb_w11 = HRS_m_ds_wb_w11, ebb_w8 = HRS_m_ds_ebb_w8, ebb_w9 = HRS_m_ds_ebb_w9, ebb_w10 = HRS_m_ds_ebb_w10, ebb_w11 = HRS_m_ds_ebb_w11, mbb_w11 = HRS_m_ds_mbb_w11)
+# Creation of summary tables for categorical data
 
-#################################
+summaries <- function(l.hds,m.hds,lnames,vbl_name){
 
-# Table HRS
-t.hrs <- frq(lb.hrs[[1]][2])[[1]][,c(1,2,4)] 
-for (i in 1:10){
-  t.hrs[3+i] <- frq(lf.hrs[[i]][2])[[1]][,4] 
+  # Creation of columns with categories and labels
+  t.hds <- frq(l.hds[[1]][vbl_name])[[1]][,c(1,2)] 
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    t.hds[2+i] <- frq(l.hds[[i]][vbl_name])[[1]][,4] 
+  }
+  # Add sample size for each wave/population
+  t.hds[2+length(cat_label),] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+  )
+  # Add wave/population names
+  names(t.hds)<-c("val", "label",lnames)
+  return(t.hds)
+  
 }
-t.hrs[13,] <- c("n", "sample size", length(lb.hrs[[1]][[2]]),
-             length(lf.hrs[[1]][[2]]), length(lf.hrs[[2]][[2]]), length(lf.hrs[[3]][[2]]), length(lf.hrs[[4]][[2]]), length(lf.hrs[[5]][[2]]), length(lf.hrs[[6]][[2]]), length(lf.hrs[[7]][[2]]), length(lf.hrs[[8]][[2]]), length(lf.hrs[[9]][[2]]), length(lf.hrs[[10]][[2]])
-             )
-names(t.hrs)<-c("val", "label", "w1", "w2", "w3", "w4", "w5", "w6", "w7", "w8", "w9", "w10", "w11")
-kable(t.hrs)
 
-dbb <- merge(HRS_m_ds_hrs_w1[,c("id","h_cpd")], HRS_m_ds_hrs_w2[,c("id","h_cpd")], by="id", suffixes = c(".w1",".w2"), all=T)
-dbb <- merge(dbb, HRS_m_ds_hrs_w3[,c("id","h_cpd")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_hrs_w4[,c("id","h_cpd")], by="id", suffixes = c(".w3",".w4"), all=T)
-dbb <- merge(dbb, HRS_m_ds_hrs_w5[,c("id","h_cpd")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_hrs_w6[,c("id","h_cpd")], by="id", suffixes = c(".w5",".w6"), all=T)
-dbb <- merge(dbb, HRS_m_ds_hrs_w7[,c("id","h_cpd")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_hrs_w8[,c("id","h_cpd")], by="id", suffixes = c(".w7",".w8"), all=T)
-dbb <- merge(dbb, HRS_m_ds_hrs_w9[,c("id","h_cpd")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_hrs_w10[,c("id","h_cpd")], by="id", suffixes = c(".w9",".w10"), all=T)
-dbb <- merge(dbb, HRS_m_ds_hrs_w11[,c("id","h_cpd")], by="id", all=T)
-names(dbb) <- c("id", "w1", "w2", "w3", "w4", "w5", "w6", "w7", "w8", "w9", "w10", "w11")
-v.dbb <- paste(dbb[,2],dbb[,3],dbb[,4],dbb[,5],dbb[,6],dbb[,7],dbb[,8],dbb[,9],dbb[,10],dbb[,11],sep="")
-f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
-kable(f.dbb[f.dbb[,3]>=0.3,])
 
-# Table AHEAD
-t.ahead <- frq(lb.hrs[[2]][2])[[1]][,c(1,2,4)] 
-for (i in 1:9){
-  t.ahead[3+i] <- frq(lf.hrs[[i+10]][2])[[1]][,4] 
+# Creation of summary tables for continuous data
+
+summaries_c <- function(l.hds,m.hds,lnames,vbl_name){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][vbl_name])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[vbl_name]], missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][vbl_name])[1:6]
+    # Next, missing/no-missing values (the 1 in $values_table[1,] stands for absolute values, while a 2 would stand for percentages)
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[vbl_name]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][vbl_name]))[[2]],lnames)
+  return(t.hds)
+  
 }
-t.ahead[13,] <- c("n", "sample size", length(lb.hrs[[2]][[2]]),
-             length(lf.hrs[[11]][[2]]), length(lf.hrs[[12]][[2]]), length(lf.hrs[[13]][[2]]), length(lf.hrs[[14]][[2]]), length(lf.hrs[[15]][[2]]), length(lf.hrs[[16]][[2]]), length(lf.hrs[[17]][[2]]), length(lf.hrs[[18]][[2]]), length(lf.hrs[[19]][[2]])
-             )
-names(t.ahead)<-c("val", "label", "w2", "w3", "w4", "w5", "w6", "w7", "w8", "w9", "w10", "w11")
-kable(t.ahead)
 
-dbb <- merge(HRS_m_ds_ahead_w2[,c("id","h_cpd")], HRS_m_ds_ahead_w3[,c("id","h_cpd")], by="id", suffixes = c(".w2",".w3"), all=T)
-dbb <- merge(dbb, HRS_m_ds_ahead_w4[,c("id","h_cpd")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_ahead_w5[,c("id","h_cpd")], by="id", suffixes = c(".w4",".w5"), all=T)
-dbb <- merge(dbb, HRS_m_ds_ahead_w6[,c("id","h_cpd")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_ahead_w7[,c("id","h_cpd")], by="id", suffixes = c(".w6",".w7"), all=T)
-dbb <- merge(dbb, HRS_m_ds_ahead_w8[,c("id","h_cpd")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_ahead_w9[,c("id","h_cpd")], by="id", suffixes = c(".w8",".w9"), all=T)
-dbb <- merge(dbb, HRS_m_ds_ahead_w10[,c("id","h_cpd")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_ahead_w11[,c("id","h_cpd")], by="id", suffixes = c(".w10",".w11"), all=T)
-names(dbb) <- c("id", "w2", "w3", "w4", "w5", "w6", "w7", "w8", "w9", "w10", "w11")
-v.dbb <- paste(dbb[,2],dbb[,3],dbb[,4],dbb[,5],dbb[,6],dbb[,7],dbb[,8],dbb[,9],dbb[,10],sep="")
-f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
-kable(f.dbb[f.dbb[,3]>=0.3,])
 
-# Table CODA
-t.coda <- frq(lb.hrs[[3]][2])[[1]][,c(1,2,4)] 
-for (i in 1:7){
-  t.coda[3+i] <- frq(lf.hrs[[19+i]][2])[[1]][,4] 
+
+# Creation of trajectories table for each population
+
+trajectories <- function(m.hds,vbl_name){
+  
+  # First wave data
+  dbb <- m.hds[[1]][,c("id",vbl_name)]
+  # Merge with next waves data
+  for(ind in 2:length(m.hds)){
+    dbb <- merge(dbb, m.hds[[ind]][,c("id",vbl_name)], by = "id", suffixes = c("", paste0(".",names(m.hds)[ind])), all = T)
+  }
+  names(dbb) <- c("id", names(m.hds))
+  
+  # Glue individual data through all waves into trajectories
+  v.dbb <- dbb[,2]
+  for(ind in 2:length(m.hds)){
+    v.dbb <- paste(v.dbb,dbb[,ind+1],sep="")
+  }
+  # Trajectories and frequencies
+  f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+  return(f.dbb)
+  
 }
-t.coda[13,] <- c("n", "sample size", length(lb.hrs[[3]][[2]]),
-             length(lf.hrs[[20]][[2]]), length(lf.hrs[[21]][[2]]), length(lf.hrs[[22]][[2]]), length(lf.hrs[[23]][[2]]), length(lf.hrs[[24]][[2]]), length(lf.hrs[[25]][[2]]), length(lf.hrs[[26]][[2]])
-             )
-names(t.coda)<-c("val", "label", "w4", "w5", "w6", "w7", "w8", "w9", "w10", "w11")
-kable(t.coda)
 
-dbb <- merge(HRS_m_ds_coda_w4[,c("id","h_cpd")], HRS_m_ds_coda_w5[,c("id","h_cpd")], by="id", suffixes = c(".w4",".w5"), all=T)
-dbb <- merge(dbb, HRS_m_ds_coda_w6[,c("id","h_cpd")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_coda_w7[,c("id","h_cpd")], by="id", suffixes = c(".w6",".w7"), all=T)
-dbb <- merge(dbb, HRS_m_ds_coda_w8[,c("id","h_cpd")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_coda_w9[,c("id","h_cpd")], by="id", suffixes = c(".w8",".w9"), all=T)
-dbb <- merge(dbb, HRS_m_ds_coda_w10[,c("id","h_cpd")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_coda_w11[,c("id","h_cpd")], by="id", suffixes = c(".w10",".w11"), all=T)
-names(dbb) <- c("id", "w4", "w5", "w6", "w7", "w8", "w9", "w10", "w11")
-v.dbb <- paste(dbb[,2],dbb[,3],dbb[,4],dbb[,5],dbb[,6],dbb[,7],dbb[,8],sep="")
-f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
-kable(f.dbb[f.dbb[,3]>=0.3,])
 
-# Table WB
-t.wb <- frq(lb.hrs[[4]][2])[[1]][,c(1,2,4)] 
-for (i in 1:7){
-  t.wb[3+i] <- frq(lf.hrs[[26+i]][2])[[1]][,4] 
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
 }
-t.wb[13,] <- c("n", "sample size", length(lb.hrs[[4]][[2]]),
-             length(lf.hrs[[27]][[2]]), length(lf.hrs[[28]][[2]]), length(lf.hrs[[29]][[2]]), length(lf.hrs[[30]][[2]]), length(lf.hrs[[31]][[2]]), length(lf.hrs[[32]][[2]]), length(lf.hrs[[33]][[2]])
-             )
-names(t.wb)<-c("val", "label", "w4", "w5", "w6", "w7", "w8", "w9", "w10", "w11")
-kable(t.wb)
-
-dbb <- merge(HRS_m_ds_wb_w4[,c("id","h_cpd")], HRS_m_ds_wb_w5[,c("id","h_cpd")], by="id", suffixes = c(".w4",".w5"), all=T)
-dbb <- merge(dbb, HRS_m_ds_wb_w6[,c("id","h_cpd")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_wb_w7[,c("id","h_cpd")], by="id", suffixes = c(".w6",".w7"), all=T)
-dbb <- merge(dbb, HRS_m_ds_wb_w8[,c("id","h_cpd")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_wb_w9[,c("id","h_cpd")], by="id", suffixes = c(".w8",".w9"), all=T)
-dbb <- merge(dbb, HRS_m_ds_wb_w10[,c("id","h_cpd")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_wb_w11[,c("id","h_cpd")], by="id", suffixes = c(".w10",".w11"), all=T)
-names(dbb) <- c("id", "w4", "w5", "w6", "w7", "w8", "w9", "w10", "w11")
-v.dbb <- paste(dbb[,2],dbb[,3],dbb[,4],dbb[,5],dbb[,6],dbb[,7],dbb[,8],sep="")
-f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
-kable(f.dbb[f.dbb[,3]>=0.3,])
-
-# Table EBB
-t.ebb <- frq(lb.hrs[[5]][2])[[1]][,c(1,2,4)] 
-for (i in 1:4){
-  t.ebb[3+i] <- frq(lf.hrs[[33+i]][2])[[1]][,4] 
-}
-t.ebb[13,] <- c("n", "sample size", length(lb.hrs[[5]][[2]]),
-             length(lf.hrs[[34]][[2]]), length(lf.hrs[[35]][[2]]), length(lf.hrs[[36]][[2]]), length(lf.hrs[[37]][[2]])
-             )
-names(t.ebb)<-c("val", "label", "w7", "w8", "w9", "w10", "w11")
-kable(t.ebb)
-
-dbb <- merge(HRS_m_ds_ebb_w7[,c("id","h_cpd")], HRS_m_ds_ebb_w8[,c("id","h_cpd")], by="id", suffixes = c(".w7",".w8"), all=T)
-dbb <- merge(dbb, HRS_m_ds_ebb_w9[,c("id","h_cpd")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_ebb_w10[,c("id","h_cpd")], by="id", suffixes = c(".w9",".w10"), all=T)
-dbb <- merge(dbb, HRS_m_ds_ebb_w11[,c("id","h_cpd")], by="id", all=T)
-names(dbb) <- c("id", "w7", "w8", "w9", "w10", "w11")
-v.dbb <- paste(dbb[,2],dbb[,3],dbb[,4],dbb[,5],dbb[,6],sep="")
-f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
-kable(f.dbb[f.dbb[,3]>=0.3,])
-
-# Table MBB
-t.mbb <- frq(lb.hrs[[6]][2])[[1]][,c(1,2,4)] 
-for (i in 1:1){
-  t.mbb[3+i] <- frq(lf.hrs[[37+i]][2])[[1]][,4] 
-}
-t.mbb[13,] <- c("n", "sample size", length(lb.hrs[[6]][[2]]), length(lf.hrs[[38]][[2]]))
-names(t.mbb)<-c("val", "label", "w10", "w11")
-kable(t.mbb)
-
-dbb <- merge(HRS_m_ds_mbb_w10[,c("id","h_cpd")], HRS_m_ds_mbb_w11[,c("id","h_cpd")], by="id", suffixes = c(".w10",".w11"), all=T)
-names(dbb) <- c("id", "w10", "w11")
-v.dbb <- paste(dbb[,2],dbb[,3],sep="")
-f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
-kable(f.dbb[f.dbb[,3]>=0.3,])
 
 ```
+
+
+
+```{r populations-waves, echo=F}
+
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+hrs.hrs.cw <- list(hrs_w1 = c("hrs_w1","HRS w1"), hrs_w2 = c("hrs_w2","HRS w2"), hrs_w3 = c("hrs_w3","HRS w3"), hrs_w4 = c("hrs_w4","HRS w4"), hrs_w5 = c("hrs_w5","HRS w5"), hrs_w6 = c("hrs_w6","HRS w6"), hrs_w7 = c("hrs_w7","HRS w7"), hrs_w8 = c("hrs_w8","HRS w8"), hrs_w9 = c("hrs_w9","HRS w9"), hrs_w10 = c("hrs_w10","HRS w10"), hrs_w11 = c("hrs_w11","HRS w11"))
+
+hrs.ahead.cw <- list(ahead_w2 = c("ahead_w2","AHEAD w2"), ahead_w3 = c("ahead_w3","AHEAD w3"), ahead_w4 = c("ahead_w4","AHEAD w4"), ahead_w5 = c("ahead_w5","AHEAD w5"), ahead_w6 = c("ahead_w6","AHEAD w6"), ahead_w7 = c("ahead_w7","AHEAD w7"), ahead_w8 = c("ahead_w8","AHEAD w8"), ahead_w9 = c("ahead_w9","AHEAD w9"), ahead_w10 = c("ahead_w10","AHEAD w10"), ahead_w11 = c("ahead_w11","AHEAD w11"))
+
+hrs.coda.cw <- list(coda_w4 = c("coda_w4","CODA w4"), coda_w5 = c("coda_w5","CODA w5"), coda_w6 = c("coda_w6","CODA w6"), coda_w7 = c("coda_w7","CODA w7"), coda_w8 = c("coda_w8","CODA w8"), coda_w9 = c("coda_w9","CODA w9"), coda_w10 = c("coda_w10","CODA w10"), coda_w11 = c("coda_w11","CODA w11"))
+
+hrs.wb.cw <- list(wb_w4 = c("wb_w4","WB w4"), wb_w5 = c("wb_w5","WB w5"), wb_w6 = c("wb_w6","WB w6"), wb_w7 = c("wb_w7","WB w7"), wb_w8 = c("wb_w8","WB w8"), wb_w9 = c("wb_w9","WB w9"), wb_w10 = c("wb_w10","WB w10"), wb_w11 = c("wb_w11","WB w11"))
+
+hrs.ebb.cw <- list(ebb_w7 = c("ebb_w7","EBB w7"), ebb_w8 = c("ebb_w8","EBB w8"), ebb_w9 = c("ebb_w9","EBB w9"), ebb_w10 = c("ebb_w10","EBB w10"), ebb_w11 = c("ebb_w11","EBB w11"))
+
+hrs.mbb.cw <- list(mbb_w10 = c("mbb_w10","MBB w10"), mbb_w11 = c("mbb_w11","MBB w11"))
+
+
+
+
+```
+
+
+
+
+<!--Labelling and saving-->
+
+```{r, echo=FALSE}
+
+# HRS
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(hrs.hrs.cw, function(wname) if(exists(paste0("HRS_ds_",wname[1]))){wname = list(get(paste0("HRS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_age_vbl,ds_label_age)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+hrslist <- lmlist # HRS list
+
+
+# AHEAD
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(hrs.ahead.cw, function(wname) if(exists(paste0("HRS_ds_",wname[1]))){wname = list(get(paste0("HRS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_age_vbl,ds_label_age)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+aheadlist <- lmlist # AHEAD list
+
+
+
+# CODA
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(hrs.coda.cw, function(wname) if(exists(paste0("HRS_ds_",wname[1]))){wname = list(get(paste0("HRS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_age_vbl,ds_label_age)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+codalist <- lmlist # CODA list
+
+
+# WB
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(hrs.wb.cw, function(wname) if(exists(paste0("HRS_ds_",wname[1]))){wname = list(get(paste0("HRS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_age_vbl,ds_label_age)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+wblist <- lmlist # WB list
+
+
+
+# EBB
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(hrs.ebb.cw, function(wname) if(exists(paste0("HRS_ds_",wname[1]))){wname = list(get(paste0("HRS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_age_vbl,ds_label_age)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+ebblist <- lmlist # EBB list
+
+
+
+# MBB
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(hrs.mbb.cw, function(wname) if(exists(paste0("HRS_ds_",wname[1]))){wname = list(get(paste0("HRS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_age_vbl,ds_label_age)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+mbblist <- lmlist # MBB list
+
+```
+
+
+<!--Descriptives-->
+
+
+```{r summ, echo=FALSE}
+
+# HRS
+# Consider only harmonised waves
+l.hds <- lapply(hrs.hrs.cw, function(wname) if(hd_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- hrslist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- hrslist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb[f.dbb[,3]>=0.3,]))
+
+}
+
+
+
+# AHEAD
+# Consider only harmonised waves
+l.hds <- lapply(hrs.ahead.cw, function(wname) if(hd_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- aheadlist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- aheadlist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb[f.dbb[,3]>=0.3,]))
+}
+
+
+# CODA
+# Consider only harmonised waves
+l.hds <- lapply(hrs.coda.cw, function(wname) if(hd_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- codalist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- codalist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb[f.dbb[,3]>=0.3,]))
+}
+
+
+
+
+# WB
+# Consider only harmonised waves
+l.hds <- lapply(hrs.wb.cw, function(wname) if(hd_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- wblist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- wblist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb[f.dbb[,3]>=0.3,]))
+}
+
+
+
+# EBB
+# Consider only harmonised waves
+l.hds <- lapply(hrs.ebb.cw, function(wname) if(hd_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- ebblist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- ebblist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb))
+}
+
+
+
+# MBB
+# Consider only harmonised waves
+l.hds <- lapply(hrs.mbb.cw, function(wname) if(hd_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- mbblist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- mbblist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb))
+}
+
+```
+
+
+
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable `h_cpd_age` accross populations and waves
+
+
+
+
+
+```{r summ_c, echo=FALSE}
+
+# HRS
+# Consider only harmonised waves
+l.hds <- lapply(hrs.hrs.cw, function(wname) if(hd_age_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- hrslist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- hrslist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_age_vbl),caption=ds_label_age))
+}
+
+
+
+
+# AHEAD
+# Consider only harmonised waves
+l.hds <- lapply(hrs.ahead.cw, function(wname) if(hd_age_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- aheadlist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- aheadlist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_age_vbl),caption=ds_label_age))
+}
+
+
+
+# CODA
+# Consider only harmonised waves
+l.hds <- lapply(hrs.coda.cw, function(wname) if(hd_age_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- codalist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- codalist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_age_vbl),caption=ds_label_age))
+}
+
+
+
+
+# WB
+# Consider only harmonised waves
+l.hds <- lapply(hrs.wb.cw, function(wname) if(hd_age_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- wblist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- wblist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_age_vbl),caption=ds_label_age))
+}
+
+
+
+
+
+# EBB
+# Consider only harmonised waves
+l.hds <- lapply(hrs.ebb.cw, function(wname) if(hd_age_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- ebblist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- ebblist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_age_vbl),caption=ds_label_age))
+}
+
+
+# MBB
+# Consider only harmonised waves
+l.hds <- lapply(hrs.mbb.cw, function(wname) if(hd_age_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- mbblist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- mbblist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_age_vbl),caption=ds_label_age))
+}
+
+
+```
+
+
+
+
+
 
 
 
@@ -6334,26 +6741,6 @@ kable(f.dbb[f.dbb[,3]>=0.3,])
 
 We assume that if an individual answers it has some lung disease in one wave, it has for all the next waves.
 
-
-
-<!-- ########################################################## --> 
-<!-- # Save -->
-```{r save, include=FALSE, echo=F}
-
-
-for(name in names(lb.hrs)){
-  h_cpd <- lb.hrs[[name]]
-  save(h_cpd, file = paste0(datafolder,name,"/h_cpd.RData"))
-}
-
-for(name in names(lf.hrs)) {
-  h_cpd <- lf.hrs[[name]]
-  save(h_cpd, file = paste0(datafolder,name,"/h_cpd.RData"))
-}
-
-
-```
-<!-- ########################################################## --> 
 
 
 
