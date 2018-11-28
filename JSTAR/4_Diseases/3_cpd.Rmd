@@ -15,76 +15,15 @@ output:
 <!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
-
-
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-* Short name: `h_cpd`
-* Variable label: `History of chronic pulmonary disorders`
-* Variable description: `history of chronic pulmonary disease`
-* Domain: `Diseases`
-* Value type: `categorical`
-* Category coding:
-
-**Code** | **Category Label**
--------- | ------------------
-0        | NO chronic pulmonary disease
-1        | chronic pulmonary disease
-
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-* Short name: `h_cpd_age`
-* Variable label: `Age first diagnosed chronic pulmonary disease`
-* Variable description: `The age first told had chronic lung disease diagnosis`
-* Domain: `Diseases`
-* Value type: `Continuous`
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-
-<!-- ########################################################## --> 
-<!-- # Global variables -->
-```{r global, include=FALSE, echo=F}
-miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
-ds_label <- "History of chronic pulmonary disorders"
-ds_label_age <- "Age first diagnosed chronic pulmonary disease"
-cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
-cont_label <- cat_label[3:11]
-datafolder <- "../RData/"
-#sing_idlist <- c()
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/cpdDS.Rmd'}
 ```
-<!-- ########################################################## --> 
-
+```{r global, echo=F}
+source('../../_DS_Rmd/cpdDS.R')
+```
 
 
 # Data process
@@ -156,7 +95,7 @@ JSTAR_ds_aksst_w1$h_cpd_age <- rep(999,length(JSTAR_ds_aksst_w1$id))
 JSTAR_ds_aksst_w1$h_cpd_age[which(JSTAR_ds_aksst_w1$h_cpd==1)] <- JSTAR_aksst_w1$h_001_6_1[which(JSTAR_ds_aksst_w1$h_cpd==1)]
 JSTAR_ds_aksst_w1$h_cpd_age[which(JSTAR_ds_aksst_w1$h_cpd==0)] <- 996
 
-# We build a global table in order to have updated the asthma status of all the individuals through the different waves
+# We build a global table in order to have updated the cpd status of all the individuals through the different waves
 JSTAR_ds_aksst <- JSTAR_ds_aksst_w1
 
 ```
@@ -264,7 +203,7 @@ JSTAR_ds_aksst_w2$h_cpd <- rep(999,length(JSTAR_aksst_w2$id))
 JSTAR_ds_aksst_w2$h_cpd[which(JSTAR_aksst_w2$h_001_6 == 4 & (JSTAR_aksst_w2$h_cpd != 1 | is.na(JSTAR_aksst_w2$h_cpd)))] <- 0
 JSTAR_ds_aksst_w2$h_cpd[which(JSTAR_aksst_w2$h_001_6 %in% c(1,2,3) | ((!is.na(JSTAR_aksst_w2$h_001_6)) & JSTAR_aksst_w2$h_cpd == 1))] <- 1
 
-# We update the asthma status of the individuals in the global table
+# We update the cpd status of the individuals in the global table
 assign_merge <- function(endtib,sttib,log_vec=c(T),col_end_index=NULL,col_st_index=NULL){
   newtib <- left_join(endtib,sttib,by="id")
   newtib[log_vec,col_end_index] <- newtib[log_vec,col_st_index]
@@ -502,7 +441,7 @@ ggplot(JSTAR_tn_w1, aes(x=factor(h_001_6))) + geom_bar(stat="count", width=0.4, 
 vbl <- JSTAR_tn_w1$h_001_6_1
 kable(Continuous_summary(var = vbl, missing_values = NA)[3], caption = names(JSTAR_tn_w1)[3])
 pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
-ggplot(JSTAR_tn_w1, aes(h_001_6_1)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(-1,70)
+ggplot(JSTAR_tn_w1, aes(h_001_6_1)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+scale_y_continuous(breaks = c(0,1,2))
 
 ```
 
@@ -531,7 +470,7 @@ JSTAR_ds_tn_w1$h_cpd <- car::recode(JSTAR_tn_w1$h_001_6,"NA=999")
 
 # Continuous variable harmonization
 JSTAR_ds_tn_w1$h_cpd_age <- rep(999,length(JSTAR_ds_tn_w1$id))
-JSTAR_ds_tn_w1$h_cpd_age[which(JSTAR_ds_tn_w1$h_cpd==1)] <- JSTAR_tn_w1$h_001_6_1[which(JSTAR_ds_tn_w1$h_cpd==1)]
+JSTAR_ds_tn_w1$h_cpd_age[which(JSTAR_ds_tn_w1$h_cpd==1)] <- Recode(JSTAR_tn_w1$h_001_6_1[which(JSTAR_ds_tn_w1$h_cpd==1)],"NA=999")
 JSTAR_ds_tn_w1$h_cpd_age[which(JSTAR_ds_tn_w1$h_cpd==0)] <- 996
 
 ```
@@ -551,7 +490,7 @@ vbl <- JSTAR_ds_tn_w1$h_cpd_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(JSTAR_ds_tn_w1, aes(h_cpd_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(-1,75)
+ggplot(JSTAR_ds_tn_w1, aes(h_cpd_age)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab(ds_label_age) + ylab("Frequency")+scale_y_continuous(breaks = c(0,1,2))
 
 ```
 
@@ -810,43 +749,242 @@ kable(C)
 
 
 
-## Summary of descriptive statistics of the harmonised variable accross populations and waves
+<!--AUXILIAR FUNCTIONS-->
 
-Two tables are generated: 
 
-1. Percentages of categories in each harmonised variable.
 
-2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
+```{r helpfunctions, echo=F}
 
-**R script:**
 
-```{r summ}
+labelling <- function(l.hds,m.hds,vbl_name,ds_lab = ds_label){
+  
+  # Labelling of the tibbles with categorical data and creating new tibbles with all missings recodified as NA
 
-l.hds <- list(aksst_w1 = JSTAR_ds_aksst_w1, aksst_w2 = JSTAR_ds_aksst_w2, aksst_w3 = JSTAR_ds_aksst_w3, tn_w1 = JSTAR_ds_tn_w1, tn_w2 = JSTAR_ds_tn_w2, cth_w1 = JSTAR_ds_cth_w1)
+  for(name in names(l.hds)) {
+    if(vbl_name %in% names(l.hds[[name]])){
+      # In the aux_object we copy the old tibble to recodify all missing values as NA.
+      aux_object <- l.hds[[name]]
+      # Labelling of variables
+      label(l.hds[[name]][[vbl_name]]) <- label(aux_object[[vbl_name]]) <- ds_lab
+      # Labelling of categories (for continues variables, only missing values)
+      l.hds[[name]][[vbl_name]] <- labelled(l.hds[[name]][[vbl_name]], labels = cat_label)
+      aux_object[[vbl_name]] <- car::recode(aux_object[[vbl_name]], "miss_values_vector=NA")
+      # Labelling of categories (for categorical variables, only non-missing values)
+      aux_object[[vbl_name]] <- labelled(aux_object[[vbl_name]], labels = cat_label[1:(length(cat_label)-9)])
+      # Saving the recodified tibble in list m.hds
+      m.hds[[name]] <- aux_object
+      rm(aux_object)
+    }
+  }
+  return(list(l.hds,m.hds))
 
-for(name in names(l.hds)) {
-  aux_object <- l.hds[[name]]
-  label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
-  l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
-  label(l.hds[[name]][[3]]) <- label(aux_object[[3]]) <- ds_label_age # Text value assigned at the DS description, at the top
-  l.hds[[name]][[3]] <- labelled(l.hds[[name]][[3]], labels = cont_label)
-  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
-  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
-  m_name <- paste0("JSTAR_m_ds_",name)
-  assign(m_name, aux_object)
-  rm(aux_object)
 }
 
-t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
-for (i in seq_along(l.hds)){
-  t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+
+labelling_c <- function(l.hds,m.hds,vbl_name,ds_lab=ds_label){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    
+    if(vbl_name %in% names(l.hds[[name]])){
+      # In the aux_object we copy the old tibble to recodify all missing values as NA.
+      aux_object <- m.hds[[name]]
+      # Labelling of variables
+      label(l.hds[[name]][[vbl_name]]) <- label(aux_object[[vbl_name]]) <- ds_lab
+      # Labelling of categories (for continues variables, only missing values)
+      l.hds[[name]][[vbl_name]] <- labelled(l.hds[[name]][[vbl_name]], labels = cont_label)
+      aux_object[[vbl_name]] <- car::recode(aux_object[[vbl_name]], "miss_values_vector=NA")
+      aux_object[[vbl_name]] <- remove_val_labels(aux_object[[vbl_name]])
+      # Saving the recodified tibble in list m.hds
+      m.hds[[name]] <- aux_object
+      rm(aux_object)
+    }
+  }
+  return(list(l.hds,m.hds))
+
 }
-t.hds[13,] <- c("n", "sample size", 
-             length(l.hds[[1]][[2]]), length(l.hds[[2]][[2]]) , length(l.hds[[3]][[2]]), length(l.hds[[4]][[2]]), length(l.hds[[5]][[2]]), length(l.hds[[6]][[2]]))
-names(t.hds)<-c("val", "label", "AKSST_W1", "AKSST_W2", "AKSST_W3", "TN_W1", "TN_W2", "CTH_W1")
-kable(t.hds)
+
+
+# Creation of summary tables for categorical data
+
+summaries <- function(l.hds,m.hds,lnames,vbl_name){
+
+  # Creation of columns with categories and labels
+  t.hds <- frq(l.hds[[1]][vbl_name])[[1]][,c(1,2)] 
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    t.hds[2+i] <- frq(l.hds[[i]][vbl_name])[[1]][,4] 
+  }
+  # Add sample size for each wave/population
+  t.hds[2+length(cat_label),] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+  )
+  # Add wave/population names
+  names(t.hds)<-c("val", "label",lnames)
+  return(t.hds)
+  
+}
+
+
+# Creation of summary tables for continuous data
+
+summaries_c <- function(l.hds,m.hds,lnames,vbl_name){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][vbl_name])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[vbl_name]], missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][vbl_name])[1:6]
+    # Next, missing/no-missing values (the 1 in $values_table[1,] stands for absolute values, while a 2 would stand for percentages)
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[vbl_name]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][vbl_name]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+  
+}
 
 ```
+
+
+
+```{r populations-waves, echo=F}
+
+
+# All study waves and populations with abbreviated and descriptive names
+
+jstar.cw <- list(aksst_w1 = c("aksst_w1","AKSST w1"), aksst_w2 = c("aksst_w2","AKSST w2"), aksst_w3 = c("aksst_w3","AKSST w3"), tn_w1 = c("tn_w1","TN w1"), tn_w2 = c("tn_w2","TN w2"), cth_w1 = c("cth_w1","CTH w1"))
+
+
+```
+
+
+<!--Labelling and saving-->
+
+```{r, echo=FALSE}
+
+
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(jstar.cw, function(wname) if(exists(paste0("JSTAR_ds_",wname[1]))){wname = list(get(paste0("JSTAR_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_age_vbl,ds_label_age)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+jstarlist <- lmlist # baseline list
+
+
+
+
+```
+
+
+
+<!--Descriptives-->
+
+## Descriptive statistics of the harmonised variable `h_cpd` accross populations and waves
+
+Percentages of categories in each harmonised variable:
+
+
+```{r summ, echo=F}
+
+
+# Consider only harmonised waves
+l.hds <- lapply(jstar.cw, function(wname) if(hd_vbl %in% names(get0(paste0("JSTAR_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- jstarlist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- jstarlist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
+}
+
+
+
+
+
+```
+
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable `h_cpd_age` accross populations and waves
+
+
+
+
+
+
+```{r summ_c, echo=F}
+
+
+# Consider only harmonised waves
+l.hds <- lapply(jstar.cw, function(wname) if(hd_age_vbl %in% names(get0(paste0("JSTAR_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- jstarlist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- jstarlist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_age_vbl),caption=ds_label_age))
+}
+
+
+
+```
+
 
 
 
@@ -854,19 +992,11 @@ kable(t.hds)
 
 * We assume that if an individual answers it has chronic pulmonary diseases in one wave, it has for all the next waves. Individuals with discrepancies with respect to this criterium are specified at the end of each validation.
 * There are individuals whose harmonized diagnostic ages depend on the waves. We harmonize diagnostic age taking the first data they answer.
-
-
-<!-- ########################################################## --> 
-<!-- # Save -->
-```{r save, include=FALSE, echo=F}
-
-for(index in seq_along(l.hds)){
-  h_cpd <- l.hds[[index]]
-  save(h_cpd, file = paste0(datafolder,names(l.hds)[index],"/h_cpd.RData"))
-}
-
+* In TN subsample there is an individual which answers age of diagnostic 0. We keep this data in harmonisation.
+```{r echo=F}
+kable(JSTAR_tn_w1[which(JSTAR_tn_w1$h_001_6_1==0),])
 ```
-<!-- ########################################################## --> 
+
 
 
 
