@@ -1,5 +1,5 @@
 ---
-title: "Month of interview"
+title: "Month of Interview"
 output:
   html_document:
     highlight: tango
@@ -11,70 +11,59 @@ output:
       collapsed: yes
       smooth_scroll: yes
 ---
-  
-<!-- ########################################################## --> 
 
+<!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_albert.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
-
-
-
-# Description of DataSchema variable `month_of_birth`
-
-The description of harmonised variable is the following:
-  
-* Name: `mintw`
-* Label: `month of interview"`
-* Categories: 
-    + `1 = january`
-    + `2 = february`
-    + `3 = march`
-    + `4 = april`
-    + `5 = may`
-    + `6 = june`
-    + `7 = july`
-    + `8 = august`
-    + `9 = september`
-    + `10 = october`
-    + `11 = november`
-    + `12 = december`
-* Missings: 
-    + `991 = CAPI/interviewer error`
-    + `992 = Impute`
-    + `993 = Disable to measure`
-    + `994 = Not applicable`
-    + `995 = Does not answer`
-    + `996 = Not attempt/not done`
-    + `997 = Refuse`
-    + `998 = Do not know`
-    + `999 = Missing`
-
-
-
-### ALSA - Wave 1 
-
-#### Study-specific variables
-
-The study-specific variable elected to be harmonised is:
-
-* Name: `datew1`
-* Label: `Date of Wave1 interview`
-    
-```{r assign1}
-opal.assign.table.tibble(o, 'ALSA_w1_minter','ALSA.dates_of_interview_w1',
-                         variables=list('datew1'), missings = TRUE)
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/mintwDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/mintwDS.R')
 ```
 
-```{r local1}
-ALSA_w1_minter <- opal.execute(o,'ALSA_w1_minter')
-ALSA_w1_minter$minter <- as.numeric(format(ALSA_w1_minter$datew1, '%m'))
-Categorical_summary(var = ALSA_w1_minter$minter, missing_values = NA)
-ggplot(ALSA_w1_minter, aes(x=factor(minter))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
+
+# Data process
+
+## Australia
+
+### Wave 1 
+
+#### Study-specific variable description
+
+
+
+
+| **Name** | `datew1`|
+|-|-|
+| **Label** | `Date of Wave1 interview`|
+| **Table name** |`dates_of_interview_w1`|
+| **Type of variable** |`date`|
+| **Description** |  |
+
+
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w1','ALSA.dates_of_interview_w1', variables=list('datew1'), missings = TRUE)
+ALSA_w1 <- opal.execute(o,'ALSA_w1')
+
+```
+
+**R script:**
+
+```{r preharm w1}
+
+ALSA_w1$minter <- as.numeric(format(ALSA_w1$datew1, '%m'))
+
+```
+
+```{r local1, echo=F}
+vbl <- ALSA_w1$minter
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "minter")
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w1, aes(x=factor(minter))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -83,27 +72,30 @@ The harmonized variable is the same than the study-specific variable, but the mi
 * `NA into 999`
 
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo1}
-ALSA_ds_w1 <- tibble(id=ALSA_w1_minter$id)
-ALSA_ds_w1$mintw <- car::recode(ALSA_w1_minter$minter, "NA=999")
+ALSA_ds_w1 <- tibble(id=ALSA_w1$id)
+ALSA_ds_w1$mintw <- car::recode(ALSA_w1$minter, "NA=999")
 ALSA_ds_w1$mintw <- labelled(ALSA_ds_w1$mintw, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript1}
-Categorical_summary(var = ALSA_ds_w1$mintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+```{r descript1, echo=F}
+vbl <- ALSA_ds_w1$mintw
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(ALSA_ds_w1, aes(x=factor(mintw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation1}
-BeforeH <- table(ALSA_w1_minter$minter, useNA = "ifany")
+```{r crosstabulation1, echo=F}
+BeforeH <- table(ALSA_w1$minter, useNA = "ifany")
 AfterH <- table(ALSA_ds_w1$mintw)
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- names(AfterH)
-C
+kable(C)
 ```
 
 
@@ -112,29 +104,48 @@ C
 
 
 
-### ALSA - Wave 2 
+### Wave 2 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `datew2`
-* Label: ``
+
+| **Name** | `datew2`|
+|-|-|
+| **Label** | |
+| **Table name** |`dates_of_interview_w2`|
+| **Type of variable** |`date`|
+| **Description** |  |
 
     
-```{r assign2}
-opal.assign.table.tibble(o, 'ALSA_w2_dinter','ALSA.dates_of_interview_w2',
-                         variables=list('datew2'), missings = TRUE)
-ALSA_w2_dinter <- opal.execute(o,'ALSA_w2_dinter')
 
-ids <- which(!(ALSA_w2_dinter$id %in% ALSA_w1_minter$id))
-ALSA_w2_dinter <- ALSA_w2_dinter[-ids,]
+    
+```{r assign2, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w2','ALSA.dates_of_interview_w2',
+                         variables=list('datew2'), missings = TRUE)
+ALSA_w2 <- opal.execute(o,'ALSA_w2')
+
+opal.assign.table.tibble(o, 'ALSA_w2_id','ALSA.ALSA-Wave2', variables=list('DATE'), missings = TRUE)
+ALSA_w2_id <- opal.execute(o,'ALSA_w2_id')
+
+ALSA_w2 <- left_join(ALSA_w2_id[,-2],ALSA_w2, by="id")
 ```
 
-```{r local2}
-ALSA_w2_dinter$minter <- format(ALSA_w2_dinter$datew2, '%m')
-Categorical_summary(var = ALSA_w2_dinter$minter, missing_values = NA)
-ggplot(ALSA_w2_dinter, aes(x=factor(minter))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
+
+**R script:**
+
+```{r preharm w2}
+
+ALSA_w2$minter <- format(ALSA_w2$datew2, '%m')
+
+```
+
+
+```{r local2, echo=F}
+vbl <- ALSA_w2$minter
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "minter")
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w2, aes(x=factor(minter))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -142,27 +153,30 @@ The harmonized variable is the same than the study-specific variable, but the mi
 
 * `NA into 999`
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo2}
-ALSA_ds_w2 <- tibble(id=ALSA_w2_dinter$id)
-ALSA_ds_w2$mintw <- car::recode(ALSA_w2_dinter$minter, "NA=999")
+ALSA_ds_w2 <- tibble(id=ALSA_w2$id)
+ALSA_ds_w2$mintw <- car::recode(ALSA_w2$minter, "NA=999")
 ALSA_ds_w2$mintw <- labelled(ALSA_ds_w2$mintw, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript2}
-Categorical_summary(var = ALSA_ds_w2$mintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+```{r descript2, echo=F}
+vbl <- ALSA_ds_w2$mintw
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(ALSA_ds_w2, aes(x=factor(mintw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation2}
-BeforeH <- table(ALSA_w2_dinter$minter, useNA = "ifany")
+```{r crosstabulation2, echo=F}
+BeforeH <- table(ALSA_w2$minter, useNA = "ifany")
 AfterH <- table(ALSA_ds_w2$mintw)
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c(names(AfterH)[1:(length(AfterH)-1)], "NA->999")
-C
+kable(C)
 ```
 
 
@@ -172,49 +186,50 @@ C
 
 
 
-### ALSA - Wave 3 
+### Wave 3 
 
-#### Study-specific variables
-
-The study-specific variable elected to be harmonised is:
-
-* Name: `datew3`
-* Label: `Date of Wave3 interview`
+#### Study-specific variable description
 
 
 
-```{r assign3}
-opal.assign.table.tibble(o, 'ALSA_w3_minter','ALSA.dates_of_interview_w3',
+| **Name** | `datew3`|
+|-|-|
+| **Label** | `Date of Wave3 interview`|
+| **Table name** |`dates_of_interview_w3`|
+| **Type of variable** |`date`|
+| **Description** |  |
+
+
+
+
+```{r assign3, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w3','ALSA.dates_of_interview_w3',
                          variables=list('datew3'), missings = TRUE)
 opal.assign.table.tibble(o, 'ALSA_w3_id','ALSA.ALSA-Wave3',
                          variables=list('SEXW3'), missings = TRUE)
-```
-
-```{r local3}
-ALSA_w3_minter <- opal.execute(o,'ALSA_w3_minter')
-ALSA_w3_minter$minter <- format(ALSA_w3_minter$datew3, '%m')
+ALSA_w3 <- opal.execute(o,'ALSA_w3')
 ALSA_w3_id <- opal.execute(o,'ALSA_w3_id')
 
-Add_indiv <- function(old, new){
-  
-  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
-  oldm <- as.matrix(old)
-  
-  for(i in 1:length(new$id)){
-    if(sum(new$id[i]==old$id)>=1){
-      new_2[i,] <- oldm[which(new$id[i]==old$id),]
-    } else {
-      new_2[i,] <- c(new$id[i], NA, NA)
-    }
-  }
-  
-  new_22 <- data.frame(id=new_2[,1], datew3=new_2[,2], minter=as.numeric(new_2[,3]))
-  new_22
-}
+ALSA_w3 <- left_join(ALSA_w3_id[,-2],ALSA_w3, by="id")
 
-ALSA_w3_minter2 <- Add_indiv(old = ALSA_w3_minter, new = ALSA_w3_id)
-Categorical_summary(var = ALSA_w3_minter2$minter, missing_values = NA)
-ggplot(ALSA_w3_minter2, aes(x=factor(minter))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
+
+```
+
+**R script:**
+
+```{r preharm w3}
+
+ALSA_w3$minter <- format(ALSA_w3$datew3, '%m')
+
+```
+
+
+```{r local3, echo=F}
+
+vbl <- ALSA_w3$minter
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "minter")
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w3, aes(x=factor(minter))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -223,27 +238,30 @@ The harmonized variable is the same than the study-specific variable, but the mi
 * `NA into 999`
 
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo3}
-ALSA_ds_w3 <- tibble(id=ALSA_w3_minter2$id)
-ALSA_ds_w3$mintw <- car::recode(ALSA_w3_minter2$minter, "NA=999")
+ALSA_ds_w3 <- tibble(id=ALSA_w3$id)
+ALSA_ds_w3$mintw <- car::recode(ALSA_w3$minter, "NA=999")
 ALSA_ds_w3$mintw <- labelled(ALSA_ds_w3$mintw, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript3}
-Categorical_summary(var = ALSA_ds_w3$mintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+```{r descript3, echo=F}
+vbl <- ALSA_ds_w3$mintw
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(ALSA_ds_w3, aes(x=factor(mintw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation3}
-BeforeH <- table(ALSA_w3_minter2$minter, useNA = "ifany")
+```{r crosstabulation3, echo=F}
+BeforeH <- table(ALSA_w3$minter, useNA = "ifany")
 AfterH <- table(ALSA_ds_w3$mintw)
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- names(AfterH)
-C
+kable(C)
 ```
 
 
@@ -253,22 +271,33 @@ C
 
 
 
-### ALSA - Wave 4 
+### Wave 4 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `DATEW4`
-* Label: `DATE OF INTERVIEW`
+
+
+| **Name** | `DATEW4`|
+|-|-|
+| **Label** | `DATE OF INTERVIEW`|
+| **Table name** |`ALSA-Wave4`|
+| **Type of variable** |`date`|
+| **Description** |  |
     
-```{r assign4}
-opal.assign.table.tibble(o, 'ALSA_w4_minter','ALSA.ALSA-Wave4',
+```{r assign4, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w4','ALSA.ALSA-Wave4',
                          variables=list('DATEW4'), missings = TRUE)
+ALSA_w4 <- opal.execute(o,'ALSA_w4')
+
 ```
 
-```{r local4}
-ALSA_w4_minter <- opal.execute(o,'ALSA_w4_minter')
+
+
+**R script:**
+
+```{r preharm w4}
+
 Date_of_birth <- function(date){
   n <- length(date)
   D <- matrix(NA, nrow = n, ncol = 3)
@@ -281,10 +310,16 @@ Date_of_birth <- function(date){
   D
 }
 
-ALSA_w4_minter <- cbind(ALSA_w4_minter, Date_of_birth(ALSA_w4_minter$DATEW4))
+ALSA_w4 <- cbind(ALSA_w4, Date_of_birth(ALSA_w4$DATEW4))
 
-Categorical_summary(var = ALSA_w4_minter$Month, missing_values = NA)
-ggplot(ALSA_w4_minter, aes(x=factor(Month))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
+```
+
+```{r local4, echo=F}
+
+vbl <- ALSA_w4$Month
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "Month")
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w4, aes(x=factor(Month))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -293,27 +328,30 @@ The harmonized variable is the same than the study-specific variable, but the mi
 * `NA into 999`
 
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo4}
-ALSA_ds_w4 <- tibble(id=ALSA_w4_minter$id)
-ALSA_ds_w4$mintw <- car::recode(ALSA_w4_minter$Month, "NA=999")
+ALSA_ds_w4 <- tibble(id=ALSA_w4$id)
+ALSA_ds_w4$mintw <- car::recode(ALSA_w4$Month, "NA=999")
 ALSA_ds_w4$mintw <- labelled(ALSA_ds_w4$mintw, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript4}
-Categorical_summary(var = ALSA_ds_w4$mintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+```{r descript4, echo=F}
+vbl <- ALSA_ds_w4$mintw
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(ALSA_ds_w4, aes(x=factor(mintw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation4}
-BeforeH <- table(ALSA_w4_minter$Month)
+```{r crosstabulation4, echo=F}
+BeforeH <- table(ALSA_w4$Month)
 AfterH <- table(ALSA_ds_w4$mintw)
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- names(AfterH)
-C
+kable(C)
 ```
 
 
@@ -324,22 +362,30 @@ C
 
 
 
-### ALSA - Wave 5 
+### Wave 5 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `DATE`
-* Label: `DATE INTERVIEW COMPLETED`
+
+
+| **Name** | `DATE`|
+|-|-|
+| **Label** | `DATE INTERVIEW COMPLETED`|
+| **Table name** |`ALSA-Wave5`|
+| **Type of variable** |`date`|
+| **Description** |  |
     
-```{r assign5}
-opal.assign.table.tibble(o, 'ALSA_w5_minter','ALSA.ALSA-Wave5',
+```{r assign5, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w5','ALSA.ALSA-Wave5',
                          variables=list('DATE'), missings = TRUE)
+ALSA_w5 <- opal.execute(o,'ALSA_w5')
 ```
 
-```{r local5}
-ALSA_w5_minter <- opal.execute(o,'ALSA_w5_minter')
+**R script:**
+
+```{r preharm w5}
+
 Date_of_birth <- function(date){
   n <- length(date)
   D <- matrix(NA, nrow = n, ncol = 3)
@@ -352,10 +398,16 @@ Date_of_birth <- function(date){
   D
 }
 
-ALSA_w5_minter <- cbind(ALSA_w5_minter, Date_of_birth(ALSA_w5_minter$DATE))
+ALSA_w5 <- cbind(ALSA_w5, Date_of_birth(ALSA_w5$DATE))
 
-Categorical_summary(var = ALSA_w5_minter$Month, missing_values = NA)
-ggplot(ALSA_w5_minter, aes(x=factor(Month))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
+```
+
+```{r local5, echo=F}
+
+vbl <- ALSA_w5$Month
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "Month")
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w5, aes(x=factor(Month))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -363,53 +415,69 @@ The harmonized variable is the same than the study-specific variable, but the mi
 
 * `NA into 999`
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo5}
-ALSA_ds_w5 <- tibble(id=ALSA_w5_minter$id)
-ALSA_ds_w5$mintw <- car::recode(ALSA_w5_minter$Month, "NA=999")
+ALSA_ds_w5 <- tibble(id=ALSA_w5$id)
+ALSA_ds_w5$mintw <- car::recode(ALSA_w5$Month, "NA=999")
 ALSA_ds_w5$mintw <- labelled(ALSA_ds_w5$mintw, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript5}
-Categorical_summary(var = ALSA_ds_w5$mintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+```{r descript5, echo=F}
+vbl <- ALSA_ds_w5$mintw
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(ALSA_ds_w5, aes(x=factor(mintw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation5}
-BeforeH <- table(ALSA_w5_minter$Month, useNA = "ifany")
+```{r crosstabulation5, echo=F}
+BeforeH <- table(ALSA_w5$Month, useNA = "ifany")
 AfterH <- table(ALSA_ds_w5$mintw)
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- names(AfterH)
-C
+kable(C)
 ```
 
 
 
 
 
-### ALSA - Wave 6 
+### Wave 6 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `DATEW6`
-* Label: `Wave6 interview date`
+
+| **Name** | `DATEW6`|
+|-|-|
+| **Label** | `Wave6 interview date`|
+| **Table name** |`ALSA-Wave6`|
+| **Type of variable** |`date`|
+| **Description** |  |
 
     
-```{r assign6}
-opal.assign.table.tibble(o, 'ALSA_w6_minter','ALSA.ALSA-Wave6',
+```{r assign6, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w6','ALSA.ALSA-Wave6',
                          variables=list('DATEW6'), missings = TRUE)
+ALSA_w6 <- opal.execute(o,'ALSA_w6')
 ```
 
-```{r local6}
-ALSA_w6_minter <- opal.execute(o,'ALSA_w6_minter')
-ALSA_w6_minter$minter <- format(ALSA_w6_minter$DATEW6, '%m')
-Categorical_summary(var = ALSA_w6_minter$minter, missing_values = NA)
-ggplot(ALSA_w6_minter, aes(x=factor(minter))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
+**R script:**
+
+```{r preharm w6}
+
+ALSA_w6$minter <- format(ALSA_w6$DATEW6, '%m')
+
+```
+
+```{r local6, echo=F}
+vbl <- ALSA_w6$minter
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "minter")
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w6, aes(x=factor(minter))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -417,77 +485,76 @@ The harmonized variable is the same than the study-specific variable, but the mi
 
 * `NA into 999`
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo6}
-ALSA_ds_w6 <- tibble(id=ALSA_w6_minter$id)
-ALSA_ds_w6$mintw <- car::recode(ALSA_w6_minter$minter, "NA=999")
+ALSA_ds_w6 <- tibble(id=ALSA_w6$id)
+ALSA_ds_w6$mintw <- car::recode(ALSA_w6$minter, "NA=999")
 ALSA_ds_w6$mintw <- labelled(ALSA_ds_w6$mintw, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript6}
-Categorical_summary(var = ALSA_ds_w6$mintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+```{r descript6, echo=F}
+vbl <- ALSA_ds_w6$mintw
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(ALSA_ds_w6, aes(x=factor(mintw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation6}
-BeforeH <- table(ALSA_w6_minter$minter, useNA = "ifany")
+```{r crosstabulation6, echo=F}
+BeforeH <- table(ALSA_w6$minter, useNA = "ifany")
 AfterH <- table(ALSA_ds_w6$mintw)
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- names(AfterH)
-C
+kable(C)
 ```
 
 
 
 
-### ALSA - Wave 7 
+### Wave 7 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `datew7`
-* Label: `date of interview-W7`
+
+| **Name** | `datew7`|
+|-|-|
+| **Label** | `date of interview-W7`|
+| **Table name** |`dates_of_interview_w7`|
+| **Type of variable** |`date`|
+| **Description** |  |
     
-```{r assign7}
-opal.assign.table.tibble(o, 'ALSA_w7_minter','ALSA.dates_of_interview_w7',
+    
+```{r assign7, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w7','ALSA.dates_of_interview_w7',
                          variables=list('datew7'), missings = TRUE)
 opal.assign.table.tibble(o, 'ALSA_w7_id','ALSA.ALSA-Wave7',
                          variables=list('sex'), missings = TRUE)
+ALSA_w7 <- opal.execute(o,'ALSA_w7')
+ALSA_w7_id <- opal.execute(o,'ALSA_w7_id')
+
+ALSA_w7 <- left_join(ALSA_w7_id[,-2],ALSA_w7, by="id")
+
 ```
 
 
-```{r local7}
-ALSA_w7_minter <- opal.execute(o,'ALSA_w7_minter')
-ALSA_w7_id <- opal.execute(o,'ALSA_w7_id')
-ALSA_w7_minter$yinter <- format(ALSA_w7_minter$datew7, '%m')
+**R script:**
 
+```{r preharm w7}
 
-Add_indiv <- function(old, new){
-  
-  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
-  oldm <- as.matrix(old)
-  
-  for(i in 1:length(new$id)){
-    if(sum(new$id[i]==old$id)>=1){
-      new_2[i,] <- oldm[which(new$id[i]==old$id),]
-    } else {
-      new_2[i,] <- c(new$id[i], rep(NA,2))
-    }
-  }
-  
-  new_22 <- data.frame(id=new_2[,1], BIRTHDAT=new_2[,2], minter=as.numeric(new_2[,3]))
-  new_22
-}
+ALSA_w7$minter <- format(ALSA_w7$datew7, '%m')
 
+```
 
-ALSA_w7_minter2 <- Add_indiv(old = ALSA_w7_minter, new = ALSA_w7_id)
+```{r local7, echo=F}
 
-Categorical_summary(var = ALSA_w7_minter2$minter, missing_values = NA)
-ggplot(ALSA_w7_minter2, aes(x=factor(minter))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
+vbl <- ALSA_w7$minter
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "minter")
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w7, aes(x=factor(minter))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -495,27 +562,30 @@ The harmonized variable is the same than the study-specific variable, but the mi
 
 * `NA into 999`
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo7}
-ALSA_ds_w7 <- tibble(id=ALSA_w7_minter2$id)
-ALSA_ds_w7$mintw <- car::recode(ALSA_w7_minter2$minter, "NA=999")
+ALSA_ds_w7 <- tibble(id=ALSA_w7$id)
+ALSA_ds_w7$mintw <- car::recode(ALSA_w7$minter, "NA=999")
 ALSA_ds_w7$mintw <- labelled(ALSA_ds_w7$mintw, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript7}
-Categorical_summary(var = ALSA_ds_w7$mintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+```{r descript7, echo=F}
+vbl <- ALSA_ds_w7$mintw
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(ALSA_ds_w7, aes(x=factor(mintw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation7}
-BeforeH <- table(ALSA_w7_minter2$minter, useNA = "ifany")
+```{r crosstabulation7, echo=F}
+BeforeH <- table(ALSA_w7$minter, useNA = "ifany")
 AfterH <- table(ALSA_ds_w7$mintw)
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c(names(AfterH)[1:8], "Na->999")
-C
+kable(C)
 ```
 
 
@@ -524,22 +594,28 @@ C
 
 
 
-### ALSA - Wave 8 
+### Wave 8 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `Date`
-* Label: `Date`
+| **Name** | `Date`|
+|-|-|
+| **Label** | `Date`|
+| **Table name** |`ALSA-Wave8`|
+| **Type of variable** |`date`|
+| **Description** |  |
     
-```{r assign8}
-opal.assign.table.tibble(o, 'ALSA_w8_minter','ALSA.ALSA-Wave8',
+    
+```{r assign8, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w8','ALSA.ALSA-Wave8',
                          variables=list('Date'), missings = TRUE)
+ALSA_w8 <- opal.execute(o,'ALSA_w8')
 ```
 
-```{r local8}
-ALSA_w8_minter <- opal.execute(o,'ALSA_w8_minter')
+**R script:**
+
+```{r preharm w8}
 
 #This function return a table with the date of birth separated by columns:
 Date_of_birth <- function(date){
@@ -562,9 +638,16 @@ Date_of_birth <- function(date){
   D
 }
 
-ALSA_w8_minter2 <- cbind(ALSA_w8_minter, Date_of_birth(ALSA_w8_minter$Date))
-Categorical_summary(var = ALSA_w8_minter2$Month, missing_values = NA)
-ggplot(ALSA_w8_minter2, aes(x=factor(Month))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
+ALSA_w8 <- cbind(ALSA_w8, Date_of_birth(ALSA_w8$Date))
+
+```
+
+```{r local8, echo=F}
+
+vbl <- ALSA_w8$Month
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "Month")
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w8, aes(x=factor(Month))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -572,27 +655,30 @@ The harmonized variable is the same than the study-specific variable, but the mi
 
 * `NA into 999`
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo8}
-ALSA_ds_w8 <- tibble(id=ALSA_w8_minter2$id)
-ALSA_ds_w8$mintw <- car::recode(ALSA_w8_minter2$Month, "NA=999")
+ALSA_ds_w8 <- tibble(id=ALSA_w8$id)
+ALSA_ds_w8$mintw <- car::recode(ALSA_w8$Month, "NA=999")
 ALSA_ds_w8$mintw <- labelled(ALSA_ds_w8$mintw, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript8}
-Categorical_summary(var = ALSA_ds_w8$mintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+```{r descript8, echo=F}
+vbl <- ALSA_ds_w8$mintw
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(ALSA_ds_w8, aes(x=factor(mintw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation8}
-BeforeH <- table(ALSA_w8_minter2$Month, useNA = "ifany")
+```{r crosstabulation8, echo=F}
+BeforeH <- table(ALSA_w8$Month, useNA = "ifany")
 AfterH <- table(ALSA_ds_w8$mintw)
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- names(AfterH)
-C
+kable(C)
 ```
 
 
@@ -604,23 +690,30 @@ C
 
 
 
-### ALSA - Wave 9 
+### Wave 9 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `DATEW9`
-* Label: `Date of interview Wave 9`
+
+| **Name** | `DATEW9`|
+|-|-|
+| **Label** | `Date of interview Wave 9`|
+| **Table name** |`ALSA-Wave9`|
+| **Type of variable** |`date`|
+| **Description** |  |
 
     
-```{r assign9}
-opal.assign.table.tibble(o, 'ALSA_w9_dinter','ALSA.ALSA-Wave9',
+```{r assign9, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w9','ALSA.ALSA-Wave9',
                          variables=list('DATEW9'), missings = TRUE)
+ALSA_w9 <- opal.execute(o,'ALSA_w9')
 ```
 
-```{r local9}
-ALSA_w9_dinter <- opal.execute(o,'ALSA_w9_dinter')
+
+**R script:**
+
+```{r preharm w9}
 
 #This function return a table with the date of birth separated by columns:
 Date_of_birth <- function(date){
@@ -641,10 +734,17 @@ Date_of_birth <- function(date){
  D
 }
 
-ALSA_w9_minter <- cbind(ALSA_w9_dinter, Date_of_birth(ALSA_w9_dinter$DATEW9))
+ALSA_w9 <- cbind(ALSA_w9, Date_of_birth(ALSA_w9$DATEW9))
 
-Categorical_summary(var = ALSA_w9_minter$Month, missing_values = NA)
-ggplot(ALSA_w9_minter, aes(x=factor(Month))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
+```
+
+
+```{r local9, echo=F}
+
+vbl <- ALSA_w9$Month
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "Month")
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w9, aes(x=factor(Month))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -652,27 +752,30 @@ The harmonized variable is the same than the study-specific variable, but the mi
 
 * `NA into 999`
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo9}
-ALSA_ds_w9 <- tibble(id=ALSA_w9_minter$id)
-ALSA_ds_w9$mintw <- car::recode(ALSA_w9_minter$Month, "NA=999")
+ALSA_ds_w9 <- tibble(id=ALSA_w9$id)
+ALSA_ds_w9$mintw <- car::recode(ALSA_w9$Month, "NA=999")
 ALSA_ds_w9$mintw <- labelled(ALSA_ds_w9$mintw, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript9}
-Categorical_summary(var = ALSA_ds_w9$mintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+```{r descript9, echo=F}
+vbl <- ALSA_ds_w9$mintw
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(ALSA_ds_w9, aes(x=factor(mintw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation9}
-BeforeH <- table(ALSA_w9_minter$Month, useNA = "ifany")
+```{r crosstabulation9, echo=F}
+BeforeH <- table(ALSA_w9$Month, useNA = "ifany")
 AfterH <- table(ALSA_ds_w9$mintw)
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- c(names(AfterH)[1:9], "NA->999")
-C
+kable(C)
 ```
 
 
@@ -680,26 +783,39 @@ C
 
 
 
-### ALSA - Wave 10 
+### Wave 10 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `Date`
-* Label: `Date`
+
+| **Name** | `Date`|
+|-|-|
+| **Label** | `Date`|
+| **Table name** |`ALSA-Wave10`|
+| **Type of variable** |`date`|
+| **Description** |  |
+
 
     
-```{r assign10}
-opal.assign.table.tibble(o, 'ALSA_w10_dinter','ALSA.ALSA-Wave10',
+```{r assign10, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w10','ALSA.ALSA-Wave10',
                          variables=list('Date'), missings = TRUE)
+ALSA_w10 <- opal.execute(o,'ALSA_w10')
 ```
 
-```{r local10}
-ALSA_w10_dinter <- opal.execute(o,'ALSA_w10_dinter')
-ALSA_w10_dinter$minter <- as.numeric(format(ALSA_w10_dinter$Date, '%m'))
-Categorical_summary(var = ALSA_w10_dinter$minter, missing_values = NA)
-ggplot(ALSA_w10_dinter, aes(x=factor(minter))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
+**R script:**
+
+```{r preharm w10}
+ALSA_w10$minter <- as.numeric(format(ALSA_w10$Date, '%m'))
+
+```
+
+```{r local10, echo=F}
+vbl <- ALSA_w10$minter
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "minter")
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w10, aes(x=factor(minter))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -708,27 +824,30 @@ The harmonized variable is the same than the study-specific variable, but the mi
 * `NA into 999`
 
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo10}
-ALSA_ds_w10 <- tibble(id=ALSA_w10_dinter$id)
-ALSA_ds_w10$mintw <- car::recode(ALSA_w10_dinter$minter, "NA=999")
+ALSA_ds_w10 <- tibble(id=ALSA_w10$id)
+ALSA_ds_w10$mintw <- car::recode(ALSA_w10$minter, "NA=999")
 ALSA_ds_w10$mintw <- labelled(ALSA_ds_w10$mintw, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript10}
-Categorical_summary(var = ALSA_ds_w10$mintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+```{r descript10, echo=F}
+vbl <- ALSA_ds_w10$mintw
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(ALSA_ds_w10, aes(x=factor(mintw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation10}
-BeforeH <- table(ALSA_w10_dinter$minter, useNA = "ifany")
+```{r crosstabulation10, echo=F}
+BeforeH <- table(ALSA_w10$minter, useNA = "ifany")
 AfterH <- table(ALSA_ds_w10$mintw)
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- names(AfterH)
-C
+kable(C)
 ```
 
 
@@ -736,26 +855,38 @@ C
 
 
 
-### ALSA - Wave 11 
+### Wave 11 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `DATEW11`
-* Label: `Date of interview Wave 11`
+
+| **Name** | `DATEW11`|
+|-|-|
+| **Label** | `Date of interview Wave 11`|
+| **Table name** |`ALSA-Wave11`|
+| **Type of variable** |`date`|
+| **Description** |  |
 
     
-```{r assign11}
-opal.assign.table.tibble(o, 'ALSA_w11_dinter','ALSA.ALSA-Wave11',
+```{r assign11, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w11','ALSA.ALSA-Wave11',
                          variables=list('DATEW11'), missings = TRUE)
+ALSA_w11 <- opal.execute(o,'ALSA_w11')
 ```
 
-```{r local11}
-ALSA_w11_dinter <- opal.execute(o,'ALSA_w11_dinter')
-ALSA_w11_dinter$minter <- as.numeric(format(ALSA_w11_dinter$DATEW11, '%m'))
-Categorical_summary(var = ALSA_w11_dinter$minter, missing_values = NA)
-ggplot(ALSA_w11_dinter, aes(x=factor(minter))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
+**R script:**
+
+```{r preharm w11}
+ALSA_w11$minter <- as.numeric(format(ALSA_w11$DATEW11, '%m'))
+
+```
+
+```{r local11, echo=F}
+vbl <- ALSA_w11$minter
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "minter")
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w11, aes(x=factor(minter))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -763,27 +894,30 @@ The harmonized variable is the same than the study-specific variable, but the mi
 
 * `NA into 999`
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo11}
-ALSA_ds_w11 <- tibble(id=ALSA_w11_dinter$id)
-ALSA_ds_w11$mintw <- car::recode(ALSA_w11_dinter$minter, "NA=999")
+ALSA_ds_w11 <- tibble(id=ALSA_w11$id)
+ALSA_ds_w11$mintw <- car::recode(ALSA_w11$minter, "NA=999")
 ALSA_ds_w11$mintw <- labelled(ALSA_ds_w11$mintw, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript11}
-Categorical_summary(var = ALSA_ds_w11$mintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+```{r descript11, echo=F}
+vbl <- ALSA_ds_w11$mintw
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(ALSA_ds_w11, aes(x=factor(mintw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation11}
-BeforeH <- table(ALSA_w11_dinter$minter, useNA = "ifany")
+```{r crosstabulation11, echo=F}
+BeforeH <- table(ALSA_w11$minter, useNA = "ifany")
 AfterH <- table(ALSA_ds_w11$mintw)
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- names(AfterH)
-C
+kable(C)
 ```
 
 
@@ -791,26 +925,37 @@ C
 
 
 
-### ALSA - Wave 12 
+### Wave 12 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `DATEW12`
-* Label: `Date of interview Wave 12`
+| **Name** | `DATEW12`|
+|-|-|
+| **Label** | `Date of interview Wave 12`|
+| **Table name** |`ALSA-Wave12`|
+| **Type of variable** |`date`|
+| **Description** |  |
 
     
-```{r assign12}
-opal.assign.table.tibble(o, 'ALSA_w12_dinter','ALSA.ALSA-Wave12',
+```{r assign12, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w12','ALSA.ALSA-Wave12',
                          variables=list('DATEW12'), missings = TRUE)
+ALSA_w12 <- opal.execute(o,'ALSA_w12')
 ```
 
-```{r local12}
-ALSA_w12_dinter <- opal.execute(o,'ALSA_w12_dinter')
-ALSA_w12_dinter$minter <- as.numeric(format(ALSA_w12_dinter$DATEW12, '%m'))
-Categorical_summary(var = ALSA_w12_dinter$minter, missing_values = NA)
-ggplot(ALSA_w12_dinter, aes(x=factor(minter))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
+**R script:**
+
+```{r preharm w12}
+ALSA_w12$minter <- as.numeric(format(ALSA_w12$DATEW12, '%m'))
+
+```
+
+```{r local12, echo=F}
+vbl <- ALSA_w12$minter
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "minter")
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w12, aes(x=factor(minter))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -818,52 +963,69 @@ The harmonized variable is the same than the study-specific variable, but the mi
 
 * `NA into 999`
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo12}
-ALSA_ds_w12 <- tibble(id=ALSA_w12_dinter$id)
-ALSA_ds_w12$mintw <- car::recode(ALSA_w12_dinter$minter, "NA=999")
+ALSA_ds_w12 <- tibble(id=ALSA_w12$id)
+ALSA_ds_w12$mintw <- car::recode(ALSA_w12$minter, "NA=999")
 ALSA_ds_w12$mintw <- labelled(ALSA_ds_w12$mintw, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript12}
-Categorical_summary(var = ALSA_ds_w12$mintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+```{r descript12, echo=F}
+vbl <- ALSA_ds_w12$mintw
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(ALSA_ds_w12, aes(x=factor(mintw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation12}
-BeforeH <- table(ALSA_w12_dinter$minter, useNA = "ifany")
+```{r crosstabulation12, echo=F}
+BeforeH <- table(ALSA_w12$minter, useNA = "ifany")
 AfterH <- table(ALSA_ds_w12$mintw)
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- names(AfterH)
-C
+kable(C)
 ```
 
 
 
 
-### ALSA - Wave 13 
+### Wave 13 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `DATEW13`
-* Label: `Date of interview Wave 13`
+
+
+| **Name** | `DATEW13`|
+|-|-|
+| **Label** | `Date of interview Wave 13`|
+| **Table name** |`ALSA-Wave13`|
+| **Type of variable** |`date`|
+| **Description** |  |
+
 
     
-```{r assign13}
-opal.assign.table.tibble(o, 'ALSA_w13_dinter','ALSA.ALSA-Wave13',
+```{r assign13, echo=F}
+opal.assign.table.tibble(o, 'ALSA_w13','ALSA.ALSA-Wave13',
                          variables=list('DATEW13'), missings = TRUE)
+ALSA_w13 <- opal.execute(o,'ALSA_w13')
 ```
 
-```{r local13}
-ALSA_w13_dinter <- opal.execute(o,'ALSA_w13_dinter')
-ALSA_w13_dinter$minter <- as.numeric(format(ALSA_w13_dinter$DATEW13, '%m'))
-Categorical_summary(var = ALSA_w13_dinter$minter, missing_values = NA)
-ggplot(ALSA_w13_dinter, aes(x=factor(minter))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
+**R script:**
+
+```{r preharm w13}
+ALSA_w13$minter <- as.numeric(format(ALSA_w13$DATEW13, '%m'))
+
+```
+
+```{r local13, echo=F}
+vbl <- ALSA_w13$minter
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "minter")
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(ALSA_w13, aes(x=factor(minter))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -871,89 +1033,137 @@ The harmonized variable is the same than the study-specific variable, but the mi
 
 * `NA into 999`
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo13}
-ALSA_ds_w13 <- tibble(id=ALSA_w13_dinter$id)
-ALSA_ds_w13$mintw <- car::recode(ALSA_w13_dinter$minter, "NA=999")
+ALSA_ds_w13 <- tibble(id=ALSA_w13$id)
+ALSA_ds_w13$mintw <- car::recode(ALSA_w13$minter, "NA=999")
 ALSA_ds_w13$mintw <- labelled(ALSA_ds_w13$mintw, labels = c("january"=1, "february"=2, "march"=3, "april"=4, "may"=5, "june"=6, "july"=7, "august"=8, "september"=9, "october"=10, "november"=11, "december"=12, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=996, "Does not answer"=995,  "Not applicable"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript13}
-Categorical_summary(var = ALSA_ds_w13$mintw, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
+```{r descript13, echo=F}
+vbl <- ALSA_ds_w13$mintw
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(ALSA_ds_w13, aes(x=factor(mintw))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Month of interview") + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation13}
-BeforeH <- table(ALSA_w13_dinter$minter, useNA = "ifany")
+```{r crosstabulation13, echo=F}
+BeforeH <- table(ALSA_w13$minter, useNA = "ifany")
 AfterH <- table(ALSA_ds_w13$mintw)
 C <- rbind(BeforeH,AfterH)
 colnames(C) <- names(AfterH)
-C
+kable(C)
 ```
 
 
 
-#### Quality estimation
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+```{r helpfunctions, echo=F}
+
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+# Creation of summary tables for continuous data
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][2])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[2]],missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][2])[1:6]
+    # Next, missing/no-missing values
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[2]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][2]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
+}
+
+```
+
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+alsa.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"), w3 = c("w3","W3"), w4 = c("w4","W4"), w5 = c("w5","W5"), w6 = c("w6","W6"), w7 = c("w7","W7"), w8 = c("w8","W8"), w9 = c("w9","W9"), w10 = c("w10","W10"), w11 = c("w11","W11"), w12 = c("w12","W12"), w13 = c("w13","W13"))
+
+# Consider only harmonised waves
+l.hds <- lapply(alsa.cw, function(wname) if(exists(paste0("ALSA_ds_",wname[1]))){wname = list(get(paste0("ALSA_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing summaries
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+```
+
+
+
+# Quality estimation
 No comments.
 
-
-
-```{r save, echo=FALSE}
-mintw <- ALSA_ds_w1
-save(mintw, file = "../RData/w1/mintw.RData")
-rm(mintw)
-
-mintw <- ALSA_ds_w2
-save(mintw, file = "../RData/w2/mintw.RData")
-rm(mintw)
-
-mintw <- ALSA_ds_w3
-save(mintw, file = "../RData/w3/mintw.RData")
-rm(mintw)
-
-mintw <- ALSA_ds_w4
-save(mintw, file = "../RData/w4/mintw.RData")
-rm(mintw)
-
-mintw <- ALSA_ds_w5
-save(mintw, file = "../RData/w5/mintw.RData")
-rm(mintw)
-
-mintw <- ALSA_ds_w6
-save(mintw, file = "../RData/w6/mintw.RData")
-rm(mintw)
-
-mintw <- ALSA_ds_w7
-save(mintw, file = "../RData/w7/mintw.RData")
-rm(mintw)
-
-mintw <- ALSA_ds_w8
-save(mintw, file = "../RData/w8/mintw.RData")
-rm(mintw)
-
-mintw <- ALSA_ds_w9
-save(mintw, file = "../RData/w9/mintw.RData")
-rm(mintw)
-
-mintw <- ALSA_ds_w10
-save(mintw, file = "../RData/w10/mintw.RData")
-rm(mintw)
-
-mintw <- ALSA_ds_w11
-save(mintw, file = "../RData/w11/mintw.RData")
-rm(mintw)
-
-mintw <- ALSA_ds_w12
-save(mintw, file = "../RData/w12/mintw.RData")
-rm(mintw)
-
-mintw <- ALSA_ds_w13
-save(mintw, file = "../RData/w13/mintw.RData")
-rm(mintw)
-```
 
 
 ```{r closeRsession, echo=FALSE} 
