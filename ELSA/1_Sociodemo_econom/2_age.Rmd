@@ -34,19 +34,19 @@ source('../../_DS_Rmd/ageDS.R')
 
 #### Study-specific variable description
 
-| **Name** | `age` |`ybirth`|
-|----------|--------|----|
-| **Label** | `age: copy of indage/dhager` |`Year of birth`|
-| **Table name** | `wave_1_ifs_derived_variables` |`elsa_w1_hd`[^1]|
-| **Missings** | `99 = age in years on or before 29/02/1912; -8 = Don't Know` |  |
-| **Description** |  |  |
+| **Name** | `age` |`ybirth`|`yintw`|
+|----------|--------|---|-|
+| **Label** | `age: copy of indage/dhager` |`Year of birth`|`Year of interview`|
+| **Table name** | `wave_1_ifs_derived_variables` |`elsa_w1_hd`[^1]|`elsa_w1_hd`[^1]|
+| **Missings** | `99 = age in years on or before 29/02/1912; -8 = Don't Know` |  |  |
+| **Description** |  |  |  |
 
 
 ```{r assign1, echo=F}
 opal.assign.table.tibble(o,'ELSA_w1_age','ELSA.wave_1_ifs_derived_variables',variables=list('age'), missings = TRUE)
 ELSA_w1_age <- opal.execute(o,'ELSA_w1_age')
 
-opal.assign.table.tibble(o,'ELSA_w1_yb','ELSA_HD.elsa_w1_hd',variables=list('ybirth'), missings = TRUE)
+opal.assign.table.tibble(o,'ELSA_w1_yb','ELSA_HD.elsa_w1_hd',variables=list('ybirth','yintw'), missings = TRUE)
 ELSA_w1_yb <- opal.execute(o,'ELSA_w1_yb')
 
 ELSA_w1_age <- left_join(ELSA_w1_age,ELSA_w1_yb, by="id")
@@ -64,12 +64,17 @@ kable(Continuous_summary(vari, missing_values = NA)[3], caption = "ybirth")
 pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
 ggplot(ELSA_w1_age, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
+vari <- ELSA_w1_age$yintw
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "yintw")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Summary")
+ggplot(ELSA_w1_age, aes(x=factor(yintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 ```
 
 #### Harmonisation algorithm
 The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
 
-* `year of interview (2002) - year of birth`
+* `year of interview  - year of birth`
 
 
 **R script:**
@@ -78,7 +83,7 @@ The harmonized variable is the same than the study-specific variable, but the mi
 
 ELSA_ds_w1 <- tibble(id=ELSA_w1_age$id)
 ELSA_ds_w1$age <- car::recode(ELSA_w1_age$age, "-8=998; NA=999")
-ELSA_ds_w1$age[which(ELSA_ds_w1$age %in% c(99,998,999))] <- 2002 - ELSA_w1_age$ybirth[which(ELSA_ds_w1$age %in% c(99,998,999))]
+ELSA_ds_w1$age[which(ELSA_ds_w1$age %in% c(99,998,999))] <- ELSA_w1_age$yintw[which(ELSA_ds_w1$age %in% c(99,998,999))] - ELSA_w1_age$ybirth[which(ELSA_ds_w1$age %in% c(99,998,999))]
 
 ```
 
@@ -94,6 +99,16 @@ ggplot(ELSA_ds_w1, aes(age)) + geom_histogram(stat="count", fill="steelblue", da
 #### Validation
 ```{r crosstabulation1, echo=F,results='asis'}
 cat("The quantity of non-missing values of the initial variable which disagree with the harmonised variable is:",sum(ELSA_ds_w1$age[which(!ELSA_w1_age$age %in% c(99,-8) & !is.na(ELSA_w1_age$age))]!=ELSA_w1_age$age[which(!ELSA_w1_age$age %in% c(99,-8) & !is.na(ELSA_w1_age$age))]))
+
+ELSA_w1_age$age <- car::recode(ELSA_w1_age$age,"c(-8,99)=NA")
+ELSA_w1_age$ybirth <- car::recode(ELSA_w1_age$ybirth, "miss_values_vector=NA")
+ELSA_w1_age$yintw <- car::recode(ELSA_w1_age$yintw, "miss_values_vector=NA")
+ELSA_w1_age$cage <- ELSA_w1_age$yintw-ELSA_w1_age$ybirth
+ELSA_w1_age$diff <- abs(ELSA_w1_age$cage - ELSA_w1_age$age)
+ELSA_w1_age <- remove_val_labels(ELSA_w1_age)
+kable(frq(ELSA_w1_age$diff), caption = 'Frequencies of difference between the study-specific variable age and the age computed as year of interview - year of birth')
+kable(ELSA_w1_age[which(ELSA_w1_age$diff>2),], align = 'c', caption = 'Individuals with difference greater than 2')
+
 ```
 
 
@@ -106,12 +121,12 @@ cat("The quantity of non-missing values of the initial variable which disagree w
 
 #### Study-specific variable description
 
-| **Name** | `age` |`ybirth`|
-|----------|----------|--|
-| **Label** | `age: copy of indage/dhager` |`Year of birth`|
-| **Table name** | `wave_2_ifs_derived_variables` |`elsa_w2_hd`[^1]|
-| **Missings** | `99 = age in years on or before 29/02/1912; -8 = Don't Know` |  |
-| **Description** |  |  |
+| **Name** | `age` |`ybirth`|`yintw`|
+|----------|------|----|--|
+| **Label** | `age: copy of indage/dhager` |`Year of birth`|`Year of interview`|
+| **Table name** | `wave_2_ifs_derived_variables` |`elsa_w2_hd`[^1]|`elsa_w2_hd`[^1]|
+| **Missings** | `99 = age in years on or before 29/02/1912; -8 = Don't Know` |  |  |
+| **Description** |  |  |  |
 
 
 
@@ -119,7 +134,7 @@ cat("The quantity of non-missing values of the initial variable which disagree w
 opal.assign.table.tibble(o, 'ELSA_w2_age','ELSA.wave_2_ifs_derived_variables',variables=list('age'), missings = TRUE)
 ELSA_w2_age <- opal.execute(o,'ELSA_w2_age')
 
-opal.assign.table.tibble(o,'ELSA_w2_yb','ELSA_HD.elsa_w2_hd',variables=list('ybirth'), missings = TRUE)
+opal.assign.table.tibble(o,'ELSA_w2_yb','ELSA_HD.elsa_w2_hd',variables=list('ybirth','yintw'), missings = TRUE)
 ELSA_w2_yb <- opal.execute(o,'ELSA_w2_yb')
 
 ELSA_w2_age <- left_join(ELSA_w2_age,ELSA_w2_yb, by="id")
@@ -138,12 +153,17 @@ kable(Continuous_summary(vari, missing_values = NA)[3], caption = "ybirth")
 pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
 ggplot(ELSA_w2_age, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
+vari <- ELSA_w2_age$yintw
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "yintw")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Summary")
+ggplot(ELSA_w2_age, aes(x=factor(yintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 ```
 
 #### Harmonisation algorithm
 The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
 
-* `year of interview (2004) - year of birth`
+* `year of interview - year of birth`
 
 
 **R script:**
@@ -151,7 +171,7 @@ The harmonized variable is the same than the study-specific variable, but the mi
 ```{r harmo2}
 ELSA_ds_w2 <- tibble(id=ELSA_w2_age$id)
 ELSA_ds_w2$age <- car::recode(ELSA_w2_age$age,"-8=998; NA=999")
-ELSA_ds_w2$age[which(ELSA_ds_w2$age %in% c(99,998,999))] <- 2004 - ELSA_w2_age$ybirth[which(ELSA_ds_w2$age %in% c(99,998,999))]
+ELSA_ds_w2$age[which(ELSA_ds_w2$age %in% c(99,998,999))] <- ELSA_w2_age$yintw[which(ELSA_ds_w2$age %in% c(99,998,999))] - ELSA_w2_age$ybirth[which(ELSA_ds_w2$age %in% c(99,998,999))]
 
 ```
 
@@ -168,6 +188,17 @@ ggplot(ELSA_ds_w2, aes(age)) + geom_histogram(stat="count", fill="steelblue", da
 #### Validation
 ```{r crosstabulation2, echo=F, results='asis'}
 cat("The quantity of non-missing values of the initial variable which disagree with the harmonised variable is:",sum(ELSA_ds_w2$age[which(!ELSA_w2_age$age %in% c(99,-8) & !is.na(ELSA_w2_age$age))]!=ELSA_w2_age$age[which(!ELSA_w2_age$age %in% c(99,-8) & !is.na(ELSA_w2_age$age))]))
+
+
+ELSA_w2_age$age <- car::recode(ELSA_w2_age$age,"c(-8,99)=NA")
+ELSA_w2_age$ybirth <- car::recode(ELSA_w2_age$ybirth, "miss_values_vector=NA")
+ELSA_w2_age$yintw <- car::recode(ELSA_w2_age$yintw, "miss_values_vector=NA")
+ELSA_w2_age$cage <- ELSA_w2_age$yintw-ELSA_w2_age$ybirth
+ELSA_w2_age$diff <- abs(ELSA_w2_age$cage - ELSA_w2_age$age)
+ELSA_w2_age <- remove_val_labels(ELSA_w2_age)
+kable(frq(ELSA_w2_age$diff), caption = 'Frequencies of difference between the study-specific variable age and the age computed as year of interview - year of birth')
+kable(ELSA_w2_age[which(ELSA_w2_age$diff>2),], align = 'c', caption = 'Individuals with difference greater than 2')
+
 ```
 
 
@@ -180,12 +211,12 @@ cat("The quantity of non-missing values of the initial variable which disagree w
 
 #### Study-specific variable description
 
-| **Name** | `age` |`ybirth`|
-|----------|---------|---|
-| **Label** | `age: copy of indage/dhager` |`Year of birth`|
-| **Table name** | `wave_3_ifs_derived_variables` |`elsa_w3_hd`[^1]|
-| **Missings** | `99 = age in years on or before 29/02/1912; -8 = Don't Know` |`998 = Do not know`|
-| **Description** |  |  |
+| **Name** | `age` |`ybirth`|`yintw`|
+|----------|-------|--|---|
+| **Label** | `age: copy of indage/dhager` |`Year of birth`|`Year of interview`|
+| **Table name** | `wave_3_ifs_derived_variables` |`elsa_w3_hd`[^1]|`elsa_w3_hd`[^1]|
+| **Missings** | `99 = age in years on or before 29/02/1912; -8 = Don't Know` |`998 = Do not know`|  |
+| **Description** |  |  |  |
 
 
 
@@ -193,7 +224,7 @@ cat("The quantity of non-missing values of the initial variable which disagree w
 opal.assign.table.tibble(o, 'ELSA_w3_age','ELSA.wave_3_ifs_derived_variables',variables=list('age'), missings = TRUE)
 ELSA_w3_age <- opal.execute(o,'ELSA_w3_age')
 
-opal.assign.table.tibble(o,'ELSA_w3_yb','ELSA_HD.elsa_w3_hd',variables=list('ybirth'), missings = TRUE)
+opal.assign.table.tibble(o,'ELSA_w3_yb','ELSA_HD.elsa_w3_hd',variables=list('ybirth','yintw'), missings = TRUE)
 ELSA_w3_yb <- opal.execute(o,'ELSA_w3_yb')
 
 ELSA_w3_age <- left_join(ELSA_w3_age,ELSA_w3_yb, by="id")
@@ -211,19 +242,24 @@ kable(Continuous_summary(vari, missing_values = 998)[3], caption = "ybirth")
 pander(Continuous_summary(vari, missing_values = 998)$summary, caption = "Summary")
 ggplot(ELSA_w3_age, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue",data = .%>% filter(!vari %in% miss_values_vector)) + xlab(label(vari)) + ylab("Frequency")
 
+vari <- ELSA_w3_age$yintw
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "yintw")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Summary")
+ggplot(ELSA_w3_age, aes(x=factor(yintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 ```
 
 #### Harmonisation algorithm
 The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
 
-* `year of interview (2006) - year of birth`
+* `year of interview - year of birth`
 
 **R script:**
 
 ```{r harmo3}
 ELSA_ds_w3 <- tibble(id=ELSA_w3_age$id)
 ELSA_ds_w3$age <- car::recode(ELSA_w3_age$age, "-8=998; NA=999")
-ELSA_ds_w3$age[which(ELSA_ds_w3$age %in% c(99,998,999) & ELSA_w3_age$ybirth!=998)] <- 2006 - ELSA_w3_age$ybirth[which(ELSA_ds_w3$age %in% c(99,998,999) & ELSA_w3_age$ybirth!=998)]
+ELSA_ds_w3$age[which(ELSA_ds_w3$age %in% c(99,998,999) & ELSA_w3_age$ybirth!=998)] <- ELSA_w3_age$yintw[which(ELSA_ds_w3$age %in% c(99,998,999) & ELSA_w3_age$ybirth!=998)] - ELSA_w3_age$ybirth[which(ELSA_ds_w3$age %in% c(99,998,999) & ELSA_w3_age$ybirth!=998)]
 ```
 
 #### Statistics of the new harmonised variable
@@ -239,6 +275,17 @@ ggplot(ELSA_w3_age, aes(age)) + geom_histogram(stat="count", fill="steelblue") +
 ```{r crosstabulation3, echo=F,results='asis'}
 cat("The quantity of non-missing values of the initial variable which disagree with the harmonised variable is:",sum(ELSA_ds_w3$age[which(!ELSA_w3_age$age %in% c(99,-8) & !is.na(ELSA_w3_age$age))]!=ELSA_w3_age$age[which(!ELSA_w3_age$age %in% c(99,-8) & !is.na(ELSA_w3_age$age))]) )
 
+
+ELSA_w3_age$age <- car::recode(ELSA_w3_age$age,"c(-8,99)=NA")
+ELSA_w3_age$ybirth <- car::recode(ELSA_w3_age$ybirth, "miss_values_vector=NA")
+ELSA_w3_age$yintw <- car::recode(ELSA_w3_age$yintw, "miss_values_vector=NA")
+ELSA_w3_age$cage <- ELSA_w3_age$yintw-ELSA_w3_age$ybirth
+ELSA_w3_age$diff <- abs(ELSA_w3_age$cage - ELSA_w3_age$age)
+ELSA_w3_age <- remove_val_labels(ELSA_w3_age)
+kable(frq(ELSA_w3_age$diff), caption = 'Frequencies of difference between the study-specific variable age and the age computed as year of interview - year of birth')
+kable(ELSA_w3_age[which(ELSA_w3_age$diff>2),], align = 'c', caption = 'Individuals with difference greater than 2')
+
+
 ```
 
 
@@ -249,19 +296,19 @@ cat("The quantity of non-missing values of the initial variable which disagree w
 
 #### Study-specific variable description
 
-| **Name** | `age` |`ybirth`|
-|----------|----------|--|
-| **Label** | `age: copy of indage/dhager` |`Year of birth`|
-| **Table name** | `wave_4_ifs_derived_variables` |`elsa_w4_hd`[^1]|
-| **Missings** | `99 = age in years on or before 29/02/1912; -8 = Don't Know` |  |
-| **Description** |  |  |
+| **Name** | `age` |`ybirth`|`yintw`|
+|----------|-----|-----|--|
+| **Label** | `age: copy of indage/dhager` |`Year of birth`|`Year of interview`|
+| **Table name** | `wave_4_ifs_derived_variables` |`elsa_w4_hd`[^1]|`elsa_w4_hd`[^1]|
+| **Missings** | `99 = age in years on or before 29/02/1912; -8 = Don't Know` |  |  |
+| **Description** |  |  |  |
 
 
 ```{r assign4, echo=F}
 opal.assign.table.tibble(o, 'ELSA_w4_age','ELSA.wave_4_ifs_derived_variables', variables=list('age'), missings = TRUE)
 ELSA_w4_age <- opal.execute(o,'ELSA_w4_age')
 
-opal.assign.table.tibble(o,'ELSA_w4_yb','ELSA_HD.elsa_w4_hd',variables=list('ybirth'), missings = TRUE)
+opal.assign.table.tibble(o,'ELSA_w4_yb','ELSA_HD.elsa_w4_hd',variables=list('ybirth','yintw'), missings = TRUE)
 ELSA_w4_yb <- opal.execute(o,'ELSA_w4_yb')
 
 ELSA_w4_age <- left_join(ELSA_w4_age,ELSA_w4_yb, by="id")
@@ -279,19 +326,24 @@ kable(Continuous_summary(vari, missing_values = NA)[3], caption = "ybirth")
 pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
 ggplot(ELSA_w4_age, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
+vari <- ELSA_w4_age$yintw
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "yintw")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Summary")
+ggplot(ELSA_w4_age, aes(x=factor(yintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 ```
 
 #### Harmonisation algorithm
 The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
 
-* `year of interview (2008) - year of birth`
+* `year of interview - year of birth`
 
 **R script:**
 
 ```{r harmo4}
 ELSA_ds_w4 <- tibble(id=ELSA_w4_age$id)
 ELSA_ds_w4$age <- car::recode(ELSA_w4_age$age, "-8=998; NA=999")
-ELSA_ds_w4$age[which(ELSA_ds_w4$age %in% c(99,998,999))] <- 2008 - ELSA_w4_age$ybirth[which(ELSA_ds_w4$age %in% c(99,998,999))]
+ELSA_ds_w4$age[which(ELSA_ds_w4$age %in% c(99,998,999))] <- ELSA_w4_age$yintw[which(ELSA_ds_w4$age %in% c(99,998,999))] - ELSA_w4_age$ybirth[which(ELSA_ds_w4$age %in% c(99,998,999))]
 ```
 
 #### Statistics of the new harmonised variable
@@ -307,6 +359,18 @@ ggplot(ELSA_ds_w4, aes(age)) + geom_histogram(stat="count", fill="steelblue") + 
 #### Validation
 ```{r crosstabulation4, echo=F,results='asis'}
 cat("The quantity of non-missing values of the initial variable which disagree with the harmonised variable is:",sum(ELSA_ds_w4$age[which(!ELSA_w4_age$age %in% c(99,-8) & !is.na(ELSA_w4_age$age))]!=ELSA_w4_age$age[which(!ELSA_w4_age$age %in% c(99,-8) & !is.na(ELSA_w4_age$age))]) )
+
+
+ELSA_w4_age$age <- car::recode(ELSA_w4_age$age,"c(-8,99)=NA")
+ELSA_w4_age$ybirth <- car::recode(ELSA_w4_age$ybirth, "miss_values_vector=NA")
+ELSA_w4_age$yintw <- car::recode(ELSA_w4_age$yintw, "miss_values_vector=NA")
+ELSA_w4_age$cage <- ELSA_w4_age$yintw-ELSA_w4_age$ybirth
+ELSA_w4_age$diff <- abs(ELSA_w4_age$cage - ELSA_w4_age$age)
+ELSA_w4_age <- remove_val_labels(ELSA_w4_age)
+kable(frq(ELSA_w4_age$diff), caption = 'Frequencies of difference between the study-specific variable age and the age computed as year of interview - year of birth')
+kable(ELSA_w4_age[which(ELSA_w4_age$diff>2),], align = 'c', caption = 'Individuals with difference greater than 2')
+
+
 ```
 
 
@@ -322,19 +386,19 @@ cat("The quantity of non-missing values of the initial variable which disagree w
 
 #### Study-specific variable description
 
-| **Name** | `age` |`ybirth`|
-|----------|---------|---|
-| **Label** | `age: copy of indage/dhager` |`Year of birth`|
-| **Table name** | `wave_5_ifs_derived_variables` |`elsa_w5_hd`[^1]|
-| **Missings** | `99 = age in years on or before 29/02/1912; -8 = Don't Know` |  |
-| **Description** |  |  |
+| **Name** | `age` |`ybirth`|`yintw`|
+|----------|------|---|---|
+| **Label** | `age: copy of indage/dhager` |`Year of birth`|`Year of interview`|
+| **Table name** | `wave_5_ifs_derived_variables` |`elsa_w5_hd`[^1]|`elsa_w5_hd`[^1]|
+| **Missings** | `99 = age in years on or before 29/02/1912; -8 = Don't Know` |  |  |
+| **Description** |  |  |  |
 
 
 ```{r assign5, echo=F}
 opal.assign.table.tibble(o, 'ELSA_w5_age','ELSA.wave_5_ifs_derived_variables', variables=list('age'), missings = TRUE)
 ELSA_w5_age <- opal.execute(o,'ELSA_w5_age')
 
-opal.assign.table.tibble(o,'ELSA_w5_yb','ELSA_HD.elsa_w5_hd',variables=list('ybirth'), missings = TRUE)
+opal.assign.table.tibble(o,'ELSA_w5_yb','ELSA_HD.elsa_w5_hd',variables=list('ybirth','yintw'), missings = TRUE)
 ELSA_w5_yb <- opal.execute(o,'ELSA_w5_yb')
 
 ELSA_w5_age <- left_join(ELSA_w5_age,ELSA_w5_yb, by="id")
@@ -353,12 +417,17 @@ kable(Continuous_summary(vari, missing_values = NA)[3], caption = "ybirth")
 pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
 ggplot(ELSA_w5_age, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
+vari <- ELSA_w5_age$yintw
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "yintw")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Summary")
+ggplot(ELSA_w5_age, aes(x=factor(yintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 ```
 
 #### Harmonisation algorithm
 The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
 
-* `year of interview (2010) - year of birth`
+* `year of interview - year of birth`
 
 
 **R script:**
@@ -366,7 +435,7 @@ The harmonized variable is the same than the study-specific variable, but the mi
 ```{r harmo5}
 ELSA_ds_w5 <- tibble(id=ELSA_w5_age$id)
 ELSA_ds_w5$age <- car::recode(ELSA_w5_age$age, "-8=998; NA=999")
-ELSA_ds_w5$age[which(ELSA_ds_w5$age %in% c(99,998,999))] <- 2010 - ELSA_w5_age$ybirth[which(ELSA_ds_w5$age %in% c(99,998,999))]
+ELSA_ds_w5$age[which(ELSA_ds_w5$age %in% c(99,998,999))] <- ELSA_w5_age$yintw[which(ELSA_ds_w5$age %in% c(99,998,999))] - ELSA_w5_age$ybirth[which(ELSA_ds_w5$age %in% c(99,998,999))]
 ```
 
 #### Statistics of the new harmonised variable
@@ -382,6 +451,16 @@ ggplot(ELSA_ds_w5, aes(age)) + geom_histogram(stat="count", fill="steelblue") + 
 #### Validation
 ```{r crosstabulation5, echo=F,results='asis'}
 cat("The quantity of non-missing values of the initial variable which disagree with the harmonised variable is:",sum(ELSA_ds_w5$age[which(!ELSA_w5_age$age %in% c(99,-8) & !is.na(ELSA_w5_age$age))]!=ELSA_w5_age$age[which(!ELSA_w5_age$age %in% c(99,-8) & !is.na(ELSA_w5_age$age))]) )
+
+
+ELSA_w5_age$age <- car::recode(ELSA_w5_age$age,"c(-8,99)=NA")
+ELSA_w5_age$ybirth <- car::recode(ELSA_w5_age$ybirth, "miss_values_vector=NA")
+ELSA_w5_age$yintw <- car::recode(ELSA_w5_age$yintw, "miss_values_vector=NA")
+ELSA_w5_age$cage <- ELSA_w5_age$yintw-ELSA_w5_age$ybirth
+ELSA_w5_age$diff <- abs(ELSA_w5_age$cage - ELSA_w5_age$age)
+ELSA_w5_age <- remove_val_labels(ELSA_w5_age)
+kable(frq(ELSA_w5_age$diff), caption = 'Frequencies of difference between the study-specific variable age and the age computed as year of interview - year of birth')
+
 ```
 
 
@@ -395,19 +474,19 @@ cat("The quantity of non-missing values of the initial variable which disagree w
 
 #### Study-specific variable description
 
-| **Name** | `age` |`ybirth`|
-|----------|------|------|
-| **Label** | `age: copy of indage/dhager` |`Year of birth`|
-| **Table name** | `wave_6_ifs_derived_variables` |`elsa_w6_hd`[^1]|
-| **Missings** | `99 = age in years on or before 29/02/1912; -8 = Don't Know` |  |
-| **Description** |  |  |
+| **Name** | `age` |`ybirth`|`yintw`|
+|----------|------|---|---|
+| **Label** | `age: copy of indage/dhager` |`Year of birth`|`Year of interview`|
+| **Table name** | `wave_6_ifs_derived_variables` |`elsa_w6_hd`[^1]|`elsa_w6_hd`[^1]|
+| **Missings** | `99 = age in years on or before 29/02/1912; -8 = Don't Know` |  |  |
+| **Description** |  |  |  |
 
 
 ```{r assign6, echo=F}
 opal.assign.table.tibble(o, 'ELSA_w6_age','ELSA.wave_6_ifs_derived_variables',  variables=list('age'), missings = TRUE)
 ELSA_w6_age <- opal.execute(o,'ELSA_w6_age')
 
-opal.assign.table.tibble(o,'ELSA_w6_yb','ELSA_HD.elsa_w6_hd',variables=list('ybirth'), missings = TRUE)
+opal.assign.table.tibble(o,'ELSA_w6_yb','ELSA_HD.elsa_w6_hd',variables=list('ybirth','yintw'), missings = TRUE)
 ELSA_w6_yb <- opal.execute(o,'ELSA_w6_yb')
 
 ELSA_w6_age <- left_join(ELSA_w6_age,ELSA_w6_yb, by="id")
@@ -426,19 +505,24 @@ kable(Continuous_summary(vari, missing_values = NA)[3], caption = "ybirth")
 pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
 ggplot(ELSA_w6_age, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
+vari <- ELSA_w6_age$yintw
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "yintw")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Summary")
+ggplot(ELSA_w6_age, aes(x=factor(yintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 ```
 
 #### Harmonisation algorithm
 The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
 
-* `year of interview (2012) - year of birth`
+* `year of interview - year of birth`
 
 **R script:**
 
 ```{r harmo6}
 ELSA_ds_w6 <- tibble(id=ELSA_w6_age$id)
 ELSA_ds_w6$age <- car::recode(ELSA_w6_age$age, "-8=998; NA=999")
-ELSA_ds_w6$age[which(ELSA_ds_w6$age %in% c(99,998,999))] <- 2012 - ELSA_w6_age$ybirth[which(ELSA_ds_w6$age %in% c(99,998,999))]
+ELSA_ds_w6$age[which(ELSA_ds_w6$age %in% c(99,998,999))] <- ELSA_w6_age$yintw[which(ELSA_ds_w6$age %in% c(99,998,999))] - ELSA_w6_age$ybirth[which(ELSA_ds_w6$age %in% c(99,998,999))]
 ```
 
 #### Statistics of the new harmonised variable
@@ -453,6 +537,17 @@ ggplot(ELSA_ds_w6, aes(age)) + geom_histogram(stat="count", fill="steelblue") + 
 #### Validation
 ```{r crosstabulation6, echo=F,results='asis'}
 cat("The quantity of non-missing values of the initial variable which disagree with the harmonised variable is:",sum(ELSA_ds_w6$age[which(!ELSA_w6_age$age %in% c(99,-8) & !is.na(ELSA_w6_age$age))]!=ELSA_w6_age$age[which(!ELSA_w6_age$age %in% c(99,-8) & !is.na(ELSA_w6_age$age))]) )
+
+
+ELSA_w6_age$age <- car::recode(ELSA_w6_age$age,"c(-8,99)=NA")
+ELSA_w6_age$ybirth <- car::recode(ELSA_w6_age$ybirth, "miss_values_vector=NA")
+ELSA_w6_age$yintw <- car::recode(ELSA_w6_age$yintw, "miss_values_vector=NA")
+ELSA_w6_age$cage <- ELSA_w6_age$yintw-ELSA_w6_age$ybirth
+ELSA_w6_age$diff <- abs(ELSA_w6_age$cage - ELSA_w6_age$age)
+ELSA_w6_age <- remove_val_labels(ELSA_w6_age)
+kable(frq(ELSA_w6_age$diff), caption = 'Frequencies of difference between the study-specific variable age and the age computed as year of interview - year of birth')
+kable(ELSA_w6_age[which(ELSA_w6_age$diff>2),], align = 'c', caption = 'Individuals with difference greater than 2')
+
 ```
 
 
@@ -463,11 +558,11 @@ cat("The quantity of non-missing values of the initial variable which disagree w
 
 #### Study-specific variable description
 
-| **Name** | `age` |`ybirth`|
-|----------|----------|--|
-| **Label** | `age: copy of indage/dhager` |`Year of birth`|
+| **Name** | `age` |`ybirth`|`yintw`|
+|----------|-----|-----|--|
+| **Label** | `age: copy of indage/dhager` |`Year of birth`|`Year of interview`|
 | **Table name** | `wave7_dv` |`elsa_w7_hd`[^1]|
-| **Missings** | `99 = age in years on or before 29/02/1912` |  |
+| **Missings** | `99 = age in years on or before 29/02/1912` |  |  |
 | **Description** |  |  |
 
 
@@ -475,7 +570,7 @@ cat("The quantity of non-missing values of the initial variable which disagree w
 opal.assign.table.tibble(o, 'ELSA_w7_age','ELSA.wave7_dv', variables=list('age'), missings = TRUE)
 ELSA_w7_age <- opal.execute(o,'ELSA_w7_age')
 
-opal.assign.table.tibble(o,'ELSA_w7_yb','ELSA_HD.elsa_w7_hd',variables=list('ybirth'), missings = TRUE)
+opal.assign.table.tibble(o,'ELSA_w7_yb','ELSA_HD.elsa_w7_hd',variables=list('ybirth','yintw'), missings = TRUE)
 ELSA_w7_yb <- opal.execute(o,'ELSA_w7_yb')
 
 ELSA_w7_age <- left_join(ELSA_w7_age,ELSA_w7_yb, by="id")
@@ -493,19 +588,24 @@ kable(Continuous_summary(vari, missing_values = NA)[3], caption = "ybirth")
 pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
 ggplot(ELSA_w7_age, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
+vari <- ELSA_w7_age$yintw
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "yintw")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Summary")
+ggplot(ELSA_w7_age, aes(x=factor(yintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 ```
 
 #### Harmonisation algorithm
 The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
 
-* `year of interview (2014) - year of birth`
+* `year of interview - year of birth`
 
 **R script:**
 
 ```{r harmo7}
 ELSA_ds_w7 <- tibble(id=ELSA_w7_age$id)
 ELSA_ds_w7$age <- car::recode(ELSA_w7_age$age, "NA=999")
-ELSA_ds_w7$age[which(ELSA_ds_w7$age %in% c(99,998,999))] <- 2014 - ELSA_w7_age$ybirth[which(ELSA_ds_w7$age %in% c(99,998,999))]
+ELSA_ds_w7$age[which(ELSA_ds_w7$age %in% c(99,998,999))] <- ELSA_w7_age$yintw[which(ELSA_ds_w7$age %in% c(99,998,999))] - ELSA_w7_age$ybirth[which(ELSA_ds_w7$age %in% c(99,998,999))]
 ```
 
 #### Statistics of the new harmonised variable
@@ -520,6 +620,17 @@ ggplot(ELSA_ds_w7, aes(age)) + geom_histogram(stat="count", fill="steelblue") + 
 #### Validation
 ```{r crosstabulation7, echo=F,results='asis'}
 cat("The quantity of non-missing values of the initial variable which disagree with the harmonised variable is:",sum(ELSA_ds_w7$age[which(!ELSA_w7_age$age %in% c(99,-8) & !is.na(ELSA_w7_age$age))]!=ELSA_w7_age$age[which(!ELSA_w7_age$age %in% c(99,-8) & !is.na(ELSA_w7_age$age))]) )
+
+
+ELSA_w7_age$age <- car::recode(ELSA_w7_age$age,"c(-8,99)=NA")
+ELSA_w7_age$ybirth <- car::recode(ELSA_w7_age$ybirth, "miss_values_vector=NA")
+ELSA_w7_age$yintw <- car::recode(ELSA_w7_age$yintw, "miss_values_vector=NA")
+ELSA_w7_age$cage <- ELSA_w7_age$yintw-ELSA_w7_age$ybirth
+ELSA_w7_age$diff <- abs(ELSA_w7_age$cage - ELSA_w7_age$age)
+ELSA_w7_age <- remove_val_labels(ELSA_w7_age)
+kable(frq(ELSA_w7_age$diff), caption = 'Frequencies of difference between the study-specific variable age and the age computed as year of interview - year of birth')
+kable(ELSA_w7_age[which(ELSA_w7_age$diff>2),], align = 'c', caption = 'Individuals with difference greater than 2')
+
 ```
 
 
@@ -626,7 +737,8 @@ if(length(l.hds)>0){
 
 
 # Quality estimation
-No comments.
+
+Individuals with incompatible data are specified in validations along waves.
 
 
 [^1]:Table from the Harmonised Datasets.
