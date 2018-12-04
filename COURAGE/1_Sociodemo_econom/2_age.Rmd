@@ -79,6 +79,20 @@ ggplot(COURAGE_ds_fin_w1, aes(age)) + geom_histogram(stat="count", fill="steelbl
 
 #### Validation
 ```{r crosstabulation_fin, echo=F}
+
+load(paste0(datafolder,"fin_w1/yintw",".RData"))
+load(paste0(datafolder,"fin_w1/ybirth",".RData"))
+COURAGE_ds_fin_w1 <- left_join(COURAGE_ds_fin_w1,yintw,by="id")
+COURAGE_ds_fin_w1 <- left_join(COURAGE_ds_fin_w1,ybirth,by="id")
+COURAGE_ds_fin_w1 <- remove_val_labels(COURAGE_ds_fin_w1)
+COURAGE_ds_fin_w1$age <- car::recode(COURAGE_ds_fin_w1$age, "miss_values_vector=NA")
+COURAGE_ds_fin_w1$yintw <- car::recode(COURAGE_ds_fin_w1$yintw, "miss_values_vector=NA")
+COURAGE_ds_fin_w1$ybirth <- car::recode(COURAGE_ds_fin_w1$ybirth, "miss_values_vector=NA")
+COURAGE_ds_fin_w1$cage <- COURAGE_ds_fin_w1$yintw - COURAGE_ds_fin_w1$ybirth
+COURAGE_ds_fin_w1$diff <- abs(COURAGE_ds_fin_w1$cage-COURAGE_ds_fin_w1$age)
+kable(frq(COURAGE_ds_fin_w1$diff), caption = 'Frequency of differences between harmonised age and the difference between year of interview and year of birth')
+
+COURAGE_ds_fin_w1 <- COURAGE_ds_fin_w1[,c("id","age")]
 ```
 
 
@@ -125,7 +139,6 @@ The harmonied variable is the same than the study-specific variable, but the mis
 ```{r harmo_pol1}
 COURAGE_ds_pol_w1 <- tibble(id=COURAGE_pol_w1_age$id)
 COURAGE_ds_pol_w1$age <- car::recode(COURAGE_pol_w1_age$q1011_age, "NA=999")
-COURAGE_ds_pol_w1$age <- labelled(COURAGE_ds_pol_w1$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
@@ -139,11 +152,25 @@ ggplot(COURAGE_ds_pol_w1, aes(age)) + geom_histogram(stat="count", fill="steelbl
 
 #### Validation
 ```{r crosstabulation_pol1, echo=F}
+
+
+load(paste0(datafolder,"pol_w1/yintw",".RData"))
+load(paste0(datafolder,"pol_w1/ybirth",".RData"))
+COURAGE_ds_pol_w1 <- left_join(COURAGE_ds_pol_w1,yintw,by="id")
+COURAGE_ds_pol_w1 <- left_join(COURAGE_ds_pol_w1,ybirth,by="id")
+COURAGE_ds_pol_w1 <- remove_val_labels(COURAGE_ds_pol_w1)
+COURAGE_ds_pol_w1$age <- car::recode(COURAGE_ds_pol_w1$age, "miss_values_vector=NA")
+COURAGE_ds_pol_w1$yintw <- car::recode(COURAGE_ds_pol_w1$yintw, "miss_values_vector=NA")
+COURAGE_ds_pol_w1$ybirth <- car::recode(COURAGE_ds_pol_w1$ybirth, "miss_values_vector=NA")
+COURAGE_ds_pol_w1$cage <- COURAGE_ds_pol_w1$yintw - COURAGE_ds_pol_w1$ybirth
+COURAGE_ds_pol_w1$diff <- abs(COURAGE_ds_pol_w1$cage-COURAGE_ds_pol_w1$age)
+kable(frq(COURAGE_ds_pol_w1$diff), caption = 'Frequency of differences between harmonised age and the difference between year of interview and year of birth')
+kable(COURAGE_ds_pol_w1[which(COURAGE_ds_pol_w1$diff>2),], align = 'c', caption = 'Individuals with age diverging in at least 2 years from  difference between year of interview and year of birth')
+
+COURAGE_ds_pol_w1 <- COURAGE_ds_pol_w1[,c("id","age")]
+
+
 ```
-
-
-
-
 
 
 
@@ -283,7 +310,7 @@ comp_age <- function(y_birth, m_birth, a_year, a_month, miss){
 
 }
 
-COURAGE_ds_pol_w2$age <- comp_age(y_birth=COURAGE_pol_w2_age$ybirth, m_birth=COURAGE_pol_w2_age$mbirth , a_year=COURAGE_pol_w2_age$yintw.w2, a_month=COURAGE_pol_w2_age$mintw.w2, miss=miss_values_vector)
+COURAGE_ds_pol_w2$age <- COURAGE_pol_w2_age$cage  <- comp_age(y_birth=COURAGE_pol_w2_age$ybirth, m_birth=COURAGE_pol_w2_age$mbirth , a_year=COURAGE_pol_w2_age$yintw.w2, a_month=COURAGE_pol_w2_age$mintw.w2, miss=miss_values_vector)
 
 COURAGE_pol_w2_age$diff_intw <- comp_age(y_birth=COURAGE_pol_w2_age$yintw.w1, m_birth=COURAGE_pol_w2_age$mintw.w1, a_year=COURAGE_pol_w2_age$yintw.w2, a_month=COURAGE_pol_w2_age$mintw.w2, miss=miss_values_vector)
 
@@ -304,6 +331,15 @@ ggplot(COURAGE_ds_pol_w2, aes(age)) + geom_histogram(stat="count", fill="steelbl
 
 #### Validation
 ```{r crosstabulation_pol2, echo=F}
+
+
+COURAGE_pol_w2_age$cage <- car::recode(COURAGE_pol_w2_age$cage, "miss_values_vector=NA")
+COURAGE_pol_w2_age$diff_intw <- car::recode(COURAGE_pol_w2_age$diff_intw, "miss_values_vector=NA")
+COURAGE_pol_w2_age$age <- COURAGE_pol_w2_age$q1011_age + COURAGE_pol_w2_age$diff_intw
+COURAGE_pol_w2_age$diff <- abs(COURAGE_pol_w2_age$cage-COURAGE_pol_w2_age$age)
+COURAGE_pol_w2_age <- remove_val_labels(COURAGE_pol_w2_age)
+kable(frq(COURAGE_pol_w2_age$diff), caption = 'Frequency of differences between harmonised age (cage = as date of interview - date of birth) and the age in wave 1 plus the years of difference between waves')
+kable(COURAGE_pol_w2_age[which(COURAGE_pol_w2_age$diff>2),c("id","ybirth","mbirth","yintw.w1","mintw.w1","yintw.w2","mintw.w2","diff_intw","q1011_age","age","cage","diff")], align = 'c', caption = 'Individuals with difference greater than 2 in previous table')
 
 ```
 
@@ -350,7 +386,6 @@ The harmonized variable is the same than the study-specific variable, but the mi
 ```{r harmo_spain1}
 COURAGE_ds_spain_w1 <- tibble(id=COURAGE_spain_w1_age$id)
 COURAGE_ds_spain_w1$age <- car::recode(COURAGE_spain_w1_age$q1011_age, "NA=999")
-COURAGE_ds_spain_w1$age <- labelled(COURAGE_ds_spain_w1$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not attempt not done"=994, "Does not answer"=995,  "Not applicable"=996, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
@@ -364,6 +399,22 @@ ggplot(COURAGE_ds_spain_w1, aes(age)) + geom_histogram(stat="count", fill="steel
 
 #### Validation
 ```{r crosstabulation_spain1, echo=F}
+
+
+load(paste0(datafolder,"spain_w1/yintw",".RData"))
+load(paste0(datafolder,"spain_w1/ybirth",".RData"))
+COURAGE_ds_spain_w1 <- left_join(COURAGE_ds_spain_w1,yintw,by="id")
+COURAGE_ds_spain_w1 <- left_join(COURAGE_ds_spain_w1,ybirth,by="id")
+COURAGE_ds_spain_w1 <- remove_val_labels(COURAGE_ds_spain_w1)
+COURAGE_ds_spain_w1$age <- car::recode(COURAGE_ds_spain_w1$age, "miss_values_vector=NA")
+COURAGE_ds_spain_w1$yintw <- car::recode(COURAGE_ds_spain_w1$yintw, "miss_values_vector=NA")
+COURAGE_ds_spain_w1$ybirth <- car::recode(COURAGE_ds_spain_w1$ybirth, "miss_values_vector=NA")
+COURAGE_ds_spain_w1$cage <- COURAGE_ds_spain_w1$yintw - COURAGE_ds_spain_w1$ybirth
+COURAGE_ds_spain_w1$diff <- abs(COURAGE_ds_spain_w1$cage-COURAGE_ds_spain_w1$age)
+kable(frq(COURAGE_ds_spain_w1$diff), caption = 'Frequency of differences between harmonised age and the difference between year of interview and year of birth')
+kable(COURAGE_ds_spain_w1[which(COURAGE_ds_spain_w1$diff>2),], align = 'c', caption = 'Individuals with age diverging in at least 2 years from  difference between year of interview and year of birth')
+
+COURAGE_ds_spain_w1 <- COURAGE_ds_spain_w1[,c("id","age")]
 ```
 
 
@@ -405,7 +456,7 @@ COURAGE_spain_w2_id <- opal.execute(o,'COURAGE_spain_w2_id')
 opal.assign.table.tibble(o, 'COURAGE_spain_w1_age','Courage.Courage_Spain_w1',variables=list('q1011_age'), missings = TRUE)
 COURAGE_spain_w1_age <- opal.execute(o,'COURAGE_spain_w1_age')
 
-COURAGE_spain_w2 <- left_join(COURAGE_spain_w2_id,COURAGE_spain_w2_age,by="id")
+COURAGE_spain_w2 <- left_join(COURAGE_spain_w2_id[,-2],COURAGE_spain_w2_age,by="id")
 COURAGE_spain_w2 <- left_join(COURAGE_spain_w2,COURAGE_spain_w1_hd,by="id",suffix=c(".w2",".w1"))
 COURAGE_spain_w2 <- left_join(COURAGE_spain_w2,COURAGE_spain_w1_age,by="id")
 ```
@@ -494,7 +545,7 @@ comp_age <- function(y_birth, m_birth, y_int, m_int, miss){
 }
 
 
-COURAGE_spain_w2$age <- comp_age(y_birth=COURAGE_spain_w2$ybirth , 
+COURAGE_spain_w2$cage <- comp_age(y_birth=COURAGE_spain_w2$ybirth , 
                                    m_birth=COURAGE_spain_w2$mbirth ,
                                    y_int=COURAGE_spain_w2$yintw.w2 , 
                                    m_int=COURAGE_spain_w2$mintw.w2 , 
@@ -502,7 +553,7 @@ COURAGE_spain_w2$age <- comp_age(y_birth=COURAGE_spain_w2$ybirth ,
 
 
 COURAGE_ds_spain_w2 <- tibble(id=COURAGE_spain_w2$id)
-COURAGE_ds_spain_w2$age <- COURAGE_spain_w2$age
+COURAGE_ds_spain_w2$age <- COURAGE_spain_w2$cage
 
 
 COURAGE_spain_w2$diff_intw <- comp_age(y_birth=COURAGE_spain_w2$yintw.w1, m_birth=COURAGE_spain_w2$mintw.w1, y_int=COURAGE_spain_w2$yintw.w2, m_int=COURAGE_spain_w2$mintw.w2, miss=miss_values_vector)
@@ -526,6 +577,17 @@ ggplot(COURAGE_ds_spain_w2, aes(age)) + geom_histogram(stat="count", fill="steel
 
 #### Validation
 ```{r crosstabulation_spain2, echo=F}
+
+
+
+COURAGE_spain_w2$cage <- car::recode(COURAGE_spain_w2$cage, "miss_values_vector=NA")
+COURAGE_spain_w2$diff_intw <- car::recode(COURAGE_spain_w2$diff_intw, "miss_values_vector=NA")
+COURAGE_spain_w2$age <- COURAGE_spain_w2$q1011_age + COURAGE_spain_w2$diff_intw
+COURAGE_spain_w2$diff <- abs(COURAGE_spain_w2$cage-COURAGE_spain_w2$age)
+COURAGE_spain_w2 <- remove_val_labels(COURAGE_spain_w2)
+kable(frq(COURAGE_spain_w2$diff), caption = 'Frequency of differences between harmonised age (as date of interview - date of birth) and the age in wave 1 plus the years of difference between waves')
+kable(COURAGE_spain_w2[which(COURAGE_spain_w2$diff>2 & COURAGE_spain_w2$living_status==0),c("id","ybirth","mbirth","yintw.w1","mintw.w1","yintw.w2","mintw.w2","diff_intw","q1011_age","age","cage","diff","living_status")], align = 'c', caption = 'Individuals with difference greater than 2 in previous table')
+
 ```
 
 
@@ -636,8 +698,8 @@ if(length(l.hds)>0){
 
 # Quality estimation
 
+Incompatible data specified in each cohort-wave validation.
 
-No comments
 
 
 ```{r closeRsession, echo=FALSE}
