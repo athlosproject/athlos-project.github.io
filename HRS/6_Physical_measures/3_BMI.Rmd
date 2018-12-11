@@ -12,62 +12,50 @@ output:
       smooth_scroll: yes
 ---
 
-<!-- ############################################################################# --> 
-
+<!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+source("../../setup.r")
 ```
-<!-- ############################################################################# --> 
-
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-* Short name: `bmi`
-* Variable label: `Body Mass Index calculated as weight (kg)/height(m)^2`
-* Variable description: `the BMI variable should be created by dividing weight and height variables with the following equation= weight (kg)/height(m)^2`
-* Domain: `Physical measures`
-* Value type: `continuous`
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/bmiDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/bmiDS.R')
+```
 
 # Data process
 
+## HRS
 
-### HRS - Wave 1 
+### Wave 1 
 
-The study-specific variable elected to be harmonised is:
+#### Study-specific variable description
 
-* Name: `R1BMI`
-* Label: `W1 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+
+| **Name** | `R1BMI`|
+|-|-|
+| **Label** |`W1 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-HRS-W1`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_hrs1, echo=F}
-opal.assign.table.tibble(o, 'HRS_hrs_w1_bmi','HRS.HRS-HRS-w1',
-                         variables=list('R1BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_hrs_w1','HRS.HRS-HRS-w1',
+                         variables=list('R1WEIGHT','R1HEIGHT','R1BMI'), missings = TRUE)
+HRS_hrs_w1 <- opal.execute(o,'HRS_hrs_w1')
+
 ```
 
 ```{r local_hrs1, echo=F}
-HRS_hrs_w1_bmi <- opal.execute(o,'HRS_hrs_w1_bmi')
-Continuous_summary(var = HRS_hrs_w1_bmi$R1BMI, missing_values = NA)
-ggplot(HRS_hrs_w1_bmi, aes(R1BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_hrs_w1$R1BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R1BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_hrs_w1, aes(R1BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -78,31 +66,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_hrs1}
-HRS_ds_hrs_w1 <- tibble(id=HRS_hrs_w1_bmi$id)
-HRS_ds_hrs_w1$bmi <- car::recode(HRS_hrs_w1_bmi$R1BMI, "NA=999")
+HRS_ds_hrs_w1 <- tibble(id=HRS_hrs_w1$id)
+HRS_ds_hrs_w1$bmi <- car::recode(HRS_hrs_w1$R1BMI, "NA=999")
 HRS_ds_hrs_w1$bmi <- labelled(HRS_ds_hrs_w1$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_hrs1, echo=F}
-Continuous_summary(var = HRS_ds_hrs_w1$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_hrs_w1, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_hrs_w1$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_hrs_w1, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_hrs1, echo=F}
-opal.assign.table.tibble(o, 'HRS_hrs_w1_whb','HRS.HRS-HRS-w1',
-                         variables=list('R1WEIGHT', 'R1HEIGHT', 'R1BMI'), missings = TRUE)
-HRS_hrs_w1_whb <- opal.execute(o,'HRS_hrs_w1_whb')
 
-HRS_hrs_w1_whb$bmi_c <- HRS_hrs_w1_whb$R1WEIGHT/(HRS_hrs_w1_whb$R1HEIGHT)^2
+                         
+
+
+HRS_hrs_w1$bmi_c <- HRS_hrs_w1$R1WEIGHT/(HRS_hrs_w1$R1HEIGHT)^2
   
-HRS_hrs_w1_whb$proff <- HRS_hrs_w1_whb$R1BMI - HRS_hrs_w1_whb$bmi_c
-summary(HRS_hrs_w1_whb$proff)
+HRS_hrs_w1$proff <- HRS_hrs_w1$R1BMI - HRS_hrs_w1$bmi_c
+pander(summary(HRS_hrs_w1$proff), caption = 'Summary')
 
-head(HRS_hrs_w1_whb[which(HRS_hrs_w1_whb$proff>0.2 | HRS_hrs_w1_whb$proff<(-0.2)),])
+kable(head(HRS_hrs_w1[which(HRS_hrs_w1$proff>0.2 | HRS_hrs_w1$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -110,12 +101,12 @@ head(HRS_hrs_w1_whb[which(HRS_hrs_w1_whb$proff>0.2 | HRS_hrs_w1_whb$proff<(-0.2)
 
 
 ```{r importOPAL_hrs1, echo=F}
-#val_labels(HRS_ds_hrs_w1) <- NULL
-#opal.assign.data(o, 'HRS_ds_hrs_w1', HRS_ds_hrs_w1)
-#opal.symbol_import(o,'HRS_ds_hrs_w1', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_hrs_w1
-save(bmi, file = "../RData/hrs_w1/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
@@ -123,26 +114,33 @@ rm(bmi)
 
 
 
-### HRS - Wave 2 
+### Wave 2 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R2BMI`
-* Label: `W2 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R2BMI`|
+|-|-|
+| **Label** |`W2 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-HRS-W2`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_hrs2, echo=F}
-opal.assign.table.tibble(o, 'HRS_hrs_w2_bmi','HRS.HRS-HRS-w2',
-                         variables=list('R2BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_hrs_w2','HRS.HRS-HRS-w2',
+                         variables=list('R2WEIGHT','R2HEIGHT','R2BMI'), missings = TRUE)
+HRS_hrs_w2 <- opal.execute(o,'HRS_hrs_w2')
+
 ```
 
 ```{r local_hrs2, echo=F}
-HRS_hrs_w2_bmi <- opal.execute(o,'HRS_hrs_w2_bmi')
-Continuous_summary(var = HRS_hrs_w2_bmi$R2BMI, missing_values = NA)
-ggplot(HRS_hrs_w2_bmi, aes(R2BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_hrs_w2$R2BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R2BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_hrs_w2, aes(R2BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -153,31 +151,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_hrs2}
-HRS_ds_hrs_w2 <- tibble(id=HRS_hrs_w2_bmi$id)
-HRS_ds_hrs_w2$bmi <- car::recode(HRS_hrs_w2_bmi$R2BMI, "NA=999")
+HRS_ds_hrs_w2 <- tibble(id=HRS_hrs_w2$id)
+HRS_ds_hrs_w2$bmi <- car::recode(HRS_hrs_w2$R2BMI, "NA=999")
 HRS_ds_hrs_w2$bmi <- labelled(HRS_ds_hrs_w2$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_hrs2, echo=F}
-Continuous_summary(var = HRS_ds_hrs_w2$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_hrs_w2, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_hrs_w2$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_hrs_w2, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_hrs2, echo=F}
-opal.assign.table.tibble(o, 'HRS_hrs_w2_whb','HRS.HRS-HRS-w2',
-                         variables=list('R2WEIGHT', 'R2HEIGHT', 'R2BMI'), missings = TRUE)
-HRS_hrs_w2_whb <- opal.execute(o,'HRS_hrs_w2_whb')
 
-HRS_hrs_w2_whb$bmi_c <- HRS_hrs_w2_whb$R2WEIGHT/(HRS_hrs_w2_whb$R2HEIGHT)^2
+                         
+
+
+HRS_hrs_w2$bmi_c <- HRS_hrs_w2$R2WEIGHT/(HRS_hrs_w2$R2HEIGHT)^2
   
-HRS_hrs_w2_whb$proff <- HRS_hrs_w2_whb$R2BMI - HRS_hrs_w2_whb$bmi_c
-summary(HRS_hrs_w2_whb$proff)
+HRS_hrs_w2$proff <- HRS_hrs_w2$R2BMI - HRS_hrs_w2$bmi_c
+pander(summary(HRS_hrs_w2$proff), caption = 'Summary')
 
-head(HRS_hrs_w2_whb[which(HRS_hrs_w2_whb$proff>0.2 | HRS_hrs_w2_whb$proff<(-0.2)),])
+kable(head(HRS_hrs_w2[which(HRS_hrs_w2$proff>0.2 | HRS_hrs_w2$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -185,12 +186,12 @@ head(HRS_hrs_w2_whb[which(HRS_hrs_w2_whb$proff>0.2 | HRS_hrs_w2_whb$proff<(-0.2)
 
 
 ```{r importOPAL_hrs2, echo=F}
-#val_labels(HRS_ds_hrs_w2) <- NULL
-#opal.assign.data(o, 'HRS_ds_hrs_w2', HRS_ds_hrs_w2)
-#opal.symbol_import(o,'HRS_ds_hrs_w2', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_hrs_w2
-save(bmi, file = "../RData/hrs_w2/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
@@ -198,27 +199,34 @@ rm(bmi)
 
 
 
-### HRS - Wave 3 
+### Wave 3 
 
-#### Study-specific variables
+#### Study-specific variable description
 
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R3BMI`
-* Label: `W3 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R3BMI`|
+|-|-|
+| **Label** |`W3 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-HRS-W3`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_hrs3, echo=F}
-opal.assign.table.tibble(o, 'HRS_hrs_w3_bmi','HRS.HRS-HRS-w3',
-                         variables=list('R3BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_hrs_w3','HRS.HRS-HRS-w3',
+                         variables=list('R3WEIGHT','R3HEIGHT','R3BMI'), missings = TRUE)
+HRS_hrs_w3 <- opal.execute(o,'HRS_hrs_w3')
+
 ```
 
 ```{r local_hrs3, echo=F}
-HRS_hrs_w3_bmi <- opal.execute(o,'HRS_hrs_w3_bmi')
-Continuous_summary(var = HRS_hrs_w3_bmi$R3BMI, missing_values = NA)
-ggplot(HRS_hrs_w3_bmi, aes(R3BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_hrs_w3$R3BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R3BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_hrs_w3, aes(R3BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -229,31 +237,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_hrs3}
-HRS_ds_hrs_w3 <- tibble(id=HRS_hrs_w3_bmi$id)
-HRS_ds_hrs_w3$bmi <- car::recode(HRS_hrs_w3_bmi$R3BMI, "NA=999")
+HRS_ds_hrs_w3 <- tibble(id=HRS_hrs_w3$id)
+HRS_ds_hrs_w3$bmi <- car::recode(HRS_hrs_w3$R3BMI, "NA=999")
 HRS_ds_hrs_w3$bmi <- labelled(HRS_ds_hrs_w3$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_hrs3, echo=F}
-Continuous_summary(var = HRS_ds_hrs_w3$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_hrs_w3, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_hrs_w3$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_hrs_w3, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_hrs3, echo=F}
-opal.assign.table.tibble(o, 'HRS_hrs_w3_whb','HRS.HRS-HRS-w3',
-                         variables=list('R3WEIGHT', 'R3HEIGHT', 'R3BMI'), missings = TRUE)
-HRS_hrs_w3_whb <- opal.execute(o,'HRS_hrs_w3_whb')
 
-HRS_hrs_w3_whb$bmi_c <- HRS_hrs_w3_whb$R3WEIGHT/(HRS_hrs_w3_whb$R3HEIGHT)^2
+                         
+
+
+HRS_hrs_w3$bmi_c <- HRS_hrs_w3$R3WEIGHT/(HRS_hrs_w3$R3HEIGHT)^2
   
-HRS_hrs_w3_whb$proff <- HRS_hrs_w3_whb$R3BMI - HRS_hrs_w3_whb$bmi_c
-summary(HRS_hrs_w3_whb$proff)
+HRS_hrs_w3$proff <- HRS_hrs_w3$R3BMI - HRS_hrs_w3$bmi_c
+pander(summary(HRS_hrs_w3$proff), caption = 'Summary')
 
-head(HRS_hrs_w3_whb[which(HRS_hrs_w3_whb$proff>0.2 | HRS_hrs_w3_whb$proff<(-0.2)),])
+kable(head(HRS_hrs_w3[which(HRS_hrs_w3$proff>0.2 | HRS_hrs_w3$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -262,37 +273,44 @@ head(HRS_hrs_w3_whb[which(HRS_hrs_w3_whb$proff>0.2 | HRS_hrs_w3_whb$proff<(-0.2)
 
 
 ```{r importOPAL_hrs3, echo=F}
-#val_labels(HRS_ds_hrs_w3) <- NULL
-#opal.assign.data(o, 'HRS_ds_hrs_w3', HRS_ds_hrs_w3)
-#opal.symbol_import(o,'HRS_ds_hrs_w3', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_hrs_w3
-save(bmi, file = "../RData/hrs_w3/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
 
 
-### HRS - Wave 4 
+### Wave 4 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R4BMI`
-* Label: `W4 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R4BMI`|
+|-|-|
+| **Label** |`W4 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-HRS-W4`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_hrs4, echo=F}
-opal.assign.table.tibble(o, 'HRS_hrs_w4_bmi','HRS.HRS-HRS-w4',
-                         variables=list('R4BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_hrs_w4','HRS.HRS-HRS-w4',
+                         variables=list('R4WEIGHT','R4HEIGHT','R4BMI'), missings = TRUE)
+HRS_hrs_w4 <- opal.execute(o,'HRS_hrs_w4')
+
 ```
 
 ```{r local_hrs4, echo=F}
-HRS_hrs_w4_bmi <- opal.execute(o,'HRS_hrs_w4_bmi')
-Continuous_summary(var = HRS_hrs_w4_bmi$R4BMI, missing_values = NA)
-ggplot(HRS_hrs_w4_bmi, aes(R4BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_hrs_w4$R4BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R4BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_hrs_w4, aes(R4BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -303,31 +321,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_hrs4}
-HRS_ds_hrs_w4 <- tibble(id=HRS_hrs_w4_bmi$id)
-HRS_ds_hrs_w4$bmi <- car::recode(HRS_hrs_w4_bmi$R4BMI, "NA=999")
+HRS_ds_hrs_w4 <- tibble(id=HRS_hrs_w4$id)
+HRS_ds_hrs_w4$bmi <- car::recode(HRS_hrs_w4$R4BMI, "NA=999")
 HRS_ds_hrs_w4$bmi <- labelled(HRS_ds_hrs_w4$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_hrs4, echo=F}
-Continuous_summary(var = HRS_ds_hrs_w4$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_hrs_w4, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_hrs_w4$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_hrs_w4, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_hrs4, echo=F}
-opal.assign.table.tibble(o, 'HRS_hrs_w4_whb','HRS.HRS-HRS-w4',
-                         variables=list('R4WEIGHT', 'R4HEIGHT', 'R4BMI'), missings = TRUE)
-HRS_hrs_w4_whb <- opal.execute(o,'HRS_hrs_w4_whb')
 
-HRS_hrs_w4_whb$bmi_c <- HRS_hrs_w4_whb$R4WEIGHT/(HRS_hrs_w4_whb$R4HEIGHT)^2
+                         
+
+
+HRS_hrs_w4$bmi_c <- HRS_hrs_w4$R4WEIGHT/(HRS_hrs_w4$R4HEIGHT)^2
   
-HRS_hrs_w4_whb$proff <- HRS_hrs_w4_whb$R4BMI - HRS_hrs_w4_whb$bmi_c
-summary(HRS_hrs_w4_whb$proff)
+HRS_hrs_w4$proff <- HRS_hrs_w4$R4BMI - HRS_hrs_w4$bmi_c
+pander(summary(HRS_hrs_w4$proff), caption = 'Summary')
 
-head(HRS_hrs_w4_whb[which(HRS_hrs_w4_whb$proff>0.2 | HRS_hrs_w4_whb$proff<(-0.2)),])
+kable(head(HRS_hrs_w4[which(HRS_hrs_w4$proff>0.2 | HRS_hrs_w4$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -335,37 +356,44 @@ head(HRS_hrs_w4_whb[which(HRS_hrs_w4_whb$proff>0.2 | HRS_hrs_w4_whb$proff<(-0.2)
 
 
 ```{r importOPAL_hrs4, echo=F}
-#val_labels(HRS_ds_hrs_w4) <- NULL
-#opal.assign.data(o, 'HRS_ds_hrs_w4', HRS_ds_hrs_w4)
-#opal.symbol_import(o,'HRS_ds_hrs_w4', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_hrs_w4
-save(bmi, file = "../RData/hrs_w4/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
 
 
 
-### HRS - Wave 5
+### Wave 5
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R5BMI`
-* Label: `W5 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R5BMI`|
+|-|-|
+| **Label** |`W5 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-HRS-W5`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 ```{r assign_hrs5, echo=F}
-opal.assign.table.tibble(o, 'HRS_hrs_w5_bmi','HRS.HRS-HRS-w5',
-                         variables=list('R5BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_hrs_w5','HRS.HRS-HRS-w5',
+                         variables=list('R5WEIGHT','R5HEIGHT','R5BMI'), missings = TRUE)
+HRS_hrs_w5 <- opal.execute(o,'HRS_hrs_w5')
+
 ```
 
 ```{r local_hrs5, echo=F}
-HRS_hrs_w5_bmi <- opal.execute(o,'HRS_hrs_w5_bmi')
-Continuous_summary(var = HRS_hrs_w5_bmi$R5BMI, missing_values = NA)
-ggplot(HRS_hrs_w5_bmi, aes(R5BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_hrs_w5$R5BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R5BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_hrs_w5, aes(R5BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -376,31 +404,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_hrs5}
-HRS_ds_hrs_w5 <- tibble(id=HRS_hrs_w5_bmi$id)
-HRS_ds_hrs_w5$bmi <- car::recode(HRS_hrs_w5_bmi$R5BMI, "NA=999")
+HRS_ds_hrs_w5 <- tibble(id=HRS_hrs_w5$id)
+HRS_ds_hrs_w5$bmi <- car::recode(HRS_hrs_w5$R5BMI, "NA=999")
 HRS_ds_hrs_w5$bmi <- labelled(HRS_ds_hrs_w5$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_hrs5, echo=F}
-Continuous_summary(var = HRS_ds_hrs_w5$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_hrs_w5, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_hrs_w5$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_hrs_w5, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_hrs5, echo=F}
-opal.assign.table.tibble(o, 'HRS_hrs_w5_whb','HRS.HRS-HRS-w5',
-                         variables=list('R5WEIGHT', 'R5HEIGHT', 'R5BMI'), missings = TRUE)
-HRS_hrs_w5_whb <- opal.execute(o,'HRS_hrs_w5_whb')
 
-HRS_hrs_w5_whb$bmi_c <- HRS_hrs_w5_whb$R5WEIGHT/(HRS_hrs_w5_whb$R5HEIGHT)^2
+                         
+
+
+HRS_hrs_w5$bmi_c <- HRS_hrs_w5$R5WEIGHT/(HRS_hrs_w5$R5HEIGHT)^2
   
-HRS_hrs_w5_whb$proff <- HRS_hrs_w5_whb$R5BMI - HRS_hrs_w5_whb$bmi_c
-summary(HRS_hrs_w5_whb$proff)
+HRS_hrs_w5$proff <- HRS_hrs_w5$R5BMI - HRS_hrs_w5$bmi_c
+pander(summary(HRS_hrs_w5$proff), caption = 'Summary')
 
-head(HRS_hrs_w5_whb[which(HRS_hrs_w5_whb$proff>0.2 | HRS_hrs_w5_whb$proff<(-0.2)),])
+kable(head(HRS_hrs_w5[which(HRS_hrs_w5$proff>0.2 | HRS_hrs_w5$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -408,12 +439,12 @@ head(HRS_hrs_w5_whb[which(HRS_hrs_w5_whb$proff>0.2 | HRS_hrs_w5_whb$proff<(-0.2)
 
 
 ```{r importOPAL_hrs5, echo=F}
-#val_labels(HRS_ds_hrs_w5) <- NULL
-#opal.assign.data(o, 'HRS_ds_hrs_w5', HRS_ds_hrs_w5)
-#opal.symbol_import(o,'HRS_ds_hrs_w5', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_hrs_w5
-save(bmi, file = "../RData/hrs_w5/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
@@ -421,26 +452,33 @@ rm(bmi)
 
 
 
-### HRS - Wave 6
+### Wave 6
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R6BMI`
-* Label: `W6 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R6BMI`|
+|-|-|
+| **Label** |`W6 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-HRS-W6`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_hrs6, echo=F}
-opal.assign.table.tibble(o, 'HRS_hrs_w6_bmi','HRS.HRS-HRS-w6',
-                         variables=list('R6BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_hrs_w6','HRS.HRS-HRS-w6',
+                         variables=list('R6WEIGHT','R6HEIGHT','R6BMI'), missings = TRUE)
+HRS_hrs_w6 <- opal.execute(o,'HRS_hrs_w6')
+
 ```
 
 ```{r local_hrs6, echo=F}
-HRS_hrs_w6_bmi <- opal.execute(o,'HRS_hrs_w6_bmi')
-Continuous_summary(var = HRS_hrs_w6_bmi$R6BMI, missing_values = NA)
-ggplot(HRS_hrs_w6_bmi, aes(R6BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_hrs_w6$R6BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R6BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_hrs_w6, aes(R6BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -451,31 +489,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_hrs6}
-HRS_ds_hrs_w6 <- tibble(id=HRS_hrs_w6_bmi$id)
-HRS_ds_hrs_w6$bmi <- car::recode(HRS_hrs_w6_bmi$R6BMI, "NA=999")
+HRS_ds_hrs_w6 <- tibble(id=HRS_hrs_w6$id)
+HRS_ds_hrs_w6$bmi <- car::recode(HRS_hrs_w6$R6BMI, "NA=999")
 HRS_ds_hrs_w6$bmi <- labelled(HRS_ds_hrs_w6$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_hrs6, echo=F}
-Continuous_summary(var = HRS_ds_hrs_w6$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_hrs_w6, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_hrs_w6$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_hrs_w6, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_hrs6, echo=F}
-opal.assign.table.tibble(o, 'HRS_hrs_w6_whb','HRS.HRS-HRS-w6',
-                         variables=list('R6WEIGHT', 'R6HEIGHT', 'R6BMI'), missings = TRUE)
-HRS_hrs_w6_whb <- opal.execute(o,'HRS_hrs_w6_whb')
 
-HRS_hrs_w6_whb$bmi_c <- HRS_hrs_w6_whb$R6WEIGHT/(HRS_hrs_w6_whb$R6HEIGHT)^2
+                         
+
+
+HRS_hrs_w6$bmi_c <- HRS_hrs_w6$R6WEIGHT/(HRS_hrs_w6$R6HEIGHT)^2
   
-HRS_hrs_w6_whb$proff <- HRS_hrs_w6_whb$R6BMI - HRS_hrs_w6_whb$bmi_c
-summary(HRS_hrs_w6_whb$proff)
+HRS_hrs_w6$proff <- HRS_hrs_w6$R6BMI - HRS_hrs_w6$bmi_c
+pander(summary(HRS_hrs_w6$proff), caption = 'Summary')
 
-head(HRS_hrs_w6_whb[which(HRS_hrs_w6_whb$proff>0.2 | HRS_hrs_w6_whb$proff<(-0.2)),])
+kable(head(HRS_hrs_w6[which(HRS_hrs_w6$proff>0.2 | HRS_hrs_w6$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -483,38 +524,45 @@ head(HRS_hrs_w6_whb[which(HRS_hrs_w6_whb$proff>0.2 | HRS_hrs_w6_whb$proff<(-0.2)
 
 
 ```{r importOPAL_hrs6, echo=F}
-#val_labels(HRS_ds_hrs_w6) <- NULL
-#opal.assign.data(o, 'HRS_ds_hrs_w6', HRS_ds_hrs_w6)
-#opal.symbol_import(o,'HRS_ds_hrs_w6', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_hrs_w6
-save(bmi, file = "../RData/hrs_w6/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
 
 
 
-### HRS - Wave 7
+### Wave 7
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R7BMI`
-* Label: `W7 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R7BMI`|
+|-|-|
+| **Label** |`W7 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-HRS-W7`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_hrs7, echo=F}
-opal.assign.table.tibble(o, 'HRS_hrs_w7_bmi','HRS.HRS-HRS-w7',
-                         variables=list('R7BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_hrs_w7','HRS.HRS-HRS-w7',
+                         variables=list('R7WEIGHT','R7HEIGHT','R7BMI'), missings = TRUE)
+HRS_hrs_w7 <- opal.execute(o,'HRS_hrs_w7')
+
 ```
 
 ```{r local_hrs7, echo=F}
-HRS_hrs_w7_bmi <- opal.execute(o,'HRS_hrs_w7_bmi')
-Continuous_summary(var = HRS_hrs_w7_bmi$R7BMI, missing_values = NA)
-ggplot(HRS_hrs_w7_bmi, aes(R7BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_hrs_w7$R7BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R7BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_hrs_w7, aes(R7BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -525,31 +573,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_hrs7}
-HRS_ds_hrs_w7 <- tibble(id=HRS_hrs_w7_bmi$id)
-HRS_ds_hrs_w7$bmi <- car::recode(HRS_hrs_w7_bmi$R7BMI, "NA=999")
+HRS_ds_hrs_w7 <- tibble(id=HRS_hrs_w7$id)
+HRS_ds_hrs_w7$bmi <- car::recode(HRS_hrs_w7$R7BMI, "NA=999")
 HRS_ds_hrs_w7$bmi <- labelled(HRS_ds_hrs_w7$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_hrs7, echo=F}
-Continuous_summary(var = HRS_ds_hrs_w7$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_hrs_w7, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_hrs_w7$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_hrs_w7, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_hrs7, echo=F}
-opal.assign.table.tibble(o, 'HRS_hrs_w7_whb','HRS.HRS-HRS-w7',
-                         variables=list('R7WEIGHT', 'R7HEIGHT', 'R7BMI'), missings = TRUE)
-HRS_hrs_w7_whb <- opal.execute(o,'HRS_hrs_w7_whb')
 
-HRS_hrs_w7_whb$bmi_c <- HRS_hrs_w7_whb$R7WEIGHT/(HRS_hrs_w7_whb$R7HEIGHT)^2
+                         
+
+
+HRS_hrs_w7$bmi_c <- HRS_hrs_w7$R7WEIGHT/(HRS_hrs_w7$R7HEIGHT)^2
   
-HRS_hrs_w7_whb$proff <- HRS_hrs_w7_whb$R7BMI - HRS_hrs_w7_whb$bmi_c
-summary(HRS_hrs_w7_whb$proff)
+HRS_hrs_w7$proff <- HRS_hrs_w7$R7BMI - HRS_hrs_w7$bmi_c
+pander(summary(HRS_hrs_w7$proff), caption = 'Summary')
 
-head(HRS_hrs_w7_whb[which(HRS_hrs_w7_whb$proff>0.2 | HRS_hrs_w7_whb$proff<(-0.2)),])
+kable(head(HRS_hrs_w7[which(HRS_hrs_w7$proff>0.2 | HRS_hrs_w7$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -557,38 +608,45 @@ head(HRS_hrs_w7_whb[which(HRS_hrs_w7_whb$proff>0.2 | HRS_hrs_w7_whb$proff<(-0.2)
 
 
 ```{r importOPAL_hrs7, echo=F}
-#val_labels(HRS_ds_hrs_w7) <- NULL
-#opal.assign.data(o, 'HRS_ds_hrs_w7', HRS_ds_hrs_w7)
-#opal.symbol_import(o,'HRS_ds_hrs_w7', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_hrs_w7
-save(bmi, file = "../RData/hrs_w7/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
 
 
 
-### HRS - Wave 8
+### Wave 8
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R8BMI`
-* Label: `W8 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R8BMI`|
+|-|-|
+| **Label** |`W8 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-HRS-W8`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_hrs8, echo=F}
-opal.assign.table.tibble(o, 'HRS_hrs_w8_bmi','HRS.HRS-HRS-w8',
-                         variables=list('R8BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_hrs_w8','HRS.HRS-HRS-w8',
+                         variables=list('R8WEIGHT','R8HEIGHT','R8BMI'), missings = TRUE)
+HRS_hrs_w8 <- opal.execute(o,'HRS_hrs_w8')
+
 ```
 
 ```{r local_hrs8, echo=F}
-HRS_hrs_w8_bmi <- opal.execute(o,'HRS_hrs_w8_bmi')
-Continuous_summary(var = HRS_hrs_w8_bmi$R8BMI, missing_values = NA)
-ggplot(HRS_hrs_w8_bmi, aes(R8BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_hrs_w8$R8BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R8BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_hrs_w8, aes(R8BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -599,31 +657,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_hrs8}
-HRS_ds_hrs_w8 <- tibble(id=HRS_hrs_w8_bmi$id)
-HRS_ds_hrs_w8$bmi <- car::recode(HRS_hrs_w8_bmi$R8BMI, "NA=999")
+HRS_ds_hrs_w8 <- tibble(id=HRS_hrs_w8$id)
+HRS_ds_hrs_w8$bmi <- car::recode(HRS_hrs_w8$R8BMI, "NA=999")
 HRS_ds_hrs_w8$bmi <- labelled(HRS_ds_hrs_w8$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_hrs8, echo=F}
-Continuous_summary(var = HRS_ds_hrs_w8$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_hrs_w8, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_hrs_w8$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_hrs_w8, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_hrs8, echo=F}
-opal.assign.table.tibble(o, 'HRS_hrs_w8_whb','HRS.HRS-HRS-w8',
-                         variables=list('R8WEIGHT', 'R8HEIGHT', 'R8BMI'), missings = TRUE)
-HRS_hrs_w8_whb <- opal.execute(o,'HRS_hrs_w8_whb')
 
-HRS_hrs_w8_whb$bmi_c <- HRS_hrs_w8_whb$R8WEIGHT/(HRS_hrs_w8_whb$R8HEIGHT)^2
+                         
+
+
+HRS_hrs_w8$bmi_c <- HRS_hrs_w8$R8WEIGHT/(HRS_hrs_w8$R8HEIGHT)^2
   
-HRS_hrs_w8_whb$proff <- HRS_hrs_w8_whb$R8BMI - HRS_hrs_w8_whb$bmi_c
-summary(HRS_hrs_w8_whb$proff)
+HRS_hrs_w8$proff <- HRS_hrs_w8$R8BMI - HRS_hrs_w8$bmi_c
+pander(summary(HRS_hrs_w8$proff), caption = 'Summary')
 
-head(HRS_hrs_w8_whb[which(HRS_hrs_w8_whb$proff>0.2 | HRS_hrs_w8_whb$proff<(-0.2)),])
+kable(head(HRS_hrs_w8[which(HRS_hrs_w8$proff>0.2 | HRS_hrs_w8$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -631,38 +692,45 @@ head(HRS_hrs_w8_whb[which(HRS_hrs_w8_whb$proff>0.2 | HRS_hrs_w8_whb$proff<(-0.2)
 
 
 ```{r importOPAL_hrs8, echo=F}
-#val_labels(HRS_ds_hrs_w8) <- NULL
-#opal.assign.data(o, 'HRS_ds_hrs_w8', HRS_ds_hrs_w8)
-#opal.symbol_import(o,'HRS_ds_hrs_w8', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_hrs_w8
-save(bmi, file = "../RData/hrs_w8/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
 
 
 
-### HRS - Wave 9
+### Wave 9
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R9BMI`
-* Label: `W9 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R9BMI`|
+|-|-|
+| **Label** |`W9 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-HRS-W9`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_hrs9, echo=F}
-opal.assign.table.tibble(o, 'HRS_hrs_w9_bmi','HRS.HRS-HRS-w9',
-                         variables=list('R9BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_hrs_w9','HRS.HRS-HRS-w9',
+                         variables=list('R9WEIGHT','R9HEIGHT','R9BMI'), missings = TRUE)
+HRS_hrs_w9 <- opal.execute(o,'HRS_hrs_w9')
+
 ```
 
 ```{r local_hrs9, echo=F}
-HRS_hrs_w9_bmi <- opal.execute(o,'HRS_hrs_w9_bmi')
-Continuous_summary(var = HRS_hrs_w9_bmi$R9BMI, missing_values = NA)
-ggplot(HRS_hrs_w9_bmi, aes(R9BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_hrs_w9$R9BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R9BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_hrs_w9, aes(R9BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -674,31 +742,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_hrs9}
-HRS_ds_hrs_w9 <- tibble(id=HRS_hrs_w9_bmi$id)
-HRS_ds_hrs_w9$bmi <- car::recode(HRS_hrs_w9_bmi$R9BMI, "NA=999")
+HRS_ds_hrs_w9 <- tibble(id=HRS_hrs_w9$id)
+HRS_ds_hrs_w9$bmi <- car::recode(HRS_hrs_w9$R9BMI, "NA=999")
 HRS_ds_hrs_w9$bmi <- labelled(HRS_ds_hrs_w9$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_hrs9, echo=F}
-Continuous_summary(var = HRS_ds_hrs_w9$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_hrs_w9, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_hrs_w9$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_hrs_w9, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_hrs9, echo=F}
-opal.assign.table.tibble(o, 'HRS_hrs_w9_whb','HRS.HRS-HRS-w9',
-                         variables=list('R9WEIGHT', 'R9HEIGHT', 'R9BMI'), missings = TRUE)
-HRS_hrs_w9_whb <- opal.execute(o,'HRS_hrs_w9_whb')
 
-HRS_hrs_w9_whb$bmi_c <- HRS_hrs_w9_whb$R9WEIGHT/(HRS_hrs_w9_whb$R9HEIGHT)^2
+                         
+
+
+HRS_hrs_w9$bmi_c <- HRS_hrs_w9$R9WEIGHT/(HRS_hrs_w9$R9HEIGHT)^2
   
-HRS_hrs_w9_whb$proff <- HRS_hrs_w9_whb$R9BMI - HRS_hrs_w9_whb$bmi_c
-summary(HRS_hrs_w9_whb$proff)
+HRS_hrs_w9$proff <- HRS_hrs_w9$R9BMI - HRS_hrs_w9$bmi_c
+pander(summary(HRS_hrs_w9$proff), caption = 'Summary')
 
-head(HRS_hrs_w9_whb[which(HRS_hrs_w9_whb$proff>0.2 | HRS_hrs_w9_whb$proff<(-0.2)),])
+kable(head(HRS_hrs_w9[which(HRS_hrs_w9$proff>0.2 | HRS_hrs_w9$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -706,12 +777,12 @@ head(HRS_hrs_w9_whb[which(HRS_hrs_w9_whb$proff>0.2 | HRS_hrs_w9_whb$proff<(-0.2)
 
 
 ```{r importOPAL_hrs9, echo=F}
-#val_labels(HRS_ds_hrs_w9) <- NULL
-#opal.assign.data(o, 'HRS_ds_hrs_w9', HRS_ds_hrs_w9)
-#opal.symbol_import(o,'HRS_ds_hrs_w9', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_hrs_w9
-save(bmi, file = "../RData/hrs_w9/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
@@ -719,26 +790,33 @@ rm(bmi)
 
 
 
-### HRS - Wave 10
+### Wave 10
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R10BMI`
-* Label: `W10 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R10BMI`|
+|-|-|
+| **Label** |`W10 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-HRS-W10`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_hrs10, echo=F}
-opal.assign.table.tibble(o, 'HRS_hrs_w10_bmi','HRS.HRS-HRS-w10',
-                         variables=list('R10BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_hrs_w10','HRS.HRS-HRS-w10',
+                         variables=list('R10WEIGHT','R10HEIGHT','R10BMI'), missings = TRUE)
+HRS_hrs_w10 <- opal.execute(o,'HRS_hrs_w10')
+
 ```
 
 ```{r local_hrs10, echo=F}
-HRS_hrs_w10_bmi <- opal.execute(o,'HRS_hrs_w10_bmi')
-Continuous_summary(var = HRS_hrs_w10_bmi$R10BMI, missing_values = NA)
-ggplot(HRS_hrs_w10_bmi, aes(R10BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_hrs_w10$R10BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R10BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_hrs_w10, aes(R10BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -749,31 +827,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_hrs10}
-HRS_ds_hrs_w10 <- tibble(id=HRS_hrs_w10_bmi$id)
-HRS_ds_hrs_w10$bmi <- car::recode(HRS_hrs_w10_bmi$R10BMI, "NA=999")
+HRS_ds_hrs_w10 <- tibble(id=HRS_hrs_w10$id)
+HRS_ds_hrs_w10$bmi <- car::recode(HRS_hrs_w10$R10BMI, "NA=999")
 HRS_ds_hrs_w10$bmi <- labelled(HRS_ds_hrs_w10$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_hrs10, echo=F}
-Continuous_summary(var = HRS_ds_hrs_w10$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_hrs_w10, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_hrs_w10$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_hrs_w10, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_hrs10, echo=F}
-opal.assign.table.tibble(o, 'HRS_hrs_w10_whb','HRS.HRS-HRS-w10',
-                         variables=list('R10WEIGHT', 'R10HEIGHT', 'R10BMI'), missings = TRUE)
-HRS_hrs_w10_whb <- opal.execute(o,'HRS_hrs_w10_whb')
 
-HRS_hrs_w10_whb$bmi_c <- HRS_hrs_w10_whb$R10WEIGHT/(HRS_hrs_w10_whb$R10HEIGHT)^2
+                         
+
+
+HRS_hrs_w10$bmi_c <- HRS_hrs_w10$R10WEIGHT/(HRS_hrs_w10$R10HEIGHT)^2
   
-HRS_hrs_w10_whb$proff <- HRS_hrs_w10_whb$R10BMI - HRS_hrs_w10_whb$bmi_c
-summary(HRS_hrs_w10_whb$proff)
+HRS_hrs_w10$proff <- HRS_hrs_w10$R10BMI - HRS_hrs_w10$bmi_c
+pander(summary(HRS_hrs_w10$proff), caption = 'Summary')
 
-head(HRS_hrs_w10_whb[which(HRS_hrs_w10_whb$proff>0.2 | HRS_hrs_w10_whb$proff<(-0.2)),])
+kable(head(HRS_hrs_w10[which(HRS_hrs_w10$proff>0.2 | HRS_hrs_w10$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -781,12 +862,12 @@ head(HRS_hrs_w10_whb[which(HRS_hrs_w10_whb$proff>0.2 | HRS_hrs_w10_whb$proff<(-0
 
 
 ```{r importOPAL_hrs10, echo=F}
-#val_labels(HRS_ds_hrs_w10) <- NULL
-#opal.assign.data(o, 'HRS_ds_hrs_w10', HRS_ds_hrs_w10)
-#opal.symbol_import(o,'HRS_ds_hrs_w10', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_hrs_w10
-save(bmi, file = "../RData/hrs_w10/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
@@ -794,25 +875,32 @@ rm(bmi)
 
 
 
-### HRS - Wave 11
+### Wave 11
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R11BMI`
-* Label: `W11 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R11BMI`|
+|-|-|
+| **Label** |`W11 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-HRS-W11`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 ```{r assign_hrs11, echo=F}
-opal.assign.table.tibble(o, 'HRS_hrs_w11_bmi','HRS.HRS-HRS-w11',
-                         variables=list('R11BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_hrs_w11','HRS.HRS-HRS-w11',
+                         variables=list('R11WEIGHT','R11HEIGHT','R11BMI'), missings = TRUE)
+HRS_hrs_w11 <- opal.execute(o,'HRS_hrs_w11')
+
 ```
 
 ```{r local_hrs11, echo=F}
-HRS_hrs_w11_bmi <- opal.execute(o,'HRS_hrs_w11_bmi')
-Continuous_summary(var = HRS_hrs_w11_bmi$R11BMI, missing_values = NA)
-ggplot(HRS_hrs_w11_bmi, aes(R11BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_hrs_w11$R11BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R11BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_hrs_w11, aes(R11BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -823,31 +911,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_hrs11}
-HRS_ds_hrs_w11 <- tibble(id=HRS_hrs_w11_bmi$id)
-HRS_ds_hrs_w11$bmi <- car::recode(HRS_hrs_w11_bmi$R11BMI, "NA=999")
+HRS_ds_hrs_w11 <- tibble(id=HRS_hrs_w11$id)
+HRS_ds_hrs_w11$bmi <- car::recode(HRS_hrs_w11$R11BMI, "NA=999")
 HRS_ds_hrs_w11$bmi <- labelled(HRS_ds_hrs_w11$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_hrs11, echo=F}
-Continuous_summary(var = HRS_ds_hrs_w11$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_hrs_w11, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_hrs_w11$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_hrs_w11, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_hrs11, echo=F}
-opal.assign.table.tibble(o, 'HRS_hrs_w11_whb','HRS.HRS-HRS-w11',
-                         variables=list('R11WEIGHT', 'R11HEIGHT', 'R11BMI'), missings = TRUE)
-HRS_hrs_w11_whb <- opal.execute(o,'HRS_hrs_w11_whb')
 
-HRS_hrs_w11_whb$bmi_c <- HRS_hrs_w11_whb$R11WEIGHT/(HRS_hrs_w11_whb$R11HEIGHT)^2
+                         
+
+
+HRS_hrs_w11$bmi_c <- HRS_hrs_w11$R11WEIGHT/(HRS_hrs_w11$R11HEIGHT)^2
   
-HRS_hrs_w11_whb$proff <- HRS_hrs_w11_whb$R11BMI - HRS_hrs_w11_whb$bmi_c
-summary(HRS_hrs_w11_whb$proff)
+HRS_hrs_w11$proff <- HRS_hrs_w11$R11BMI - HRS_hrs_w11$bmi_c
+pander(summary(HRS_hrs_w11$proff), caption = 'Summary')
 
-head(HRS_hrs_w11_whb[which(HRS_hrs_w11_whb$proff>0.2 | HRS_hrs_w11_whb$proff<(-0.2)),])
+kable(head(HRS_hrs_w11[which(HRS_hrs_w11$proff>0.2 | HRS_hrs_w11$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -855,39 +946,46 @@ head(HRS_hrs_w11_whb[which(HRS_hrs_w11_whb$proff>0.2 | HRS_hrs_w11_whb$proff<(-0
 
 
 ```{r importOPAL_hrs11, echo=F}
-#val_labels(HRS_ds_hrs_w11) <- NULL
-#opal.assign.data(o, 'HRS_ds_hrs_w11', HRS_ds_hrs_w11)
-#opal.symbol_import(o,'HRS_ds_hrs_w11', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_hrs_w11
-save(bmi, file = "../RData/hrs_w11/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
 
 
+## AHEAD
+
+### Wave 2 
+
+#### Study-specific variable description
 
 
-### AHEAD - Wave 2 
 
-#### Study-specific variables
-
-The study-specific variable elected to be harmonised is:
-
-* Name: `R2BMI`
-* Label: `W2 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+| **Name** | `R2BMI`|
+|-|-|
+| **Label** |`W2 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-AHEAD-W2`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_ahead2, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w2_bmi','HRS.HRS-AHEAD-w2',
-                         variables=list('R2BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ahead_w2','HRS.HRS-AHEAD-w2',
+                         variables=list('R2WEIGHT','R2HEIGHT','R2BMI'), missings = TRUE)
+HRS_ahead_w2 <- opal.execute(o,'HRS_ahead_w2')
+
 ```
 
 ```{r local_ahead2, echo=F}
-HRS_ahead_w2_bmi <- opal.execute(o,'HRS_ahead_w2_bmi')
-Continuous_summary(var = HRS_ahead_w2_bmi$R2BMI, missing_values = NA)
-ggplot(HRS_ahead_w2_bmi, aes(R2BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_ahead_w2$R2BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R2BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_ahead_w2, aes(R2BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -898,43 +996,46 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_ahead2}
-HRS_ds_ahead_w2 <- tibble(id=HRS_ahead_w2_bmi$id)
-HRS_ds_ahead_w2$bmi <- car::recode(HRS_ahead_w2_bmi$R2BMI, "NA=999")
+HRS_ds_ahead_w2 <- tibble(id=HRS_ahead_w2$id)
+HRS_ds_ahead_w2$bmi <- car::recode(HRS_ahead_w2$R2BMI, "NA=999")
 HRS_ds_ahead_w2$bmi <- labelled(HRS_ds_ahead_w2$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_ahead2, echo=F}
-Continuous_summary(var = HRS_ds_ahead_w2$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_ahead_w2, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_ahead_w2$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_ahead_w2, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_ahead2, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w2_whb','HRS.HRS-AHEAD-w2',
-                         variables=list('R2WEIGHT', 'R2HEIGHT', 'R2BMI'), missings = TRUE)
-HRS_ahead_w2_whb <- opal.execute(o,'HRS_ahead_w2_whb')
 
-HRS_ahead_w2_whb$bmi_c <- HRS_ahead_w2_whb$R2WEIGHT/(HRS_ahead_w2_whb$R2HEIGHT)^2
+                         
+
+
+HRS_ahead_w2$bmi_c <- HRS_ahead_w2$R2WEIGHT/(HRS_ahead_w2$R2HEIGHT)^2
   
-HRS_ahead_w2_whb$proff <- HRS_ahead_w2_whb$R2BMI - HRS_ahead_w2_whb$bmi_c
-summary(HRS_ahead_w2_whb$proff)
+HRS_ahead_w2$proff <- HRS_ahead_w2$R2BMI - HRS_ahead_w2$bmi_c
+pander(summary(HRS_ahead_w2$proff), caption = 'Summary')
 
-head(HRS_ahead_w2_whb[which(HRS_ahead_w2_whb$proff>0.2 | HRS_ahead_w2_whb$proff<(-0.2)),])
+kable(head(HRS_ahead_w2[which(HRS_ahead_w2$proff>0.2 | HRS_ahead_w2$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
 
 
 ```{r importOPAL_ahead2, echo=F}
-#val_labels(HRS_ds_ahead_w2) <- NULL
-#opal.assign.data(o, 'HRS_ds_ahead_w2', HRS_ds_ahead_w2)
-#opal.symbol_import(o,'HRS_ds_ahead_w2', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_ahead_w2
-save(bmi, file = "../RData/ahead_w2/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
@@ -942,26 +1043,33 @@ rm(bmi)
 
 
 
-### AHEAD - Wave 3 
+### Wave 3 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R3BMI`
-* Label: `W3 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R3BMI`|
+|-|-|
+| **Label** |`W3 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-AHEAD-W3`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_ahead3, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w3_bmi','HRS.HRS-AHEAD-w3',
-                         variables=list('R3BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ahead_w3','HRS.HRS-AHEAD-w3',
+                         variables=list('R3WEIGHT','R3HEIGHT','R3BMI'), missings = TRUE)
+HRS_ahead_w3 <- opal.execute(o,'HRS_ahead_w3')
+
 ```
 
 ```{r local_ahead3, echo=F}
-HRS_ahead_w3_bmi <- opal.execute(o,'HRS_ahead_w3_bmi')
-Continuous_summary(var = HRS_ahead_w3_bmi$R3BMI, missing_values = NA)
-ggplot(HRS_ahead_w3_bmi, aes(R3BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_ahead_w3$R3BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R3BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_ahead_w3, aes(R3BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -972,31 +1080,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_ahead3}
-HRS_ds_ahead_w3 <- tibble(id=HRS_ahead_w3_bmi$id)
-HRS_ds_ahead_w3$bmi <- car::recode(HRS_ahead_w3_bmi$R3BMI, "NA=999")
+HRS_ds_ahead_w3 <- tibble(id=HRS_ahead_w3$id)
+HRS_ds_ahead_w3$bmi <- car::recode(HRS_ahead_w3$R3BMI, "NA=999")
 HRS_ds_ahead_w3$bmi <- labelled(HRS_ds_ahead_w3$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_ahead3, echo=F}
-Continuous_summary(var = HRS_ds_ahead_w3$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_ahead_w3, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_ahead_w3$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_ahead_w3, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_ahead3, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w3_whb','HRS.HRS-AHEAD-w3',
-                         variables=list('R3WEIGHT', 'R3HEIGHT', 'R3BMI'), missings = TRUE)
-HRS_ahead_w3_whb <- opal.execute(o,'HRS_ahead_w3_whb')
 
-HRS_ahead_w3_whb$bmi_c <- HRS_ahead_w3_whb$R3WEIGHT/(HRS_ahead_w3_whb$R3HEIGHT)^2
+                         
+
+
+HRS_ahead_w3$bmi_c <- HRS_ahead_w3$R3WEIGHT/(HRS_ahead_w3$R3HEIGHT)^2
   
-HRS_ahead_w3_whb$proff <- HRS_ahead_w3_whb$R3BMI - HRS_ahead_w3_whb$bmi_c
-summary(HRS_ahead_w3_whb$proff)
+HRS_ahead_w3$proff <- HRS_ahead_w3$R3BMI - HRS_ahead_w3$bmi_c
+pander(summary(HRS_ahead_w3$proff), caption = 'Summary')
 
-head(HRS_ahead_w3_whb[which(HRS_ahead_w3_whb$proff>0.2 | HRS_ahead_w3_whb$proff<(-0.2)),])
+kable(head(HRS_ahead_w3[which(HRS_ahead_w3$proff>0.2 | HRS_ahead_w3$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -1004,12 +1115,12 @@ head(HRS_ahead_w3_whb[which(HRS_ahead_w3_whb$proff>0.2 | HRS_ahead_w3_whb$proff<
 
 
 ```{r importOPAL_ahead3, echo=F}
-#val_labels(HRS_ds_ahead_w3) <- NULL
-#opal.assign.data(o, 'HRS_ds_ahead_w3', HRS_ds_ahead_w3)
-#opal.symbol_import(o,'HRS_ds_ahead_w3', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_ahead_w3
-save(bmi, file = "../RData/ahead_w3/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
@@ -1017,25 +1128,32 @@ rm(bmi)
 
 
 
-### AHEAD - Wave 4 
+### Wave 4 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R4BMI`
-* Label: `W4 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R4BMI`|
+|-|-|
+| **Label** |`W4 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-AHEAD-W4`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 ```{r assign_ahead4, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w4_bmi','HRS.HRS-AHEAD-w4',
-                         variables=list('R4BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ahead_w4','HRS.HRS-AHEAD-w4',
+                         variables=list('R4WEIGHT','R4HEIGHT','R4BMI'), missings = TRUE)
+HRS_ahead_w4 <- opal.execute(o,'HRS_ahead_w4')
+
 ```
 
 ```{r local_ahead4, echo=F}
-HRS_ahead_w4_bmi <- opal.execute(o,'HRS_ahead_w4_bmi')
-Continuous_summary(var = HRS_ahead_w4_bmi$R4BMI, missing_values = NA)
-ggplot(HRS_ahead_w4_bmi, aes(R4BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_ahead_w4$R4BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R4BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_ahead_w4, aes(R4BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1046,31 +1164,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_ahead4}
-HRS_ds_ahead_w4 <- tibble(id=HRS_ahead_w4_bmi$id)
-HRS_ds_ahead_w4$bmi <- car::recode(HRS_ahead_w4_bmi$R4BMI, "NA=999")
+HRS_ds_ahead_w4 <- tibble(id=HRS_ahead_w4$id)
+HRS_ds_ahead_w4$bmi <- car::recode(HRS_ahead_w4$R4BMI, "NA=999")
 HRS_ds_ahead_w4$bmi <- labelled(HRS_ds_ahead_w4$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_ahead4, echo=F}
-Continuous_summary(var = HRS_ds_ahead_w4$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_ahead_w4, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_ahead_w4$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_ahead_w4, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_ahead4, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w4_whb','HRS.HRS-AHEAD-w4',
-                         variables=list('R4WEIGHT', 'R4HEIGHT', 'R4BMI'), missings = TRUE)
-HRS_ahead_w4_whb <- opal.execute(o,'HRS_ahead_w4_whb')
 
-HRS_ahead_w4_whb$bmi_c <- HRS_ahead_w4_whb$R4WEIGHT/(HRS_ahead_w4_whb$R4HEIGHT)^2
+                         
+
+
+HRS_ahead_w4$bmi_c <- HRS_ahead_w4$R4WEIGHT/(HRS_ahead_w4$R4HEIGHT)^2
   
-HRS_ahead_w4_whb$proff <- HRS_ahead_w4_whb$R4BMI - HRS_ahead_w4_whb$bmi_c
-summary(HRS_ahead_w4_whb$proff)
+HRS_ahead_w4$proff <- HRS_ahead_w4$R4BMI - HRS_ahead_w4$bmi_c
+pander(summary(HRS_ahead_w4$proff), caption = 'Summary')
 
-head(HRS_ahead_w4_whb[which(HRS_ahead_w4_whb$proff>0.2 | HRS_ahead_w4_whb$proff<(-0.2)),])
+kable(head(HRS_ahead_w4[which(HRS_ahead_w4$proff>0.2 | HRS_ahead_w4$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -1078,12 +1199,12 @@ head(HRS_ahead_w4_whb[which(HRS_ahead_w4_whb$proff>0.2 | HRS_ahead_w4_whb$proff<
 
 
 ```{r importOPAL_ahead4, echo=F}
-#val_labels(HRS_ds_ahead_w4) <- NULL
-#opal.assign.data(o, 'HRS_ds_ahead_w4', HRS_ds_ahead_w4)
-#opal.symbol_import(o,'HRS_ds_ahead_w4', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_ahead_w4
-save(bmi, file = "../RData/ahead_w4/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
@@ -1091,26 +1212,33 @@ rm(bmi)
 
 
 
-### AHEAD - Wave 5 
+### Wave 5 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R5BMI`
-* Label: `W5 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R5BMI`|
+|-|-|
+| **Label** |`W5 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-AHEAD-W5`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_ahead5, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w5_bmi','HRS.HRS-AHEAD-w5',
-                         variables=list('R5BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ahead_w5','HRS.HRS-AHEAD-w5',
+                         variables=list('R5WEIGHT','R5HEIGHT','R5BMI'), missings = TRUE)
+HRS_ahead_w5 <- opal.execute(o,'HRS_ahead_w5')
+
 ```
 
 ```{r local_ahead5, echo=F}
-HRS_ahead_w5_bmi <- opal.execute(o,'HRS_ahead_w5_bmi')
-Continuous_summary(var = HRS_ahead_w5_bmi$R5BMI, missing_values = NA)
-ggplot(HRS_ahead_w5_bmi, aes(R5BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_ahead_w5$R5BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R5BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_ahead_w5, aes(R5BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1121,31 +1249,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_ahead5}
-HRS_ds_ahead_w5 <- tibble(id=HRS_ahead_w5_bmi$id)
-HRS_ds_ahead_w5$bmi <- car::recode(HRS_ahead_w5_bmi$R5BMI, "NA=999")
+HRS_ds_ahead_w5 <- tibble(id=HRS_ahead_w5$id)
+HRS_ds_ahead_w5$bmi <- car::recode(HRS_ahead_w5$R5BMI, "NA=999")
 HRS_ds_ahead_w5$bmi <- labelled(HRS_ds_ahead_w5$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_ahead5, echo=F}
-Continuous_summary(var = HRS_ds_ahead_w5$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_ahead_w5, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_ahead_w5$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_ahead_w5, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_ahead5, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w5_whb','HRS.HRS-AHEAD-w5',
-                         variables=list('R5WEIGHT', 'R5HEIGHT', 'R5BMI'), missings = TRUE)
-HRS_ahead_w5_whb <- opal.execute(o,'HRS_ahead_w5_whb')
 
-HRS_ahead_w5_whb$bmi_c <- HRS_ahead_w5_whb$R5WEIGHT/(HRS_ahead_w5_whb$R5HEIGHT)^2
+                         
+
+
+HRS_ahead_w5$bmi_c <- HRS_ahead_w5$R5WEIGHT/(HRS_ahead_w5$R5HEIGHT)^2
   
-HRS_ahead_w5_whb$proff <- HRS_ahead_w5_whb$R5BMI - HRS_ahead_w5_whb$bmi_c
-summary(HRS_ahead_w5_whb$proff)
+HRS_ahead_w5$proff <- HRS_ahead_w5$R5BMI - HRS_ahead_w5$bmi_c
+pander(summary(HRS_ahead_w5$proff), caption = 'Summary')
 
-head(HRS_ahead_w5_whb[which(HRS_ahead_w5_whb$proff>0.2 | HRS_ahead_w5_whb$proff<(-0.2)),])
+kable(head(HRS_ahead_w5[which(HRS_ahead_w5$proff>0.2 | HRS_ahead_w5$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -1153,38 +1284,45 @@ head(HRS_ahead_w5_whb[which(HRS_ahead_w5_whb$proff>0.2 | HRS_ahead_w5_whb$proff<
 
 
 ```{r importOPAL_ahead5, echo=F}
-#val_labels(HRS_ds_ahead_w5) <- NULL
-#opal.assign.data(o, 'HRS_ds_ahead_w5', HRS_ds_ahead_w5)
-#opal.symbol_import(o,'HRS_ds_ahead_w5', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_ahead_w5
-save(bmi, file = "../RData/ahead_w5/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
 
 
 
-### AHEAD - Wave 6 
+### Wave 6 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R6BMI`
-* Label: `W6 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R6BMI`|
+|-|-|
+| **Label** |`W6 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-AHEAD-W6`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_ahead6, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w6_bmi','HRS.HRS-AHEAD-w6',
-                         variables=list('R6BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ahead_w6','HRS.HRS-AHEAD-w6',
+                         variables=list('R6WEIGHT','R6HEIGHT','R6BMI'), missings = TRUE)
+HRS_ahead_w6 <- opal.execute(o,'HRS_ahead_w6')
+
 ```
 
 ```{r local_ahead6, echo=F}
-HRS_ahead_w6_bmi <- opal.execute(o,'HRS_ahead_w6_bmi')
-Continuous_summary(var = HRS_ahead_w6_bmi$R6BMI, missing_values = NA)
-ggplot(HRS_ahead_w6_bmi, aes(R6BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_ahead_w6$R6BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R6BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_ahead_w6, aes(R6BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1195,31 +1333,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_ahead6}
-HRS_ds_ahead_w6 <- tibble(id=HRS_ahead_w6_bmi$id)
-HRS_ds_ahead_w6$bmi <- car::recode(HRS_ahead_w6_bmi$R6BMI, "NA=999")
+HRS_ds_ahead_w6 <- tibble(id=HRS_ahead_w6$id)
+HRS_ds_ahead_w6$bmi <- car::recode(HRS_ahead_w6$R6BMI, "NA=999")
 HRS_ds_ahead_w6$bmi <- labelled(HRS_ds_ahead_w6$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_ahead6, echo=F}
-Continuous_summary(var = HRS_ds_ahead_w6$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_ahead_w6, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_ahead_w6$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_ahead_w6, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_ahead6, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w6_whb','HRS.HRS-AHEAD-w6',
-                         variables=list('R6WEIGHT', 'R6HEIGHT', 'R6BMI'), missings = TRUE)
-HRS_ahead_w6_whb <- opal.execute(o,'HRS_ahead_w6_whb')
 
-HRS_ahead_w6_whb$bmi_c <- HRS_ahead_w6_whb$R6WEIGHT/(HRS_ahead_w6_whb$R6HEIGHT)^2
+                         
+
+
+HRS_ahead_w6$bmi_c <- HRS_ahead_w6$R6WEIGHT/(HRS_ahead_w6$R6HEIGHT)^2
   
-HRS_ahead_w6_whb$proff <- HRS_ahead_w6_whb$R6BMI - HRS_ahead_w6_whb$bmi_c
-summary(HRS_ahead_w6_whb$proff)
+HRS_ahead_w6$proff <- HRS_ahead_w6$R6BMI - HRS_ahead_w6$bmi_c
+pander(summary(HRS_ahead_w6$proff), caption = 'Summary')
 
-head(HRS_ahead_w6_whb[which(HRS_ahead_w6_whb$proff>0.2 | HRS_ahead_w6_whb$proff<(-0.2)),])
+kable(head(HRS_ahead_w6[which(HRS_ahead_w6$proff>0.2 | HRS_ahead_w6$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -1227,12 +1368,12 @@ head(HRS_ahead_w6_whb[which(HRS_ahead_w6_whb$proff>0.2 | HRS_ahead_w6_whb$proff<
 
 
 ```{r importOPAL_ahead6, echo=F}
-#val_labels(HRS_ds_ahead_w6) <- NULL
-#opal.assign.data(o, 'HRS_ds_ahead_w6', HRS_ds_ahead_w6)
-#opal.symbol_import(o,'HRS_ds_ahead_w6', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_ahead_w6
-save(bmi, file = "../RData/ahead_w6/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
@@ -1240,25 +1381,32 @@ rm(bmi)
 
 
 
-### AHEAD - Wave 7 
+### Wave 7 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R7BMI`
-* Label: `W7 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R7BMI`|
+|-|-|
+| **Label** |`W7 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-AHEAD-W7`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 ```{r assign_ahead7, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w7_bmi','HRS.HRS-AHEAD-w7',
-                         variables=list('R7BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ahead_w7','HRS.HRS-AHEAD-w7',
+                         variables=list('R7WEIGHT','R7HEIGHT','R7BMI'), missings = TRUE)
+HRS_ahead_w7 <- opal.execute(o,'HRS_ahead_w7')
+
 ```
 
 ```{r local_ahead7, echo=F}
-HRS_ahead_w7_bmi <- opal.execute(o,'HRS_ahead_w7_bmi')
-Continuous_summary(var = HRS_ahead_w7_bmi$R7BMI, missing_values = NA)
-ggplot(HRS_ahead_w7_bmi, aes(R7BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_ahead_w7$R7BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R7BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_ahead_w7, aes(R7BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1269,31 +1417,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_ahead7}
-HRS_ds_ahead_w7 <- tibble(id=HRS_ahead_w7_bmi$id)
-HRS_ds_ahead_w7$bmi <- car::recode(HRS_ahead_w7_bmi$R7BMI, "NA=999")
+HRS_ds_ahead_w7 <- tibble(id=HRS_ahead_w7$id)
+HRS_ds_ahead_w7$bmi <- car::recode(HRS_ahead_w7$R7BMI, "NA=999")
 HRS_ds_ahead_w7$bmi <- labelled(HRS_ds_ahead_w7$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_ahead7, echo=F}
-Continuous_summary(var = HRS_ds_ahead_w7$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_ahead_w7, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_ahead_w7$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_ahead_w7, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_ahead7, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w7_whb','HRS.HRS-AHEAD-w7',
-                         variables=list('R7WEIGHT', 'R7HEIGHT', 'R7BMI'), missings = TRUE)
-HRS_ahead_w7_whb <- opal.execute(o,'HRS_ahead_w7_whb')
 
-HRS_ahead_w7_whb$bmi_c <- HRS_ahead_w7_whb$R7WEIGHT/(HRS_ahead_w7_whb$R7HEIGHT)^2
+                         
+
+
+HRS_ahead_w7$bmi_c <- HRS_ahead_w7$R7WEIGHT/(HRS_ahead_w7$R7HEIGHT)^2
   
-HRS_ahead_w7_whb$proff <- HRS_ahead_w7_whb$R7BMI - HRS_ahead_w7_whb$bmi_c
-summary(HRS_ahead_w7_whb$proff)
+HRS_ahead_w7$proff <- HRS_ahead_w7$R7BMI - HRS_ahead_w7$bmi_c
+pander(summary(HRS_ahead_w7$proff), caption = 'Summary')
 
-head(HRS_ahead_w7_whb[which(HRS_ahead_w7_whb$proff>0.2 | HRS_ahead_w7_whb$proff<(-0.2)),])
+kable(head(HRS_ahead_w7[which(HRS_ahead_w7$proff>0.2 | HRS_ahead_w7$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -1301,38 +1452,45 @@ head(HRS_ahead_w7_whb[which(HRS_ahead_w7_whb$proff>0.2 | HRS_ahead_w7_whb$proff<
 
 
 ```{r importOPAL_ahead7, echo=F}
-#val_labels(HRS_ds_ahead_w7) <- NULL
-#opal.assign.data(o, 'HRS_ds_ahead_w7', HRS_ds_ahead_w7)
-#opal.symbol_import(o,'HRS_ds_ahead_w7', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_ahead_w7
-save(bmi, file = "../RData/ahead_w7/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
 
 
 
-### AHEAD - Wave 8 
+### Wave 8 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R8BMI`
-* Label: `W8 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R8BMI`|
+|-|-|
+| **Label** |`W8 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-AHEAD-W8`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_ahead8, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w8_bmi','HRS.HRS-AHEAD-w8',
-                         variables=list('R8BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ahead_w8','HRS.HRS-AHEAD-w8',
+                         variables=list('R8WEIGHT','R8HEIGHT','R8BMI'), missings = TRUE)
+HRS_ahead_w8 <- opal.execute(o,'HRS_ahead_w8')
+
 ```
 
 ```{r local_ahead8, echo=F}
-HRS_ahead_w8_bmi <- opal.execute(o,'HRS_ahead_w8_bmi')
-Continuous_summary(var = HRS_ahead_w8_bmi$R8BMI, missing_values = NA)
-ggplot(HRS_ahead_w8_bmi, aes(R8BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_ahead_w8$R8BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R8BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_ahead_w8, aes(R8BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1343,31 +1501,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_ahead8}
-HRS_ds_ahead_w8 <- tibble(id=HRS_ahead_w8_bmi$id)
-HRS_ds_ahead_w8$bmi <- car::recode(HRS_ahead_w8_bmi$R8BMI, "NA=999")
+HRS_ds_ahead_w8 <- tibble(id=HRS_ahead_w8$id)
+HRS_ds_ahead_w8$bmi <- car::recode(HRS_ahead_w8$R8BMI, "NA=999")
 HRS_ds_ahead_w8$bmi <- labelled(HRS_ds_ahead_w8$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_ahead8, echo=F}
-Continuous_summary(var = HRS_ds_ahead_w8$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_ahead_w8, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_ahead_w8$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_ahead_w8, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_ahead8, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w8_whb','HRS.HRS-AHEAD-w8',
-                         variables=list('R8WEIGHT', 'R8HEIGHT', 'R8BMI'), missings = TRUE)
-HRS_ahead_w8_whb <- opal.execute(o,'HRS_ahead_w8_whb')
 
-HRS_ahead_w8_whb$bmi_c <- HRS_ahead_w8_whb$R8WEIGHT/(HRS_ahead_w8_whb$R8HEIGHT)^2
+                         
+
+
+HRS_ahead_w8$bmi_c <- HRS_ahead_w8$R8WEIGHT/(HRS_ahead_w8$R8HEIGHT)^2
   
-HRS_ahead_w8_whb$proff <- HRS_ahead_w8_whb$R8BMI - HRS_ahead_w8_whb$bmi_c
-summary(HRS_ahead_w8_whb$proff)
+HRS_ahead_w8$proff <- HRS_ahead_w8$R8BMI - HRS_ahead_w8$bmi_c
+pander(summary(HRS_ahead_w8$proff), caption = 'Summary')
 
-head(HRS_ahead_w8_whb[which(HRS_ahead_w8_whb$proff>0.2 | HRS_ahead_w8_whb$proff<(-0.2)),])
+kable(head(HRS_ahead_w8[which(HRS_ahead_w8$proff>0.2 | HRS_ahead_w8$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -1375,12 +1536,12 @@ head(HRS_ahead_w8_whb[which(HRS_ahead_w8_whb$proff>0.2 | HRS_ahead_w8_whb$proff<
 
 
 ```{r importOPAL_ahead8, echo=F}
-#val_labels(HRS_ds_ahead_w8) <- NULL
-#opal.assign.data(o, 'HRS_ds_ahead_w8', HRS_ds_ahead_w8)
-#opal.symbol_import(o,'HRS_ds_ahead_w8', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_ahead_w8
-save(bmi, file = "../RData/ahead_w8/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
@@ -1388,26 +1549,33 @@ rm(bmi)
 
 
 
-### AHEAD - Wave 9 
+### Wave 9 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R9BMI`
-* Label: `W9 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R9BMI`|
+|-|-|
+| **Label** |`W9 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-AHEAD-W9`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_ahead9, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w9_bmi','HRS.HRS-AHEAD-w9',
-                         variables=list('R9BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ahead_w9','HRS.HRS-AHEAD-w9',
+                         variables=list('R9WEIGHT','R9HEIGHT','R9BMI'), missings = TRUE)
+HRS_ahead_w9 <- opal.execute(o,'HRS_ahead_w9')
+
 ```
 
 ```{r local_ahead9, echo=F}
-HRS_ahead_w9_bmi <- opal.execute(o,'HRS_ahead_w9_bmi')
-Continuous_summary(var = HRS_ahead_w9_bmi$R9BMI, missing_values = NA)
-ggplot(HRS_ahead_w9_bmi, aes(R9BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_ahead_w9$R9BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R9BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_ahead_w9, aes(R9BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1418,31 +1586,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_ahead9}
-HRS_ds_ahead_w9 <- tibble(id=HRS_ahead_w9_bmi$id)
-HRS_ds_ahead_w9$bmi <- car::recode(HRS_ahead_w9_bmi$R9BMI, "NA=999")
+HRS_ds_ahead_w9 <- tibble(id=HRS_ahead_w9$id)
+HRS_ds_ahead_w9$bmi <- car::recode(HRS_ahead_w9$R9BMI, "NA=999")
 HRS_ds_ahead_w9$bmi <- labelled(HRS_ds_ahead_w9$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_ahead9, echo=F}
-Continuous_summary(var = HRS_ds_ahead_w9$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_ahead_w9, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_ahead_w9$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_ahead_w9, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_ahead9, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w9_whb','HRS.HRS-AHEAD-w9',
-                         variables=list('R9WEIGHT', 'R9HEIGHT', 'R9BMI'), missings = TRUE)
-HRS_ahead_w9_whb <- opal.execute(o,'HRS_ahead_w9_whb')
 
-HRS_ahead_w9_whb$bmi_c <- HRS_ahead_w9_whb$R9WEIGHT/(HRS_ahead_w9_whb$R9HEIGHT)^2
+                         
+
+
+HRS_ahead_w9$bmi_c <- HRS_ahead_w9$R9WEIGHT/(HRS_ahead_w9$R9HEIGHT)^2
   
-HRS_ahead_w9_whb$proff <- HRS_ahead_w9_whb$R9BMI - HRS_ahead_w9_whb$bmi_c
-summary(HRS_ahead_w9_whb$proff)
+HRS_ahead_w9$proff <- HRS_ahead_w9$R9BMI - HRS_ahead_w9$bmi_c
+pander(summary(HRS_ahead_w9$proff), caption = 'Summary')
 
-head(HRS_ahead_w9_whb[which(HRS_ahead_w9_whb$proff>0.2 | HRS_ahead_w9_whb$proff<(-0.2)),])
+kable(head(HRS_ahead_w9[which(HRS_ahead_w9$proff>0.2 | HRS_ahead_w9$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -1451,12 +1622,12 @@ head(HRS_ahead_w9_whb[which(HRS_ahead_w9_whb$proff>0.2 | HRS_ahead_w9_whb$proff<
 
 
 ```{r importOPAL_ahead9, echo=F}
-#val_labels(HRS_ds_ahead_w9) <- NULL
-#opal.assign.data(o, 'HRS_ds_ahead_w9', HRS_ds_ahead_w9)
-#opal.symbol_import(o,'HRS_ds_ahead_w9', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_ahead_w9
-save(bmi, file = "../RData/ahead_w9/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
@@ -1465,26 +1636,33 @@ rm(bmi)
 
 
 
-### AHEAD - Wave 10 
+### Wave 10 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R10BMI`
-* Label: `W10 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R10BMI`|
+|-|-|
+| **Label** |`W10 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-AHEAD-W10`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_ahead10, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w10_bmi','HRS.HRS-AHEAD-w10',
-                         variables=list('R10BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ahead_w10','HRS.HRS-AHEAD-w10',
+                         variables=list('R10WEIGHT','R10HEIGHT','R10BMI'), missings = TRUE)
+HRS_ahead_w10 <- opal.execute(o,'HRS_ahead_w10')
+
 ```
 
 ```{r local_ahead10, echo=F}
-HRS_ahead_w10_bmi <- opal.execute(o,'HRS_ahead_w10_bmi')
-Continuous_summary(var = HRS_ahead_w10_bmi$R10BMI, missing_values = NA)
-ggplot(HRS_ahead_w10_bmi, aes(R10BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_ahead_w10$R10BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R10BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_ahead_w10, aes(R10BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1495,31 +1673,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_ahead10}
-HRS_ds_ahead_w10 <- tibble(id=HRS_ahead_w10_bmi$id)
-HRS_ds_ahead_w10$bmi <- car::recode(HRS_ahead_w10_bmi$R10BMI, "NA=999")
+HRS_ds_ahead_w10 <- tibble(id=HRS_ahead_w10$id)
+HRS_ds_ahead_w10$bmi <- car::recode(HRS_ahead_w10$R10BMI, "NA=999")
 HRS_ds_ahead_w10$bmi <- labelled(HRS_ds_ahead_w10$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_ahead10, echo=F}
-Continuous_summary(var = HRS_ds_ahead_w10$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_ahead_w10, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_ahead_w10$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_ahead_w10, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_ahead10, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w10_whb','HRS.HRS-AHEAD-w10',
-                         variables=list('R10WEIGHT', 'R10HEIGHT', 'R10BMI'), missings = TRUE)
-HRS_ahead_w10_whb <- opal.execute(o,'HRS_ahead_w10_whb')
 
-HRS_ahead_w10_whb$bmi_c <- HRS_ahead_w10_whb$R10WEIGHT/(HRS_ahead_w10_whb$R10HEIGHT)^2
+                         
+
+
+HRS_ahead_w10$bmi_c <- HRS_ahead_w10$R10WEIGHT/(HRS_ahead_w10$R10HEIGHT)^2
   
-HRS_ahead_w10_whb$proff <- HRS_ahead_w10_whb$R10BMI - HRS_ahead_w10_whb$bmi_c
-summary(HRS_ahead_w10_whb$proff)
+HRS_ahead_w10$proff <- HRS_ahead_w10$R10BMI - HRS_ahead_w10$bmi_c
+pander(summary(HRS_ahead_w10$proff), caption = 'Summary')
 
-head(HRS_ahead_w10_whb[which(HRS_ahead_w10_whb$proff>0.2 | HRS_ahead_w10_whb$proff<(-0.2)),])
+kable(head(HRS_ahead_w10[which(HRS_ahead_w10$proff>0.2 | HRS_ahead_w10$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -1527,12 +1708,12 @@ head(HRS_ahead_w10_whb[which(HRS_ahead_w10_whb$proff>0.2 | HRS_ahead_w10_whb$pro
 
 
 ```{r importOPAL_ahead10, echo=F}
-#val_labels(HRS_ds_ahead_w10) <- NULL
-#opal.assign.data(o, 'HRS_ds_ahead_w10', HRS_ds_ahead_w10)
-#opal.symbol_import(o,'HRS_ds_ahead_w10', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_ahead_w10
-save(bmi, file = "../RData/ahead_w10/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
@@ -1540,26 +1721,33 @@ rm(bmi)
 
 
 
-### AHEAD - Wave 11 
+### Wave 11 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R11BMI`
-* Label: `W11 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R11BMI`|
+|-|-|
+| **Label** |`W11 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-AHEAD-W11`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_ahead11, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w11_bmi','HRS.HRS-AHEAD-w11',
-                         variables=list('R11BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ahead_w11','HRS.HRS-AHEAD-w11',
+                         variables=list('R11WEIGHT','R11HEIGHT','R11BMI'), missings = TRUE)
+HRS_ahead_w11 <- opal.execute(o,'HRS_ahead_w11')
+
 ```
 
 ```{r local_ahead11, echo=F}
-HRS_ahead_w11_bmi <- opal.execute(o,'HRS_ahead_w11_bmi')
-Continuous_summary(var = HRS_ahead_w11_bmi$R11BMI, missing_values = NA)
-ggplot(HRS_ahead_w11_bmi, aes(R11BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_ahead_w11$R11BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R11BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_ahead_w11, aes(R11BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1570,31 +1758,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_ahead11}
-HRS_ds_ahead_w11 <- tibble(id=HRS_ahead_w11_bmi$id)
-HRS_ds_ahead_w11$bmi <- car::recode(HRS_ahead_w11_bmi$R11BMI, "NA=999")
+HRS_ds_ahead_w11 <- tibble(id=HRS_ahead_w11$id)
+HRS_ds_ahead_w11$bmi <- car::recode(HRS_ahead_w11$R11BMI, "NA=999")
 HRS_ds_ahead_w11$bmi <- labelled(HRS_ds_ahead_w11$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_ahead11, echo=F}
-Continuous_summary(var = HRS_ds_ahead_w11$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_ahead_w11, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_ahead_w11$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_ahead_w11, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_ahead11, echo=F}
-opal.assign.table.tibble(o, 'HRS_ahead_w11_whb','HRS.HRS-AHEAD-w11',
-                         variables=list('R11WEIGHT', 'R11HEIGHT', 'R11BMI'), missings = TRUE)
-HRS_ahead_w11_whb <- opal.execute(o,'HRS_ahead_w11_whb')
 
-HRS_ahead_w11_whb$bmi_c <- HRS_ahead_w11_whb$R11WEIGHT/(HRS_ahead_w11_whb$R11HEIGHT)^2
+                         
+
+
+HRS_ahead_w11$bmi_c <- HRS_ahead_w11$R11WEIGHT/(HRS_ahead_w11$R11HEIGHT)^2
   
-HRS_ahead_w11_whb$proff <- HRS_ahead_w11_whb$R11BMI - HRS_ahead_w11_whb$bmi_c
-summary(HRS_ahead_w11_whb$proff)
+HRS_ahead_w11$proff <- HRS_ahead_w11$R11BMI - HRS_ahead_w11$bmi_c
+pander(summary(HRS_ahead_w11$proff), caption = 'Summary')
 
-head(HRS_ahead_w11_whb[which(HRS_ahead_w11_whb$proff>0.2 | HRS_ahead_w11_whb$proff<(-0.2)),])
+kable(head(HRS_ahead_w11[which(HRS_ahead_w11$proff>0.2 | HRS_ahead_w11$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -1602,37 +1793,45 @@ head(HRS_ahead_w11_whb[which(HRS_ahead_w11_whb$proff>0.2 | HRS_ahead_w11_whb$pro
 
 
 ```{r importOPAL_ahead11, echo=F}
-#val_labels(HRS_ds_ahead_w11) <- NULL
-#opal.assign.data(o, 'HRS_ds_ahead_w11', HRS_ds_ahead_w11)
-#opal.symbol_import(o,'HRS_ds_ahead_w11', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_ahead_w11
-save(bmi, file = "../RData/ahead_w11/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
 
+## CODA
 
-### CODA - Wave 4 
+### Wave 4 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R4BMI`
-* Label: `W4 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R4BMI`|
+|-|-|
+| **Label** |`W4 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-CODA-W4`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_coda4, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w4_bmi','HRS.HRS-CODA-w4',
-                         variables=list('R4BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_coda_w4','HRS.HRS-CODA-w4',
+                         variables=list('R4WEIGHT','R4HEIGHT','R4BMI'), missings = TRUE)
+HRS_coda_w4 <- opal.execute(o,'HRS_coda_w4')
+
 ```
 
 ```{r local_coda4, echo=F}
-HRS_coda_w4_bmi <- opal.execute(o,'HRS_coda_w4_bmi')
-Continuous_summary(var = HRS_coda_w4_bmi$R4BMI, missing_values = NA)
-ggplot(HRS_coda_w4_bmi, aes(R4BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_coda_w4$R4BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R4BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_coda_w4, aes(R4BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1643,32 +1842,35 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_coda4}
-HRS_ds_coda_w4 <- tibble(id=HRS_coda_w4_bmi$id)
-HRS_ds_coda_w4$bmi <- car::recode(HRS_coda_w4_bmi$R4BMI, "NA=999")
+HRS_ds_coda_w4 <- tibble(id=HRS_coda_w4$id)
+HRS_ds_coda_w4$bmi <- car::recode(HRS_coda_w4$R4BMI, "NA=999")
 HRS_ds_coda_w4$bmi <- labelled(HRS_ds_coda_w4$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_coda4, echo=F}
-Continuous_summary(var = HRS_ds_coda_w4$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_coda_w4, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_coda_w4$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_coda_w4, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_coda4, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w4_whb','HRS.HRS-CODA-w4',
-                         variables=list('R4WEIGHT', 'R4HEIGHT', 'R4BMI'), missings = TRUE)
-HRS_coda_w4_whb <- opal.execute(o,'HRS_coda_w4_whb')
 
-HRS_coda_w4_whb$bmi_c <- HRS_coda_w4_whb$R4WEIGHT/(HRS_coda_w4_whb$R4HEIGHT)^2
+                         
+
+
+HRS_coda_w4$bmi_c <- HRS_coda_w4$R4WEIGHT/(HRS_coda_w4$R4HEIGHT)^2
   
-HRS_coda_w4_whb$proff <- HRS_coda_w4_whb$R4BMI - HRS_coda_w4_whb$bmi_c
-summary(HRS_coda_w4_whb$proff)
+HRS_coda_w4$proff <- HRS_coda_w4$R4BMI - HRS_coda_w4$bmi_c
+pander(summary(HRS_coda_w4$proff), caption = 'Summary')
 
-head(HRS_coda_w4_whb[which(HRS_coda_w4_whb$proff>0.2 | HRS_coda_w4_whb$proff<(-0.2)),])
+kable(head(HRS_coda_w4[which(HRS_coda_w4$proff>0.2 | HRS_coda_w4$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -1676,38 +1878,45 @@ head(HRS_coda_w4_whb[which(HRS_coda_w4_whb$proff>0.2 | HRS_coda_w4_whb$proff<(-0
 
 
 ```{r importOPAL_coda4, echo=F}
-#val_labels(HRS_ds_coda_w4) <- NULL
-#opal.assign.data(o, 'HRS_ds_coda_w4', HRS_ds_coda_w4)
-#opal.symbol_import(o,'HRS_ds_coda_w4', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_coda_w4
-save(bmi, file = "../RData/coda_w4/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
 
 
 
-### CODA - Wave 5 
+### Wave 5 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R5BMI`
-* Label: `W5 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R5BMI`|
+|-|-|
+| **Label** |`W5 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-CODA-W5`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_coda5, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w5_bmi','HRS.HRS-CODA-w5',
-                         variables=list('R5BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_coda_w5','HRS.HRS-CODA-w5',
+                         variables=list('R5WEIGHT','R5HEIGHT','R5BMI'), missings = TRUE)
+HRS_coda_w5 <- opal.execute(o,'HRS_coda_w5')
+
 ```
 
 ```{r local_coda5, echo=F}
-HRS_coda_w5_bmi <- opal.execute(o,'HRS_coda_w5_bmi')
-Continuous_summary(var = HRS_coda_w5_bmi$R5BMI, missing_values = NA)
-ggplot(HRS_coda_w5_bmi, aes(R5BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_coda_w5$R5BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R5BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_coda_w5, aes(R5BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1718,31 +1927,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_coda5}
-HRS_ds_coda_w5 <- tibble(id=HRS_coda_w5_bmi$id)
-HRS_ds_coda_w5$bmi <- car::recode(HRS_coda_w5_bmi$R5BMI, "NA=999")
+HRS_ds_coda_w5 <- tibble(id=HRS_coda_w5$id)
+HRS_ds_coda_w5$bmi <- car::recode(HRS_coda_w5$R5BMI, "NA=999")
 HRS_ds_coda_w5$bmi <- labelled(HRS_ds_coda_w5$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_coda5, echo=F}
-Continuous_summary(var = HRS_ds_coda_w5$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_coda_w5, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_coda_w5$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_coda_w5, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_coda5, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w5_whb','HRS.HRS-CODA-w5',
-                         variables=list('R5WEIGHT', 'R5HEIGHT', 'R5BMI'), missings = TRUE)
-HRS_coda_w5_whb <- opal.execute(o,'HRS_coda_w5_whb')
 
-HRS_coda_w5_whb$bmi_c <- HRS_coda_w5_whb$R5WEIGHT/(HRS_coda_w5_whb$R5HEIGHT)^2
+                         
+
+
+HRS_coda_w5$bmi_c <- HRS_coda_w5$R5WEIGHT/(HRS_coda_w5$R5HEIGHT)^2
   
-HRS_coda_w5_whb$proff <- HRS_coda_w5_whb$R5BMI - HRS_coda_w5_whb$bmi_c
-summary(HRS_coda_w5_whb$proff)
+HRS_coda_w5$proff <- HRS_coda_w5$R5BMI - HRS_coda_w5$bmi_c
+pander(summary(HRS_coda_w5$proff), caption = 'Summary')
 
-head(HRS_coda_w5_whb[which(HRS_coda_w5_whb$proff>0.2 | HRS_coda_w5_whb$proff<(-0.2)),])
+kable(head(HRS_coda_w5[which(HRS_coda_w5$proff>0.2 | HRS_coda_w5$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -1750,12 +1962,12 @@ head(HRS_coda_w5_whb[which(HRS_coda_w5_whb$proff>0.2 | HRS_coda_w5_whb$proff<(-0
 
 
 ```{r importOPAL_coda5, echo=F}
-#val_labels(HRS_ds_coda_w5) <- NULL
-#opal.assign.data(o, 'HRS_ds_coda_w5', HRS_ds_coda_w5)
-#opal.symbol_import(o,'HRS_ds_coda_w5', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_coda_w5
-save(bmi, file = "../RData/coda_w5/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
@@ -1763,25 +1975,32 @@ rm(bmi)
 
 
 
-### CODA - Wave 6 
+### Wave 6 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R6BMI`
-* Label: `W6 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R6BMI`|
+|-|-|
+| **Label** |`W6 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-CODA-W6`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 ```{r assign_coda6, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w6_bmi','HRS.HRS-CODA-w6',
-                         variables=list('R6BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_coda_w6','HRS.HRS-CODA-w6',
+                         variables=list('R6WEIGHT','R6HEIGHT','R6BMI'), missings = TRUE)
+HRS_coda_w6 <- opal.execute(o,'HRS_coda_w6')
+
 ```
 
 ```{r local_coda6, echo=F}
-HRS_coda_w6_bmi <- opal.execute(o,'HRS_coda_w6_bmi')
-Continuous_summary(var = HRS_coda_w6_bmi$R6BMI, missing_values = NA)
-ggplot(HRS_coda_w6_bmi, aes(R6BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_coda_w6$R6BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R6BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_coda_w6, aes(R6BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1792,31 +2011,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_coda6}
-HRS_ds_coda_w6 <- tibble(id=HRS_coda_w6_bmi$id)
-HRS_ds_coda_w6$bmi <- car::recode(HRS_coda_w6_bmi$R6BMI, "NA=999")
+HRS_ds_coda_w6 <- tibble(id=HRS_coda_w6$id)
+HRS_ds_coda_w6$bmi <- car::recode(HRS_coda_w6$R6BMI, "NA=999")
 HRS_ds_coda_w6$bmi <- labelled(HRS_ds_coda_w6$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_coda6, echo=F}
-Continuous_summary(var = HRS_ds_coda_w6$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_coda_w6, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_coda_w6$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_coda_w6, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_coda6, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w6_whb','HRS.HRS-CODA-w6',
-                         variables=list('R6WEIGHT', 'R6HEIGHT', 'R6BMI'), missings = TRUE)
-HRS_coda_w6_whb <- opal.execute(o,'HRS_coda_w6_whb')
 
-HRS_coda_w6_whb$bmi_c <- HRS_coda_w6_whb$R6WEIGHT/(HRS_coda_w6_whb$R6HEIGHT)^2
+                         
+
+
+HRS_coda_w6$bmi_c <- HRS_coda_w6$R6WEIGHT/(HRS_coda_w6$R6HEIGHT)^2
   
-HRS_coda_w6_whb$proff <- HRS_coda_w6_whb$R6BMI - HRS_coda_w6_whb$bmi_c
-summary(HRS_coda_w6_whb$proff)
+HRS_coda_w6$proff <- HRS_coda_w6$R6BMI - HRS_coda_w6$bmi_c
+pander(summary(HRS_coda_w6$proff), caption = 'Summary')
 
-head(HRS_coda_w6_whb[which(HRS_coda_w6_whb$proff>0.2 | HRS_coda_w6_whb$proff<(-0.2)),])
+kable(head(HRS_coda_w6[which(HRS_coda_w6$proff>0.2 | HRS_coda_w6$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -1824,12 +2046,12 @@ head(HRS_coda_w6_whb[which(HRS_coda_w6_whb$proff>0.2 | HRS_coda_w6_whb$proff<(-0
 
 
 ```{r importOPAL_coda6, echo=F}
-#val_labels(HRS_ds_coda_w6) <- NULL
-#opal.assign.data(o, 'HRS_ds_coda_w6', HRS_ds_coda_w6)
-#opal.symbol_import(o,'HRS_ds_coda_w6', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_coda_w6
-save(bmi, file = "../RData/coda_w6/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
@@ -1837,25 +2059,32 @@ rm(bmi)
 
 
 
-### CODA - Wave 7 
+### Wave 7 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R7BMI`
-* Label: `W7 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R7BMI`|
+|-|-|
+| **Label** |`W7 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-CODA-W7`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 ```{r assign_coda7, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w7_bmi','HRS.HRS-CODA-w7',
-                         variables=list('R7BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_coda_w7','HRS.HRS-CODA-w7',
+                         variables=list('R7WEIGHT','R7HEIGHT','R7BMI'), missings = TRUE)
+HRS_coda_w7 <- opal.execute(o,'HRS_coda_w7')
+
 ```
 
 ```{r local_coda7, echo=F}
-HRS_coda_w7_bmi <- opal.execute(o,'HRS_coda_w7_bmi')
-Continuous_summary(var = HRS_coda_w7_bmi$R7BMI, missing_values = NA)
-ggplot(HRS_coda_w7_bmi, aes(R7BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_coda_w7$R7BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R7BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_coda_w7, aes(R7BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1866,31 +2095,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_coda7}
-HRS_ds_coda_w7 <- tibble(id=HRS_coda_w7_bmi$id)
-HRS_ds_coda_w7$bmi <- car::recode(HRS_coda_w7_bmi$R7BMI, "NA=999")
+HRS_ds_coda_w7 <- tibble(id=HRS_coda_w7$id)
+HRS_ds_coda_w7$bmi <- car::recode(HRS_coda_w7$R7BMI, "NA=999")
 HRS_ds_coda_w7$bmi <- labelled(HRS_ds_coda_w7$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_coda7, echo=F}
-Continuous_summary(var = HRS_ds_coda_w7$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_coda_w7, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_coda_w7$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_coda_w7, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_coda7, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w7_whb','HRS.HRS-CODA-w7',
-                         variables=list('R7WEIGHT', 'R7HEIGHT', 'R7BMI'), missings = TRUE)
-HRS_coda_w7_whb <- opal.execute(o,'HRS_coda_w7_whb')
 
-HRS_coda_w7_whb$bmi_c <- HRS_coda_w7_whb$R7WEIGHT/(HRS_coda_w7_whb$R7HEIGHT)^2
+                         
+
+
+HRS_coda_w7$bmi_c <- HRS_coda_w7$R7WEIGHT/(HRS_coda_w7$R7HEIGHT)^2
   
-HRS_coda_w7_whb$proff <- HRS_coda_w7_whb$R7BMI - HRS_coda_w7_whb$bmi_c
-summary(HRS_coda_w7_whb$proff)
+HRS_coda_w7$proff <- HRS_coda_w7$R7BMI - HRS_coda_w7$bmi_c
+pander(summary(HRS_coda_w7$proff), caption = 'Summary')
 
-head(HRS_coda_w7_whb[which(HRS_coda_w7_whb$proff>0.2 | HRS_coda_w7_whb$proff<(-0.2)),])
+kable(head(HRS_coda_w7[which(HRS_coda_w7$proff>0.2 | HRS_coda_w7$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -1898,12 +2130,12 @@ head(HRS_coda_w7_whb[which(HRS_coda_w7_whb$proff>0.2 | HRS_coda_w7_whb$proff<(-0
 
 
 ```{r importOPAL_coda7, echo=F}
-#val_labels(HRS_ds_coda_w7) <- NULL
-#opal.assign.data(o, 'HRS_ds_coda_w7', HRS_ds_coda_w7)
-#opal.symbol_import(o,'HRS_ds_coda_w7', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_coda_w7
-save(bmi, file = "../RData/coda_w7/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
@@ -1911,25 +2143,32 @@ rm(bmi)
 
 
 
-### CODA - Wave 8 
+### Wave 8 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R8BMI`
-* Label: `W8 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R8BMI`|
+|-|-|
+| **Label** |`W8 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-CODA-W8`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 ```{r assign_coda8, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w8_bmi','HRS.HRS-CODA-w8',
-                         variables=list('R8BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_coda_w8','HRS.HRS-CODA-w8',
+                         variables=list('R8WEIGHT','R8HEIGHT','R8BMI'), missings = TRUE)
+HRS_coda_w8 <- opal.execute(o,'HRS_coda_w8')
+
 ```
 
 ```{r local_coda8, echo=F}
-HRS_coda_w8_bmi <- opal.execute(o,'HRS_coda_w8_bmi')
-Continuous_summary(var = HRS_coda_w8_bmi$R8BMI, missing_values = NA)
-ggplot(HRS_coda_w8_bmi, aes(R8BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_coda_w8$R8BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R8BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_coda_w8, aes(R8BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1940,31 +2179,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_coda8}
-HRS_ds_coda_w8 <- tibble(id=HRS_coda_w8_bmi$id)
-HRS_ds_coda_w8$bmi <- car::recode(HRS_coda_w8_bmi$R8BMI, "NA=999")
+HRS_ds_coda_w8 <- tibble(id=HRS_coda_w8$id)
+HRS_ds_coda_w8$bmi <- car::recode(HRS_coda_w8$R8BMI, "NA=999")
 HRS_ds_coda_w8$bmi <- labelled(HRS_ds_coda_w8$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_coda8, echo=F}
-Continuous_summary(var = HRS_ds_coda_w8$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_coda_w8, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_coda_w8$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_coda_w8, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_coda8, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w8_whb','HRS.HRS-CODA-w8',
-                         variables=list('R8WEIGHT', 'R8HEIGHT', 'R8BMI'), missings = TRUE)
-HRS_coda_w8_whb <- opal.execute(o,'HRS_coda_w8_whb')
 
-HRS_coda_w8_whb$bmi_c <- HRS_coda_w8_whb$R8WEIGHT/(HRS_coda_w8_whb$R8HEIGHT)^2
+                         
+
+
+HRS_coda_w8$bmi_c <- HRS_coda_w8$R8WEIGHT/(HRS_coda_w8$R8HEIGHT)^2
   
-HRS_coda_w8_whb$proff <- HRS_coda_w8_whb$R8BMI - HRS_coda_w8_whb$bmi_c
-summary(HRS_coda_w8_whb$proff)
+HRS_coda_w8$proff <- HRS_coda_w8$R8BMI - HRS_coda_w8$bmi_c
+pander(summary(HRS_coda_w8$proff), caption = 'Summary')
 
-head(HRS_coda_w8_whb[which(HRS_coda_w8_whb$proff>0.2 | HRS_coda_w8_whb$proff<(-0.2)),])
+kable(head(HRS_coda_w8[which(HRS_coda_w8$proff>0.2 | HRS_coda_w8$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -1972,36 +2214,43 @@ head(HRS_coda_w8_whb[which(HRS_coda_w8_whb$proff>0.2 | HRS_coda_w8_whb$proff<(-0
 
 
 ```{r importOPAL_coda8, echo=F}
-#val_labels(HRS_ds_coda_w8) <- NULL
-#opal.assign.data(o, 'HRS_ds_coda_w8', HRS_ds_coda_w8)
-#opal.symbol_import(o,'HRS_ds_coda_w8', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_coda_w8
-save(bmi, file = "../RData/coda_w8/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
 
 
-### CODA - Wave 9 
+### Wave 9 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R9BMI`
-* Label: `W9 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R9BMI`|
+|-|-|
+| **Label** |`W9 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-CODA-W9`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 ```{r assign_coda9, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w9_bmi','HRS.HRS-CODA-w9',
-                         variables=list('R9BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_coda_w9','HRS.HRS-CODA-w9',
+                         variables=list('R9WEIGHT','R9HEIGHT','R9BMI'), missings = TRUE)
+HRS_coda_w9 <- opal.execute(o,'HRS_coda_w9')
+
 ```
 
 ```{r local_coda9, echo=F}
-HRS_coda_w9_bmi <- opal.execute(o,'HRS_coda_w9_bmi')
-Continuous_summary(var = HRS_coda_w9_bmi$R9BMI, missing_values = NA)
-ggplot(HRS_coda_w9_bmi, aes(R9BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_coda_w9$R9BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R9BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_coda_w9, aes(R9BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2012,31 +2261,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_coda9}
-HRS_ds_coda_w9 <- tibble(id=HRS_coda_w9_bmi$id)
-HRS_ds_coda_w9$bmi <- car::recode(HRS_coda_w9_bmi$R9BMI, "NA=999")
+HRS_ds_coda_w9 <- tibble(id=HRS_coda_w9$id)
+HRS_ds_coda_w9$bmi <- car::recode(HRS_coda_w9$R9BMI, "NA=999")
 HRS_ds_coda_w9$bmi <- labelled(HRS_ds_coda_w9$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_coda9, echo=F}
-Continuous_summary(var = HRS_ds_coda_w9$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_coda_w9, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_coda_w9$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_coda_w9, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_coda9, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w9_whb','HRS.HRS-CODA-w9',
-                         variables=list('R9WEIGHT', 'R9HEIGHT', 'R9BMI'), missings = TRUE)
-HRS_coda_w9_whb <- opal.execute(o,'HRS_coda_w9_whb')
 
-HRS_coda_w9_whb$bmi_c <- HRS_coda_w9_whb$R9WEIGHT/(HRS_coda_w9_whb$R9HEIGHT)^2
+                         
+
+
+HRS_coda_w9$bmi_c <- HRS_coda_w9$R9WEIGHT/(HRS_coda_w9$R9HEIGHT)^2
   
-HRS_coda_w9_whb$proff <- HRS_coda_w9_whb$R9BMI - HRS_coda_w9_whb$bmi_c
-summary(HRS_coda_w9_whb$proff)
+HRS_coda_w9$proff <- HRS_coda_w9$R9BMI - HRS_coda_w9$bmi_c
+pander(summary(HRS_coda_w9$proff), caption = 'Summary')
 
-head(HRS_coda_w9_whb[which(HRS_coda_w9_whb$proff>0.2 | HRS_coda_w9_whb$proff<(-0.2)),])
+kable(head(HRS_coda_w9[which(HRS_coda_w9$proff>0.2 | HRS_coda_w9$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -2044,36 +2296,43 @@ head(HRS_coda_w9_whb[which(HRS_coda_w9_whb$proff>0.2 | HRS_coda_w9_whb$proff<(-0
 
 
 ```{r importOPAL_coda9, echo=F}
-#val_labels(HRS_ds_coda_w9) <- NULL
-#opal.assign.data(o, 'HRS_ds_coda_w9', HRS_ds_coda_w9)
-#opal.symbol_import(o,'HRS_ds_coda_w9', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_coda_w9
-save(bmi, file = "../RData/coda_w9/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
 
 
-### CODA - Wave 10 
+### Wave 10 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R10BMI`
-* Label: `W10 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R10BMI`|
+|-|-|
+| **Label** |`W10 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-CODA-W10`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 ```{r assign_coda10, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w10_bmi','HRS.HRS-CODA-w10',
-                         variables=list('R10BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_coda_w10','HRS.HRS-CODA-w10',
+                         variables=list('R10WEIGHT','R10HEIGHT','R10BMI'), missings = TRUE)
+HRS_coda_w10 <- opal.execute(o,'HRS_coda_w10')
+
 ```
 
 ```{r local_coda10, echo=F}
-HRS_coda_w10_bmi <- opal.execute(o,'HRS_coda_w10_bmi')
-Continuous_summary(var = HRS_coda_w10_bmi$R10BMI, missing_values = NA)
-ggplot(HRS_coda_w10_bmi, aes(R10BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_coda_w10$R10BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R10BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_coda_w10, aes(R10BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2084,31 +2343,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_coda10}
-HRS_ds_coda_w10 <- tibble(id=HRS_coda_w10_bmi$id)
-HRS_ds_coda_w10$bmi <- car::recode(HRS_coda_w10_bmi$R10BMI, "NA=999")
+HRS_ds_coda_w10 <- tibble(id=HRS_coda_w10$id)
+HRS_ds_coda_w10$bmi <- car::recode(HRS_coda_w10$R10BMI, "NA=999")
 HRS_ds_coda_w10$bmi <- labelled(HRS_ds_coda_w10$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_coda10, echo=F}
-Continuous_summary(var = HRS_ds_coda_w10$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_coda_w10, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_coda_w10$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_coda_w10, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_coda10, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w10_whb','HRS.HRS-CODA-w10',
-                         variables=list('R10WEIGHT', 'R10HEIGHT', 'R10BMI'), missings = TRUE)
-HRS_coda_w10_whb <- opal.execute(o,'HRS_coda_w10_whb')
 
-HRS_coda_w10_whb$bmi_c <- HRS_coda_w10_whb$R10WEIGHT/(HRS_coda_w10_whb$R10HEIGHT)^2
+                         
+
+
+HRS_coda_w10$bmi_c <- HRS_coda_w10$R10WEIGHT/(HRS_coda_w10$R10HEIGHT)^2
   
-HRS_coda_w10_whb$proff <- HRS_coda_w10_whb$R10BMI - HRS_coda_w10_whb$bmi_c
-summary(HRS_coda_w10_whb$proff)
+HRS_coda_w10$proff <- HRS_coda_w10$R10BMI - HRS_coda_w10$bmi_c
+pander(summary(HRS_coda_w10$proff), caption = 'Summary')
 
-head(HRS_coda_w10_whb[which(HRS_coda_w10_whb$proff>0.2 | HRS_coda_w10_whb$proff<(-0.2)),])
+kable(head(HRS_coda_w10[which(HRS_coda_w10$proff>0.2 | HRS_coda_w10$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -2116,12 +2378,12 @@ head(HRS_coda_w10_whb[which(HRS_coda_w10_whb$proff>0.2 | HRS_coda_w10_whb$proff<
 
 
 ```{r importOPAL_coda10, echo=F}
-#val_labels(HRS_ds_coda_w10) <- NULL
-#opal.assign.data(o, 'HRS_ds_coda_w10', HRS_ds_coda_w10)
-#opal.symbol_import(o,'HRS_ds_coda_w10', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_coda_w10
-save(bmi, file = "../RData/coda_w10/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
@@ -2129,25 +2391,32 @@ rm(bmi)
 
 
 
-### CODA - Wave 11 
+### Wave 11 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R11BMI`
-* Label: `W11 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R11BMI`|
+|-|-|
+| **Label** |`W11 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-CODA-W11`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 ```{r assign_coda11, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w11_bmi','HRS.HRS-CODA-w11',
-                         variables=list('R11BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_coda_w11','HRS.HRS-CODA-w11',
+                         variables=list('R11WEIGHT','R11HEIGHT','R11BMI'), missings = TRUE)
+HRS_coda_w11 <- opal.execute(o,'HRS_coda_w11')
+
 ```
 
 ```{r local_coda11, echo=F}
-HRS_coda_w11_bmi <- opal.execute(o,'HRS_coda_w11_bmi')
-Continuous_summary(var = HRS_coda_w11_bmi$R11BMI, missing_values = NA)
-ggplot(HRS_coda_w11_bmi, aes(R11BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_coda_w11$R11BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R11BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_coda_w11, aes(R11BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2158,31 +2427,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_coda11}
-HRS_ds_coda_w11 <- tibble(id=HRS_coda_w11_bmi$id)
-HRS_ds_coda_w11$bmi <- car::recode(HRS_coda_w11_bmi$R11BMI, "NA=999")
+HRS_ds_coda_w11 <- tibble(id=HRS_coda_w11$id)
+HRS_ds_coda_w11$bmi <- car::recode(HRS_coda_w11$R11BMI, "NA=999")
 HRS_ds_coda_w11$bmi <- labelled(HRS_ds_coda_w11$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_coda11, echo=F}
-Continuous_summary(var = HRS_ds_coda_w11$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_coda_w11, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_coda_w11$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_coda_w11, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_coda11, echo=F}
-opal.assign.table.tibble(o, 'HRS_coda_w11_whb','HRS.HRS-CODA-w11',
-                         variables=list('R11WEIGHT', 'R11HEIGHT', 'R11BMI'), missings = TRUE)
-HRS_coda_w11_whb <- opal.execute(o,'HRS_coda_w11_whb')
 
-HRS_coda_w11_whb$bmi_c <- HRS_coda_w11_whb$R11WEIGHT/(HRS_coda_w11_whb$R11HEIGHT)^2
+                         
+
+
+HRS_coda_w11$bmi_c <- HRS_coda_w11$R11WEIGHT/(HRS_coda_w11$R11HEIGHT)^2
   
-HRS_coda_w11_whb$proff <- HRS_coda_w11_whb$R11BMI - HRS_coda_w11_whb$bmi_c
-summary(HRS_coda_w11_whb$proff)
+HRS_coda_w11$proff <- HRS_coda_w11$R11BMI - HRS_coda_w11$bmi_c
+pander(summary(HRS_coda_w11$proff), caption = 'Summary')
 
-head(HRS_coda_w11_whb[which(HRS_coda_w11_whb$proff>0.2 | HRS_coda_w11_whb$proff<(-0.2)),])
+kable(head(HRS_coda_w11[which(HRS_coda_w11$proff>0.2 | HRS_coda_w11$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -2190,40 +2462,47 @@ head(HRS_coda_w11_whb[which(HRS_coda_w11_whb$proff>0.2 | HRS_coda_w11_whb$proff<
 
 
 ```{r importOPAL_coda11, echo=F}
-#val_labels(HRS_ds_coda_w11) <- NULL
-#opal.assign.data(o, 'HRS_ds_coda_w11', HRS_ds_coda_w11)
-#opal.symbol_import(o,'HRS_ds_coda_w11', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_coda_w11
-save(bmi, file = "../RData/coda_w11/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
 
 
+## The War Baby (WB)
+
+
+### Wave 4  
+
+#### Study-specific variable description
 
 
 
-### The War Baby (WB) - Wave 4  
-
-#### Study-specific variables
-
-The study-specific variable elected to be harmonised is:
-
-* Name: `R4BMI`
-* Label: `W4 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+| **Name** | `R4BMI`|
+|-|-|
+| **Label** |`W4 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-WB-W4`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_wb4, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w4_bmi','HRS.HRS-WB-w4',
-                         variables=list('R4BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_wb_w4','HRS.HRS-WB-w4',
+                         variables=list('R4WEIGHT','R4HEIGHT','R4BMI'), missings = TRUE)
+HRS_wb_w4 <- opal.execute(o,'HRS_wb_w4')
+
 ```
 
 ```{r local_wb4, echo=F}
-HRS_wb_w4_bmi <- opal.execute(o,'HRS_wb_w4_bmi')
-Continuous_summary(var = HRS_wb_w4_bmi$R4BMI, missing_values = NA)
-ggplot(HRS_wb_w4_bmi, aes(R4BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_wb_w4$R4BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R4BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wb_w4, aes(R4BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2234,31 +2513,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_wb4}
-HRS_ds_wb_w4 <- tibble(id=HRS_wb_w4_bmi$id)
-HRS_ds_wb_w4$bmi <- car::recode(HRS_wb_w4_bmi$R4BMI, "NA=999")
+HRS_ds_wb_w4 <- tibble(id=HRS_wb_w4$id)
+HRS_ds_wb_w4$bmi <- car::recode(HRS_wb_w4$R4BMI, "NA=999")
 HRS_ds_wb_w4$bmi <- labelled(HRS_ds_wb_w4$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_wb4, echo=F}
-Continuous_summary(var = HRS_ds_wb_w4$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_wb_w4, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_wb_w4$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_wb_w4, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_wb4, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w4_whb','HRS.HRS-WB-w4',
-                         variables=list('R4WEIGHT', 'R4HEIGHT', 'R4BMI'), missings = TRUE)
-HRS_wb_w4_whb <- opal.execute(o,'HRS_wb_w4_whb')
 
-HRS_wb_w4_whb$bmi_c <- HRS_wb_w4_whb$R4WEIGHT/(HRS_wb_w4_whb$R4HEIGHT)^2
+                         
+
+
+HRS_wb_w4$bmi_c <- HRS_wb_w4$R4WEIGHT/(HRS_wb_w4$R4HEIGHT)^2
   
-HRS_wb_w4_whb$proff <- HRS_wb_w4_whb$R4BMI - HRS_wb_w4_whb$bmi_c
-summary(HRS_wb_w4_whb$proff)
+HRS_wb_w4$proff <- HRS_wb_w4$R4BMI - HRS_wb_w4$bmi_c
+pander(summary(HRS_wb_w4$proff), caption = 'Summary')
 
-head(HRS_wb_w4_whb[which(HRS_wb_w4_whb$proff>0.2 | HRS_wb_w4_whb$proff<(-0.2)),])
+kable(head(HRS_wb_w4[which(HRS_wb_w4$proff>0.2 | HRS_wb_w4$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -2266,12 +2548,12 @@ head(HRS_wb_w4_whb[which(HRS_wb_w4_whb$proff>0.2 | HRS_wb_w4_whb$proff<(-0.2)),]
 
 
 ```{r importOPAL_wb4, echo=F}
-#val_labels(HRS_ds_wb_w4) <- NULL
-#opal.assign.data(o, 'HRS_ds_wb_w4', HRS_ds_wb_w4)
-#opal.symbol_import(o,'HRS_ds_wb_w4', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_wb_w4
-save(bmi, file = "../RData/wb_w4/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
@@ -2279,25 +2561,32 @@ rm(bmi)
 
 
 
-### The War Baby (WB) - Wave 5  
+### Wave 5  
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R5BMI`
-* Label: `W5 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R5BMI`|
+|-|-|
+| **Label** |`W5 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-WB-W5`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 ```{r assign_wb5, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w5_bmi','HRS.HRS-WB-w5',
-                         variables=list('R5BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_wb_w5','HRS.HRS-WB-w5',
+                         variables=list('R5WEIGHT','R5HEIGHT','R5BMI'), missings = TRUE)
+HRS_wb_w5 <- opal.execute(o,'HRS_wb_w5')
+
 ```
 
 ```{r local_wb5, echo=F}
-HRS_wb_w5_bmi <- opal.execute(o,'HRS_wb_w5_bmi')
-Continuous_summary(var = HRS_wb_w5_bmi$R5BMI, missing_values = NA)
-ggplot(HRS_wb_w5_bmi, aes(R5BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_wb_w5$R5BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R5BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wb_w5, aes(R5BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2308,31 +2597,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_wb5}
-HRS_ds_wb_w5 <- tibble(id=HRS_wb_w5_bmi$id)
-HRS_ds_wb_w5$bmi <- car::recode(HRS_wb_w5_bmi$R5BMI, "NA=999")
+HRS_ds_wb_w5 <- tibble(id=HRS_wb_w5$id)
+HRS_ds_wb_w5$bmi <- car::recode(HRS_wb_w5$R5BMI, "NA=999")
 HRS_ds_wb_w5$bmi <- labelled(HRS_ds_wb_w5$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_wb5, echo=F}
-Continuous_summary(var = HRS_ds_wb_w5$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_wb_w5, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_wb_w5$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_wb_w5, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_wb5, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w5_whb','HRS.HRS-WB-w5',
-                         variables=list('R5WEIGHT', 'R5HEIGHT', 'R5BMI'), missings = TRUE)
-HRS_wb_w5_whb <- opal.execute(o,'HRS_wb_w5_whb')
 
-HRS_wb_w5_whb$bmi_c <- HRS_wb_w5_whb$R5WEIGHT/(HRS_wb_w5_whb$R5HEIGHT)^2
+                         
+
+
+HRS_wb_w5$bmi_c <- HRS_wb_w5$R5WEIGHT/(HRS_wb_w5$R5HEIGHT)^2
   
-HRS_wb_w5_whb$proff <- HRS_wb_w5_whb$R5BMI - HRS_wb_w5_whb$bmi_c
-summary(HRS_wb_w5_whb$proff)
+HRS_wb_w5$proff <- HRS_wb_w5$R5BMI - HRS_wb_w5$bmi_c
+pander(summary(HRS_wb_w5$proff), caption = 'Summary')
 
-head(HRS_wb_w5_whb[which(HRS_wb_w5_whb$proff>0.2 | HRS_wb_w5_whb$proff<(-0.2)),])
+kable(head(HRS_wb_w5[which(HRS_wb_w5$proff>0.2 | HRS_wb_w5$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -2340,37 +2632,44 @@ head(HRS_wb_w5_whb[which(HRS_wb_w5_whb$proff>0.2 | HRS_wb_w5_whb$proff<(-0.2)),]
 
 
 ```{r importOPAL_wb5, echo=F}
-#val_labels(HRS_ds_wb_w5) <- NULL
-#opal.assign.data(o, 'HRS_ds_wb_w5', HRS_ds_wb_w5)
-#opal.symbol_import(o,'HRS_ds_wb_w5', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_wb_w5
-save(bmi, file = "../RData/wb_w5/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
 
 
 
-### The War Baby (WB) - Wave 6  
+### Wave 6  
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R6BMI`
-* Label: `W6 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R6BMI`|
+|-|-|
+| **Label** |`W6 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-WB-W6`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 ```{r assign_wb6, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w6_bmi','HRS.HRS-WB-w6',
-                         variables=list('R6BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_wb_w6','HRS.HRS-WB-w6',
+                         variables=list('R6WEIGHT','R6HEIGHT','R6BMI'), missings = TRUE)
+HRS_wb_w6 <- opal.execute(o,'HRS_wb_w6')
+
 ```
 
 ```{r local_wb6, echo=F}
-HRS_wb_w6_bmi <- opal.execute(o,'HRS_wb_w6_bmi')
-Continuous_summary(var = HRS_wb_w6_bmi$R6BMI, missing_values = NA)
-ggplot(HRS_wb_w6_bmi, aes(R6BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_wb_w6$R6BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R6BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wb_w6, aes(R6BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2381,31 +2680,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_wb6}
-HRS_ds_wb_w6 <- tibble(id=HRS_wb_w6_bmi$id)
-HRS_ds_wb_w6$bmi <- car::recode(HRS_wb_w6_bmi$R6BMI, "NA=999")
+HRS_ds_wb_w6 <- tibble(id=HRS_wb_w6$id)
+HRS_ds_wb_w6$bmi <- car::recode(HRS_wb_w6$R6BMI, "NA=999")
 HRS_ds_wb_w6$bmi <- labelled(HRS_ds_wb_w6$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_wb6, echo=F}
-Continuous_summary(var = HRS_ds_wb_w6$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_wb_w6, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_wb_w6$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_wb_w6, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_wb6, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w6_whb','HRS.HRS-WB-w6',
-                         variables=list('R6WEIGHT', 'R6HEIGHT', 'R6BMI'), missings = TRUE)
-HRS_wb_w6_whb <- opal.execute(o,'HRS_wb_w6_whb')
 
-HRS_wb_w6_whb$bmi_c <- HRS_wb_w6_whb$R6WEIGHT/(HRS_wb_w6_whb$R6HEIGHT)^2
+                         
+
+
+HRS_wb_w6$bmi_c <- HRS_wb_w6$R6WEIGHT/(HRS_wb_w6$R6HEIGHT)^2
   
-HRS_wb_w6_whb$proff <- HRS_wb_w6_whb$R6BMI - HRS_wb_w6_whb$bmi_c
-summary(HRS_wb_w6_whb$proff)
+HRS_wb_w6$proff <- HRS_wb_w6$R6BMI - HRS_wb_w6$bmi_c
+pander(summary(HRS_wb_w6$proff), caption = 'Summary')
 
-head(HRS_wb_w6_whb[which(HRS_wb_w6_whb$proff>0.2 | HRS_wb_w6_whb$proff<(-0.2)),])
+kable(head(HRS_wb_w6[which(HRS_wb_w6$proff>0.2 | HRS_wb_w6$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -2413,12 +2715,12 @@ head(HRS_wb_w6_whb[which(HRS_wb_w6_whb$proff>0.2 | HRS_wb_w6_whb$proff<(-0.2)),]
 
 
 ```{r importOPAL_wb6, echo=F}
-#val_labels(HRS_ds_wb_w6) <- NULL
-#opal.assign.data(o, 'HRS_ds_wb_w6', HRS_ds_wb_w6)
-#opal.symbol_import(o,'HRS_ds_wb_w6', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_wb_w6
-save(bmi, file = "../RData/wb_w6/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
@@ -2426,26 +2728,33 @@ rm(bmi)
 
 
 
-### The War Baby (WB) - Wave 7  
+### Wave 7  
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R7BMI`
-* Label: `W7 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R7BMI`|
+|-|-|
+| **Label** |`W7 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-WB-W7`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_wb7, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w7_bmi','HRS.HRS-WB-w7',
-                         variables=list('R7BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_wb_w7','HRS.HRS-WB-w7',
+                         variables=list('R7WEIGHT','R7HEIGHT','R7BMI'), missings = TRUE)
+HRS_wb_w7 <- opal.execute(o,'HRS_wb_w7')
+
 ```
 
 ```{r local_wb7, echo=F}
-HRS_wb_w7_bmi <- opal.execute(o,'HRS_wb_w7_bmi')
-Continuous_summary(var = HRS_wb_w7_bmi$R7BMI, missing_values = NA)
-ggplot(HRS_wb_w7_bmi, aes(R7BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_wb_w7$R7BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R7BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wb_w7, aes(R7BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2456,43 +2765,46 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_wb7}
-HRS_ds_wb_w7 <- tibble(id=HRS_wb_w7_bmi$id)
-HRS_ds_wb_w7$bmi <- car::recode(HRS_wb_w7_bmi$R7BMI, "NA=999")
+HRS_ds_wb_w7 <- tibble(id=HRS_wb_w7$id)
+HRS_ds_wb_w7$bmi <- car::recode(HRS_wb_w7$R7BMI, "NA=999")
 HRS_ds_wb_w7$bmi <- labelled(HRS_ds_wb_w7$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_wb7, echo=F}
-Continuous_summary(var = HRS_ds_wb_w7$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_wb_w7, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_wb_w7$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_wb_w7, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_wb7, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w7_whb','HRS.HRS-WB-w7',
-                         variables=list('R7WEIGHT', 'R7HEIGHT', 'R7BMI'), missings = TRUE)
-HRS_wb_w7_whb <- opal.execute(o,'HRS_wb_w7_whb')
 
-HRS_wb_w7_whb$bmi_c <- HRS_wb_w7_whb$R7WEIGHT/(HRS_wb_w7_whb$R7HEIGHT)^2
+                         
+
+
+HRS_wb_w7$bmi_c <- HRS_wb_w7$R7WEIGHT/(HRS_wb_w7$R7HEIGHT)^2
   
-HRS_wb_w7_whb$proff <- HRS_wb_w7_whb$R7BMI - HRS_wb_w7_whb$bmi_c
-summary(HRS_wb_w7_whb$proff)
+HRS_wb_w7$proff <- HRS_wb_w7$R7BMI - HRS_wb_w7$bmi_c
+pander(summary(HRS_wb_w7$proff), caption = 'Summary')
 
-head(HRS_wb_w7_whb[which(HRS_wb_w7_whb$proff>0.2 | HRS_wb_w7_whb$proff<(-0.2)),])
+kable(head(HRS_wb_w7[which(HRS_wb_w7$proff>0.2 | HRS_wb_w7$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
 
 
 ```{r importOPAL_wb7, echo=F}
-#val_labels(HRS_ds_wb_w7) <- NULL
-#opal.assign.data(o, 'HRS_ds_wb_w7', HRS_ds_wb_w7)
-#opal.symbol_import(o,'HRS_ds_wb_w7', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_wb_w7
-save(bmi, file = "../RData/wb_w7/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
@@ -2500,25 +2812,32 @@ rm(bmi)
 
 
 
-### The War Baby (WB) - Wave 8  
+### Wave 8  
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R8BMI`
-* Label: `W8 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R8BMI`|
+|-|-|
+| **Label** |`W8 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-WB-W8`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 ```{r assign_wb8, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w8_bmi','HRS.HRS-WB-w8',
-                         variables=list('R8BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_wb_w8','HRS.HRS-WB-w8',
+                         variables=list('R8WEIGHT','R8HEIGHT','R8BMI'), missings = TRUE)
+HRS_wb_w8 <- opal.execute(o,'HRS_wb_w8')
+
 ```
 
 ```{r local_wb8, echo=F}
-HRS_wb_w8_bmi <- opal.execute(o,'HRS_wb_w8_bmi')
-Continuous_summary(var = HRS_wb_w8_bmi$R8BMI, missing_values = NA)
-ggplot(HRS_wb_w8_bmi, aes(R8BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_wb_w8$R8BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R8BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wb_w8, aes(R8BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2529,31 +2848,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_wb8}
-HRS_ds_wb_w8 <- tibble(id=HRS_wb_w8_bmi$id)
-HRS_ds_wb_w8$bmi <- car::recode(HRS_wb_w8_bmi$R8BMI, "NA=999")
+HRS_ds_wb_w8 <- tibble(id=HRS_wb_w8$id)
+HRS_ds_wb_w8$bmi <- car::recode(HRS_wb_w8$R8BMI, "NA=999")
 HRS_ds_wb_w8$bmi <- labelled(HRS_ds_wb_w8$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_wb8, echo=F}
-Continuous_summary(var = HRS_ds_wb_w8$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_wb_w8, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_wb_w8$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_wb_w8, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_wb8, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w8_whb','HRS.HRS-WB-w8',
-                         variables=list('R8WEIGHT', 'R8HEIGHT', 'R8BMI'), missings = TRUE)
-HRS_wb_w8_whb <- opal.execute(o,'HRS_wb_w8_whb')
 
-HRS_wb_w8_whb$bmi_c <- HRS_wb_w8_whb$R8WEIGHT/(HRS_wb_w8_whb$R8HEIGHT)^2
+                         
+
+
+HRS_wb_w8$bmi_c <- HRS_wb_w8$R8WEIGHT/(HRS_wb_w8$R8HEIGHT)^2
   
-HRS_wb_w8_whb$proff <- HRS_wb_w8_whb$R8BMI - HRS_wb_w8_whb$bmi_c
-summary(HRS_wb_w8_whb$proff)
+HRS_wb_w8$proff <- HRS_wb_w8$R8BMI - HRS_wb_w8$bmi_c
+pander(summary(HRS_wb_w8$proff), caption = 'Summary')
 
-head(HRS_wb_w8_whb[which(HRS_wb_w8_whb$proff>0.2 | HRS_wb_w8_whb$proff<(-0.2)),])
+kable(head(HRS_wb_w8[which(HRS_wb_w8$proff>0.2 | HRS_wb_w8$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -2561,12 +2883,12 @@ head(HRS_wb_w8_whb[which(HRS_wb_w8_whb$proff>0.2 | HRS_wb_w8_whb$proff<(-0.2)),]
 
 
 ```{r importOPAL_wb8, echo=F}
-#val_labels(HRS_ds_wb_w8) <- NULL
-#opal.assign.data(o, 'HRS_ds_wb_w8', HRS_ds_wb_w8)
-#opal.symbol_import(o,'HRS_ds_wb_w8', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_wb_w8
-save(bmi, file = "../RData/wb_w8/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
@@ -2574,26 +2896,33 @@ rm(bmi)
 
 
 
-### The War Baby (WB) - Wave 9  
+### Wave 9  
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R9BMI`
-* Label: `W9 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R9BMI`|
+|-|-|
+| **Label** |`W9 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-WB-W9`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_wb9, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w9_bmi','HRS.HRS-WB-w9',
-                         variables=list('R9BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_wb_w9','HRS.HRS-WB-w9',
+                         variables=list('R9WEIGHT','R9HEIGHT','R9BMI'), missings = TRUE)
+HRS_wb_w9 <- opal.execute(o,'HRS_wb_w9')
+
 ```
 
 ```{r local_wb9, echo=F}
-HRS_wb_w9_bmi <- opal.execute(o,'HRS_wb_w9_bmi')
-Continuous_summary(var = HRS_wb_w9_bmi$R9BMI, missing_values = NA)
-ggplot(HRS_wb_w9_bmi, aes(R9BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_wb_w9$R9BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R9BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wb_w9, aes(R9BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2604,31 +2933,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_wb9}
-HRS_ds_wb_w9 <- tibble(id=HRS_wb_w9_bmi$id)
-HRS_ds_wb_w9$bmi <- car::recode(HRS_wb_w9_bmi$R9BMI, "NA=999")
+HRS_ds_wb_w9 <- tibble(id=HRS_wb_w9$id)
+HRS_ds_wb_w9$bmi <- car::recode(HRS_wb_w9$R9BMI, "NA=999")
 HRS_ds_wb_w9$bmi <- labelled(HRS_ds_wb_w9$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_wb9, echo=F}
-Continuous_summary(var = HRS_ds_wb_w9$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_wb_w9, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_wb_w9$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_wb_w9, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_wb9, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w9_whb','HRS.HRS-WB-w9',
-                         variables=list('R9WEIGHT', 'R9HEIGHT', 'R9BMI'), missings = TRUE)
-HRS_wb_w9_whb <- opal.execute(o,'HRS_wb_w9_whb')
 
-HRS_wb_w9_whb$bmi_c <- HRS_wb_w9_whb$R9WEIGHT/(HRS_wb_w9_whb$R9HEIGHT)^2
+                         
+
+
+HRS_wb_w9$bmi_c <- HRS_wb_w9$R9WEIGHT/(HRS_wb_w9$R9HEIGHT)^2
   
-HRS_wb_w9_whb$proff <- HRS_wb_w9_whb$R9BMI - HRS_wb_w9_whb$bmi_c
-summary(HRS_wb_w9_whb$proff)
+HRS_wb_w9$proff <- HRS_wb_w9$R9BMI - HRS_wb_w9$bmi_c
+pander(summary(HRS_wb_w9$proff), caption = 'Summary')
 
-head(HRS_wb_w9_whb[which(HRS_wb_w9_whb$proff>0.2 | HRS_wb_w9_whb$proff<(-0.2)),])
+kable(head(HRS_wb_w9[which(HRS_wb_w9$proff>0.2 | HRS_wb_w9$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -2636,36 +2968,43 @@ head(HRS_wb_w9_whb[which(HRS_wb_w9_whb$proff>0.2 | HRS_wb_w9_whb$proff<(-0.2)),]
 
 
 ```{r importOPAL_wb9, echo=F}
-#val_labels(HRS_ds_wb_w9) <- NULL
-#opal.assign.data(o, 'HRS_ds_wb_w9', HRS_ds_wb_w9)
-#opal.symbol_import(o,'HRS_ds_wb_w9', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_wb_w9
-save(bmi, file = "../RData/wb_w9/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
 
 
-### The War Baby (WB) - Wave 10  
+### Wave 10  
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R10BMI`
-* Label: `W10 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R10BMI`|
+|-|-|
+| **Label** |`W10 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-WB-W10`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 ```{r assign_wb10, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w10_bmi','HRS.HRS-WB-w10',
-                         variables=list('R10BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_wb_w10','HRS.HRS-WB-w10',
+                         variables=list('R10WEIGHT','R10HEIGHT','R10BMI'), missings = TRUE)
+HRS_wb_w10 <- opal.execute(o,'HRS_wb_w10')
+
 ```
 
 ```{r local_wb10, echo=F}
-HRS_wb_w10_bmi <- opal.execute(o,'HRS_wb_w10_bmi')
-Continuous_summary(var = HRS_wb_w10_bmi$R10BMI, missing_values = NA)
-ggplot(HRS_wb_w10_bmi, aes(R10BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_wb_w10$R10BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R10BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wb_w10, aes(R10BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2676,67 +3015,77 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_wb10}
-HRS_ds_wb_w10 <- tibble(id=HRS_wb_w10_bmi$id)
-HRS_ds_wb_w10$bmi <- car::recode(HRS_wb_w10_bmi$R10BMI, "NA=999")
+HRS_ds_wb_w10 <- tibble(id=HRS_wb_w10$id)
+HRS_ds_wb_w10$bmi <- car::recode(HRS_wb_w10$R10BMI, "NA=999")
 HRS_ds_wb_w10$bmi <- labelled(HRS_ds_wb_w10$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_wb10, echo=F}
-Continuous_summary(var = HRS_ds_wb_w10$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_wb_w10, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_wb_w10$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_wb_w10, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_wb10, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w10_whb','HRS.HRS-WB-w10',
-                         variables=list('R10WEIGHT', 'R10HEIGHT', 'R10BMI'), missings = TRUE)
-HRS_wb_w10_whb <- opal.execute(o,'HRS_wb_w10_whb')
 
-HRS_wb_w10_whb$bmi_c <- HRS_wb_w10_whb$R10WEIGHT/(HRS_wb_w10_whb$R10HEIGHT)^2
+                         
+
+
+HRS_wb_w10$bmi_c <- HRS_wb_w10$R10WEIGHT/(HRS_wb_w10$R10HEIGHT)^2
   
-HRS_wb_w10_whb$proff <- HRS_wb_w10_whb$R10BMI - HRS_wb_w10_whb$bmi_c
-summary(HRS_wb_w10_whb$proff)
+HRS_wb_w10$proff <- HRS_wb_w10$R10BMI - HRS_wb_w10$bmi_c
+pander(summary(HRS_wb_w10$proff), caption = 'Summary')
 
-head(HRS_wb_w10_whb[which(HRS_wb_w10_whb$proff>0.2 | HRS_wb_w10_whb$proff<(-0.2)),])
+kable(head(HRS_wb_w10[which(HRS_wb_w10$proff>0.2 | HRS_wb_w10$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
 
 
 ```{r importOPAL_wb10, echo=F}
-#val_labels(HRS_ds_wb_w10) <- NULL
-#opal.assign.data(o, 'HRS_ds_wb_w10', HRS_ds_wb_w10)
-#opal.symbol_import(o,'HRS_ds_wb_w10', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_wb_w10
-save(bmi, file = "../RData/wb_w10/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
 
 
-### The War Baby (WB) - Wave 11  
+### Wave 11  
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R11BMI`
-* Label: `W11 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R11BMI`|
+|-|-|
+| **Label** |`W11 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-WB-W11`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 ```{r assign_wb11, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w11_bmi','HRS.HRS-WB-w11',
-                         variables=list('R11BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_wb_w11','HRS.HRS-WB-w11',
+                         variables=list('R11WEIGHT','R11HEIGHT','R11BMI'), missings = TRUE)
+HRS_wb_w11 <- opal.execute(o,'HRS_wb_w11')
+
 ```
 
 ```{r local_wb11, echo=F}
-HRS_wb_w11_bmi <- opal.execute(o,'HRS_wb_w11_bmi')
-Continuous_summary(var = HRS_wb_w11_bmi$R11BMI, missing_values = NA)
-ggplot(HRS_wb_w11_bmi, aes(R11BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_wb_w11$R11BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R11BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_wb_w11, aes(R11BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2747,31 +3096,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_wb11}
-HRS_ds_wb_w11 <- tibble(id=HRS_wb_w11_bmi$id)
-HRS_ds_wb_w11$bmi <- car::recode(HRS_wb_w11_bmi$R11BMI, "NA=999")
+HRS_ds_wb_w11 <- tibble(id=HRS_wb_w11$id)
+HRS_ds_wb_w11$bmi <- car::recode(HRS_wb_w11$R11BMI, "NA=999")
 HRS_ds_wb_w11$bmi <- labelled(HRS_ds_wb_w11$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_wb11, echo=F}
-Continuous_summary(var = HRS_ds_wb_w11$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_wb_w11, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_wb_w11$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_wb_w11, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_wb11, echo=F}
-opal.assign.table.tibble(o, 'HRS_wb_w11_whb','HRS.HRS-WB-w11',
-                         variables=list('R11WEIGHT', 'R11HEIGHT', 'R11BMI'), missings = TRUE)
-HRS_wb_w11_whb <- opal.execute(o,'HRS_wb_w11_whb')
 
-HRS_wb_w11_whb$bmi_c <- HRS_wb_w11_whb$R11WEIGHT/(HRS_wb_w11_whb$R11HEIGHT)^2
+                         
+
+
+HRS_wb_w11$bmi_c <- HRS_wb_w11$R11WEIGHT/(HRS_wb_w11$R11HEIGHT)^2
   
-HRS_wb_w11_whb$proff <- HRS_wb_w11_whb$R11BMI - HRS_wb_w11_whb$bmi_c
-summary(HRS_wb_w11_whb$proff)
+HRS_wb_w11$proff <- HRS_wb_w11$R11BMI - HRS_wb_w11$bmi_c
+pander(summary(HRS_wb_w11$proff), caption = 'Summary')
 
-head(HRS_wb_w11_whb[which(HRS_wb_w11_whb$proff>0.2 | HRS_wb_w11_whb$proff<(-0.2)),])
+kable(head(HRS_wb_w11[which(HRS_wb_w11$proff>0.2 | HRS_wb_w11$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -2779,37 +3131,44 @@ head(HRS_wb_w11_whb[which(HRS_wb_w11_whb$proff>0.2 | HRS_wb_w11_whb$proff<(-0.2)
 
 
 ```{r importOPAL_wb11, echo=F}
-#val_labels(HRS_ds_wb_w11) <- NULL
-#opal.assign.data(o, 'HRS_ds_wb_w11', HRS_ds_wb_w11)
-#opal.symbol_import(o,'HRS_ds_wb_w11', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_wb_w11
-save(bmi, file = "../RData/wb_w11/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
+## The Early Baby Boomer (EBB)
+
+### Wave 7  
+
+#### Study-specific variable description
 
 
-### The Early Baby Boomer (EBB) - Wave 7  
 
-#### Study-specific variables
-
-The study-specific variable elected to be harmonised is:
-
-* Name: `R7BMI`
-* Label: `W7 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+| **Name** | `R7BMI`|
+|-|-|
+| **Label** |`W7 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-EBB-W7`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_ebb7, echo=F}
-opal.assign.table.tibble(o, 'HRS_ebb_w7_bmi','HRS.HRS-EBB-w7',
-                         variables=list('R7BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ebb_w7','HRS.HRS-EBB-w7',
+                         variables=list('R7WEIGHT','R7HEIGHT','R7BMI'), missings = TRUE)
+HRS_ebb_w7 <- opal.execute(o,'HRS_ebb_w7')
+
 ```
 
 ```{r local_ebb7, echo=F}
-HRS_ebb_w7_bmi <- opal.execute(o,'HRS_ebb_w7_bmi')
-Continuous_summary(var = HRS_ebb_w7_bmi$R7BMI, missing_values = NA)
-ggplot(HRS_ebb_w7_bmi, aes(R7BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_ebb_w7$R7BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R7BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_ebb_w7, aes(R7BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2820,31 +3179,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_ebb7}
-HRS_ds_ebb_w7 <- tibble(id=HRS_ebb_w7_bmi$id)
-HRS_ds_ebb_w7$bmi <- car::recode(HRS_ebb_w7_bmi$R7BMI, "NA=999")
+HRS_ds_ebb_w7 <- tibble(id=HRS_ebb_w7$id)
+HRS_ds_ebb_w7$bmi <- car::recode(HRS_ebb_w7$R7BMI, "NA=999")
 HRS_ds_ebb_w7$bmi <- labelled(HRS_ds_ebb_w7$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_ebb7, echo=F}
-Continuous_summary(var = HRS_ds_ebb_w7$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_ebb_w7, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_ebb_w7$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_ebb_w7, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_ebb7, echo=F}
-opal.assign.table.tibble(o, 'HRS_ebb_w7_whb','HRS.HRS-EBB-w7',
-                         variables=list('R7WEIGHT', 'R7HEIGHT', 'R7BMI'), missings = TRUE)
-HRS_ebb_w7_whb <- opal.execute(o,'HRS_ebb_w7_whb')
 
-HRS_ebb_w7_whb$bmi_c <- HRS_ebb_w7_whb$R7WEIGHT/(HRS_ebb_w7_whb$R7HEIGHT)^2
+                         
+
+
+HRS_ebb_w7$bmi_c <- HRS_ebb_w7$R7WEIGHT/(HRS_ebb_w7$R7HEIGHT)^2
   
-HRS_ebb_w7_whb$proff <- HRS_ebb_w7_whb$R7BMI - HRS_ebb_w7_whb$bmi_c
-summary(HRS_ebb_w7_whb$proff)
+HRS_ebb_w7$proff <- HRS_ebb_w7$R7BMI - HRS_ebb_w7$bmi_c
+pander(summary(HRS_ebb_w7$proff), caption = 'Summary')
 
-head(HRS_ebb_w7_whb[which(HRS_ebb_w7_whb$proff>0.2 | HRS_ebb_w7_whb$proff<(-0.2)),])
+kable(head(HRS_ebb_w7[which(HRS_ebb_w7$proff>0.2 | HRS_ebb_w7$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -2852,37 +3214,44 @@ head(HRS_ebb_w7_whb[which(HRS_ebb_w7_whb$proff>0.2 | HRS_ebb_w7_whb$proff<(-0.2)
 
 
 ```{r importOPAL_ebb7, echo=F}
-#val_labels(HRS_ds_ebb_w7) <- NULL
-#opal.assign.data(o, 'HRS_ds_ebb_w7', HRS_ds_ebb_w7)
-#opal.symbol_import(o,'HRS_ds_ebb_w7', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_ebb_w7
-save(bmi, file = "../RData/ebb_w7/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
 
 
 
-### The Early Baby Boomer (EBB) - Wave 8  
+### Wave 8  
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R8BMI`
-* Label: `W8 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R8BMI`|
+|-|-|
+| **Label** |`W8 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-EBB-W8`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 ```{r assign_ebb8, echo=F}
-opal.assign.table.tibble(o, 'HRS_ebb_w8_bmi','HRS.HRS-EBB-w8',
-                         variables=list('R8BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ebb_w8','HRS.HRS-EBB-w8',
+                         variables=list('R8WEIGHT','R8HEIGHT','R8BMI'), missings = TRUE)
+HRS_ebb_w8 <- opal.execute(o,'HRS_ebb_w8')
+
 ```
 
 ```{r local_ebb8, echo=F}
-HRS_ebb_w8_bmi <- opal.execute(o,'HRS_ebb_w8_bmi')
-Continuous_summary(var = HRS_ebb_w8_bmi$R8BMI, missing_values = NA)
-ggplot(HRS_ebb_w8_bmi, aes(R8BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_ebb_w8$R8BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R8BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_ebb_w8, aes(R8BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2893,31 +3262,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_ebb8}
-HRS_ds_ebb_w8 <- tibble(id=HRS_ebb_w8_bmi$id)
-HRS_ds_ebb_w8$bmi <- car::recode(HRS_ebb_w8_bmi$R8BMI, "NA=999")
+HRS_ds_ebb_w8 <- tibble(id=HRS_ebb_w8$id)
+HRS_ds_ebb_w8$bmi <- car::recode(HRS_ebb_w8$R8BMI, "NA=999")
 HRS_ds_ebb_w8$bmi <- labelled(HRS_ds_ebb_w8$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_ebb8, echo=F}
-Continuous_summary(var = HRS_ds_ebb_w8$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_ebb_w8, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_ebb_w8$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_ebb_w8, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_ebb8, echo=F}
-opal.assign.table.tibble(o, 'HRS_ebb_w8_whb','HRS.HRS-EBB-w8',
-                         variables=list('R8WEIGHT', 'R8HEIGHT', 'R8BMI'), missings = TRUE)
-HRS_ebb_w8_whb <- opal.execute(o,'HRS_ebb_w8_whb')
 
-HRS_ebb_w8_whb$bmi_c <- HRS_ebb_w8_whb$R8WEIGHT/(HRS_ebb_w8_whb$R8HEIGHT)^2
+                         
+
+
+HRS_ebb_w8$bmi_c <- HRS_ebb_w8$R8WEIGHT/(HRS_ebb_w8$R8HEIGHT)^2
   
-HRS_ebb_w8_whb$proff <- HRS_ebb_w8_whb$R8BMI - HRS_ebb_w8_whb$bmi_c
-summary(HRS_ebb_w8_whb$proff)
+HRS_ebb_w8$proff <- HRS_ebb_w8$R8BMI - HRS_ebb_w8$bmi_c
+pander(summary(HRS_ebb_w8$proff), caption = 'Summary')
 
-head(HRS_ebb_w8_whb[which(HRS_ebb_w8_whb$proff>0.2 | HRS_ebb_w8_whb$proff<(-0.2)),])
+kable(head(HRS_ebb_w8[which(HRS_ebb_w8$proff>0.2 | HRS_ebb_w8$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -2925,37 +3297,44 @@ head(HRS_ebb_w8_whb[which(HRS_ebb_w8_whb$proff>0.2 | HRS_ebb_w8_whb$proff<(-0.2)
 
 
 ```{r importOPAL_ebb8, echo=F}
-#val_labels(HRS_ds_ebb_w8) <- NULL
-#opal.assign.data(o, 'HRS_ds_ebb_w8', HRS_ds_ebb_w8)
-#opal.symbol_import(o,'HRS_ds_ebb_w8', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_ebb_w8
-save(bmi, file = "../RData/ebb_w8/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
 
 
-### The Early Baby Boomer (EBB) - Wave 9  
+### Wave 9  
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R9BMI`
-* Label: `W9 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R9BMI`|
+|-|-|
+| **Label** |`W9 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-EBB-W9`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_ebb9, echo=F}
-opal.assign.table.tibble(o, 'HRS_ebb_w9_bmi','HRS.HRS-EBB-w9',
-                         variables=list('R9BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ebb_w9','HRS.HRS-EBB-w9',
+                         variables=list('R9WEIGHT','R9HEIGHT','R9BMI'), missings = TRUE)
+HRS_ebb_w9 <- opal.execute(o,'HRS_ebb_w9')
+
 ```
 
 ```{r local_ebb9, echo=F}
-HRS_ebb_w9_bmi <- opal.execute(o,'HRS_ebb_w9_bmi')
-Continuous_summary(var = HRS_ebb_w9_bmi$R9BMI, missing_values = NA)
-ggplot(HRS_ebb_w9_bmi, aes(R9BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_ebb_w9$R9BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R9BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_ebb_w9, aes(R9BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -2966,31 +3345,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_ebb9}
-HRS_ds_ebb_w9 <- tibble(id=HRS_ebb_w9_bmi$id)
-HRS_ds_ebb_w9$bmi <- car::recode(HRS_ebb_w9_bmi$R9BMI, "NA=999")
+HRS_ds_ebb_w9 <- tibble(id=HRS_ebb_w9$id)
+HRS_ds_ebb_w9$bmi <- car::recode(HRS_ebb_w9$R9BMI, "NA=999")
 HRS_ds_ebb_w9$bmi <- labelled(HRS_ds_ebb_w9$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_ebb9, echo=F}
-Continuous_summary(var = HRS_ds_ebb_w9$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_ebb_w9, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_ebb_w9$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_ebb_w9, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_ebb9, echo=F}
-opal.assign.table.tibble(o, 'HRS_ebb_w9_whb','HRS.HRS-EBB-w9',
-                         variables=list('R9WEIGHT', 'R9HEIGHT', 'R9BMI'), missings = TRUE)
-HRS_ebb_w9_whb <- opal.execute(o,'HRS_ebb_w9_whb')
 
-HRS_ebb_w9_whb$bmi_c <- HRS_ebb_w9_whb$R9WEIGHT/(HRS_ebb_w9_whb$R9HEIGHT)^2
+                         
+
+
+HRS_ebb_w9$bmi_c <- HRS_ebb_w9$R9WEIGHT/(HRS_ebb_w9$R9HEIGHT)^2
   
-HRS_ebb_w9_whb$proff <- HRS_ebb_w9_whb$R9BMI - HRS_ebb_w9_whb$bmi_c
-summary(HRS_ebb_w9_whb$proff)
+HRS_ebb_w9$proff <- HRS_ebb_w9$R9BMI - HRS_ebb_w9$bmi_c
+pander(summary(HRS_ebb_w9$proff), caption = 'Summary')
 
-head(HRS_ebb_w9_whb[which(HRS_ebb_w9_whb$proff>0.2 | HRS_ebb_w9_whb$proff<(-0.2)),])
+kable(head(HRS_ebb_w9[which(HRS_ebb_w9$proff>0.2 | HRS_ebb_w9$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -2998,36 +3380,43 @@ head(HRS_ebb_w9_whb[which(HRS_ebb_w9_whb$proff>0.2 | HRS_ebb_w9_whb$proff<(-0.2)
 
 
 ```{r importOPAL_ebb9, echo=F}
-#val_labels(HRS_ds_ebb_w9) <- NULL
-#opal.assign.data(o, 'HRS_ds_ebb_w9', HRS_ds_ebb_w9)
-#opal.symbol_import(o,'HRS_ds_ebb_w9', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_ebb_w9
-save(bmi, file = "../RData/ebb_w9/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
 
 
-### The Early Baby Boomer (EBB) - Wave 10  
+### Wave 10  
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R10BMI`
-* Label: `W10 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R10BMI`|
+|-|-|
+| **Label** |`W10 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-EBB-W10`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 ```{r assign_ebb10, echo=F}
-opal.assign.table.tibble(o, 'HRS_ebb_w10_bmi','HRS.HRS-EBB-w10',
-                         variables=list('R10BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ebb_w10','HRS.HRS-EBB-w10',
+                         variables=list('R10WEIGHT','R10HEIGHT','R10BMI'), missings = TRUE)
+HRS_ebb_w10 <- opal.execute(o,'HRS_ebb_w10')
+
 ```
 
 ```{r local_ebb10, echo=F}
-HRS_ebb_w10_bmi <- opal.execute(o,'HRS_ebb_w10_bmi')
-Continuous_summary(var = HRS_ebb_w10_bmi$R10BMI, missing_values = NA)
-ggplot(HRS_ebb_w10_bmi, aes(R10BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_ebb_w10$R10BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R10BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_ebb_w10, aes(R10BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -3038,31 +3427,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_ebb10}
-HRS_ds_ebb_w10 <- tibble(id=HRS_ebb_w10_bmi$id)
-HRS_ds_ebb_w10$bmi <- car::recode(HRS_ebb_w10_bmi$R10BMI, "NA=999")
+HRS_ds_ebb_w10 <- tibble(id=HRS_ebb_w10$id)
+HRS_ds_ebb_w10$bmi <- car::recode(HRS_ebb_w10$R10BMI, "NA=999")
 HRS_ds_ebb_w10$bmi <- labelled(HRS_ds_ebb_w10$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_ebb10, echo=F}
-Continuous_summary(var = HRS_ds_ebb_w10$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_ebb_w10, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_ebb_w10$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_ebb_w10, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_ebb10, echo=F}
-opal.assign.table.tibble(o, 'HRS_ebb_w10_whb','HRS.HRS-EBB-w10',
-                         variables=list('R10WEIGHT', 'R10HEIGHT', 'R10BMI'), missings = TRUE)
-HRS_ebb_w10_whb <- opal.execute(o,'HRS_ebb_w10_whb')
 
-HRS_ebb_w10_whb$bmi_c <- HRS_ebb_w10_whb$R10WEIGHT/(HRS_ebb_w10_whb$R10HEIGHT)^2
+                         
+
+
+HRS_ebb_w10$bmi_c <- HRS_ebb_w10$R10WEIGHT/(HRS_ebb_w10$R10HEIGHT)^2
   
-HRS_ebb_w10_whb$proff <- HRS_ebb_w10_whb$R10BMI - HRS_ebb_w10_whb$bmi_c
-summary(HRS_ebb_w10_whb$proff)
+HRS_ebb_w10$proff <- HRS_ebb_w10$R10BMI - HRS_ebb_w10$bmi_c
+pander(summary(HRS_ebb_w10$proff), caption = 'Summary')
 
-head(HRS_ebb_w10_whb[which(HRS_ebb_w10_whb$proff>0.2 | HRS_ebb_w10_whb$proff<(-0.2)),])
+kable(head(HRS_ebb_w10[which(HRS_ebb_w10$proff>0.2 | HRS_ebb_w10$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -3070,12 +3462,12 @@ head(HRS_ebb_w10_whb[which(HRS_ebb_w10_whb$proff>0.2 | HRS_ebb_w10_whb$proff<(-0
 
 
 ```{r importOPAL_ebb10, echo=F}
-#val_labels(HRS_ds_ebb_w10) <- NULL
-#opal.assign.data(o, 'HRS_ds_ebb_w10', HRS_ds_ebb_w10)
-#opal.symbol_import(o,'HRS_ds_ebb_w10', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_ebb_w10
-save(bmi, file = "../RData/ebb_w10/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
@@ -3084,26 +3476,33 @@ rm(bmi)
 
 
 
-### The Early Baby Boomer (EBB) - Wave 11  
+### Wave 11  
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R11BMI`
-* Label: `W11 Weight in kilograms`
-* Type of variable: `countinous`
+
+| **Name** | `R11BMI`|
+|-|-|
+| **Label** |`W11 Weight in kilograms`|
+| **Table name** |`HRS-EBB-W11`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_ebb11, echo=F}
-opal.assign.table.tibble(o, 'HRS_ebb_w11_bmi','HRS.HRS-EBB-w11',
-                         variables=list('R11BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_ebb_w11','HRS.HRS-EBB-w11',
+                         variables=list('R11WEIGHT','R11HEIGHT','R11BMI'), missings = TRUE)
+HRS_ebb_w11 <- opal.execute(o,'HRS_ebb_w11')
+
 ```
 
 ```{r local_ebb11, echo=F}
-HRS_ebb_w11_bmi <- opal.execute(o,'HRS_ebb_w11_bmi')
-Continuous_summary(var = HRS_ebb_w11_bmi$R11BMI, missing_values = NA)
-ggplot(HRS_ebb_w11_bmi, aes(R11BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_ebb_w11$R11BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R11BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_ebb_w11, aes(R11BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -3114,30 +3513,33 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_ebb11}
-HRS_ds_ebb_w11 <- tibble(id=HRS_ebb_w11_bmi$id)
-HRS_ds_ebb_w11$bmi <- car::recode(HRS_ebb_w11_bmi$R11BMI, "NA=999")
+HRS_ds_ebb_w11 <- tibble(id=HRS_ebb_w11$id)
+HRS_ds_ebb_w11$bmi <- car::recode(HRS_ebb_w11$R11BMI, "NA=999")
 HRS_ds_ebb_w11$bmi <- labelled(HRS_ds_ebb_w11$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
 ```{r descript_ebb11, echo=F}
-Continuous_summary(var = HRS_ds_ebb_w11$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_ebb_w11, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_ebb_w11$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_ebb_w11, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_ebb11, echo=F}
-opal.assign.table.tibble(o, 'HRS_ebb_w11_whb','HRS.HRS-EBB-w11',
-                         variables=list('R11WEIGHT', 'R11HEIGHT', 'R11BMI'), missings = TRUE)
-HRS_ebb_w11_whb <- opal.execute(o,'HRS_ebb_w11_whb')
 
-HRS_ebb_w11_whb$bmi_c <- HRS_ebb_w11_whb$R11WEIGHT/(HRS_ebb_w11_whb$R11HEIGHT)^2
+                         
+
+
+HRS_ebb_w11$bmi_c <- HRS_ebb_w11$R11WEIGHT/(HRS_ebb_w11$R11HEIGHT)^2
   
-HRS_ebb_w11_whb$proff <- HRS_ebb_w11_whb$R11BMI - HRS_ebb_w11_whb$bmi_c
-summary(HRS_ebb_w11_whb$proff)
+HRS_ebb_w11$proff <- HRS_ebb_w11$R11BMI - HRS_ebb_w11$bmi_c
+pander(summary(HRS_ebb_w11$proff), caption = 'Summary')
 
-head(HRS_ebb_w11_whb[which(HRS_ebb_w11_whb$proff>0.2 | HRS_ebb_w11_whb$proff<(-0.2)),])
+kable(head(HRS_ebb_w11[which(HRS_ebb_w11$proff>0.2 | HRS_ebb_w11$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -3145,39 +3547,46 @@ head(HRS_ebb_w11_whb[which(HRS_ebb_w11_whb$proff>0.2 | HRS_ebb_w11_whb$proff<(-0
 
 
 ```{r importOPAL_ebb11, echo=F}
-#val_labels(HRS_ds_ebb_w11) <- NULL
-#opal.assign.data(o, 'HRS_ds_ebb_w11', HRS_ds_ebb_w11)
-#opal.symbol_import(o,'HRS_ds_ebb_w11', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_ebb_w11
-save(bmi, file = "../RData/ebb_w11/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
 
 
+## The Mid Baby Boomer (MBB)
+
+### Wave 10  
+
+#### Study-specific variable description
 
 
-### The Mid Baby Boomer (MBB) - Wave 10  
 
-#### Study-specific variables
-
-The study-specific variable elected to be harmonised is:
-
-* Name: `R10BMI`
-* Label: `W10 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+| **Name** | `R10BMI`|
+|-|-|
+| **Label** |`W10 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-MBB-W10`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 
 ```{r assign_mbb10, echo=F}
-opal.assign.table.tibble(o, 'HRS_mbb_w10_bmi','HRS.HRS-MBB-w10',
-                         variables=list('R10BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_mbb_w10','HRS.HRS-MBB-w10',
+                         variables=list('R10WEIGHT','R10HEIGHT','R10BMI'), missings = TRUE)
+HRS_mbb_w10 <- opal.execute(o,'HRS_mbb_w10')
+
 ```
 
 ```{r local_mbb10, echo=F}
-HRS_mbb_w10_bmi <- opal.execute(o,'HRS_mbb_w10_bmi')
-Continuous_summary(var = HRS_mbb_w10_bmi$R10BMI, missing_values = NA)
-ggplot(HRS_mbb_w10_bmi, aes(R10BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_mbb_w10$R10BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R10BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_mbb_w10, aes(R10BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -3188,31 +3597,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_mbb10}
-HRS_ds_mbb_w10 <- tibble(id=HRS_mbb_w10_bmi$id)
-HRS_ds_mbb_w10$bmi <- car::recode(HRS_mbb_w10_bmi$R10BMI, "NA=999")
+HRS_ds_mbb_w10 <- tibble(id=HRS_mbb_w10$id)
+HRS_ds_mbb_w10$bmi <- car::recode(HRS_mbb_w10$R10BMI, "NA=999")
 HRS_ds_mbb_w10$bmi <- labelled(HRS_ds_mbb_w10$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_mbb10, echo=F}
-Continuous_summary(var = HRS_ds_mbb_w10$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_mbb_w10, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_mbb_w10$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_mbb_w10, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_mbb10, echo=F}
-opal.assign.table.tibble(o, 'HRS_mbb_w10_whb','HRS.HRS-MBB-w10',
-                         variables=list('R10WEIGHT', 'R10HEIGHT', 'R10BMI'), missings = TRUE)
-HRS_mbb_w10_whb <- opal.execute(o,'HRS_mbb_w10_whb')
 
-HRS_mbb_w10_whb$bmi_c <- HRS_mbb_w10_whb$R10WEIGHT/(HRS_mbb_w10_whb$R10HEIGHT)^2
+                         
+
+
+HRS_mbb_w10$bmi_c <- HRS_mbb_w10$R10WEIGHT/(HRS_mbb_w10$R10HEIGHT)^2
   
-HRS_mbb_w10_whb$proff <- HRS_mbb_w10_whb$R10BMI - HRS_mbb_w10_whb$bmi_c
-summary(HRS_mbb_w10_whb$proff)
+HRS_mbb_w10$proff <- HRS_mbb_w10$R10BMI - HRS_mbb_w10$bmi_c
+pander(summary(HRS_mbb_w10$proff), caption = 'Summary')
 
-head(HRS_mbb_w10_whb[which(HRS_mbb_w10_whb$proff>0.2 | HRS_mbb_w10_whb$proff<(-0.2)),])
+kable(head(HRS_mbb_w10[which(HRS_mbb_w10$proff>0.2 | HRS_mbb_w10$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -3220,12 +3632,12 @@ head(HRS_mbb_w10_whb[which(HRS_mbb_w10_whb$proff>0.2 | HRS_mbb_w10_whb$proff<(-0
 
 
 ```{r importOPAL_mbb10, echo=F}
-#val_labels(HRS_ds_mbb_w10) <- NULL
-#opal.assign.data(o, 'HRS_ds_mbb_w10', HRS_ds_mbb_w10)
-#opal.symbol_import(o,'HRS_ds_mbb_w10', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_mbb_w10
-save(bmi, file = "../RData/mbb_w10/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
 
@@ -3233,25 +3645,32 @@ rm(bmi)
 
 
 
-### The Mid Baby Boomer (MBB) - Wave 11  
+### Wave 11  
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `R11BMI`
-* Label: `W11 Body Mass Index=kg/m2`
-* Type of variable: `countinous`
+
+| **Name** | `R11BMI`|
+|-|-|
+| **Label** |`W11 Body Mass Index=kg/m2`|
+| **Table name** |`HRS-MBB-W11`|
+| **Units** |`kg/m2`|
+| **Description** |  |
 
 ```{r assign_mbb11, echo=F}
-opal.assign.table.tibble(o, 'HRS_mbb_w11_bmi','HRS.HRS-MBB-w11',
-                         variables=list('R11BMI'), missings = TRUE)
+opal.assign.table.tibble(o, 'HRS_mbb_w11','HRS.HRS-MBB-w11',
+                         variables=list('R11WEIGHT','R11HEIGHT','R11BMI'), missings = TRUE)
+HRS_mbb_w11 <- opal.execute(o,'HRS_mbb_w11')
+
 ```
 
 ```{r local_mbb11, echo=F}
-HRS_mbb_w11_bmi <- opal.execute(o,'HRS_mbb_w11_bmi')
-Continuous_summary(var = HRS_mbb_w11_bmi$R11BMI, missing_values = NA)
-ggplot(HRS_mbb_w11_bmi, aes(R11BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
+
+vbl <- HRS_mbb_w11$R11BMI
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "R11BMI")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HRS_mbb_w11, aes(R11BMI)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -3262,31 +3681,34 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo_mbb11}
-HRS_ds_mbb_w11 <- tibble(id=HRS_mbb_w11_bmi$id)
-HRS_ds_mbb_w11$bmi <- car::recode(HRS_mbb_w11_bmi$R11BMI, "NA=999")
+HRS_ds_mbb_w11 <- tibble(id=HRS_mbb_w11$id)
+HRS_ds_mbb_w11$bmi <- car::recode(HRS_mbb_w11$R11BMI, "NA=999")
 HRS_ds_mbb_w11$bmi <- labelled(HRS_ds_mbb_w11$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 
 #### Statistics of the new harmonised variable
 ```{r descript_mbb11, echo=F}
-Continuous_summary(var = HRS_ds_mbb_w11$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HRS_ds_mbb_w11, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,120)
+vbl <- HRS_ds_mbb_w11$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HRS_ds_mbb_w11, aes(bmi)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
 ```
 
 #### Validation
 It is going to check if weight and heigth values are correct by computing BMI with the formula: weight/height^2. 
 ```{r crosstabulation_mbb11, echo=F}
-opal.assign.table.tibble(o, 'HRS_mbb_w11_whb','HRS.HRS-MBB-w11',
-                         variables=list('R11WEIGHT', 'R11HEIGHT', 'R11BMI'), missings = TRUE)
-HRS_mbb_w11_whb <- opal.execute(o,'HRS_mbb_w11_whb')
 
-HRS_mbb_w11_whb$bmi_c <- HRS_mbb_w11_whb$R11WEIGHT/(HRS_mbb_w11_whb$R11HEIGHT)^2
+                         
+
+
+HRS_mbb_w11$bmi_c <- HRS_mbb_w11$R11WEIGHT/(HRS_mbb_w11$R11HEIGHT)^2
   
-HRS_mbb_w11_whb$proff <- HRS_mbb_w11_whb$R11BMI - HRS_mbb_w11_whb$bmi_c
-summary(HRS_mbb_w11_whb$proff)
+HRS_mbb_w11$proff <- HRS_mbb_w11$R11BMI - HRS_mbb_w11$bmi_c
+pander(summary(HRS_mbb_w11$proff), caption = 'Summary')
 
-head(HRS_mbb_w11_whb[which(HRS_mbb_w11_whb$proff>0.2 | HRS_mbb_w11_whb$proff<(-0.2)),])
+kable(head(HRS_mbb_w11[which(HRS_mbb_w11$proff>0.2 | HRS_mbb_w11$proff<(-0.2)),]), caption = 'Some individuals with computed bmi different from bmi data more than 0.2')
 ```
 
 
@@ -3294,16 +3716,283 @@ head(HRS_mbb_w11_whb[which(HRS_mbb_w11_whb$proff>0.2 | HRS_mbb_w11_whb$proff<(-0
 
 
 ```{r importOPAL_mbb11, echo=F}
-#val_labels(HRS_ds_mbb_w11) <- NULL
-#opal.assign.data(o, 'HRS_ds_mbb_w11', HRS_ds_mbb_w11)
-#opal.symbol_import(o,'HRS_ds_mbb_w11', project='_Athlos_Harm_Dataset')
-bmi <- HRS_ds_mbb_w11
-save(bmi, file = "../RData/mbb_w11/bmi.RData")
-rm(bmi)
+
+
+
+
+
+
 ```
 
+
+
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+```{r helpfunctions, echo=F}
+
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+# Creation of summary tables for continuous data
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][2])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[2]],missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][2])[1:6]
+    # Next, missing/no-missing values
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[2]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][2]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+# Save data tables
+# 
+savingRD <- function(l.hds,vbl_name){
+
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
+}
+
+```
+
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+hrw.hrw.cw <- list(hrs_w1 = c("hrs_w1","HRS w1"), hrs_w2 = c("hrs_w2","HRS w2"), hrs_w3 = c("hrs_w3","HRS w3"), hrs_w4 = c("hrs_w4","HRS w4"), hrs_w5 = c("hrs_w5","HRS w5"), hrs_w6 = c("hrs_w6","HRS w6"), hrs_w7 = c("hrs_w7","HRS w7"), hrs_w8 = c("hrs_w8","HRS w8"), hrs_w9 = c("hrs_w9","HRS w9"), hrs_w10 = c("hrs_w10","HRS w10"), hrs_w11 = c("hrs_w11","HRS w11"))
+
+hrw.ahead.cw <- list(ahead_w2 = c("ahead_w2","AHEAD w2"), ahead_w3 = c("ahead_w3","AHEAD w3"), ahead_w4 = c("ahead_w4","AHEAD w4"), ahead_w5 = c("ahead_w5","AHEAD w5"), ahead_w6 = c("ahead_w6","AHEAD w6"), ahead_w7 = c("ahead_w7","AHEAD w7"), ahead_w8 = c("ahead_w8","AHEAD w8"), ahead_w9 = c("ahead_w9","AHEAD w9"), ahead_w10 = c("ahead_w10","AHEAD w10"), ahead_w11 = c("ahead_w11","AHEAD w11"))
+
+hrw.coda.cw <- list(coda_w4 = c("coda_w4","CODA w4"), coda_w5 = c("coda_w5","CODA w5"), coda_w6 = c("coda_w6","CODA w6"), coda_w7 = c("coda_w7","CODA w7"), coda_w8 = c("coda_w8","CODA w8"), coda_w9 = c("coda_w9","CODA w9"), coda_w10 = c("coda_w10","CODA w10"), coda_w11 = c("coda_w11","CODA w11"))
+
+hrw.wb.cw <- list(wb_w4 = c("wb_w4","WB w4"), wb_w5 = c("wb_w5","WB w5"), wb_w6 = c("wb_w6","WB w6"), wb_w7 = c("wb_w7","WB w7"), wb_w8 = c("wb_w8","WB w8"), wb_w9 = c("wb_w9","WB w9"), wb_w10 = c("wb_w10","WB w10"), wb_w11 = c("wb_w11","WB w11"))
+
+hrw.ebb.cw <- list(ebb_w7 = c("ebb_w7","EBB w7"), ebb_w8 = c("ebb_w8","EBB w8"), ebb_w9 = c("ebb_w9","EBB w9"), ebb_w10 = c("ebb_w10","EBB w10"), ebb_w11 = c("ebb_w11","EBB w11"))
+
+hrw.mbb.cw <- list(mbb_w10 = c("mbb_w10","MBB w10"), mbb_w11 = c("mbb_w11","MBB w11"))
+
+
+
+# HRS
+
+# Consider only harmonised waves
+l.hds <- lapply(hrw.hrw.cw, function(wname) if(exists(paste0("HRS_ds_",wname[1]))){wname = list(get(paste0("HRS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing summaries
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+
+
+
+# AHEAD
+
+# Consider only harmonised waves
+l.hds <- lapply(hrw.ahead.cw, function(wname) if(exists(paste0("HRS_ds_",wname[1]))){wname = list(get(paste0("HRS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing summaries
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+
+
+
+
+
+# CODA
+
+# Consider only harmonised waves
+l.hds <- lapply(hrw.coda.cw, function(wname) if(exists(paste0("HRS_ds_",wname[1]))){wname = list(get(paste0("HRS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+
+
+# WB
+
+# Consider only harmonised waves
+l.hds <- lapply(hrw.wb.cw, function(wname) if(exists(paste0("HRS_ds_",wname[1]))){wname = list(get(paste0("HRS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+
+
+# EBB
+
+# Consider only harmonised waves
+l.hds <- lapply(hrw.ebb.cw, function(wname) if(exists(paste0("HRS_ds_",wname[1]))){wname = list(get(paste0("HRS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+
+# MBB
+
+# Consider only harmonised waves
+l.hds <- lapply(hrw.mbb.cw, function(wname) if(exists(paste0("HRS_ds_",wname[1]))){wname = list(get(paste0("HRS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+
+```
+
+
+
+
+
+
+
+
 # Quality estimation
-This variable had to be derived.
+* This variable had to be derived.
+* As one can see in previous summary tables there are some individuals with bmi lower than 10. As an example, we show the data of that which reaches the minimum, which seems to be wrong, mainly because of the weight:
+```{r echo=F}
+kable(HRS_ebb_w10[which(HRS_ebb_w10$R10BMI<8),])
+```
 
 
 ```{r closeRsession, echo=FALSE}
