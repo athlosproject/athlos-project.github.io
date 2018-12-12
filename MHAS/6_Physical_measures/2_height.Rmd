@@ -13,70 +13,53 @@ output:
 ---
 
 <!-- ########################################################## --> 
-
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
-
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-* Short name: `height`
-* Variable label: `height of the participant`
-* Variable description: `Anthropometric measure for height should be measured in centimeters`
-* Domain: `Physical measures`
-* Value type: `continuous`
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/heightDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/heightDS.R')
+```
 
 # Data process
 
 ## Mexico
 
-### MHAS - Wave 1 
+### Wave 1 
 
-#### Study-specific variables
-
-The study-specific variable elected to be harmonised is:
-
-* Name: `c72`
-* Label: `Height`
-* Type of variable: `countinous`
-* Missings
-    + `888 = Doesn't answer`
-    + `999 = Doesn't know`
+#### Study-specific variable description
 
 
-```{r assign1}
-opal.assign.table.tibble(o, 'MHAS_w1_heig','Mexican Health Aging Study.MHAS-2001',
+| **Name** |`c72`|
+|-|-|
+| **Label** |`Height`|
+| **Table name** |`MHAS-2001`|
+| **Units** |`cm`|
+| **Missings** |`888 = Doesn't answer`<br/>`999 = Doesn't know`|
+| **Description** |  |
+
+
+
+
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'MHAS_w1','Mexican Health Aging Study.MHAS-2001',
                          variables=list('c72'), missings = TRUE)
+MHAS_w1 <- opal.execute(o,'MHAS_w1')
 ```
 
-```{r local1}
-MHAS_w1_heig <- opal.execute(o,'MHAS_w1_heig')
-Continuous_summary(var = MHAS_w1_heig$c72, missing_values = c(888,999))
-ggplot(MHAS_w1_heig, aes(c72)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+```{r local1, echo=F}
+vbl <- MHAS_w1$c72
+vbl_miss <- c(888,999,915,949,990,992)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "c72")
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(MHAS_w1, aes(c72)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
 ```
 
-There are values larger than 915 that are going to be considered as mistakes and They will be recoded as 999.
 
 #### Harmonisation algorithm
 The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
@@ -84,37 +67,28 @@ The harmonized variable is the same than the study-specific variable, but the mi
 * `recode 888 "Doesn't answer" into 995`
 * `recode 999 "Doesn't know" into 998`
 * `NA as 999`
+There are values higher than 915 that are going to be considered as mistakes and they will be recoded as 999.
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo1}
-MHAS_ds_w1 <- tibble(id=MHAS_w1_heig$id)
-MHAS_ds_w1$height <- car::recode(MHAS_w1_heig$c72, "NA=999; 915:992=999; 888=995; 999=998 ")
+MHAS_ds_w1 <- tibble(id=MHAS_w1$id)
+MHAS_ds_w1$height <- car::recode(MHAS_w1$c72, "NA=999; 915:992=999; 888=995; 999=998 ")
 MHAS_ds_w1$height <- labelled(MHAS_ds_w1$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript1}
-Continuous_summary(var = MHAS_ds_w1$height, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(MHAS_ds_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue") + xlab("height") + ylab("Frequency") + xlim(100,250) 
+```{r descript1, echo=F}
+vbl <- MHAS_ds_w1$height
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(MHAS_ds_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab(ds_label) + ylab("Frequency")  
 ```
 
 #### Validation
 
-```{r crosstabulation1}
-```
-
-#### Quality estimation
-[Comments on the quality of the new harmonised variable.]
-
-#### Import to OPAL
-```{r importOPAL1}
-#val_labels(MHAS_ds_w1) <- NULL
-#opal.assign.data(o, 'MHAS_ds_w1', MHAS_ds_w1)
-#opal.symbol_import(o,'MHAS_ds_w1', project='_Athlos_Harm_Dataset')
-height <- MHAS_ds_w1
-save(height, file = "../RData/w1/height.RData")
-rm(height)
+```{r crosstabulation1, echo=F}
 ```
 
 
@@ -123,32 +97,38 @@ rm(height)
 
 
 
-### MHAS - Wave 2 
+### Wave 2 
 
-#### Study-specific variables
-
-The study-specific variable elected to be harmonised is:
-
-* Name: `c67`
-* Label: `Height without shoes`
-* Type of variable: `countinous`
-* Missings
-    + `888 = Doesn't answer`
-    + `999 = Doesn't know`
+#### Study-specific variable description
 
 
-```{r assign2}
-opal.assign.table.tibble(o, 'MHAS_w2_heig','Mexican Health Aging Study.MHAS_2003',
+
+| **Name** |`c67`|
+|-|-|
+| **Label** |`Height without shoes`|
+| **Table name** |`MHAS_2003`|
+| **Units** |`cm`|
+| **Missings** |`888 = Doesn't answer`<br/>`999 = Doesn't know`|
+| **Description** |  |
+
+
+
+
+```{r assign2, echo=F}
+opal.assign.table.tibble(o, 'MHAS_w2','Mexican Health Aging Study.MHAS_2003',
                          variables=list('c67'), missings = TRUE)
+MHAS_w2 <- opal.execute(o,'MHAS_w2')
 ```
 
-```{r local2}
-MHAS_w2_heig <- opal.execute(o,'MHAS_w2_heig')
-Continuous_summary(var = MHAS_w2_heig$c67, missing_values = c(888,999))
-ggplot(MHAS_w2_heig, aes(c67)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+```{r local2, echo=F}
+vbl <- MHAS_w2$c67
+vbl_miss <- c(888,999)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "c67")
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(MHAS_w2, aes(c67)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
 ```
 
-There is a value 20 that is going to be considered as a mistake, it will be recoded as 999. 
 
 #### Harmonisation algorithm
 The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
@@ -156,37 +136,27 @@ The harmonized variable is the same than the study-specific variable, but the mi
 * `recode 888 "Doesn't answer" into 995`
 * `recode 999 "Doesn't know" into 998`
 * `NA as 999`
- 
 
-R code of the ALGORITHM:
+
+**R script:**
 
 ```{r harmo2}
-MHAS_ds_w2 <- tibble(id=MHAS_w2_heig$id)
-MHAS_ds_w2$height <- car::recode(MHAS_w2_heig$c67, "888=995; 999=998; NA=999")
+MHAS_ds_w2 <- tibble(id=MHAS_w2$id)
+MHAS_ds_w2$height <- car::recode(MHAS_w2$c67, "888=995; 999=998; NA=999")
 MHAS_ds_w2$height <- labelled(MHAS_ds_w2$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript2}
-Continuous_summary(var = MHAS_ds_w2$height, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(MHAS_ds_w2, aes(height)) + geom_histogram(stat="count", fill="steelblue") + xlab("height") + ylab("Frequency") + xlim(100,250) 
+```{r descript2, echo=F}
+vbl <- MHAS_ds_w2$height
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(MHAS_ds_w2, aes(height)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab(ds_label) + ylab("Frequency")  
 ```
 
 #### Validation
-```{r crosstabulation2}
-```
-
-#### Quality estimation
-[Comments on the quality of the new harmonised variable.]
-
-#### Import to OPAL
-```{r importOPAL2}
-#val_labels(MHAS_ds_w2) <- NULL
-#opal.assign.data(o, 'MHAS_ds_w2', MHAS_ds_w2)
-#opal.symbol_import(o,'MHAS_ds_w2', project='_Athlos_Harm_Dataset')
-height <- MHAS_ds_w2
-save(height, file = "../RData/w2/height.RData")
-rm(height)
+```{r crosstabulation2, echo=F}
 ```
 
 
@@ -195,43 +165,55 @@ rm(height)
 
 
 
-### MHAS - Wave 3 
-
-#### Study-specific variables
-
-The study-specific variable elected to be harmonised is:
-
-* Name: `estatu1_12`
-* Label: `Height - first measurement`
-* Type of variable: `countinous`
-* Missings
-    + `995.0 = Tried, but could not do 995.0`
-    + `996.0 = Did not try 996.0`
-    + `997.0 = Cannot stand 997.0`
-    + `999.0 = Refused to provide 999.0`
-* Name: `estatu2_12`
-* Label: `Weight - second measurement`
-* Type of variable: `countinous`
-* Missings
-    + `995.0 = Tried, but could not do 995.0`
-    + `996.0 = Did not try 996.0`
-    + `997.0 = Cannot stand 997.0`
-    + `999.0 = Refused to provide 999.0`
 
 
-```{r assign3}
-opal.assign.table.tibble(o, 'MHAS_w3_heig','Mexican Health Aging Study.MHAS_2012_new',
+### Wave 3 
+
+#### Study-specific variable description
+
+
+
+| **Name** |`estatu1_12`|`estatu2_12`|
+|-|-|-|
+| **Label** |`Height - first measurement`|`Height - second measurement`|
+| **Table name** |`MHAS_2012_new`|`MHAS_2012_new`|
+| **Units** |`cm`|`cm`|
+| **Missings** |`995.0 = Tried, but could not do 995.0`<br/>`996.0 = Did not try 996.0`<br/>`997.0 = Cannot stand 997.0`<br/>`999.0 = Refused to provide 999.0`|`995.0 = Tried, but could not do 995.0`<br/>`996.0 = Did not try 996.0`<br/>`997.0 = Cannot stand 997.0`<br/>`999.0 = Refused to provide 999.0`|
+| **Description** |  |  |
+
+
+
+
+
+
+```{r assign3, echo=F}
+opal.assign.table.tibble(o, 'MHAS_w3','Mexican Health Aging Study.MHAS_2012_new',
                          variables=list('estatu1_12', 'estatu2_12'), missings = TRUE)
+MHAS_w3 <- opal.execute(o,'MHAS_w3')
 ```
 
-```{r local3}
-MHAS_w3_heig <- opal.execute(o,'MHAS_w3_heig')
-Continuous_summary(var = MHAS_w3_heig$estatu1_12, missing_values = c(995, 996, 997, 999))
-ggplot(MHAS_w3_heig, aes(estatu1_12)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
-Continuous_summary(var = MHAS_w3_heig$estatu2_12, missing_values = c(995, 996, 997, 999))
-ggplot(MHAS_w3_heig, aes(estatu2_12)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+```{r local3, echo=F}
+vbl <- MHAS_w3$estatu1_12
+vbl_miss <- c(995, 996, 997, 999)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "estatu1_12")
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(MHAS_w3, aes(estatu1_12)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
 
-sum(complete.cases(MHAS_w3_heig[,1:3]))
+vbl <- MHAS_w3$estatu2_12
+vbl_miss <- c(995, 996, 997, 999)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "estatu2_12")
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(MHAS_w3, aes(estatu2_12)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
+
+```
+
+```{r, echo=FALSE}
+cat(paste("The individuals with no missing data are",sum(complete.cases(MHAS_w3[,1:3]))))
+
+kable(table(MHAS_w3$estatu1_12[which(MHAS_w3$estatu1_12 %in% c(vbl_miss,NA))],MHAS_w3$estatu2_12[which(MHAS_w3$estatu2_12 %in% c(vbl_miss,NA))], useNA = "ifany"), caption = 'Cross tabulation of missing values')
+
 ```
 
 
@@ -244,35 +226,140 @@ The harmonized variable is the mean value between the first and second measureme
 * `recode 999 "Refused to provide 999.0" into 997`
 * `NA as 999`
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo3}
-MHAS_w3_heig$mean_estatu <- apply(X = MHAS_w3_heig[,c(2,3)], MARGIN = 1, FUN = mean)
+MHAS_w3$mean_estatu <- apply(X = MHAS_w3[,c(2,3)], MARGIN = 1, FUN = mean, na.rm=T)
 
-MHAS_ds_w3 <- tibble(id=MHAS_w3_heig$id)
-MHAS_ds_w3$height <- car::recode(MHAS_w3_heig$mean_estatu, "995=993; 996=994; 997=993; 999=997; NA=999")
+MHAS_ds_w3 <- tibble(id=MHAS_w3$id)
+MHAS_ds_w3$height <- car::recode(MHAS_w3$mean_estatu, "995=993; 996=994; 997=993; 999=997; NA=999")
 MHAS_ds_w3$height <- labelled(MHAS_ds_w3$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript3}
-Continuous_summary(var = MHAS_ds_w3$height, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(MHAS_ds_w3, aes(height)) + geom_histogram(stat="count", fill="steelblue") + xlab("height") + ylab("Frequency") + xlim(100,200) 
+```{r descript3, echo=F}
+vbl <- MHAS_ds_w3$height
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(MHAS_ds_w3, aes(height)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("height") + ylab("Frequency")  
 ```
 
 #### Validation
-```{r crosstabulation3}
+```{r crosstabulation3, echo=F}
 ```
 
-#### Quality estimation
+
+
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+```{r helpfunctions, echo=F}
+
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+# Creation of summary tables for continuous data
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][2])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[2]],missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][2])[1:6]
+    # Next, missing/no-missing values
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[2]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][2]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
+}
+
+```
+
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+mhas.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"), w3 = c("w3","W3"))
+
+# Consider only harmonised waves
+l.hds <- lapply(mhas.cw, function(wname) if(exists(paste0("MHAS_ds_",wname[1]))){wname = list(get(paste0("MHAS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing summaries
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+```
+
+
+
+# Quality estimation
 Anthropometric Measure.
 
-#### Import to OPAL
-```{r importOPAL3}
-#val_labels(MHAS_ds_w3) <- NULL
-#opal.assign.data(o, 'MHAS_ds_w3', MHAS_ds_w3)
-#opal.symbol_import(o,'MHAS_ds_w3', project='_Athlos_Harm_Dataset')
-height <- MHAS_ds_w3
-save(height, file = "../RData/w3/height.RData")
-rm(height)
+
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
 ```
+
