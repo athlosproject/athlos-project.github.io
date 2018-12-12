@@ -104,7 +104,7 @@ CHARLS_w1_heig$qi002[which(CHARLS_w1_heig$qi002<2)] <- CHARLS_w1_heig$qi002[whic
 CHARLS_w1_heig$qi002[which(CHARLS_w1_heig$qi002<20)] <- CHARLS_w1_heig$qi002[which(CHARLS_w1_heig$qi002<20)]*10
 
 CHARLS_ds_w1$height <- car::recode(CHARLS_w1_heig$qi002, "0:59=999; NA=999")
-CHARLS_ds_w1$height <- labelled(CHARLS_ds_w1$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
 ```
 
 #### Statistics of the new harmonised variable
@@ -118,9 +118,10 @@ ggplot(CHARLS_ds_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue
 ```
 
 #### Validation
-There are some unusual values that are lower than 100cm. 
+
 ```{r crosstabulation1, echo=FALSE}
-kable(CHARLS_ds_w1[which(CHARLS_ds_w1$height<100),])
+kable(CHARLS_ds_w1[which(CHARLS_ds_w1$height<100),], caption = 'There are some unusual values that are lower than 100cm. ')
+
 ```
 
 
@@ -264,6 +265,27 @@ summaries <- function(l.hds,m.hds,lnames){
   
 }
 
+
+
+
+# Creation of longitudinal variance frequencies for each population
+
+longvar <- function(m.hds,vbl_name){
+  
+  # First wave data
+  dbb <- m.hds[[1]][,c("id",vbl_name)]
+  # Merge with next waves data
+  for(ind in 2:length(m.hds)){
+    dbb <- merge(dbb, m.hds[[ind]][,c("id",vbl_name)], by = "id", suffixes = c("", paste0(".",names(m.hds)[ind])), all = T)
+  }
+  names(dbb) <- c("id", names(m.hds))
+  dbb$var <- apply(dbb[,2:(length(m.hds)+1)],1,var,na.rm=T)
+  
+  
+  return(dbb)
+  
+}
+
 # Save data tables
 
 savingRD <- function(l.hds,vbl_name){
@@ -304,6 +326,10 @@ if(length(l.hds)>0){
   lmlist <- labelling(lmlist[[1]],lmlist[[2]])
   # Printing summaries
   print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Printing individuals with great longitudinal variance
+  f.dbb <- longvar(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb[which(f.dbb$var>200),], caption = 'Individuals with difference of height across waves higher than 20 cm'))
+  print(knitr::kable(f.dbb[which(f.dbb$w2<80),], caption = 'Individuals with height lower than 80 cm in wave 2'))
   # Saving tibbles
   savingRD(lmlist[[1]],vbl_name=hd_vbl)
 }
@@ -314,8 +340,52 @@ if(length(l.hds)>0){
 
 
 
+Since there are only two years of difference between waves, we impute with the most standard height the individuals of the previous list of high differences for which this can be decided.
+
+Since the bmi computed for the two individuals with height lower than 80 cm which not appear in the previous set is extremely high (over 100), the height of one (78.6 by "321116318001") seems to be an error as it coincides with the reported weight, and they have data only in wave 2, we recode their height as missing.
+
+**R script:**
+
+```{r}
+  # Corrections
+
+CHARLS_ds_w1$height[CHARLS_ds_w1$id=="057457110002"] <- CHARLS_ds_w2$height[CHARLS_ds_w2$id=="057457110002"]
+CHARLS_ds_w2$height[CHARLS_ds_w2$id=="262728205002"] <- CHARLS_ds_w1$height[CHARLS_ds_w1$id=="262728205002"]
+CHARLS_ds_w1$height[CHARLS_ds_w1$id=="262728217001"] <- CHARLS_ds_w2$height[CHARLS_ds_w2$id=="262728217001"]
+CHARLS_ds_w1$height[CHARLS_ds_w1$id=="268606118002"] <- CHARLS_ds_w2$height[CHARLS_ds_w2$id=="268606118002"]
+CHARLS_ds_w2$height[CHARLS_ds_w2$id=="324045228001"] <- CHARLS_ds_w1$height[CHARLS_ds_w1$id=="324045228001"]
 
 
+CHARLS_ds_w2$height[CHARLS_ds_w2$id=="057633306001"] <- 999
+CHARLS_ds_w2$height[CHARLS_ds_w2$id=="321116318001"] <- 999
+
+```
+
+
+``` {r save, echo=F}
+
+
+
+# Consider only harmonised waves
+l.hds <- lapply(charls.cw, function(wname) if(exists(paste0("CHARLS_ds_",wname[1]))){wname = list(get(paste0("CHARLS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+
+lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+# Saving tibbles
+savingRD(lmlist[[1]],vbl_name=hd_vbl)
+
+
+```
 
 
 
