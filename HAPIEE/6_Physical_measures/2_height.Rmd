@@ -13,195 +13,185 @@ output:
 ---
 
 <!-- ########################################################## --> 
-
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
-
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-* Short name: `height`
-* Variable label: `height of the participant`
-* Variable description: `Anthropometric measure for height should be measured in centimeters`
-* Domain: `Physical measures`
-* Value type: `continuous`
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/heightDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/heightDS.R')
+```
 
 # Data process
 
-### HAPIEE - Poland - Baseline 
 
-#### Study-specific variables
+## Poland
 
-The study-specific variable elected to be harmonised is:
+### Wave 1 
 
-* Name: `h5`
-* Label: `Height in cm (self-reported)`
-* Type of variable: `countinous`
-* Name: `e52`
-* Label: `Height (cm) (examination)`
-* Type of variable: `countinous`
+#### Study-specific variable description
 
-```{r assign_po1}
-opal.assign.table.tibble(o, 'HAPIEE_pol_w1_heig','HAPIEE.Po_baseline_etic',
-                         variables=list('h5', 'e52'), missings = TRUE)
+
+
+
+| **Name** |`h5`|`e52`|
+|-|-|-|
+| **Label** |`Height in cm (self-reported)`|`Height (cm) (examination)`|
+| **Table name** |`Po_baseline_etic`|`Po_baseline_etic`|
+| **Units** |`cm`|`cm`|
+| **Description** |  |  |
+
+
+
+```{r assign_po1, echo=F}
+opal.assign.table.tibble(o, 'HAPIEE_pol_w1','HAPIEE.Po_baseline_etic', variables=list('h5', 'e52'), missings = TRUE)
+HAPIEE_pol_w1 <- opal.execute(o,'HAPIEE_pol_w1')
 ```
 
-```{r local_po1}
-HAPIEE_pol_w1_heig <- opal.execute(o,'HAPIEE_pol_w1_heig')
+```{r local_po1, echo=F}
 
-Continuous_summary(var = HAPIEE_pol_w1_heig$h5, missing_values = NA)
-ggplot(HAPIEE_pol_w1_heig, aes(h5)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+vbl <- HAPIEE_pol_w1$h5
+vbl_miss <- c(0)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "h5")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(HAPIEE_pol_w1, aes(h5)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
 
-Continuous_summary(var = HAPIEE_pol_w1_heig$e52, missing_values = NA)
-ggplot(HAPIEE_pol_w1_heig, aes(e52)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+vbl <- HAPIEE_pol_w1$e52
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "e52")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HAPIEE_pol_w1, aes(e52)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+
 ```
 
+
+#### Harmonisation algorithm
+The harmonised variable is a combination of the two study-specific variables 'e52'(examination) and 'h5'(self-reported). The missing values in the medical examination variable are going to be complemented with the self-reported variable and the missings values are going to be recoded as follows:
+
+* `NA into 999`
 The variable 'h5' has values 0 that are going to be consider as mistakes and they will be recoded as 999. 
 
-#### Harmonisation algorithm
-The harmonized variable is a comvination of the two study-specific variables 'e52'(examination) and 'h5'(self-reported). The missing values in the medical examination variable are going to be complemented with the self-reported variable and the missings values are going to be recoded as follows:
-
-* `NA into 999`
-
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo_po1}
-miss <- which(is.na(HAPIEE_pol_w1_heig$e52))
-HAPIEE_pol_w1_heig$heig <- car::recode(HAPIEE_pol_w1_heig$e52, "NA=999")
-HAPIEE_pol_w1_heig$h5_2 <- car::recode(HAPIEE_pol_w1_heig$h5, "NA=999; 0=999")
-HAPIEE_pol_w1_heig$heig[miss] <- HAPIEE_pol_w1_heig$h5_2[miss]
-Continuous_summary(var = HAPIEE_pol_w1_heig$heig, missing_values = c(999))
 
-HAPIEE_pol_ds_w1 <- tibble(id=HAPIEE_pol_w1_heig$id)
-HAPIEE_pol_ds_w1$height <- car::recode(HAPIEE_pol_w1_heig$heig, "NA=999")
-HAPIEE_pol_ds_w1$height <- labelled(HAPIEE_pol_ds_w1$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+miss <- which(is.na(HAPIEE_pol_w1$e52))
+HAPIEE_pol_w1$heig <- car::recode(HAPIEE_pol_w1$e52, "NA=999")
+HAPIEE_pol_w1$h5_2 <- car::recode(HAPIEE_pol_w1$h5, "NA=999; 0=999")
+HAPIEE_pol_w1$heig[miss] <- HAPIEE_pol_w1$h5_2[miss]
+
+
+HAPIEE_ds_pol_w1 <- tibble(id=HAPIEE_pol_w1$id)
+HAPIEE_ds_pol_w1$height <- car::recode(HAPIEE_pol_w1$heig, "NA=999")
+HAPIEE_ds_pol_w1$height <- labelled(HAPIEE_ds_pol_w1$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript_po1}
-Continuous_summary(var = HAPIEE_pol_ds_w1$height, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HAPIEE_pol_ds_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue") + xlab("height") + ylab("Frequency") + xlim(100,250) 
+```{r descript_po1, echo=F}
+vbl <- HAPIEE_ds_pol_w1$height
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HAPIEE_ds_pol_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("height") + ylab("Frequency")  
 ```
 
 #### Validation
-```{r crosstabulation_po1}
-```
-
-#### Quality estimation
-[Comments on the quality of the new harmonised variable.]
-
-#### Import to OPAL
-```{r importOPAL_po1}
-#val_labels(HAPIEE_pol_ds_w1) <- NULL
-#opal.assign.data(o, 'HAPIEE_pol_ds_w1', HAPIEE_pol_ds_w1)
-#opal.symbol_import(o,'HAPIEE_pol_ds_w1', project='_Athlos_Harm_Dataset')
-height <- HAPIEE_pol_ds_w1
-save(height, file = "../RData/pol_w1/height.RData")
-rm(height)
+```{r crosstabulation_po1, echo=F}
 ```
 
 
 
 
 
-### HAPIEE - Poland - Reexamination
+### Wave 2
 
-There is no variable
-
-
+There is no variable.
 
 
 
-### HAPIEE - Czech Republic - Baseline
 
-#### Study-specific variables
 
-The study-specific variable elected to be harmonised is:
+## Czech Republic
 
-* Name: `h5`
-* Label: `Height in cm (self-reported)`
-* Type of variable: `countinous`
-* Name: `e52`
-* Label: `Height (cm) (examination)`
-* Type of variable: `countinous`
+### Wave 1
 
-```{r assign_cz1}
-opal.assign.table.tibble(o, 'HAPIEE_cz_w1_heig','HAPIEE.Cz_baseline_etic',
-                         variables=list('h5', 'e52'), missings = TRUE)
+#### Study-specific variable description
+
+
+
+
+
+| **Name** |`h5`|`e52`|
+|-|-|-|
+| **Label** |`Height in cm (self-reported)`|`Height (cm) (examination)`|
+| **Table name** |`Cz_baseline_etic`|`Cz_baseline_etic`|
+| **Units** |`cm`|`cm`|
+| **Description** |  |  |
+
+
+
+```{r assign_cz1, echo=F}
+opal.assign.table.tibble(o, 'HAPIEE_cz_w1','HAPIEE.Cz_baseline_etic',
+                         variables=list('h5', 'e52','h6','e51'), missings = TRUE)
+HAPIEE_cz_w1 <- opal.execute(o,'HAPIEE_cz_w1')
 ```
 
-```{r local_cz1}
-HAPIEE_cz_w1_heig <- opal.execute(o,'HAPIEE_cz_w1_heig')
-Continuous_summary(var = HAPIEE_cz_w1_heig$h5, missing_values =c(999))
-ggplot(HAPIEE_cz_w1_heig, aes(h5)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+```{r local_cz1, echo=F}
+vbl <- HAPIEE_cz_w1$h5
+vbl_miss <- c(999)
+kable(Continuous_summary(vbl, missing_values = c(999))[3], caption = "h5")
+pander(Continuous_summary(vbl, missing_values = c(999))$summary, caption = "Summary")
+ggplot(HAPIEE_cz_w1, aes(h5)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
 
-Continuous_summary(var = HAPIEE_cz_w1_heig$e52, missing_values = NA)
-ggplot(HAPIEE_cz_w1_heig, aes(e52)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+vbl <- HAPIEE_cz_w1$e52
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "e52")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HAPIEE_cz_w1, aes(e52)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+
+
+kable(HAPIEE_cz_w1[HAPIEE_cz_w1$id=="3450",], caption = 'Height and weight data of an individual with very extreme and implaussible values.')
+
+cat(paste("Its bmi would be",HAPIEE_cz_w1$h6[HAPIEE_cz_w1$id=="3450"]/(HAPIEE_cz_w1$h5[HAPIEE_cz_w1$id=="3450"]/100)^2))
 ```
 
-The variable 'h5' have a value 999 that is consider as a mistake and it will be recoded as missing.
 
 #### Harmonisation algorithm
 The harmonized variable is a comvination of the two study-specific variables 'e52'(examination) and 'h5'(self-reported). The missing values in the medical examination variable are going to be complemented with the self-reported variable and the missings values are going to be recoded as follows:
 
 * `NA into 999`
 
-R code of the ALGORITHM:
+The variable 'h5' has a value 999 that is considered as a mistake and it will be recoded as missing.
+
+Height of ID 3450 is recodified as missing since their values of height and weight are very extreme, generating a bmi of c. 158, and they are self-reported (the examination values are missing).
+
+**R script:**
 
 ```{r harmo_cz1}
-miss <- which(is.na(HAPIEE_cz_w1_heig$e52))
-HAPIEE_cz_w1_heig$heig <- car::recode(HAPIEE_cz_w1_heig$e52, "NA=999")
-HAPIEE_cz_w1_heig$h5_2 <- car::recode(HAPIEE_cz_w1_heig$h5, "NA=999")
-HAPIEE_cz_w1_heig$heig[miss] <- HAPIEE_cz_w1_heig$h5_2[miss]
-Continuous_summary(var = HAPIEE_cz_w1_heig$heig, missing_values = c(999))
+miss <- which(is.na(HAPIEE_cz_w1$e52))
+HAPIEE_cz_w1$heig <- car::recode(HAPIEE_cz_w1$e52, "NA=999")
+HAPIEE_cz_w1$h5_2 <- car::recode(HAPIEE_cz_w1$h5, "NA=999")
+HAPIEE_cz_w1$heig[miss] <- HAPIEE_cz_w1$h5_2[miss]
 
-HAPIEE_cz_ds_w1 <- tibble(id=HAPIEE_cz_w1_heig$id)
-HAPIEE_cz_ds_w1$height <- car::recode(HAPIEE_cz_w1_heig$heig, "NA=999")
-HAPIEE_cz_ds_w1$height <- labelled(HAPIEE_cz_ds_w1$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+HAPIEE_ds_cz_w1 <- tibble(id=HAPIEE_cz_w1$id)
+HAPIEE_ds_cz_w1$height <- car::recode(HAPIEE_cz_w1$heig, "NA=999")
+HAPIEE_ds_cz_w1$height[HAPIEE_ds_cz_w1$id=="3450"] <- 999
+
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript_cz1}
-Continuous_summary(var = HAPIEE_cz_ds_w1$height, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HAPIEE_cz_ds_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue") + xlab("height") + ylab("Frequency") + xlim(100,250) 
+```{r descript_cz1, echo=F}
+vbl <- HAPIEE_ds_cz_w1$height
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HAPIEE_ds_cz_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("height") + ylab("Frequency")  
 ```
 
 #### Validation
-```{r crosstabulation_cz1}
-```
-
-#### Quality estimation
-[Comments on the quality of the new harmonised variable.]
-
-#### Import to OPAL
-```{r importOPAL_cz1}
-#val_labels(HAPIEE_cz_ds_w1) <- NULL
-#opal.assign.data(o, 'HAPIEE_cz_ds_w1', HAPIEE_cz_ds_w1)
-#opal.symbol_import(o,'HAPIEE_cz_ds_w1', project='_Athlos_Harm_Dataset')
-height <- HAPIEE_cz_ds_w1
-save(height, file = "../RData/cz_w1/height.RData")
-rm(height)
+```{r crosstabulation_cz1, echo=F}
 ```
 
 
@@ -211,7 +201,7 @@ rm(height)
 
 
 
-### HAPIEE - Czech Republic - Reexamination
+### Wave 2
 
 There is no variable.
 
@@ -220,79 +210,202 @@ There is no variable.
 
 
 
-### HAPIEE - Lithuania - Baseline
+## Lithuania
 
-#### Study-specific variables
+### Wave 1
 
-The study-specific variable elected to be harmonised is:
+#### Study-specific variable description
 
-* Name: `h5`
-* Label: `Height in cm (self-reported)`
-* Type of variable: `countinous`
-* Name: `e52`
-* Label: `Height (cm) (examination)`
-* Type of variable: `countinous`
 
-```{r assign_li1}
-opal.assign.table.tibble(o, 'HAPIEE_li_w1_heig','HAPIEE.Li_baseline_etic',
+
+| **Name** |`h5`|`e52`|
+|-|-|-|
+| **Label** |`Height in cm (self-reported)`|`Height (cm) (examination)`|
+| **Table name** |`Li_baseline_etic`|`Li_baseline_etic`|
+| **Units** |`cm`|`cm`|
+| **Description** |  |  |
+
+
+
+```{r assign_li1, echo=F}
+opal.assign.table.tibble(o, 'HAPIEE_li_w1','HAPIEE.Li_baseline_etic',
                          variables=list('h5', 'e52'), missings = TRUE)
+HAPIEE_li_w1 <- opal.execute(o,'HAPIEE_li_w1')
 ```
 
-```{r local_li1}
-HAPIEE_li_w1_heig <- opal.execute(o,'HAPIEE_li_w1_heig')
+```{r local_li1, echo=F}
 
-Continuous_summary(var = HAPIEE_li_w1_heig$h5, missing_values = NA)
-ggplot(HAPIEE_li_w1_heig, aes(h5)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+vbl <- HAPIEE_li_w1$h5
+vbl_miss <- c(99999)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "h5")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(HAPIEE_li_w1, aes(h5)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
 
-Continuous_summary(var = HAPIEE_li_w1_heig$e52, missing_values = NA)
-ggplot(HAPIEE_li_w1_heig, aes(e52)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+vbl <- HAPIEE_li_w1$e52
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "e52")
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(HAPIEE_li_w1, aes(e52)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
 ```
 
-The variable h5 has the values 100000 that is going to be considered as a mistake and it will be recoded as 999. 
 
 
 #### Harmonisation algorithm
 The harmonized variable is a comvination of the two study-specific variables 'e52'(examination) and 'h5'(self-reported). The missing values in the medical examination variable are going to be complemented with the self-reported variable and the missings values are going to be recoded as follows:
 
 * `NA into 999`
+The variable `h5` has a value 99999, but it is overwritten by a value of `e52`.
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo_li1}
-miss <- which(is.na(HAPIEE_li_w1_heig$e52))
-HAPIEE_li_w1_heig$heig <- car::recode(HAPIEE_li_w1_heig$e52, "NA=999")
-HAPIEE_li_w1_heig$h5_2 <- car::recode(HAPIEE_li_w1_heig$h5, "NA=999; 0=999")
-HAPIEE_li_w1_heig$heig[miss] <- HAPIEE_li_w1_heig$h5_2[miss]
-Continuous_summary(var = HAPIEE_li_w1_heig$heig, missing_values = c(999))
+miss <- which(is.na(HAPIEE_li_w1$e52))
+HAPIEE_li_w1$heig <- car::recode(HAPIEE_li_w1$e52, "NA=999")
+HAPIEE_li_w1$h5_2 <- car::recode(HAPIEE_li_w1$h5, "NA=999; 0=999")
+HAPIEE_li_w1$heig[miss] <- HAPIEE_li_w1$h5_2[miss]
 
-HAPIEE_li_ds_w1 <- tibble(id=HAPIEE_li_w1_heig$id)
-HAPIEE_li_ds_w1$height <- car::recode(HAPIEE_li_w1_heig$heig, "NA=999")
-HAPIEE_li_ds_w1$height <- labelled(HAPIEE_li_ds_w1$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+HAPIEE_ds_li_w1 <- tibble(id=HAPIEE_li_w1$id)
+HAPIEE_ds_li_w1$height <- car::recode(HAPIEE_li_w1$heig, "NA=999")
+HAPIEE_ds_li_w1$height <- labelled(HAPIEE_ds_li_w1$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript_li1}
-Continuous_summary(var = HAPIEE_li_ds_w1$height, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(HAPIEE_li_ds_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue") + xlab("height") + ylab("Frequency") + xlim(100,250)
+```{r descript_li1, echo=F}
+vbl <- HAPIEE_ds_li_w1$height
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HAPIEE_ds_li_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("height") + ylab("Frequency") 
 ```
 
 
 #### Validation
-```{r crosstabulation_li1}
+```{r crosstabulation_li1, echo=F}
 ```
 
-#### Quality estimation
-No comments.
 
-#### Import to OPAL
-```{r importOPAL_li1}
-#val_labels(HAPIEE_li_ds_w1) <- NULL
-#opal.assign.data(o, 'HAPIEE_li_ds_w1', HAPIEE_li_ds_w1)
-#opal.symbol_import(o,'HAPIEE_li_ds_w1', project='_Athlos_Harm_Dataset')
-height <- HAPIEE_li_ds_w1
-save(height, file = "../RData/li_w1/height.RData")
-rm(height)
+
+
+
+
+
+
+
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+```{r helpfunctions, echo=F}
+
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+# Creation of summary tables
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][2])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[2]],missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][2])[1:6]
+    # Next, missing/no-missing values
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[2]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][2]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
+}
+
 ```
+
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+hapiee.cw <- list(pol_w1 = c("pol_w1","Poland w1"), pol_w2 = c("pol_w2","Poland w2"), cz_w1 = c("cz_w1","Czech Republic w1"), cz_w2 = c("cz_w2","Czech Republic w2"), li_w1 = c("li_w1","Lithuania w1"))
+
+# Consider only harmonised waves
+l.hds <- lapply(hapiee.cw, function(wname) if(exists(paste0("HAPIEE_ds_",wname[1]))){wname = list(get(paste0("HAPIEE_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing summaries
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Quality estimation
+The missing values in the medical examination variable were complemented with the self-reported variable.
+
 
 
 ```{r closeRsession, echo=FALSE}
