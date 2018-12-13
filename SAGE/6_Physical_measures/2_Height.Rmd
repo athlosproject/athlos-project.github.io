@@ -13,76 +13,50 @@ output:
 ---
 
 <!-- ########################################################## --> 
-
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/Rmds/setup_ania.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
-
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-
-* Short name: `Height`
-* Variable label: `Height of the participant`
-* Domain: `Physical measures `
-* Value type: `Continuous`
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-*Comments: `Antropomeric measure for height should be measured in centimeters.`
-
-
-
-<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/heightDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/heightDS.R')
+```
 
 # Data process
 
+## South Africa
+
+### Wave 1 
+
+#### Study-specific variable description
 
 
-```{r, dataDirectory, echo=FALSE}
-datafolder <- "../RData"
-```
 
-### SAGE - South Africa - Wave 1 
+| **Name** | `q2506`|
+|-|-|
+| **Label** | `true height (cm)`|
+| **Table name** |`southAfricaINDdata`|
+| **Units** |`cm`|
+| **Missings** |`997 = refused`<br/>`998 = not able`|
+| **Description** |  |
 
-#### Study-specific variables
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `q2506`
-* Label: `true height (cm)`
-* Type of variable: `countinous`
-* Missings
-    + `997 = refused`
-    + `998 = not able`
-
-```{r assign1}
-opal.assign.table.tibble(o, 'SAGE_SA_w1_heig','SAGE.southAfricaINDdata',
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'SAGE_SA_w1','SAGE.southAfricaINDdata',
                          variables=list('q2506'), missings = TRUE)
+SAGE_SA_w1 <- opal.execute(o,'SAGE_SA_w1')
 ```
 
-```{r local1}
-SAGE_SA_w1_heig <- opal.execute(o,'SAGE_SA_w1_heig')
-Continuous_summary(var = SAGE_SA_w1_heig$q2506, missing_values = c(997,998))
-ggplot(SAGE_SA_w1_heig, aes(q2506)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+```{r local1, echo=F}
+vbl <- SAGE_SA_w1$q2506
+vbl_miss <- c(997,998)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "q2506")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(SAGE_SA_w1, aes(q2506)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -92,62 +66,65 @@ The harmonized variable is the same than the study-specific variable, but the mi
 * `keep " refuse" into 997`
 * `recode 998 "not able" into 993`
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo1}
-SAGE_SA_ds_w1 <- tibble(id=SAGE_SA_w1_heig$id)
-SAGE_SA_ds_w1$height <- car::recode(SAGE_SA_w1_heig$q2506, "NA=999; 998=993")
-SAGE_SA_ds_w1$height <- labelled(SAGE_SA_ds_w1$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+SAGE_ds_SA_w1 <- tibble(id=SAGE_SA_w1$id)
+SAGE_ds_SA_w1$height <- car::recode(SAGE_SA_w1$q2506, "NA=999; 998=993")
+SAGE_ds_SA_w1$height <- labelled(SAGE_ds_SA_w1$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript1}
-Continuous_summary(var = SAGE_SA_ds_w1$height, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(SAGE_SA_ds_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue") + xlab("height") + ylab("Frequency") + xlim(100,250) 
+```{r descript1, echo=F}
+vbl <- SAGE_ds_SA_w1$height
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_ds_SA_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("height") + ylab("Frequency")  
 ```
 
 #### Validation
-There are unusual values that are lower than 100cm:
-```{r crosstabulation1}
-SAGE_SA_w1_heig[which(SAGE_SA_w1_heig$q2506<100),]
-```
 
-#### Quality estimation
-[Comments on the quality of the new harmonised variable.]
-
-#### Import to OPAL
-```{r importOPAL1}
-#val_labels(SAGE_SA_ds_w1) <- NULL
-#opal.assign.data(o, 'SAGE_SA_ds_w1', SAGE_SA_ds_w1)
-#opal.symbol_import(o,'SAGE_SA_ds_w1', project='_Athlos_Harm_Dataset')
+```{r crosstabulation1, echo=F}
+kable(SAGE_SA_w1[which(SAGE_SA_w1$q2506<100),],caption = 'There are unusual values that are lower than 100cm:')
 ```
 
 
 
 
 
-### SAGE - Ghana - Wave 1 
 
-#### Study-specific variables
 
-The study-specific variable elected to be harmonised is:
+## Ghana
 
-* Name: `q2506`
-* Label: `true height (cm)`
-* Type of variable: `countinous`
-* Missings
-    + `997 = refused`
-    + `998 = not able`
+### Wave 1 
 
-```{r assign_ghana}
-opal.assign.table.tibble(o, 'SAGE_ghana_w1_heig','SAGE.ghanaINDData',
+#### Study-specific variable description
+
+
+
+| **Name** | `q2506`|
+|-|-|
+| **Label** | `true height (cm)`|
+| **Table name** |`ghanaINDData`|
+| **Units** |`cm`|
+| **Missings** |`997 = refused`<br/>`998 = not able`|
+| **Description** |  |
+
+
+
+```{r assign_ghana, echo=F}
+opal.assign.table.tibble(o, 'SAGE_ghana_w1','SAGE.ghanaINDData',
                          variables=list('q2506'), missings = TRUE)
+SAGE_ghana_w1 <- opal.execute(o,'SAGE_ghana_w1')
 ```
 
-```{r local_ghana}
-SAGE_ghana_w1_heig <- opal.execute(o,'SAGE_ghana_w1_heig')
-Continuous_summary(var = SAGE_ghana_w1_heig$q2506, missing_values = c(997,998))
-ggplot(SAGE_ghana_w1_heig, aes(q2506)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+```{r local_ghana, echo=F}
+vbl <- SAGE_ghana_w1$q2506
+vbl_miss <- c(997,998)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "q2506")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(SAGE_ghana_w1, aes(q2506)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -158,63 +135,62 @@ The harmonized variable is the same than the study-specific variable, but the mi
 * `recode 998 "not able" into 993`
 
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo_ghana}
-SAGE_ghana_ds_w1 <- tibble(id=SAGE_ghana_w1_heig$id)
-SAGE_ghana_ds_w1$height <- car::recode(SAGE_ghana_w1_heig$q2506, "NA=999; 998=993")
-SAGE_ghana_ds_w1$height <- labelled(SAGE_ghana_ds_w1$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+SAGE_ds_ghana_w1 <- tibble(id=SAGE_ghana_w1$id)
+SAGE_ds_ghana_w1$height <- car::recode(SAGE_ghana_w1$q2506, "NA=999; 998=993")
+SAGE_ds_ghana_w1$height <- labelled(SAGE_ds_ghana_w1$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript_ghana}
-Continuous_summary(var = SAGE_ghana_ds_w1$height, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(SAGE_ghana_ds_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue") + xlab("height") + ylab("Frequency") + xlim(100,250) 
+```{r descript_ghana, echo=F}
+vbl <- SAGE_ds_ghana_w1$height
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_ds_ghana_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("height") + ylab("Frequency")  
 ```
 
 #### Validation
-There are unusual values that are lower than 100:
-```{r crosstabulation_ghana}
-SAGE_ghana_w1_heig[which(SAGE_ghana_w1_heig$q2506<100),]
-```
 
-#### Quality estimation
-[Comments on the quality of the new harmonised variable.]
-
-#### Import to OPAL
-```{r importOPAL2}
-#val_labels(SAGE_ghana_ds_w1) <- NULL
-#opal.assign.data(o, 'SAGE_ghana_ds_w1', SAGE_ghana_ds_w1)
-#opal.symbol_import(o,'SAGE_ghana_ds_w1', project='_Athlos_Harm_Dataset')
+```{r crosstabulation_ghana, echo=F}
+kable(SAGE_ghana_w1[which(SAGE_ghana_w1$q2506<100),], caption = 'There are unusual values that are lower than 100:')
 ```
 
 
 
 
+## China
+
+### Wave 1 
+
+#### Study-specific variable description
 
 
-### SAGE - China - Wave 1 
 
-#### Study-specific variables
+| **Name** | `q2506`|
+|-|-|
+| **Label** | `true height (cm)`|
+| **Table name** |`chinaINDData`|
+| **Units** |`cm`|
+| **Missings** |`997 = refused`<br/>`998 = not able`|
+| **Description** |  |
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `q2506`
-* Label: `true height (cm)`
-* Type of variable: `countinous`
-* Missings
-    + `997 = refused`
-    + `998 = not able`
 
-```{r assign_china}
-opal.assign.table.tibble(o, 'SAGE_china_w1_heig','SAGE.chinaINDData',
+```{r assign_china, echo=F}
+opal.assign.table.tibble(o, 'SAGE_china_w1','SAGE.chinaINDData',
                          variables=list('q2506'), missings = TRUE)
+SAGE_china_w1 <- opal.execute(o,'SAGE_china_w1')
 ```
 
-```{r local_china}
-SAGE_china_w1_heig <- opal.execute(o,'SAGE_china_w1_heig')
-Continuous_summary(var = SAGE_china_w1_heig$q2506, missing_values = c(997,998))
-ggplot(SAGE_china_w1_heig, aes(q2506)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+```{r local_china, echo=F}
+vbl <- SAGE_china_w1$q2506
+vbl_miss <- c(997,998)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "q2506")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(SAGE_china_w1, aes(q2506)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
 ```
 
 
@@ -226,34 +202,27 @@ The harmonized variable is the same than the study-specific variable, but the mi
 * `recode 998 "not able" into 993`
 
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo_china}
-SAGE_china_ds_w1 <- tibble(id=SAGE_china_w1_heig$id)
-SAGE_china_ds_w1$height <- car::recode(SAGE_china_w1_heig$q2506, "NA=999; 998=993")
-SAGE_china_ds_w1$height <- labelled(SAGE_china_ds_w1$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+SAGE_ds_china_w1 <- tibble(id=SAGE_china_w1$id)
+SAGE_ds_china_w1$height <- car::recode(SAGE_china_w1$q2506, "NA=999; 998=993")
+SAGE_ds_china_w1$height <- labelled(SAGE_ds_china_w1$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript_china}
-Continuous_summary(var = SAGE_china_ds_w1$height, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(SAGE_china_ds_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue") + xlab("height") + ylab("Frequency") + xlim(100,250) 
+```{r descript_china, echo=F}
+vbl <- SAGE_ds_china_w1$height
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_ds_china_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("height") + ylab("Frequency")  
 ```
 
 #### Validation
-There are unusual values that are lower than 100
-```{r crosstabulation_china}
-SAGE_china_w1_heig[which(SAGE_china_w1_heig$q2506<100),]
-```
 
-#### Quality estimation
-[Comments on the quality of the new harmonised variable.]
-
-#### Import to OPAL
-```{r importOPAL_china}
-#val_labels(SAGE_china_ds_w1) <- NULL
-#opal.assign.data(o, 'SAGE_china_ds_w1', SAGE_china_ds_w1)
-#opal.symbol_import(o,'SAGE_china_ds_w1', project='_Athlos_Harm_Dataset')
+```{r crosstabulation_china, echo=F}
+kable(SAGE_china_w1[which(SAGE_china_w1$q2506<100),], caption = 'There are unusual values that are lower than 100')
 ```
 
 
@@ -262,28 +231,38 @@ SAGE_china_w1_heig[which(SAGE_china_w1_heig$q2506<100),]
 
 
 
-### SAGE - India - Wave 1 
 
-#### Study-specific variables
 
-The study-specific variable elected to be harmonised is:
+## India
 
-* Name: `q2506`
-* Label: `true height (cm)`
-* Type of variable: `countinous`
-* Missings
-    + `997 = refused`
-    + `998 = not able`
+### Wave 1 
 
-```{r assign_india}
-opal.assign.table.tibble(o, 'SAGE_india_w1_heig','SAGE.indiaINDData',
+#### Study-specific variable description
+
+
+
+| **Name** | `q2506`|
+|-|-|
+| **Label** | `true height (cm)`|
+| **Table name** |`indiaINDData`|
+| **Units** |`cm`|
+| **Missings** |`997 = refused`<br/>`998 = not able`|
+| **Description** |  |
+
+
+
+```{r assign_india, echo=F}
+opal.assign.table.tibble(o, 'SAGE_india_w1','SAGE.indiaINDData',
                          variables=list('q2506'), missings = TRUE)
+SAGE_india_w1 <- opal.execute(o,'SAGE_india_w1')
 ```
 
-```{r local_india}
-SAGE_india_w1_heig <- opal.execute(o,'SAGE_india_w1_heig')
-Continuous_summary(var = SAGE_india_w1_heig$q2506, missing_values = c(997,998))
-ggplot(SAGE_india_w1_heig, aes(q2506)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+```{r local_india, echo=F}
+vbl <- SAGE_india_w1$q2506
+vbl_miss <- c(997,998)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "q2506")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(SAGE_india_w1, aes(q2506)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -293,34 +272,27 @@ The harmonized variable is the same than the study-specific variable, but the mi
 * `keep " refuse" into 997`
 * `recode 998 "not able" into 993`
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo_india}
-SAGE_india_ds_w1 <- tibble(id=SAGE_india_w1_heig$id)
-SAGE_india_ds_w1$height <- car::recode(SAGE_india_w1_heig$q2506, "NA=999; 998=993")
-SAGE_india_ds_w1$height <- labelled(SAGE_india_ds_w1$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+SAGE_ds_india_w1 <- tibble(id=SAGE_india_w1$id)
+SAGE_ds_india_w1$height <- car::recode(SAGE_india_w1$q2506, "NA=999; 998=993")
+SAGE_ds_india_w1$height <- labelled(SAGE_ds_india_w1$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript_india}
-Continuous_summary(var = SAGE_india_ds_w1$height, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(SAGE_india_ds_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue") + xlab("height") + ylab("Frequency") + xlim(100,250) 
+```{r descript_india, echo=F}
+vbl <- SAGE_ds_india_w1$height
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_ds_india_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("height") + ylab("Frequency")  
 ```
 
 #### Validation
-There are unusual values that are lower than 100. 
-```{r crosstabulation_india}
-SAGE_india_w1_heig[which(SAGE_india_w1_heig$q2506<100),]
-```
 
-#### Quality estimation
-[Comments on the quality of the new harmonised variable.]
-
-#### Import to OPAL
-```{r importOPAL_india}
-#val_labels(SAGE_india_ds_w1) <- NULL
-#opal.assign.data(o, 'SAGE_india_ds_w1', SAGE_india_ds_w1)
-#opal.symbol_import(o,'SAGE_india_ds_w1', project='_Athlos_Harm_Dataset')
+```{r crosstabulation_india, echo=F}
+kable(SAGE_india_w1[which(SAGE_india_w1$q2506<100),], caption = 'There are unusual values that are lower than 100. ')
 ```
 
 
@@ -330,29 +302,37 @@ SAGE_india_w1_heig[which(SAGE_india_w1_heig$q2506<100),]
 
 
 
-### SAGE - Russia - Wave 1 
+## Russia
 
-#### Study-specific variables
+### Wave 1 
 
-The study-specific variable elected to be harmonised is:
-
-* Name: `q2506`
-* Label: `true height (cm)`
-* Type of variable: `countinous`
-* Missings
-    + `997 = refused`
-    + `998 = not able`
+#### Study-specific variable description
 
 
-```{r assign_russia}
-opal.assign.table.tibble(o, 'SAGE_russia_w1_heig','SAGE.russiaINDdata',
+
+| **Name** | `q2506`|
+|-|-|
+| **Label** | `true height (cm)`|
+| **Table name** |`russiaINDdata`|
+| **Units** |`cm`|
+| **Missings** |`997 = refused`<br/>`998 = not able`|
+| **Description** |  |
+
+
+
+
+```{r assign_russia, echo=F}
+opal.assign.table.tibble(o, 'SAGE_russia_w1','SAGE.russiaINDdata',
                          variables=list('q2506'), missings = TRUE)
+SAGE_russia_w1 <- opal.execute(o,'SAGE_russia_w1')
 ```
 
-```{r local_russia}
-SAGE_russia_w1_heig <- opal.execute(o,'SAGE_russia_w1_heig')
-Continuous_summary(var = SAGE_russia_w1_heig$q2506, missing_values = c(997,998))
-ggplot(SAGE_russia_w1_heig, aes(q2506)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+```{r local_russia, echo=F}
+vbl <- SAGE_russia_w1$q2506
+vbl_miss <- c(997,998)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "q2506")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(SAGE_russia_w1, aes(q2506)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -362,34 +342,27 @@ The harmonized variable is the same than the study-specific variable, but the mi
 * `keep " refuse" into 997`
 * `recode 998 "not able" into 993`
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo_russia}
-SAGE_russia_ds_w1 <- tibble(id=SAGE_russia_w1_heig$id)
-SAGE_russia_ds_w1$height <- car::recode(SAGE_russia_w1_heig$q2506, "NA=999; 998=993")
-SAGE_russia_ds_w1$height <- labelled(SAGE_russia_ds_w1$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+SAGE_ds_russia_w1 <- tibble(id=SAGE_russia_w1$id)
+SAGE_ds_russia_w1$height <- car::recode(SAGE_russia_w1$q2506, "NA=999; 998=993")
+SAGE_ds_russia_w1$height <- labelled(SAGE_ds_russia_w1$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript_russia}
-Continuous_summary(var = SAGE_russia_ds_w1$height, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(SAGE_russia_ds_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue") + xlab("height") + ylab("Frequency") + xlim(100,250) 
+```{r descript_russia, echo=F}
+vbl <- SAGE_ds_russia_w1$height
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_ds_russia_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("height") + ylab("Frequency")  
 ```
 
 #### Validation
-There are unusual values that are lower than 100:
-```{r crosstabulation_russia}
-SAGE_russia_w1_heig[which(SAGE_russia_w1_heig$q2506<100),]
-```
 
-#### Quality estimation
-[Comments on the quality of the new harmonised variable.]
-
-#### Import to OPAL
-```{r importOPAL_russia}
-#val_labels(SAGE_russia_ds_w1) <- NULL
-#opal.assign.data(o, 'SAGE_russia_ds_w1', SAGE_russia_ds_w1)
-#opal.symbol_import(o,'SAGE_russia_ds_w1', project='_Athlos_Harm_Dataset')
+```{r crosstabulation_russia, echo=F}
+kable(SAGE_russia_w1[which(SAGE_russia_w1$q2506<100),], caption = 'There are unusual values that are lower than 100:')
 ```
 
 
@@ -397,29 +370,36 @@ SAGE_russia_w1_heig[which(SAGE_russia_w1_heig$q2506<100),]
 
 
 
+## Mexico
 
-### SAGE - Mexico - Wave 1 
+### Wave 1 
 
-#### Study-specific variables
+#### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `q2506`
-* Label: `true height (cm)`
-* Type of variable: `countinous`
-* Missings
-    + `997 = refused`
-    + `998 = not able`
 
-```{r assign_Mexico}
-opal.assign.table.tibble(o, 'SAGE_mexico_w1_heig','SAGE.mexicoINDdata',
+| **Name** | `q2506`|
+|-|-|
+| **Label** | `true height (cm)`|
+| **Table name** |`mexicoINDdata`|
+| **Units** |`cm`|
+| **Missings** |`997 = refused`<br/>`998 = not able`|
+| **Description** |  |
+
+
+
+```{r assign_Mexico, echo=F}
+opal.assign.table.tibble(o, 'SAGE_mexico_w1','SAGE.mexicoINDdata',
                          variables=list('q2506'), missings = TRUE)
+SAGE_mexico_w1 <- opal.execute(o,'SAGE_mexico_w1')
 ```
 
-```{r local_Mexico}
-SAGE_mexico_w1_heig <- opal.execute(o,'SAGE_mexico_w1_heig')
-Continuous_summary(var = SAGE_mexico_w1_heig$q2506, missing_values = c(997,998))
-ggplot(SAGE_mexico_w1_heig, aes(q2506)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency")
+```{r local_Mexico, echo=F}
+vbl <- SAGE_mexico_w1$q2506
+vbl_miss <- c(997,998)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "q2506")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(SAGE_mexico_w1, aes(q2506)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -429,65 +409,138 @@ The harmonized variable is the same than the study-specific variable, but the mi
 * `keep " refuse" into 997`
 * `recode 998 "not able" into 993`
 
-R code of the ALGORITHM:
+**R script:**
 
 ```{r harmo_Mexico}
-SAGE_mexico_ds_w1 <- tibble(id=SAGE_mexico_w1_heig$id)
-SAGE_mexico_ds_w1$height <- car::recode(SAGE_mexico_w1_heig$q2506, "NA=999; 998=993")
-SAGE_mexico_ds_w1$height <- labelled(SAGE_mexico_ds_w1$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+SAGE_ds_mexico_w1 <- tibble(id=SAGE_mexico_w1$id)
+SAGE_ds_mexico_w1$height <- car::recode(SAGE_mexico_w1$q2506, "NA=999; 998=993")
+SAGE_ds_mexico_w1$height <- labelled(SAGE_ds_mexico_w1$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript_Mexico}
-Continuous_summary(var = SAGE_mexico_ds_w1$height, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(SAGE_mexico_ds_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue") + xlab("height") + ylab("Frequency") + xlim(100,250) 
+```{r descript_Mexico, echo=F}
+vbl <- SAGE_ds_mexico_w1$height
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_ds_mexico_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("height") + ylab("Frequency")  
 ```
 
 #### Validation
-```{r crosstabulation_Mexico}
+```{r crosstabulation_Mexico, echo=F}
 ```
 
-#### Quality estimation
+
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+```{r helpfunctions, echo=F}
+
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+# Creation of summary tables for continuous data
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][2])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[2]],missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][2])[1:6]
+    # Next, missing/no-missing values
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[2]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][2]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
+}
+
+```
+
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+sage.cw <- list(SA_w1 = c("SA_w1","South Africa w1"), ghana_w1 = c("ghana_w1","Ghana w1"), china_w1 = c("china_w1","China w1"), india_w1 = c("india_w1","India w1"), russia_w1 = c("russia_w1","Russian Federation w1"), mexico_w1 = c("mexico_w1","Mexico w1"))
+
+# Consider only harmonised waves
+l.hds <- lapply(sage.cw, function(wname) if(exists(paste0("SAGE_ds_",wname[1]))){wname = list(get(paste0("SAGE_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing summaries
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+```
+
+
+
+
+
+
+# Quality estimation
 No comments.
 
 
 
-#### Import to OPAL
-```{r importOPAL_Mexico}
-#val_labels(SAGE_mexico_ds_w1) <- NULL
-#opal.assign.data(o, 'SAGE_mexico_ds_w1', SAGE_mexico_ds_w1)
-#opal.symbol_import(o,'SAGE_mexico_ds_w1', project='_Athlos_Harm_Dataset')
-```
-
-```{r,  echo=FALSE}
-height <- SAGE_SA_ds_w1
-save(height, file = paste0(datafolder, "/SA_w1/height.RData"))
-```
-
-```{r,  echo=FALSE}
-height <- SAGE_ghana_ds_w1
-save(height, file = paste0(datafolder, "/ghana_w1/height.RData"))
-```
-
-```{r,  echo=FALSE}
-height <- SAGE_china_ds_w1
-save(height, file = paste0(datafolder, "/china_w1/height.RData"))
-```
-
-```{r,  echo=FALSE}
-height <- SAGE_india_ds_w1
-save(height, file = paste0(datafolder, "/india_w1/height.RData"))
-```
-
-```{r,  echo=FALSE}
-height <- SAGE_russia_ds_w1
-save(height, file = paste0(datafolder, "/russia_w1/height.RData"))
-```
-
-```{r,  echo=FALSE}
-height <- SAGE_mexico_ds_w1
-save(height, file = paste0(datafolder, "/mexico_w1/height.RData"))
-```
 
 
 

@@ -1,5 +1,5 @@
-----
-title: "BMI: Body Mass Index"
+---
+title: "BMI"
 output:
   html_document:
     highlight: tango
@@ -13,571 +13,310 @@ output:
 ---
 
 <!-- ########################################################## --> 
-
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/Rmds/setup_ania.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/bmiDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/bmiDS.R')
+```
 
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-
-* Short name: `bmi`
-* Variable label: `Body Mass Index calculated as weight (kg)/height(m)^2`
-* Domain: `Physical measures `
-* Value type: `Continuous`
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-* Comments: `the BMI variable should be created by dividing weight and heigh variables with the following equation= weight (kg)/height(m)^2.
-
-
-
-<!-- ########################################################## --> 
 
 # Data process
 
 
+**Functions:**
 
-```{r, dataDirectory, echo=FALSE}
-datafolder <- "../RData"
-```
-
+```{r function}
 
 
-### SAGE - South Africa - Wave 1 
-
-#### Study-specific variables
-
-The study-specific variable elected to be harmonised is:
-
-* Name: `q2507`
-* Label: `true weight (kg)`
-* Type of variable: `countinous`
-* Missings
-    + `997 = refused`
-    + `998 = not able`
-
-* Name: `q2506`
-* Label: `true height (cm)`
-* Type of variable: `countinous`
-* Missings
-    + `997 = refused`
-    + `998 = not able`
-    + `88 = Don't know`
-    + `98 = Not applicable`
-    + `97 = Refused`
-
-```{r assign1}
-opal.assign.table.tibble(o, 'SAGE_SA_w1_bmi','SAGE.southAfricaINDdata',
-                         variables=list('q2507', 'q2506'), missings = TRUE)
-```
-
-```{r local1}
-SAGE_SA_w1_bmi <- opal.execute(o,'SAGE_SA_w1_bmi')
-
-Continuous_summary(var = SAGE_SA_w1_bmi$q2507, missing_values = c(997, 998))
-ggplot(SAGE_SA_w1_bmi, aes(q2507)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency") + xlim(50,100)
-
-Continuous_summary(var = SAGE_SA_w1_bmi$q2506, missing_values = c(87,88, 99,98, 97, 997, 998))
-ggplot(SAGE_SA_w1_bmi, aes(q2506)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(50,100)
-```
-
-#### Harmonisation algorithm
-The harmonized variable will be calculate from the study-specific variables using this formula
-
-bmi=weight/height^2
-
-The missing values have to be recoded as follows:
-
-* `NA into 999`
-* `keep "refuse" into 997`
-* `88 "Don't know" into 998`
-* `98 "Not applicable" into 996`
-* `97 "Refused" into 997`
-* `998 "not able" into 993`
-
-R code of the ALGORITHM:
-
-```{r harmo1}
 compute_bmi <- function(Heigth, Weigth, miss, heigth_m = TRUE){
   Heigth <- car::recode(Heigth, "NA=999")
   Weigth <- car::recode(Weigth, "NA=999")
   
   if(heigth_m){
     bmi <- Weigth/(Heigth^2)
-    
-    bmi[Weigth==999] <- 999
-    bmi[Weigth==miss[4]] <- Weigth[Weigth==miss[4]]
-    bmi[Weigth==miss[5]] <- Weigth[Weigth==miss[5]]
-    
-    bmi[Heigth==999] <- 999
-    bmi[Heigth==miss[1]] <- 998
-    bmi[Heigth==miss[2]] <- 994
-    bmi[Heigth==miss[3]] <- 997
-    bmi[Heigth==miss[4]] <- Heigth[Heigth==miss[4]]
-    bmi[Heigth==miss[5]] <- Heigth[Heigth==miss[5]]
-  } else {
+  }else{
     bmi <- Weigth/((Heigth/100)^2)
-    
-    bmi[Weigth==999] <- 999
-    bmi[Weigth==miss[4]] <- Weigth[Weigth==miss[4]]
-    bmi[Weigth==miss[5]] <- Weigth[Weigth==miss[5]]
-    
-    bmi[Heigth==999] <- 999
-    bmi[Heigth==miss[1]] <- 998
-    bmi[Heigth==miss[2]] <- 994
-    bmi[Heigth==miss[3]] <- 997
-    bmi[Heigth==miss[4]] <- Heigth[Heigth==miss[4]]
-    bmi[Heigth==miss[5]] <- Heigth[Heigth==miss[5]]
-    }
+  }
+  for(msv in miss){
+    bmi[Heigth==msv] <- msv
+    bmi[Weigth==msv] <- msv
+  }
   bmi
 }
 
-SAGE_SA_w1_bmi$bmi <- compute_bmi(Heigth = SAGE_SA_w1_bmi$q2506, 
-                        Weigth = SAGE_SA_w1_bmi$q2507, miss = c(88,98,97,997, 998), 
-                        heigth_m = FALSE)
-
-SAGE_SA_ds_w1 <- tibble(id=SAGE_SA_w1_bmi$id)
-SAGE_SA_ds_w1$bmi <- car::recode(SAGE_SA_w1_bmi$bmi, "NA=999; 998=993")
-SAGE_SA_ds_w1$bmi <- labelled(SAGE_SA_ds_w1$bmi, labels = c( "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
-```
-
-#### Statistics of the new harmonised variable
-```{r descript1}
-Continuous_summary(var = SAGE_SA_ds_w1$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(SAGE_SA_ds_w1, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,100)
-```
-
-#### Validation
-There are unusual values that are upper than 70. 
-```{r crosstabulation1}
-SAGE_SA_w1_bmi[which(SAGE_SA_w1_bmi$bmi>70 & SAGE_SA_w1_bmi$bmi<900),]
-```
-
-#### Quality estimation
-[Comments on the quality of the new harmonised variable.]
-
-#### Import to OPAL
-```{r importOPAL1}
-#opal.assign.data(o, 'SAGE_SA_ds_w1', SAGE_SA_ds_w1)
-#opal.symbol_import(o,'SAGE_SA_ds_w1', project='_Athlos_Harm_Dataset')
-
-SAGE_SA_m_ds_w1 <- SAGE_SA_ds_w1
-SAGE_SA_m_ds_w1$bmi <- car::recode(SAGE_SA_m_ds_w1$bmi, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'SAGE_SA_m_ds_w1', SAGE_SA_m_ds_w1)
-#opal.symbol_import(o,'SAGE_SA_m_ds_w1', project='_Athlos_Harm_Dataset')
 ```
 
 
 
+## South Africa
 
+### Wave 1 
 
+#### Study-specific variable description
 
+| **Name** |`weight`|`height`|
+|-|-|-|
+| **Label** |`Weight of the participant in kg`|`Height of the participant`|
+| **Table name** |`sage_SA_w1_hd`|`sage_SA_w1_hd`|
+| **Units** |`kg`|`cm`|
+| **Missings** |`993 = Disable to measure`<br/>`997 = Refuse`<br/>`999 = Missing`|`993 = Disable to measure`<br/>`997 = Refuse`<br/>`999 = Missing`|
+| **Description** |  |  |
 
-### SAGE - Ghana - Wave 1 
+```{r assign SA_w1, echo=F}
 
-#### Study-specific variables
+load(paste0(datafolder,"SA_w1/weight",".RData"))
+load(paste0(datafolder,"SA_w1/height",".RData"))
 
-The study-specific variable elected to be harmonised is:
+SAGE_SA_w1 <- left_join(weight,height,by="id")
 
-* Name: `q2507`
-* Label: `true weight (kg)`
-* Type of variable: `countinous`
-* Missings
-    + `997 = refused`
-    + `998 = not able`
+rm(weight)
+rm(height)
 
-* Name: `q2506`
-* Label: `true height (cm)`
-* Type of variable: `countinous`
-* Missings
-    + `997 = refused`
-    + `998 = not able`
-    + `88 = Don't know`
-    + `98 = Not applicable`
-    + `97 = Refused`
-
-```{r assign_ghana}
-opal.assign.table.tibble(o, 'SAGE_ghana_w1_bmi','SAGE.ghanaINDData',
-                         variables=list('q2507', 'q2506'), missings = TRUE)
 ```
 
-```{r local_ghana}
-SAGE_ghana_w1_bmi <- opal.execute(o,'SAGE_ghana_w1_bmi')
+```{r local SA_w1, echo=F}
 
-Continuous_summary(var = SAGE_ghana_w1_bmi$q2507, missing_values = c(997, 998))
-ggplot(SAGE_ghana_w1_bmi, aes(q2507)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency") + xlim(50,100)
+vbl <- SAGE_SA_w1$weight
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[3], caption = "weight")
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_SA_w1, aes(weight)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("Weight") + ylab("Frequency") 
 
-Continuous_summary(var = SAGE_ghana_w1_bmi$q2506, missing_values = c(87,88, 99,98, 97, 997, 998))
-ggplot(SAGE_ghana_w1_bmi, aes(q2506)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(50,100)
+vbl <- SAGE_SA_w1$height
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[3], caption = "height")
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_SA_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("Height") + ylab("Frequency") 
+
 ```
 
 #### Harmonisation algorithm
-The harmonized variable will be calculate from the study-specific variables using this formula
+The harmonised variable will be calculate from the study-specific variables using this formula
 
 bmi=weight/height^2
 
 The missing values have to be recoded as follows:
 
-* `NA into 999`
-* `keep "refuse" into 997`
-* `88 "Don't know" into 998`
-* `98 "Not applicable" into 996`
-* `99 "Missing" into 999`
-* `998 "not able" into 993`
+* `keep missing values into themselves`
 
-R code of the ALGORITHM:
+**R script:**
 
-```{r harmo_ghana}
-compute_bmi <- function(Heigth, Weigth, miss, heigth_m = TRUE){
-  Heigth <- car::recode(Heigth, "NA=999")
-  Weigth <- car::recode(Weigth, "NA=999")
-  
-  if(heigth_m){
-    bmi <- Weigth/(Heigth^2)
-    
-    bmi[Weigth==999] <- 999
-    bmi[Weigth==miss[4]] <- Weigth[Weigth==miss[4]]
-    bmi[Weigth==miss[5]] <- Weigth[Weigth==miss[5]]
-    
-    bmi[Heigth==999] <- 999
-    bmi[Heigth==miss[1]] <- 998
-    bmi[Heigth==miss[2]] <- 994
-    bmi[Heigth==miss[3]] <- 999
-    bmi[Heigth==miss[4]] <- Heigth[Heigth==miss[4]]
-    bmi[Heigth==miss[5]] <- Heigth[Heigth==miss[5]]
-  } else {
-    bmi <- Weigth/((Heigth/100)^2)
-    
-    bmi[Weigth==999] <- 999
-    bmi[Weigth==miss[4]] <- Weigth[Weigth==miss[4]]
-    bmi[Weigth==miss[5]] <- Weigth[Weigth==miss[5]]
-    
-    bmi[Heigth==999] <- 999
-    bmi[Heigth==miss[1]] <- 998
-    bmi[Heigth==miss[2]] <- 994
-    bmi[Heigth==miss[3]] <- 999
-    bmi[Heigth==miss[4]] <- Heigth[Heigth==miss[4]]
-    bmi[Heigth==miss[5]] <- Heigth[Heigth==miss[5]]
-    }
-  bmi
-}
+```{r harmo SA_w1}
 
-SAGE_ghana_w1_bmi$bmi <- compute_bmi(Heigth = SAGE_ghana_w1_bmi$q2506, 
-                        Weigth = SAGE_ghana_w1_bmi$q2507, miss = c(88,98,99,997, 998), 
+
+SAGE_SA_w1$bmi <- compute_bmi(Heigth = SAGE_SA_w1$height, 
+                        Weigth = SAGE_SA_w1$weight, miss = miss_values_vector, 
                         heigth_m = FALSE)
 
-SAGE_ghana_ds_w1 <- tibble(id=SAGE_ghana_w1_bmi$id)
-SAGE_ghana_ds_w1$bmi <- car::recode(SAGE_ghana_w1_bmi$bmi, "NA=999; 998=993")
-SAGE_ghana_ds_w1$bmi <- labelled(SAGE_ghana_ds_w1$bmi, labels = c( "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+SAGE_ds_SA_w1 <- tibble(id=SAGE_SA_w1$id)
+
+SAGE_ds_SA_w1$bmi <- SAGE_SA_w1$bmi
+
+
+
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript_ghana}
-Continuous_summary(var = SAGE_ghana_ds_w1$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(SAGE_ghana_ds_w1, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,100)
+```{r descript SA_w1, echo=F}
+
+vbl <- SAGE_ds_SA_w1$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_ds_SA_w1, aes(bmi)) + geom_histogram(stat="bin", binwidth = 0.4, fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
+
 ```
 
 #### Validation
-There are unusual values that are upper than 70. 
-```{r crosstabulation_ghana}
-SAGE_ghana_w1_bmi[which(SAGE_ghana_w1_bmi$bmi>70 & SAGE_ghana_w1_bmi$bmi<900),]
-```
 
-
-#### Quality estimation
-[Comments on the quality of the new harmonised variable.]
-
-#### Import to OPAL
-```{r importOPAL_ghana}
-#opal.assign.data(o, 'SAGE_ghana_ds_w1', SAGE_ghana_ds_w1)
-#opal.symbol_import(o,'SAGE_ghana_ds_w1', project='_Athlos_Harm_Dataset')
-
-SAGE_ghana_m_ds_w1 <- SAGE_ghana_ds_w1
-SAGE_ghana_m_ds_w1$bmi <- car::recode(SAGE_ghana_m_ds_w1$bmi, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'SAGE_ghana_m_ds_w1', SAGE_ghana_m_ds_w1)
-#opal.symbol_import(o,'SAGE_ghana_m_ds_w1', project='_Athlos_Harm_Dataset')
+```{r crosstabulation SA_w1, echo=F}
+kable(SAGE_SA_w1[which(SAGE_SA_w1$bmi>100 & SAGE_SA_w1$bmi<900),], caption = 'There are unusual values that are upper than 100. ')
 ```
 
 
 
 
 
-### SAGE - China - Wave 1 
 
-#### Study-specific variables
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `q2507`
-* Label: `true weight (kg)`
-* Type of variable: `countinous`
-* Missings
-    + `997 = refused`
-    + `998 = not able`
-    
-* Name: `q2506`
-* Label: `true height (cm)`
-* Type of variable: `countinous`
-* Missings
-    + `997 = refused`
-    + `998 = not able`
-    + `88 = Don't know`
-    + `98 = Not applicable`
-    + `97 = Refused`
+## Ghana
 
-```{r assign_china}
-opal.assign.table.tibble(o, 'SAGE_china_w1_bmi','SAGE.chinaINDData',
-                         variables=list('q2507', 'q2506'), missings = TRUE)
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** |`weight`|`height`|
+|-|-|-|
+| **Label** |`Weight of the participant in kg`|`Height of the participant`|
+| **Table name** |`sage_ghana_w1_hd`|`sage_ghana_w1_hd`|
+| **Units** |`kg`|`cm`|
+| **Missings** |`993 = Disable to measure`<br/>`997 = Refuse`<br/>`999 = Missing`|`993 = Disable to measure`<br/>`997 = Refuse`<br/>`999 = Missing`|
+| **Description** |  |  |
+
+```{r assign ghana_w1, echo=F}
+
+load(paste0(datafolder,"ghana_w1/weight",".RData"))
+load(paste0(datafolder,"ghana_w1/height",".RData"))
+
+SAGE_ghana_w1 <- left_join(weight,height,by="id")
+
+rm(weight)
+rm(height)
+
 ```
 
-```{r local_china}
-SAGE_china_w1_bmi <- opal.execute(o,'SAGE_china_w1_bmi')
+```{r local ghana_w1, echo=F}
 
-Continuous_summary(var = SAGE_china_w1_bmi$q2507, missing_values = c(997, 998))
-ggplot(SAGE_china_w1_bmi, aes(q2507)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency") + xlim(50,100)
+vbl <- SAGE_ghana_w1$weight
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[3], caption = "weight")
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_ghana_w1, aes(weight)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("Weight") + ylab("Frequency") 
 
-Continuous_summary(var = SAGE_china_w1_bmi$q2506, missing_values = c(87,88, 99,98, 97, 997, 998))
-ggplot(SAGE_china_w1_bmi, aes(q2506)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(50,100)
+vbl <- SAGE_ghana_w1$height
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[3], caption = "height")
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_ghana_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("Height") + ylab("Frequency") 
+
 ```
-
 
 #### Harmonisation algorithm
-The harmonized variable will be calculate from the study-specific variables using this formula
+The harmonised variable will be calculate from the study-specific variables using this formula
 
 bmi=weight/height^2
 
 The missing values have to be recoded as follows:
 
-* `NA into 999`
-* `keep "refuse" into 997`
-* `88 "Don't know" into 998`
-* `98 "Not applicable" into 996`
-* `97 "Refused" into 997`
-* `998 "not able" into 993`
+* `keep missing values into themselves`
+
+**R script:**
+
+```{r harmo ghana_w1}
 
 
-R code of the ALGORITHM:
-
-```{r harmo_china}
-compute_bmi <- function(Heigth, Weigth, miss, heigth_m = TRUE){
-  Heigth <- car::recode(Heigth, "NA=999")
-  Weigth <- car::recode(Weigth, "NA=999")
-  
-  if(heigth_m){
-    bmi <- Weigth/(Heigth^2)
-    
-    bmi[Weigth==999] <- 999
-    bmi[Weigth==miss[4]] <- Weigth[Weigth==miss[4]]
-    bmi[Weigth==miss[5]] <- Weigth[Weigth==miss[5]]
-    
-    bmi[Heigth==999] <- 999
-    bmi[Heigth==miss[1]] <- 998
-    bmi[Heigth==miss[2]] <- 994
-    bmi[Heigth==miss[3]] <- 997
-    bmi[Heigth==miss[4]] <- Heigth[Heigth==miss[4]]
-    bmi[Heigth==miss[5]] <- Heigth[Heigth==miss[5]]
-  } else {
-    bmi <- Weigth/((Heigth/100)^2)
-    
-    bmi[Weigth==999] <- 999
-    bmi[Weigth==miss[4]] <- Weigth[Weigth==miss[4]]
-    bmi[Weigth==miss[5]] <- Weigth[Weigth==miss[5]]
-    
-    bmi[Heigth==999] <- 999
-    bmi[Heigth==miss[1]] <- 998
-    bmi[Heigth==miss[2]] <- 994
-    bmi[Heigth==miss[3]] <- 997
-    bmi[Heigth==miss[4]] <- Heigth[Heigth==miss[4]]
-    bmi[Heigth==miss[5]] <- Heigth[Heigth==miss[5]]
-    }
-  bmi
-}
-
-SAGE_china_w1_bmi$bmi <- compute_bmi(Heigth = SAGE_china_w1_bmi$q2506, 
-                        Weigth = SAGE_china_w1_bmi$q2507, miss = c(88,98,97,997, 998), 
+SAGE_ghana_w1$bmi <- compute_bmi(Heigth = SAGE_ghana_w1$height, 
+                        Weigth = SAGE_ghana_w1$weight, miss = miss_values_vector, 
                         heigth_m = FALSE)
 
-SAGE_china_ds_w1 <- tibble(id=SAGE_china_w1_bmi$id)
-SAGE_china_ds_w1$bmi <- car::recode(SAGE_china_w1_bmi$bmi, "NA=999; 998=993")
-SAGE_china_ds_w1$bmi <- labelled(SAGE_china_ds_w1$bmi, labels = c( "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+SAGE_ds_ghana_w1 <- tibble(id=SAGE_ghana_w1$id)
+
+SAGE_ds_ghana_w1$bmi <- SAGE_ghana_w1$bmi
+
+
+
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript_china}
-Continuous_summary(var = SAGE_china_ds_w1$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(SAGE_china_ds_w1, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,100)
+```{r descript ghana_w1, echo=F}
+
+vbl <- SAGE_ds_ghana_w1$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_ds_ghana_w1, aes(bmi)) + geom_histogram(stat="bin", binwidth = 0.4, fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
+
 ```
 
 #### Validation
-There are unusual values that are upper than 70 and lower than 12. 
-```{r crosstabulation_china}
-SAGE_china_w1_bmi[which((SAGE_china_w1_bmi$bmi>70 & SAGE_china_w1_bmi$bmi<900) | SAGE_china_w1_bmi$bmi<13),]
-```
 
-
-#### Quality estimation
-[Comments on the quality of the new harmonised variable.]
-
-#### Import to OPAL
-```{r importOPAL_china}
-#opal.assign.data(o, 'SAGE_china_ds_w1', SAGE_china_ds_w1)
-#opal.symbol_import(o,'SAGE_china_ds_w1', project='_Athlos_Harm_Dataset')
-
-SAGE_china_m_ds_w1 <- SAGE_china_ds_w1
-SAGE_china_m_ds_w1$bmi <- car::recode(SAGE_china_m_ds_w1$bmi, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'SAGE_china_m_ds_w1', SAGE_china_m_ds_w1)
-#opal.symbol_import(o,'SAGE_china_m_ds_w1', project='_Athlos_Harm_Dataset')
+```{r crosstabulation ghana_w1, echo=F}
+kable(SAGE_ghana_w1[which(SAGE_ghana_w1$bmi>100 & SAGE_ghana_w1$bmi<900),], caption = 'There are unusual values that are higher than 100. ')
 ```
 
 
 
 
+## China
 
+### Wave 1 
 
-### SAGE - India - Wave 1 
+#### Study-specific variable description
 
-#### Study-specific variables
+| **Name** |`weight`|`height`|
+|-|-|-|
+| **Label** |`Weight of the participant in kg`|`Height of the participant`|
+| **Table name** |`sage_china_w1_hd`|`sage_china_w1_hd`|
+| **Units** |`kg`|`cm`|
+| **Missings** |`999 = Missing`|`999 = Missing`|
+| **Description** |  |  |
 
-The study-specific variable elected to be harmonised is:
+```{r assign china_w1, echo=F}
 
-* Name: `q2507`
-* Label: `true weight (kg)`
-* Type of variable: `countinous`
-* Missings
-    + `997 = refused`
-    + `998 = not able`
+load(paste0(datafolder,"china_w1/weight",".RData"))
+load(paste0(datafolder,"china_w1/height",".RData"))
 
-* Name: `q2506`
-* Label: `true height (cm)`
-* Type of variable: `countinous`
-* Missings
-    + `997 = refused`
-    + `998 = not able`
-    + `88 = Don't know`
-    + `98 = Not applicable`
-    + `97 = Refused`
+SAGE_china_w1 <- left_join(weight,height,by="id")
 
+rm(weight)
+rm(height)
 
-```{r assign_india}
-opal.assign.table.tibble(o, 'SAGE_india_w1_bmi','SAGE.indiaINDData',
-                         variables=list('q2507', 'q2506'), missings = TRUE)
 ```
 
-```{r local_india}
-SAGE_india_w1_bmi <- opal.execute(o,'SAGE_india_w1_bmi')
+```{r local china_w1, echo=F}
 
-Continuous_summary(var = SAGE_india_w1_bmi$q2507, missing_values = c(997, 998))
-ggplot(SAGE_india_w1_bmi, aes(q2507)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency") + xlim(50,100)
+vbl <- SAGE_china_w1$weight
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[3], caption = "weight")
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_china_w1, aes(weight)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("Weight") + ylab("Frequency") 
 
-Continuous_summary(var = SAGE_india_w1_bmi$q2506, missing_values = c(87,88, 99,98, 97, 997, 998))
-ggplot(SAGE_india_w1_bmi, aes(q2506)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(50,100)
+vbl <- SAGE_china_w1$height
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[3], caption = "height")
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_china_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("Height") + ylab("Frequency") 
+
 ```
 
 #### Harmonisation algorithm
-The harmonized variable will be calculate from the study-specific variables using this formula
+The harmonised variable will be calculate from the study-specific variables using this formula
 
 bmi=weight/height^2
 
 The missing values have to be recoded as follows:
 
-* `NA into 999`
-* `keep "refuse" into 997`
-* `88 "Don't know" into 998`
-* `98 "Not applicable" into 996`
-* `99 "Missing" into 999`
-* `998 "not able" into 993`
+* `keep missing values into themselves`
 
-R code of the ALGORITHM:
+**R script:**
 
-```{r harmo_india}
-compute_bmi <- function(Heigth, Weigth, miss, heigth_m = TRUE){
-  Heigth <- car::recode(Heigth, "NA=999")
-  Weigth <- car::recode(Weigth, "NA=999")
-  
-  if(heigth_m){
-    bmi <- Weigth/(Heigth^2)
-    
-    bmi[Weigth==999] <- 999
-    bmi[Weigth==miss[4]] <- Weigth[Weigth==miss[4]]
-    bmi[Weigth==miss[5]] <- Weigth[Weigth==miss[5]]
-    
-    bmi[Heigth==999] <- 999
-    bmi[Heigth==miss[1]] <- 998
-    bmi[Heigth==miss[2]] <- 994
-    bmi[Heigth==miss[3]] <- 999
-    bmi[Heigth==miss[4]] <- Heigth[Heigth==miss[4]]
-    bmi[Heigth==miss[5]] <- Heigth[Heigth==miss[5]]
-  } else {
-    bmi <- Weigth/((Heigth/100)^2)
-    
-    bmi[Weigth==999] <- 999
-    bmi[Weigth==miss[4]] <- Weigth[Weigth==miss[4]]
-    bmi[Weigth==miss[5]] <- Weigth[Weigth==miss[5]]
-    
-    bmi[Heigth==999] <- 999
-    bmi[Heigth==miss[1]] <- 998
-    bmi[Heigth==miss[2]] <- 994
-    bmi[Heigth==miss[3]] <- 999
-    bmi[Heigth==miss[4]] <- Heigth[Heigth==miss[4]]
-    bmi[Heigth==miss[5]] <- Heigth[Heigth==miss[5]]
-    }
-  bmi
-}
+```{r harmo china_w1}
 
-SAGE_india_w1_bmi$bmi <- compute_bmi(Heigth = SAGE_india_w1_bmi$q2506, 
-                        Weigth = SAGE_india_w1_bmi$q2507, miss = c(88,98,99,997, 998), 
+
+SAGE_china_w1$bmi <- compute_bmi(Heigth = SAGE_china_w1$height, 
+                        Weigth = SAGE_china_w1$weight, miss = miss_values_vector, 
                         heigth_m = FALSE)
 
-SAGE_india_ds_w1 <- tibble(id=SAGE_india_w1_bmi$id)
-SAGE_india_ds_w1$bmi <- car::recode(SAGE_india_w1_bmi$bmi, "NA=999; 998=993")
-SAGE_india_ds_w1$bmi <- labelled(SAGE_india_ds_w1$bmi, labels = c( "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+SAGE_ds_china_w1 <- tibble(id=SAGE_china_w1$id)
+
+SAGE_ds_china_w1$bmi <- SAGE_china_w1$bmi
+
+
+
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript_india}
-Continuous_summary(var = SAGE_india_ds_w1$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(SAGE_india_ds_w1, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,100)
+```{r descript china_w1, echo=F}
+
+vbl <- SAGE_ds_china_w1$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_ds_china_w1, aes(bmi)) + geom_histogram(stat="bin", binwidth = 0.4, fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
+
 ```
 
 #### Validation
-There are unusual values that are upper than 70 and lower than 12. 
-```{r crosstabulation_india}
-SAGE_india_w1_bmi[which((SAGE_india_w1_bmi$bmi>70 & SAGE_india_w1_bmi$bmi<900) | SAGE_india_w1_bmi$bmi<13),]
-```
 
-
-#### Quality estimation
-[Comments on the quality of the new harmonised variable.]
-
-#### Import to OPAL
-```{r importOPAL_india}
-#opal.assign.data(o, 'SAGE_india_ds_w1', SAGE_india_ds_w1)
-#opal.symbol_import(o,'SAGE_india_ds_w1', project='_Athlos_Harm_Dataset')
-
-SAGE_india_m_ds_w1 <- SAGE_india_ds_w1
-SAGE_india_m_ds_w1$bmi <- car::recode(SAGE_india_m_ds_w1$bmi, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'SAGE_india_m_ds_w1', SAGE_india_m_ds_w1)
-#opal.symbol_import(o,'SAGE_india_m_ds_w1', project='_Athlos_Harm_Dataset')
+```{r crosstabulation china_w1, echo=F}
+kable(SAGE_china_w1[which((SAGE_china_w1$bmi>100 & SAGE_china_w1$bmi<900) | SAGE_china_w1$bmi<12),], caption = 'There are unusual values that are higher than 100 or lower than 12.')
 ```
 
 
@@ -585,130 +324,89 @@ SAGE_india_m_ds_w1$bmi <- car::recode(SAGE_india_m_ds_w1$bmi, "c(991, 992, 993, 
 
 
 
-### SAGE - Russia - Wave 1 
+## India
 
-#### Study-specific variables
+### Wave 1 
 
-The study-specific variable elected to be harmonised is:
+#### Study-specific variable description
 
-* Name: `q2507`
-* Label: `true weight (kg)`
-* Type of variable: `countinous`
-* Missings
-    + `997 = refused`
-    + `998 = not able`
+| **Name** |`weight`|`height`|
+|-|-|-|
+| **Label** |`Weight of the participant in kg`|`Height of the participant`|
+| **Table name** |`sage_india_w1_hd`|`sage_india_w1_hd`|
+| **Units** |`kg`|`cm`|
+| **Missings** |`993 = Disable to measure`<br/>`997 = Refuse`<br/>`999 = Missing`|`993 = Disable to measure`<br/>`997 = Refuse`<br/>`999 = Missing`|
+| **Description** |  |  |
 
-* Name: `q2506`
-* Label: `true height (cm)`
-* Type of variable: `countinous`
-* Missings
-    + `997 = refused`
-    + `998 = not able`
-    + `88 = Don't know`
-    + `98 = Not applicable`
-    + `97 = Refused`
+```{r assign india_w1, echo=F}
 
-```{r assign_russia}
-opal.assign.table.tibble(o, 'SAGE_russia_w1_bmi','SAGE.russiaINDdata',
-                         variables=list('q2507', 'q2506'), missings = TRUE)
+load(paste0(datafolder,"india_w1/weight",".RData"))
+load(paste0(datafolder,"india_w1/height",".RData"))
+
+SAGE_india_w1 <- left_join(weight,height,by="id")
+
+rm(weight)
+rm(height)
+
 ```
 
-```{r local_russia}
-SAGE_russia_w1_bmi <- opal.execute(o,'SAGE_russia_w1_bmi')
+```{r local india_w1, echo=F}
 
-Continuous_summary(var = SAGE_russia_w1_bmi$q2507, missing_values = c(997, 998))
-ggplot(SAGE_russia_w1_bmi, aes(q2507)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency") + xlim(50,100)
+vbl <- SAGE_india_w1$weight
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[3], caption = "weight")
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_india_w1, aes(weight)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("Weight") + ylab("Frequency") 
 
-Continuous_summary(var = SAGE_russia_w1_bmi$q2506, missing_values = c(87,88, 99,98, 97, 997, 998))
-ggplot(SAGE_russia_w1_bmi, aes(q2506)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(50,100)
+vbl <- SAGE_india_w1$height
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[3], caption = "height")
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_india_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("Height") + ylab("Frequency") 
+
 ```
 
 #### Harmonisation algorithm
-The harmonized variable will be calculate from the study-specific variables using this formula
+The harmonised variable will be calculate from the study-specific variables using this formula
 
 bmi=weight/height^2
 
 The missing values have to be recoded as follows:
 
-* `NA into 999`
-* `keep "refuse" into 997`
-* `88 "Don't know" into 998`
-* `98 "Not applicable" into 996`
-* `97 "Refused" into 997`
-* `998 "not able" into 993`
+* `keep missing values into themselves`
+
+**R script:**
+
+```{r harmo india_w1}
 
 
-R code of the ALGORITHM:
-
-```{r harmo_russia}
-compute_bmi <- function(Heigth, Weigth, miss, heigth_m = TRUE){
-  Heigth <- car::recode(Heigth, "NA=999")
-  Weigth <- car::recode(Weigth, "NA=999")
-  
-  if(heigth_m){
-    bmi <- Weigth/(Heigth^2)
-    
-    bmi[Weigth==999] <- 999
-    bmi[Weigth==miss[4]] <- Weigth[Weigth==miss[4]]
-    bmi[Weigth==miss[5]] <- Weigth[Weigth==miss[5]]
-    
-    bmi[Heigth==999] <- 999
-    bmi[Heigth==miss[1]] <- 998
-    bmi[Heigth==miss[2]] <- 994
-    bmi[Heigth==miss[3]] <- 997
-    bmi[Heigth==miss[4]] <- Heigth[Heigth==miss[4]]
-    bmi[Heigth==miss[5]] <- Heigth[Heigth==miss[5]]
-  } else {
-    bmi <- Weigth/((Heigth/100)^2)
-    
-    bmi[Weigth==999] <- 999
-    bmi[Weigth==miss[4]] <- Weigth[Weigth==miss[4]]
-    bmi[Weigth==miss[5]] <- Weigth[Weigth==miss[5]]
-    
-    bmi[Heigth==999] <- 999
-    bmi[Heigth==miss[1]] <- 998
-    bmi[Heigth==miss[2]] <- 994
-    bmi[Heigth==miss[3]] <- 997
-    bmi[Heigth==miss[4]] <- Heigth[Heigth==miss[4]]
-    bmi[Heigth==miss[5]] <- Heigth[Heigth==miss[5]]
-    }
-  bmi
-}
-
-SAGE_russia_w1_bmi$bmi <- compute_bmi(Heigth = SAGE_russia_w1_bmi$q2506, 
-                        Weigth = SAGE_russia_w1_bmi$q2507, miss = c(88,98,97,997, 998), 
+SAGE_india_w1$bmi <- compute_bmi(Heigth = SAGE_india_w1$height, 
+                        Weigth = SAGE_india_w1$weight, miss = miss_values_vector, 
                         heigth_m = FALSE)
 
-SAGE_russia_ds_w1 <- tibble(id=SAGE_russia_w1_bmi$id)
-SAGE_russia_ds_w1$bmi <- car::recode(SAGE_russia_w1_bmi$bmi, "NA=999; 998=993")
-SAGE_russia_ds_w1$bmi <- labelled(SAGE_russia_ds_w1$bmi, labels = c( "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+SAGE_ds_india_w1 <- tibble(id=SAGE_india_w1$id)
+
+SAGE_ds_india_w1$bmi <- SAGE_india_w1$bmi
+
+
+
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript_russia}
-Continuous_summary(var = SAGE_russia_ds_w1$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(SAGE_russia_ds_w1, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,100)
+```{r descript india_w1, echo=F}
+
+vbl <- SAGE_ds_india_w1$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_ds_india_w1, aes(bmi)) + geom_histogram(stat="bin", binwidth = 0.4, fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
+
 ```
 
 #### Validation
-There are unusual values that are upper than 70 and lower than 12. 
-```{r crosstabulation_russia}
-SAGE_russia_w1_bmi[which((SAGE_russia_w1_bmi$bmi>70 & SAGE_russia_w1_bmi$bmi<900) | SAGE_russia_w1_bmi$bmi<13),]
-```
 
-
-#### Quality estimation
-[Comments on the quality of the new harmonised variable.]
-
-#### Import to OPAL
-```{r importOPAL_russia}
-#opal.assign.data(o, 'SAGE_russia_ds_w1', SAGE_russia_ds_w1)
-#opal.symbol_import(o,'SAGE_russia_ds_w1', project='_Athlos_Harm_Dataset')
-
-SAGE_russia_m_ds_w1 <- SAGE_russia_ds_w1
-SAGE_russia_m_ds_w1$bmi <- car::recode(SAGE_russia_m_ds_w1$bmi, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'SAGE_russia_m_ds_w1', SAGE_russia_m_ds_w1)
-#opal.symbol_import(o,'SAGE_russia_m_ds_w1', project='_Athlos_Harm_Dataset')
+```{r crosstabulation india_w1, echo=F}
+kable(SAGE_india_w1[which((SAGE_india_w1$bmi>100 & SAGE_india_w1$bmi<900) | SAGE_india_w1$bmi<12),], caption = 'There are unusual values that are higher than 100 or lower than 12.')
 ```
 
 
@@ -716,162 +414,295 @@ SAGE_russia_m_ds_w1$bmi <- car::recode(SAGE_russia_m_ds_w1$bmi, "c(991, 992, 993
 
 
 
-### SAGE - Mexico - Wave 1 
 
-#### Study-specific variables
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `q2507`
-* Label: `true weight (kg)`
-* Type of variable: `countinous`
-* Missings
-    + `997 = refused`
-    + `998 = not able`
+## Russia
 
-* Name: `q2506`
-* Label: `true height (cm)`
-* Type of variable: `countinous`
-* Missings
-    + `997 = refused`
-    + `998 = not able`
-    + `88 = Don't know`
-    + `98 = Not applicable`
-    + `97 = Refused`
+### Wave 1 
 
-```{r assign_Mexico}
-opal.assign.table.tibble(o, 'SAGE_mexico_w1_bmi','SAGE.mexicoINDdata',
-                         variables=list('q2507', 'q2506'), missings = TRUE)
+#### Study-specific variable description
+
+| **Name** |`weight`|`height`|
+|-|-|-|
+| **Label** |`Weight of the participant in kg`|`Height of the participant`|
+| **Table name** |`sage_russia_w1_hd`|`sage_russia_w1_hd`|
+| **Units** |`kg`|`cm`|
+| **Missings** |`993 = Disable to measure`<br/>`997 = Refuse`<br/>`999 = Missing`|`993 = Disable to measure`<br/>`997 = Refuse`<br/>`999 = Missing`|
+| **Description** |  |  |
+
+```{r assign russia_w1, echo=F}
+
+load(paste0(datafolder,"russia_w1/weight",".RData"))
+load(paste0(datafolder,"russia_w1/height",".RData"))
+
+SAGE_russia_w1 <- left_join(weight,height,by="id")
+
+rm(weight)
+rm(height)
+
 ```
 
-```{r local_Mexico}
-SAGE_mexico_w1_bmi <- opal.execute(o,'SAGE_mexico_w1_bmi')
+```{r local russia_w1, echo=F}
 
-Continuous_summary(var = SAGE_mexico_w1_bmi$q2507, missing_values = c(997, 998))
-ggplot(SAGE_mexico_w1_bmi, aes(q2507)) + geom_histogram(stat="count", fill="steelblue") + xlab("Weight") + ylab("Frequency") + xlim(50,100)
+vbl <- SAGE_russia_w1$weight
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[3], caption = "weight")
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_russia_w1, aes(weight)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("Weight") + ylab("Frequency") 
 
-Continuous_summary(var = SAGE_mexico_w1_bmi$q2506, missing_values = c(87,88, 99,98, 97, 997, 998))
-ggplot(SAGE_mexico_w1_bmi, aes(q2506)) + geom_histogram(stat="count", fill="steelblue") + xlab("Height") + ylab("Frequency") + xlim(50,100)
+vbl <- SAGE_russia_w1$height
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[3], caption = "height")
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_russia_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("Height") + ylab("Frequency") 
+
 ```
 
 #### Harmonisation algorithm
-The harmonized variable will be calculate from the study-specific variables using this formula
+The harmonised variable will be calculate from the study-specific variables using this formula
 
 bmi=weight/height^2
 
 The missing values have to be recoded as follows:
 
-* `NA into 999`
-* `keep "refuse" into 997`
-* `88 "Don't know" into 998`
-* `98 "Not applicable" into 996`
-* `97 "Refused" into 997`
-* `998 "not able" into 993`
+* `keep missing values into themselves`
 
-R code of the ALGORITHM:
+**R script:**
 
-```{r harmo_Mexico}
-compute_bmi <- function(Heigth, Weigth, miss, heigth_m = TRUE){
-  Heigth <- car::recode(Heigth, "NA=999")
-  Weigth <- car::recode(Weigth, "NA=999")
-  
-  if(heigth_m){
-    bmi <- Weigth/(Heigth^2)
-    
-    bmi[Weigth==999] <- 999
-    bmi[Weigth==miss[4]] <- Weigth[Weigth==miss[4]]
-    bmi[Weigth==miss[5]] <- Weigth[Weigth==miss[5]]
-    
-    bmi[Heigth==999] <- 999
-    bmi[Heigth==miss[1]] <- 998
-    bmi[Heigth==miss[2]] <- 994
-    bmi[Heigth==miss[3]] <- 997
-    bmi[Heigth==miss[4]] <- Heigth[Heigth==miss[4]]
-    bmi[Heigth==miss[5]] <- Heigth[Heigth==miss[5]]
-  } else {
-    bmi <- Weigth/((Heigth/100)^2)
-    
-    bmi[Weigth==999] <- 999
-    bmi[Weigth==miss[4]] <- Weigth[Weigth==miss[4]]
-    bmi[Weigth==miss[5]] <- Weigth[Weigth==miss[5]]
-    
-    bmi[Heigth==999] <- 999
-    bmi[Heigth==miss[1]] <- 998
-    bmi[Heigth==miss[2]] <- 994
-    bmi[Heigth==miss[3]] <- 997
-    bmi[Heigth==miss[4]] <- Heigth[Heigth==miss[4]]
-    bmi[Heigth==miss[5]] <- Heigth[Heigth==miss[5]]
-    }
-  bmi
-}
+```{r harmo russia_w1}
 
-SAGE_mexico_w1_bmi$bmi <- compute_bmi(Heigth = SAGE_mexico_w1_bmi$q2506, 
-                        Weigth = SAGE_mexico_w1_bmi$q2507, miss = c(88,98,97,997, 998), 
+
+SAGE_russia_w1$bmi <- compute_bmi(Heigth = SAGE_russia_w1$height, 
+                        Weigth = SAGE_russia_w1$weight, miss = miss_values_vector, 
                         heigth_m = FALSE)
 
-SAGE_mexico_ds_w1 <- tibble(id=SAGE_mexico_w1_bmi$id)
-SAGE_mexico_ds_w1$bmi <- car::recode(SAGE_mexico_w1_bmi$bmi, "NA=999; 998=993")
-SAGE_mexico_ds_w1$bmi <- labelled(SAGE_mexico_ds_w1$bmi, labels = c( "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+SAGE_ds_russia_w1 <- tibble(id=SAGE_russia_w1$id)
+
+SAGE_ds_russia_w1$bmi <- SAGE_russia_w1$bmi
+
+
+
 ```
 
 #### Statistics of the new harmonised variable
-```{r descript_Mexico}
-Continuous_summary(var = SAGE_mexico_ds_w1$bmi, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(SAGE_mexico_ds_w1, aes(bmi)) + geom_histogram(stat="count", fill="steelblue") + xlab("BMI") + ylab("Frequency") + xlim(10,100)
+```{r descript russia_w1, echo=F}
+
+vbl <- SAGE_ds_russia_w1$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_ds_russia_w1, aes(bmi)) + geom_histogram(stat="bin", binwidth = 0.4, fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
+
 ```
 
 #### Validation
-```{r crosstabulation_Mexico}
-```
 
-#### Quality estimation
-No comments.
-
-#### Import to OPAL
-```{r importOPAL_Mexico}
-#opal.assign.data(o, 'SAGE_mexico_ds_w1', SAGE_mexico_ds_w1)
-#opal.symbol_import(o,'SAGE_mexico_ds_w1', project='_Athlos_Harm_Dataset')
-
-SAGE_mexico_m_ds_w1 <- SAGE_mexico_ds_w1
-SAGE_mexico_m_ds_w1$bmi <- car::recode(SAGE_mexico_m_ds_w1$bmi, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'SAGE_mexico_m_ds_w1', SAGE_mexico_m_ds_w1)
-#opal.symbol_import(o,'SAGE_mexico_m_ds_w1', project='_Athlos_Harm_Dataset')
+```{r crosstabulation russia_w1, echo=F}
+kable(SAGE_russia_w1[which((SAGE_russia_w1$bmi>100 & SAGE_russia_w1$bmi<900) | SAGE_russia_w1$bmi<12),], caption = 'There are unusual values that are higher than 100 or lower than 12.')
 ```
 
 
 
-```{r,  echo=FALSE}
-bmi <- SAGE_SA_ds_w1
-save(bmi, file = paste0(datafolder, "/SA_w1/bmi.RData"))
+
+
+## Mexico
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** |`weight`|`height`|
+|-|-|-|
+| **Label** |`Weight of the participant in kg`|`Height of the participant`|
+| **Table name** |`sage_mexico_w1_hd`|`sage_mexico_w1_hd`|
+| **Units** |`kg`|`cm`|
+| **Missings** |`993 = Disable to measure`<br/>`997 = Refuse`<br/>`999 = Missing`|`993 = Disable to measure`<br/>`997 = Refuse`<br/>`999 = Missing`|
+| **Description** |  |  |
+
+```{r assign mexico_w1, echo=F}
+
+load(paste0(datafolder,"mexico_w1/weight",".RData"))
+load(paste0(datafolder,"mexico_w1/height",".RData"))
+
+SAGE_mexico_w1 <- left_join(weight,height,by="id")
+
+rm(weight)
+rm(height)
+
 ```
 
-```{r,  echo=FALSE}
-bmi <- SAGE_ghana_ds_w1
-save(bmi, file = paste0(datafolder, "/ghana_w1/bmi.RData"))
+```{r local mexico_w1, echo=F}
+
+vbl <- SAGE_mexico_w1$weight
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[3], caption = "weight")
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_mexico_w1, aes(weight)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("Weight") + ylab("Frequency") 
+
+vbl <- SAGE_mexico_w1$height
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[3], caption = "height")
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_mexico_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("Height") + ylab("Frequency") 
+
 ```
 
-```{r,  echo=FALSE}
-bmi <- SAGE_china_ds_w1
-save(bmi, file = paste0(datafolder, "/china_w1/bmi.RData"))
+#### Harmonisation algorithm
+The harmonised variable will be calculate from the study-specific variables using this formula
+
+bmi=weight/height^2
+
+The missing values have to be recoded as follows:
+
+* `keep missing values into themselves`
+
+**R script:**
+
+```{r harmo mexico_w1}
+
+
+SAGE_mexico_w1$bmi <- compute_bmi(Heigth = SAGE_mexico_w1$height, 
+                        Weigth = SAGE_mexico_w1$weight, miss = miss_values_vector, 
+                        heigth_m = FALSE)
+
+SAGE_ds_mexico_w1 <- tibble(id=SAGE_mexico_w1$id)
+
+SAGE_ds_mexico_w1$bmi <- SAGE_mexico_w1$bmi
+
+
+
 ```
 
-```{r,  echo=FALSE}
-bmi <- SAGE_india_ds_w1
-save(bmi, file = paste0(datafolder, "/india_w1/bmi.RData"))
+#### Statistics of the new harmonised variable
+```{r descript mexico_w1, echo=F}
+
+vbl <- SAGE_ds_mexico_w1$bmi
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SAGE_ds_mexico_w1, aes(bmi)) + geom_histogram(stat="bin", binwidth = 0.4, fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("BMI") + ylab("Frequency") 
+
 ```
 
-```{r,  echo=FALSE}
-bmi <- SAGE_russia_ds_w1
-save(bmi, file = paste0(datafolder, "/russia_w1/bmi.RData"))
-```
+#### Validation
 
-```{r,  echo=FALSE}
-bmi <- SAGE_mexico_ds_w1
-save(bmi, file = paste0(datafolder, "/mexico_w1/bmi.RData"))
+```{r crosstabulation mexico_w1, echo=F}
+
 ```
 
 
 
+
+
+
+
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+```{r helpfunctions, echo=F}
+
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+# Creation of summary tables for continuous data
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][2])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[2]],missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][2])[1:6]
+    # Next, missing/no-missing values
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[2]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][2]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
+}
+
+```
+
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+sage.cw <- list(SA_w1 = c("SA_w1","South Africa w1"), ghana_w1 = c("ghana_w1","Ghana w1"), china_w1 = c("china_w1","China w1"), india_w1 = c("india_w1","India w1"), russia_w1 = c("russia_w1","Russian Federation w1"), mexico_w1 = c("mexico_w1","Mexico w1"))
+
+# Consider only harmonised waves
+l.hds <- lapply(sage.cw, function(wname) if(exists(paste0("SAGE_ds_",wname[1]))){wname = list(get(paste0("SAGE_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing summaries
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+```
+
+
+
+
+# Quality estimation
+
+Individuals with implaussible data (`bmi>100` or `bmi<10`) have been specified at each validation with their harmonised weights and heights (which coincide with the study-specific variables `q2507` and `q2506` up to some missing values).
 
 ```{r closeRsession, echo=FALSE}
 opal.logout(o)
