@@ -1,0 +1,261 @@
+---
+title: "Place of residence"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup.r")
+source("../../CHARLS/CHARLS_ids.R")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/resid_placeDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/resid_placeDS.R')
+```
+
+
+
+# Data process
+
+
+## China
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `a001` |`household_id`|
+|-|-|-|
+| **Label** | `Area Type Taken Down by IWER` |`Identification of the participant's household`|
+| **Table name** | `household_roster_wave1` |`charls_w1_hd`|
+| **Categories** | `1 = Rural Village` <br/> `2 = Urban Community`|`text`|
+| **Missings** | `NA` |  |
+| **Description** |  |   |
+
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'CHARLS_w1_2','CHARLS.household_roster_wave1', variables=list('a001'), missings = TRUE)
+CHARLS_w1_2 <- opal.execute(o,'CHARLS_w1_2')
+
+
+opal.assign.table.tibble(o, 'CHARLS_w1_id','CHARLS.CHARLS_w1_ids', variables=list('var'), missings = TRUE)
+CHARLS_w1_id <- opal.execute(o,'CHARLS_w1_id')
+
+CHARLS_w1_2$oldid <- CHARLS_w1_2$id
+CHARLS_w1_2$id <- CHARLS_ids(ids = CHARLS_w1_2$oldid)
+
+
+
+opal.assign.table.tibble(o, 'CHARLS_w1_HD','CHARLS_HD.charls_w1_hd', variables=list('household_id'), missings = TRUE)
+CHARLS_w1_HD <- opal.execute(o,'CHARLS_w1_HD')
+CHARLS_w1_2 <- left_join(CHARLS_w1_2,CHARLS_w1_HD, by="id")
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- CHARLS_w1_2$a001
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "a001")
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(CHARLS_w1_2, aes(x=factor(a001))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+To compute `resid_place` from the study-specific variable it has to be recoded as follows:
+
+* `2 into 0`
+* `1 into 1`
+* `NA into 999`
+* `same data for other individuals with same household`
+
+**R script:**
+
+```{r harmo w1}
+
+CHARLS_w1 <- left_join(CHARLS_w1_HD,CHARLS_w1_2,by=c("household_id","household_id"), suffix = c("","_main"))
+CHARLS_ds_w1 <- tibble(id=CHARLS_w1$id)
+CHARLS_ds_w1$resid_place <- car::recode(CHARLS_w1$a001, "2 = 0;NA = 999 ")
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=F}
+vbl <- CHARLS_ds_w1$resid_place
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(CHARLS_ds_w1, aes(x=factor(resid_place))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1, echo=F}
+```
+
+
+
+### Wave 2
+
+Not found.
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+
+Percentages of categories in each harmonised variable.
+
+
+
+
+
+```{r helpfunctions, echo=F}
+
+
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles with categorical data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Labelling of categories (for categorical variables, only non-missing values)
+    aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+# Creation of summary tables for categorical data
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of columns with categories and labels
+  t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+  }
+  # Add sample size for each wave/population
+  t.hds[13,] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+  )
+  # Add wave/population names
+  names(t.hds)<-c("val", "label",lnames)
+  return(t.hds)
+  
+}
+
+# Creation of trajectories table for each population
+
+trajectories <- function(m.hds,vbl_name){
+  
+  # First wave data
+  dbb <- m.hds[[1]][,c("id",vbl_name)]
+  # Merge with next waves data
+  for(ind in 2:length(m.hds)){
+    dbb <- merge(dbb, m.hds[[ind]][,c("id",vbl_name)], by = "id", suffixes = c("", paste0(".",names(m.hds)[ind])), all = T)
+  }
+  names(dbb) <- c("id", names(m.hds))
+  
+  # Glue individual data through all waves into trajectories
+  v.dbb <- dbb[,2]
+  for(ind in 2:length(m.hds)){
+    v.dbb <- paste(v.dbb,dbb[,ind+1],sep="")
+  }
+  # Trajectories and frequencies
+  f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+  return(f.dbb)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
+}
+
+```
+
+
+
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+charls.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"))
+
+# Consider only harmonised waves
+l.hds <- lapply(charls.cw, function(wname) if(exists(paste0("CHARLS_ds_",wname[1]))){wname = list(get(paste0("CHARLS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Printing table of trajectories
+  # f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  # print(knitr::kable(f.dbb))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+```
+
+
+
+
+
+
+# Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
