@@ -97,9 +97,99 @@ ggplot(CHARLS_ds_w1, aes(x=factor(respondent))) + geom_bar(stat="count", width=0
 
 
 
-## Wave 2
+### Wave 2
 
-Not found.
+#### Study-specific variable description
+
+Not found. It will be created from wave 1.
+
+```{r assign2, echo=F}
+
+## wave 1
+
+opal.assign.table.tibble(o, 'CHARLS_w1_id','CHARLS.CHARLS_w1_ids',variables=list('var'), missings = TRUE)
+CHARLS_w1_id <- opal.execute(o,'CHARLS_w1_id')
+
+opal.assign.table.tibble(o, 'CHARLS_w1_w','CHARLS.weight_wave1',variables=list('householdID','mainr'), missings = T)
+CHARLS_w1_w <- opal.execute(o,'CHARLS_w1_w')
+
+# Correction of a wrong ID:
+CHARLS_w1_w$id[which(paste0(substr(CHARLS_w1_id$id,1,9),substr(CHARLS_w1_id$id,11,12))!=CHARLS_w1_w$id)] <- paste0(substr(CHARLS_w1_id$id[which(paste0(substr(CHARLS_w1_id$id,1,9),substr(CHARLS_w1_id$id,11,12))!=CHARLS_w1_w$id)],1,9),substr(CHARLS_w1_id$id[which(paste0(substr(CHARLS_w1_id$id,1,9),substr(CHARLS_w1_id$id,11,12))!=CHARLS_w1_w$id)],11,12))
+
+CHARLS_w1_w$oldid <- CHARLS_w1_w$id
+CHARLS_w1_w$id <- CHARLS_ids(ids = CHARLS_w1_w$oldid)
+
+
+## wave 2
+
+opal.assign.table.tibble(o, 'charls_w2_w2','CHARLS.Weights_modif_albert_wave2', variables = list( 'householdID','HHmemberID'), missings = TRUE)
+charls_w2_w2 <- opal.execute(o,'charls_w2_w2')
+
+opal.assign.table.tibble(o, 'CHARLS_w2_id','CHARLS.CHARLS_w2_ids',
+                         variables=list('var'), missings = TRUE)
+CHARLS_w2_id <- opal.execute(o,'CHARLS_w2_id')
+
+Add_indiv <- function(old, new){
+  
+  new_2 <- matrix(NA, nrow = dim(new)[1], ncol=dim(old)[2])
+  oldm <- as.matrix(old)
+  
+  for(i in 1:length(new$id)){
+    if(sum(new$id[i]==old$id)>=1){
+      new_2[i,] <- oldm[which(new$id[i]==old$id),]
+    } else {
+      new_2[i,] <- c(new$id[i], NA, NA)
+    }
+  }
+  
+  new_22 <- data.frame(id=new_2[,1], householdID_w2=as.numeric(new_2[,2]), HHmemberID=as.numeric(new_2[,3]))
+  new_22
+}
+
+charls_w2_w <- Add_indiv(old = charls_w2_w2, new = CHARLS_w2_id)
+
+charls_w2 <- full_join(CHARLS_w1_w, charls_w2_w, by="id")
+
+```
+
+```{r local w2, echo=F}
+kable(table(charls_w2$mainr, charls_w2$HHmemberID, useNA="ifany"))
+
+chh <- charls_w2[base::order(charls_w2$householdID_w2, charls_w2$HHmemberID, -charls_w2$mainr),]
+chh <- chh[is.na(chh$mainr), c(1,2,5,6,3)]
+chh <- distinct(chh, householdID_w2, .keep_all=T)
+
+
+```
+
+### Harmonization algorithm
+
+**R script:**
+
+```{r harmo2}
+ids2 <- chh$id
+charls_w2$r <- charls_w2$mainr
+charls_w2[charls_w2$id %in% ids2,]$r <- 1
+charls_w2[!(charls_w2$id %in% ids2) & is.na(charls_w2$mainr),]$r <- 0
+
+CHARLS_ds_w2   <- tibble(id=charls_w2$id)
+CHARLS_ds_w2$respondent <- car::recode(charls_w2$r,"0=1;1=0")
+
+```
+
+### Statistics of the new harmonised variable
+```{r descript2, echo=F}
+
+vbl <- CHARLS_ds_w2$respondent
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(CHARLS_ds_w2, aes(x=factor(respondent))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+
 
 
 # Quality estimation
@@ -111,6 +201,9 @@ respondent <- CHARLS_ds_w1
 save(respondent, file = "../RData/w1/respondent.RData")
 rm(respondent)
 
+respondent <- CHARLS_ds_w2
+save(respondent, file = "../RData/w2/respondent.RData")
+rm(respondent)
 
 ```
 
