@@ -1,0 +1,789 @@
+---
+title: "Frequency of face to face and phone contacts with friends"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/f_cont_frDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/f_cont_frDS.R')
+```
+
+# Data process
+
+## England
+
+### Wave 1 
+
+#### Study-specific variable description
+
+
+
+
+| **Name** |`scfrd`|`scfrdg`|
+|-|-|-|
+| **Label** |`do you have any friends`|`How often the respondent meets up with their friends`|
+| **Table name** |`wave_1_core_data_v3`|`wave_1_core_data_v3`|
+| **Categories** |`1 = Yes`<br/>`2 = No`|`1 = Three or more times a week`<br/>`2 = Once or twice a week`<br/>`3 = Once or twice a month`<br/>`4 = Every few months`<br/>`5 = Once or twice a year`<br/>`6 = Less than once a year or never`|
+| **Missings**|`-9 = Not answered`<br/>`-1 = Item not applicable`|`-9 = Not answered`<br/>`-1 = Item not applicable`|
+| **Description** |  |  |
+    
+
+
+
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w1','ELSA.wave_1_core_data_v3',variables=list('scfrd','scfrdg'), missings = TRUE)
+ELSA_w1 <- opal.execute(o,'ELSA_w1')
+```
+
+```{r local1, echo=F}
+vbl <- ELSA_w1$scfrd
+vbl_miss <- c(-9,-1)
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = "scfrd")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[2], caption = "Type of missing")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(ELSA_w1, aes(x=factor(scfrd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has got any friends?") + ylab("Frequency")
+vbl <- ELSA_w1$scfrdg
+vbl_miss <- c(-9,-1)
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = "scfrdg")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[2], caption = "Type of missing")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(ELSA_w1, aes(x=factor(scfrdg))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("How often the respondent meets up with their friends") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if scfrdg=1 then 1`
+* `if scfrdg=2 then 2`
+* `if scfrdg=3 then 3`
+* `if scfrdg=4 or 5 then 4`
+* `if scfrd=2 or scfrdg=6 then 5`
+* `-9 into 995`
+* `-1 into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1}
+ELSA_ds_w1 <- tibble(id=ELSA_w1$id)
+
+ELSA_w1$scfrd <- car::recode(as.vector(ELSA_w1$scfrd), "NA='-999'")
+ELSA_w1$scfrdg <- car::recode(as.vector(ELSA_w1$scfrdg), "NA='-999'")
+
+ELSA_ds_w1$f_cont_fr <- c(NA) # I think it is required
+for(i in 1:dim(ELSA_w1)[1]){
+  if( ELSA_w1$scfrdg[i] == 1 ) { ELSA_ds_w1$f_cont_fr[i] = 1 }
+  else if( ELSA_w1$scfrdg[i] == 2 ) { ELSA_ds_w1$f_cont_fr[i] = 2 }
+  else if( ELSA_w1$scfrdg[i] == 3 ) { ELSA_ds_w1$f_cont_fr[i] = 3 }
+  else if( ELSA_w1$scfrdg[i] %in% c(4,5) ) { ELSA_ds_w1$f_cont_fr[i] = 4 }
+  else if( ELSA_w1$scfrdg[i] == 6 | ELSA_w1$scfrd[i] == 2 ) { ELSA_ds_w1$f_cont_fr[i] = 5 }
+  else if( ELSA_w1$scfrdg[i] == -9 | ELSA_w1$scfrd[i] == -9 ) { ELSA_ds_w1$f_cont_fr[i] = 995 }
+  else if( ELSA_w1$scfrdg[i] == -1 | ELSA_w1$scfrd[i] == -1 ) { ELSA_ds_w1$f_cont_fr[i] = 996 }
+}
+
+ELSA_ds_w1$f_cont_fr <- car::recode(as.vector(ELSA_ds_w1$f_cont_fr), "NA='999'")
+ELSA_ds_w1$f_cont_fr <- labelled(ELSA_ds_w1$f_cont_fr, labels = c("Daily/Almost daily"=1, "Once a week"=2, "Once or few times a month"=3, "Less than once a month"=4, "Never/No friends"=5, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=F}
+vbl <- ELSA_ds_w1$f_cont_fr
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ELSA_ds_w1, aes(x=factor(f_cont_fr))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Frequency of face to face contacts with friends") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=F}
+
+```
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+
+
+| **Name** |`scfrd`|`scfrdg`|
+|-|-|-|
+| **Label** |`do you have any friends`|`How often the respondent meets up with their friends`|
+| **Table name** |`wave_2_core_data_v4`|`wave_2_core_data_v4`|
+| **Categories** |`1 = Yes`<br/>`2 = No`|`1 = Three or more times a week`<br/>`2 = Once or twice a week`<br/>`3 = Once or twice a month`<br/>`4 = Every few months`<br/>`5 = Once or twice a year`<br/>`6 = Less than once a year or never`|
+| **Missings**|`-9 = Not answered`<br/>`-1 = Item not applicable`|`-9 = Not answered`<br/>`-1 = Item not applicable`|
+| **Description** |  |  |
+    
+
+
+
+
+```{r assign2, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w2','ELSA.wave_2_core_data_v4',variables=list('scfrd','scfrdg'), missings = TRUE)
+ELSA_w2 <- opal.execute(o,'ELSA_w2')
+```
+
+```{r local2, echo=F}
+vbl <- ELSA_w2$scfrd
+vbl_miss <- c(-9,-1)
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = "scfrd")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[2], caption = "Type of missing")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(ELSA_w2, aes(x=factor(scfrd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has got any friends?") + ylab("Frequency")
+vbl <- ELSA_w2$scfrdg
+vbl_miss <- c(-9,-1)
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = "scfrdg")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[2], caption = "Type of missing")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(ELSA_w2, aes(x=factor(scfrdg))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("How often the respondent meets up with their friends") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if scfrdg=1 then 1`
+* `if scfrdg=2 then 2`
+* `if scfrdg=3 then 3`
+* `if scfrdg=4 or 5 then 4`
+* `if scfrd=2 or scfrdg=6 then 5`
+* `-9 into 995`
+* `-1 into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo2}
+ELSA_ds_w2 <- tibble(id=ELSA_w2$id)
+
+ELSA_w2$scfrd <- car::recode(as.vector(ELSA_w2$scfrd), "NA='-999'")
+ELSA_w2$scfrdg <- car::recode(as.vector(ELSA_w2$scfrdg), "NA='-999'")
+
+ELSA_ds_w2$f_cont_fr <- c(NA) # I think it is required
+for(i in 1:dim(ELSA_w2)[1]){
+  if( ELSA_w2$scfrdg[i] == 1 ) { ELSA_ds_w2$f_cont_fr[i] = 1 }
+  else if( ELSA_w2$scfrdg[i] == 2 ) { ELSA_ds_w2$f_cont_fr[i] = 2 }
+  else if( ELSA_w2$scfrdg[i] == 3 ) { ELSA_ds_w2$f_cont_fr[i] = 3 }
+  else if( ELSA_w2$scfrdg[i] %in% c(4,5) ) { ELSA_ds_w2$f_cont_fr[i] = 4 }
+  else if( ELSA_w2$scfrdg[i] == 6 | ELSA_w2$scfrd[i] == 2 ) { ELSA_ds_w2$f_cont_fr[i] = 5 }
+  else if( ELSA_w2$scfrdg[i] == -9 | ELSA_w2$scfrd[i] == -9 ) { ELSA_ds_w2$f_cont_fr[i] = 995 }
+  else if( ELSA_w2$scfrdg[i] == -1 | ELSA_w2$scfrd[i] == -1 ) { ELSA_ds_w2$f_cont_fr[i] = 996 }
+}
+
+ELSA_ds_w2$f_cont_fr <- car::recode(as.vector(ELSA_ds_w2$f_cont_fr), "NA='999'")
+ELSA_ds_w2$f_cont_fr <- labelled(ELSA_ds_w2$f_cont_fr, labels = c("Daily/Almost daily"=1, "Once a week"=2, "Once or few times a month"=3, "Less than once a month"=4, "Never/No friends"=5, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript2, echo=F}
+vbl <- ELSA_ds_w2$f_cont_fr
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ELSA_ds_w2, aes(x=factor(f_cont_fr))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Frequency of face to face contacts with friends") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2, echo=F}
+
+```
+
+
+### Wave 3
+
+#### Study-specific variable description
+
+
+
+| **Name** |`scfrd`|`scfrdg`|
+|-|-|-|
+| **Label** |`do you have any friends`|`How often the respondent meets up with their friends`|
+| **Table name** |`wave_3_elsa_data_v4`|`wave_3_elsa_data_v4`|
+| **Categories** |`1 = Yes`<br/>`2 = No`|`1 = Three or more times a week`<br/>`2 = Once or twice a week`<br/>`3 = Once or twice a month`<br/>`4 = Every few months`<br/>`5 = Once or twice a year`<br/>`6 = Less than once a year or never`|
+| **Missings**|`-9 = Not answered`<br/>`-1 = Item not applicable`|`-9 = Not answered`<br/>`-1 = Item not applicable`|
+| **Description** |  |  |
+    
+
+
+
+```{r assign3, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w3','ELSA.wave_3_elsa_data_v4',variables=list('scfrd','scfrdg'), missings = TRUE)
+ELSA_w3 <- opal.execute(o,'ELSA_w3')
+```
+
+```{r local3, echo=F}
+vbl <- ELSA_w3$scfrd
+vbl_miss <- c(-9,-1)
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = "scfrd")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[2], caption = "Type of missing")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(ELSA_w3, aes(x=factor(scfrd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has got any friends?") + ylab("Frequency")
+vbl <- ELSA_w3$scfrdg
+vbl_miss <- c(-9,-1)
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = "scfrdg")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[2], caption = "Type of missing")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(ELSA_w3, aes(x=factor(scfrdg))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("How often the respondent meets up with their friends") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if scfrdg=1 then 1`
+* `if scfrdg=2 then 2`
+* `if scfrdg=3 then 3`
+* `if scfrdg=4 or 5 then 4`
+* `if scfrd=2 or scfrdg=6 then 5`
+* `-9 into 995`
+* `-1 into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo3}
+ELSA_ds_w3 <- tibble(id=ELSA_w3$id)
+
+ELSA_w3$scfrd <- car::recode(as.vector(ELSA_w3$scfrd), "NA='-999'")
+ELSA_w3$scfrdg <- car::recode(as.vector(ELSA_w3$scfrdg), "NA='-999'")
+
+ELSA_ds_w3$f_cont_fr <- c(NA) # I think it is required
+for(i in 1:dim(ELSA_w3)[1]){
+  if( ELSA_w3$scfrdg[i] == 1 ) { ELSA_ds_w3$f_cont_fr[i] = 1 }
+  else if( ELSA_w3$scfrdg[i] == 2 ) { ELSA_ds_w3$f_cont_fr[i] = 2 }
+  else if( ELSA_w3$scfrdg[i] == 3 ) { ELSA_ds_w3$f_cont_fr[i] = 3 }
+  else if( ELSA_w3$scfrdg[i] %in% c(4,5) ) { ELSA_ds_w3$f_cont_fr[i] = 4 }
+  else if( ELSA_w3$scfrdg[i] == 6 | ELSA_w3$scfrd[i] == 2 ) { ELSA_ds_w3$f_cont_fr[i] = 5 }
+  else if( ELSA_w3$scfrdg[i] == -9 | ELSA_w3$scfrd[i] == -9 ) { ELSA_ds_w3$f_cont_fr[i] = 995 }
+  else if( ELSA_w3$scfrdg[i] == -1 | ELSA_w3$scfrd[i] == -1 ) { ELSA_ds_w3$f_cont_fr[i] = 996 }
+}
+
+ELSA_ds_w3$f_cont_fr <- car::recode(as.vector(ELSA_ds_w3$f_cont_fr), "NA='999'")
+ELSA_ds_w3$f_cont_fr <- labelled(ELSA_ds_w3$f_cont_fr, labels = c("Daily/Almost daily"=1, "Once a week"=2, "Once or few times a month"=3, "Less than once a month"=4, "Never/No friends"=5, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript3, echo=F}
+vbl <- ELSA_ds_w3$f_cont_fr
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ELSA_ds_w3, aes(x=factor(f_cont_fr))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Frequency of face to face contacts with friends") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation3, echo=F}
+
+```
+
+
+### Wave 4
+
+#### Study-specific variable description
+
+
+
+| **Name** |`scfrd`|`scfrdg`|
+|-|-|-|
+| **Label** |`do you have any friends`|`How often the respondent meets up with their friends`|
+| **Table name** |`wave_4_elsa_data_v3`|`wave_4_elsa_data_v3`|
+| **Categories** |`1 = Yes`<br/>`2 = No`|`1 = Three or more times a week`<br/>`2 = Once or twice a week`<br/>`3 = Once or twice a month`<br/>`4 = Every few months`<br/>`5 = Once or twice a year`<br/>`6 = Less than once a year or never`|
+| **Missings**|`-9 = Not answered`<br/>`-1 = Item not applicable`|`-9 = Not answered`<br/>`-8 = Don't know`<br/>`-1 = Item not applicable`|
+| **Description** |  |  |
+    
+
+
+```{r assign4, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w4','ELSA.wave_4_elsa_data_v3',variables=list('scfrd','scfrdg'), missings = TRUE)
+ELSA_w4 <- opal.execute(o,'ELSA_w4')
+```
+
+```{r local4, echo=F}
+vbl <- ELSA_w4$scfrd
+vbl_miss <- c(-9,-1)
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = "scfrd")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[2], caption = "Type of missing")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(ELSA_w4, aes(x=factor(scfrd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has got any friends?") + ylab("Frequency")
+vbl <- ELSA_w4$scfrdg
+vbl_miss <- c(-9,-1,-8)
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = "scfrdg")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[2], caption = "Type of missing")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(ELSA_w4, aes(x=factor(scfrdg))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("How often the respondent meets up with their friends") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if scfrdg=1 then 1`
+* `if scfrdg=2 then 2`
+* `if scfrdg=3 then 3`
+* `if scfrdg=4 or 5 then 4`
+* `if scfrd=2 or scfrdg=6 then 5`
+* `-8 into 998`
+* `-9 into 995`
+* `-1 into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo4}
+ELSA_ds_w4 <- tibble(id=ELSA_w4$id)
+
+ELSA_w4$scfrd <- car::recode(as.vector(ELSA_w4$scfrd), "NA='-999'")
+ELSA_w4$scfrdg <- car::recode(as.vector(ELSA_w4$scfrdg), "NA='-999'")
+
+ELSA_ds_w4$f_cont_fr <- c(NA) # I think it is required
+for(i in 1:dim(ELSA_w4)[1]){
+  if( ELSA_w4$scfrdg[i] == 1 ) { ELSA_ds_w4$f_cont_fr[i] = 1 }
+  else if( ELSA_w4$scfrdg[i] == 2 ) { ELSA_ds_w4$f_cont_fr[i] = 2 }
+  else if( ELSA_w4$scfrdg[i] == 3 ) { ELSA_ds_w4$f_cont_fr[i] = 3 }
+  else if( ELSA_w4$scfrdg[i] %in% c(4,5) ) { ELSA_ds_w4$f_cont_fr[i] = 4 }
+  else if( ELSA_w4$scfrdg[i] == 6 | ELSA_w4$scfrd[i] == 2 ) { ELSA_ds_w4$f_cont_fr[i] = 5 }
+  else if( ELSA_w4$scfrdg[i] == -8 | ELSA_w4$scfrd[i] == -8 ) { ELSA_ds_w4$f_cont_fr[i] = 998 }
+  else if( ELSA_w4$scfrdg[i] == -9 | ELSA_w4$scfrd[i] == -9 ) { ELSA_ds_w4$f_cont_fr[i] = 995 }
+  else if( ELSA_w4$scfrdg[i] == -1 | ELSA_w4$scfrd[i] == -1 ) { ELSA_ds_w4$f_cont_fr[i] = 996 }
+}
+
+ELSA_ds_w4$f_cont_fr <- car::recode(as.vector(ELSA_ds_w4$f_cont_fr), "NA='999'")
+ELSA_ds_w4$f_cont_fr <- labelled(ELSA_ds_w4$f_cont_fr, labels = c("Daily/Almost daily"=1, "Once a week"=2, "Once or few times a month"=3, "Less than once a month"=4, "Never/No friends"=5, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript4, echo=F}
+vbl <- ELSA_ds_w4$f_cont_fr
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ELSA_ds_w4, aes(x=factor(f_cont_fr))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Frequency of face to face contacts with friends") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation4, echo=F}
+
+```
+
+
+### Wave 5
+
+#### Study-specific variable description
+
+
+  
+| **Name** |`scfrd`|`scfrdg`|
+|-|-|-|
+| **Label** |`do you have any friends`|`How often the respondent meets up with their friends`|
+| **Table name** |`wave_5_elsa_data_v4`|`wave_5_elsa_data_v4`|
+| **Categories** |`1 = Yes`<br/>`2 = No`|`1 = Three or more times a week`<br/>`2 = Once or twice a week`<br/>`3 = Once or twice a month`<br/>`4 = Every few months`<br/>`5 = Once or twice a year`<br/>`6 = Less than once a year or never`|
+| **Missings**|`-9 = Not answered`<br/>`-2 = Schedule not applicable`<br/>`-1 = Item not applicable`|`-9 = Not answered`<br/>`-8 = Don't know`<br/>`-2 = Schedule not applicable`<br/>`-1 = Item not applicable`|
+| **Description** |  |  |
+    
+
+
+  
+
+```{r assign5, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w5','ELSA.wave_5_elsa_data_v4',variables=list('scfrd','scfrdg'), missings = TRUE)
+ELSA_w5 <- opal.execute(o,'ELSA_w5')
+```
+
+```{r local5, echo=F}
+vbl <- ELSA_w5$scfrd
+vbl_miss <- c(-9,-1,-2)
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = "scfrd")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[2], caption = "Type of missing")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(ELSA_w5, aes(x=factor(scfrd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has got any friends?") + ylab("Frequency")
+vbl <- ELSA_w5$scfrdg
+vbl_miss <- c(-9,-8,-2,-1)
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = "scfrdg")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[2], caption = "Type of missing")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(ELSA_w5, aes(x=factor(scfrdg))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("How often the respondent meets up with their friends") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if scfrdg=1 then 1`
+* `if scfrdg=2 then 2`
+* `if scfrdg=3 then 3`
+* `if scfrdg=4 or 5 then 4`
+* `if scfrd=2 or scfrdg=6 then 5`
+* `-8 into 998`
+* `-9 into 995`
+* `-1 or -2 into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo5}
+ELSA_ds_w5 <- tibble(id=ELSA_w5$id)
+
+ELSA_w5$scfrd <- car::recode(as.vector(ELSA_w5$scfrd), "NA='-999'")
+ELSA_w5$scfrdg <- car::recode(as.vector(ELSA_w5$scfrdg), "NA='-999'")
+
+ELSA_ds_w5$f_cont_fr <- c(NA) # I think it is required
+for(i in 1:dim(ELSA_w5)[1]){
+  if( ELSA_w5$scfrdg[i] == 1 ) { ELSA_ds_w5$f_cont_fr[i] = 1 }
+  else if( ELSA_w5$scfrdg[i] == 2 ) { ELSA_ds_w5$f_cont_fr[i] = 2 }
+  else if( ELSA_w5$scfrdg[i] == 3 ) { ELSA_ds_w5$f_cont_fr[i] = 3 }
+  else if( ELSA_w5$scfrdg[i] %in% c(4,5) ) { ELSA_ds_w5$f_cont_fr[i] = 4 }
+  else if( ELSA_w5$scfrdg[i] == 6 | ELSA_w5$scfrd[i] == 2 ) { ELSA_ds_w5$f_cont_fr[i] = 5 }
+  else if( ELSA_w5$scfrdg[i] == -8 | ELSA_w5$scfrd[i] == -8 ) { ELSA_ds_w5$f_cont_fr[i] = 998 }
+  else if( ELSA_w5$scfrdg[i] == -9 | ELSA_w5$scfrd[i] == -9 ) { ELSA_ds_w5$f_cont_fr[i] = 995 }
+  else if( ELSA_w5$scfrdg[i] %in% c(-1,-2) | ELSA_w5$scfrd[i] %in% c(-1,-2) ) { ELSA_ds_w5$f_cont_fr[i] = 996 }
+}
+
+ELSA_ds_w5$f_cont_fr <- car::recode(as.vector(ELSA_ds_w5$f_cont_fr), "NA='999'")
+ELSA_ds_w5$f_cont_fr <- labelled(ELSA_ds_w5$f_cont_fr, labels = c("Daily/Almost daily"=1, "Once a week"=2, "Once or few times a month"=3, "Less than once a month"=4, "Never/No friends"=5, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript5, echo=F}
+vbl <- ELSA_ds_w5$f_cont_fr
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ELSA_ds_w5, aes(x=factor(f_cont_fr))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Frequency of face to face contacts with friends") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation5, echo=F}
+
+```
+
+
+### Wave 6
+
+#### Study-specific variable description
+
+
+  
+| **Name** |`scfrd`|`scfrdg`|
+|-|-|-|
+| **Label** |`do you have any friends`|`How often the respondent meets up with their friends`|
+| **Table name** |`wave_6_elsa_data_v2`|`wave_6_elsa_data_v2`|
+| **Categories** |`1 = Yes`<br/>`2 = No`|`1 = Three or more times a week`<br/>`2 = Once or twice a week`<br/>`3 = Once or twice a month`<br/>`4 = Every few months`<br/>`5 = Once or twice a year`<br/>`6 = Less than once a year or never`|
+| **Missings**|`-9 = Not answered`<br/>`-2 = Schedule not applicable`<br/>`-1 = Item not applicable`|`-9 = Not answered`<br/>`-8 = Don't know`<br/>`-2 = Schedule not applicable`<br/>`-1 = Item not applicable`|
+| **Description** |  |  |
+    
+
+```{r assign6, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w6','ELSA.wave_6_elsa_data_v2',variables=list('scfrd','scfrdg'), missings = TRUE)
+ELSA_w6 <- opal.execute(o,'ELSA_w6')
+```
+
+```{r local6, echo=F}
+vbl <- ELSA_w6$scfrd
+vbl_miss <- c(-9,-1,-2)
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = "scfrd")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[2], caption = "Type of missing")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(ELSA_w6, aes(x=factor(scfrd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has got any friends?") + ylab("Frequency")
+vbl <- ELSA_w6$scfrdg
+vbl_miss <- c(-9,-8,-2,-1)
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = "scfrdg")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[2], caption = "Type of missing")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(ELSA_w6, aes(x=factor(scfrdg))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("How often the respondent meets up with their friends") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if scfrdg=1 then 1`
+* `if scfrdg=2 then 2`
+* `if scfrdg=3 then 3`
+* `if scfrdg=4 or 5 then 4`
+* `if scfrd=2 or scfrdg=6 then 5`
+* `-8 into 998`
+* `-9 into 995`
+* `-1 or -2 into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo6}
+ELSA_ds_w6 <- tibble(id=ELSA_w6$id)
+
+ELSA_w6$scfrd <- car::recode(as.vector(ELSA_w6$scfrd), "NA='-999'")
+ELSA_w6$scfrdg <- car::recode(as.vector(ELSA_w6$scfrdg), "NA='-999'")
+
+ELSA_ds_w6$f_cont_fr <- c(NA) # I think it is required
+for(i in 1:dim(ELSA_w6)[1]){
+  if( ELSA_w6$scfrdg[i] == 1 ) { ELSA_ds_w6$f_cont_fr[i] = 1 }
+  else if( ELSA_w6$scfrdg[i] == 2 ) { ELSA_ds_w6$f_cont_fr[i] = 2 }
+  else if( ELSA_w6$scfrdg[i] == 3 ) { ELSA_ds_w6$f_cont_fr[i] = 3 }
+  else if( ELSA_w6$scfrdg[i] %in% c(4,5) ) { ELSA_ds_w6$f_cont_fr[i] = 4 }
+  else if( ELSA_w6$scfrdg[i] == 6 | ELSA_w6$scfrd[i] == 2 ) { ELSA_ds_w6$f_cont_fr[i] = 5 }
+  else if( ELSA_w6$scfrdg[i] == -8 | ELSA_w6$scfrd[i] == -8 ) { ELSA_ds_w6$f_cont_fr[i] = 998 }
+  else if( ELSA_w6$scfrdg[i] == -9 | ELSA_w6$scfrd[i] == -9 ) { ELSA_ds_w6$f_cont_fr[i] = 995 }
+  else if( ELSA_w6$scfrdg[i] %in% c(-1,-2) | ELSA_w6$scfrd[i] %in% c(-1,-2) ) { ELSA_ds_w6$f_cont_fr[i] = 996 }
+}
+
+ELSA_ds_w6$f_cont_fr <- car::recode(as.vector(ELSA_ds_w6$f_cont_fr), "NA='999'")
+ELSA_ds_w6$f_cont_fr <- labelled(ELSA_ds_w6$f_cont_fr, labels = c("Daily/Almost daily"=1, "Once a week"=2, "Once or few times a month"=3, "Less than once a month"=4, "Never/No friends"=5, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript6, echo=F}
+vbl <- ELSA_ds_w6$f_cont_fr
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ELSA_ds_w6, aes(x=factor(f_cont_fr))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Frequency of face to face contacts with friends") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation6, echo=F}
+
+```
+
+
+### Wave 7
+
+#### Study-specific variable description
+
+
+  
+| **Name** |`scfrd`|`scfrdh`|
+|-|-|-|
+| **Label** |`do you have any friends`|`How often the respondent meets up with their friends`|
+| **Table name** |`wave_7_elsa_data`|`wave_7_elsa_data`|
+| **Categories** |`1 = Yes`<br/>`2 = No`|`1 = Three or more times a week`<br/>`2 = Once or twice a week`<br/>`3 = Once or twice a month`<br/>`4 = Every few months`<br/>`5 = Once or twice a year`<br/>`6 = Less than once a year or never`|
+| **Missings**|`-9 = Not answered`<br/>`-2 = Schedule not applicable`<br/>`-1 = Item not applicable`|`-9 = Not answered`<br/>`-8 = Don't know`<br/>`-2 = Schedule not applicable`<br/>`-1 = Item not applicable`|
+| **Description** |  |  |
+    
+
+    
+
+```{r assign7, echo=F}
+opal.assign.table.tibble(o, 'ELSA_w7','ELSA.wave_7_elsa_data',variables=list('scfrd','scfrdh'), missings = TRUE)
+ELSA_w7 <- opal.execute(o,'ELSA_w7')
+```
+
+```{r local7, echo=F}
+vbl <- ELSA_w7$scfrd
+vbl_miss <- c(-9,-1,-2)
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = "scfrd")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[2], caption = "Type of missing")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(ELSA_w7, aes(x=factor(scfrd))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Has got any friends?") + ylab("Frequency")
+vbl <- ELSA_w7$scfrdh
+vbl_miss <- c(-9,-8,-2,-1)
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = "scfrdh")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[2], caption = "Type of missing")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(ELSA_w7, aes(x=factor(scfrdh))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("How often the respondent meets up with their friends") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `if scfrdh=1 then 1`
+* `if scfrdh=2 then 2`
+* `if scfrdh=3 then 3`
+* `if scfrdh=4 or 5 then 4`
+* `if scfrd=2 or scfrdh=6 then 5`
+* `-8 into 998`
+* `-9 into 995`
+* `-1 or -2 into 996`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo7}
+ELSA_ds_w7 <- tibble(id=ELSA_w7$id)
+
+ELSA_w7$scfrd <- car::recode(as.vector(ELSA_w7$scfrd), "NA='-999'")
+ELSA_w7$scfrdh <- car::recode(as.vector(ELSA_w7$scfrdh), "NA='-999'")
+
+ELSA_ds_w7$f_cont_fr <- c(NA) # I think it is required
+for(i in 1:dim(ELSA_w7)[1]){
+  if( ELSA_w7$scfrdh[i] == 1 ) { ELSA_ds_w7$f_cont_fr[i] = 1 }
+  else if( ELSA_w7$scfrdh[i] == 2 ) { ELSA_ds_w7$f_cont_fr[i] = 2 }
+  else if( ELSA_w7$scfrdh[i] == 3 ) { ELSA_ds_w7$f_cont_fr[i] = 3 }
+  else if( ELSA_w7$scfrdh[i] %in% c(4,5) ) { ELSA_ds_w7$f_cont_fr[i] = 4 }
+  else if( ELSA_w7$scfrdh[i] == 6 | ELSA_w7$scfrd[i] == 2 ) { ELSA_ds_w7$f_cont_fr[i] = 5 }
+  else if( ELSA_w7$scfrdh[i] == -8 | ELSA_w7$scfrd[i] == -8 ) { ELSA_ds_w7$f_cont_fr[i] = 998 }
+  else if( ELSA_w7$scfrdh[i] == -9 | ELSA_w7$scfrd[i] == -9 ) { ELSA_ds_w7$f_cont_fr[i] = 995 }
+  else if( ELSA_w7$scfrdh[i] %in% c(-1,-2) | ELSA_w7$scfrd[i] %in% c(-1,-2) ) { ELSA_ds_w7$f_cont_fr[i] = 996 }
+}
+
+ELSA_ds_w7$f_cont_fr <- car::recode(as.vector(ELSA_ds_w7$f_cont_fr), "NA='999'")
+ELSA_ds_w7$f_cont_fr <- labelled(ELSA_ds_w7$f_cont_fr, labels = c("Daily/Almost daily"=1, "Once a week"=2, "Once or few times a month"=3, "Less than once a month"=4, "Never/No friends"=5, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript7, echo=F}
+vbl <- ELSA_ds_w7$f_cont_fr
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ELSA_ds_w7, aes(x=factor(f_cont_fr))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Frequency of face to face contacts with friends") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation7, echo=F}
+
+```
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
+
+
+
+
+```{r helpfunctions, echo=F}
+
+
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles with categorical data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Labelling of categories (for categorical variables, only non-missing values)
+    aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:5])
+  # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+# Creation of summary tables for categorical data
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of columns with categories and labels
+  t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+  }
+  # Add sample size for each wave/population
+  t.hds[16,] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+  )
+  # Add wave/population names
+  names(t.hds)<-c("val", "label",lnames)
+  return(t.hds)
+  
+}
+
+# Creation of trajectories table for each population
+
+trajectories <- function(m.hds,vbl_name){
+  
+  # First wave data
+  dbb <- m.hds[[1]][,c("id",vbl_name)]
+  # Merge with next waves data
+  for(ind in 2:length(m.hds)){
+    dbb <- merge(dbb, m.hds[[ind]][,c("id",vbl_name)], by = "id", suffixes = c("", paste0(".",names(m.hds)[ind])), all = T)
+  }
+  names(dbb) <- c("id", names(m.hds))
+  
+  # Glue individual data through all waves into trajectories
+  v.dbb <- dbb[,2]
+  for(ind in 2:length(m.hds)){
+    v.dbb <- paste(v.dbb,dbb[,ind+1],sep="")
+  }
+  # Trajectories and frequencies
+  f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+  return(f.dbb)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
+}
+
+```
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+elsa.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"), w3 = c("w3","W3"), w4 = c("w4","W4"), w5 = c("w5","W5"), w6 = c("w6","W6"), w7 = c("w7","W7"))
+
+# Consider only harmonised waves
+l.hds <- lapply(elsa.cw, function(wname) if(exists(paste0("ELSA_ds_",wname[1]))){wname = list(get(paste0("ELSA_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb[f.dbb[,3]>=0.3,]))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+```
+
+
+
+# Quality estimation
+[Comments on the quality of the new harmonised variable.]
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```

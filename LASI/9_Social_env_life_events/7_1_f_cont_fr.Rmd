@@ -1,0 +1,130 @@
+---
+title: "Frequency of face to face and phone contacts with friends"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/f_cont_frDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/f_cont_frDS.R')
+```
+
+# Data process
+
+## India
+
+### Wave 1 
+
+#### Study-specific variable description
+
+
+| **Name** |`fs325`|`fs326`|
+|-|-|-|
+| **Label** |`do you have friends`|`meet up with friends`|
+| **Table name** |`LASI-Pilot_all`|`LASI-Pilot_all`|
+| **Categories** |`1	= Yes`<br/>`2	= No`|`1 = daily`<br/>`2 = three or more times a week`<br/>`3 = once or twice a week`<br/>`4 = once or twice a month`<br/>`5 = every few months`<br/>`6 = once or twice a year`<br/>`7 = less than once a year or never`<br/>`8 = never`|
+| **Missings** |  |`9 = dk`<br/>`10 = rf`|
+| **Description** |  |  |
+
+
+
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'LASI_w1_f_cont_fr','LASI.LASI-Pilot_all', variables=list('fs325','fs326'), missings = TRUE)
+LASI_w1_f_cont_fr <- opal.execute(o,'LASI_w1_f_cont_fr')
+```
+
+```{r local1, echo=F}
+
+vari <- LASI_w1_f_cont_fr$fs325
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "fs325")
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(LASI_w1_f_cont_fr, aes(x=factor(fs325))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- LASI_w1_f_cont_fr$fs326
+vbl_miss <- c(9,10)
+kable(Categorical_summary(vari, missing_values = vbl_miss)[3], caption = "fs326")
+kable(Categorical_summary(vari, missing_values = vbl_miss)[2], caption = "Type of missing")
+kable(Categorical_summary(vari, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(LASI_w1_f_cont_fr, aes(x=factor(fs326))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `fs326=1 or 2 into 1`
+* `fs326=3 into 2`
+* `fs326=4 into 3`
+* `fs326=5 or 6 into 4`
+* `fs325=2 or fs326=7 or 8 into 5`
+* `9 into 998`
+* `10 into 997`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo1}
+LASI_ds_w1 <- tibble(id=LASI_w1_f_cont_fr$id)
+
+LASI_w1_f_cont_fr$fs325 <- car::recode(as.vector(LASI_w1_f_cont_fr$fs325), "NA='-999'")
+LASI_w1_f_cont_fr$fs326 <- car::recode(as.vector(LASI_w1_f_cont_fr$fs326), "NA='-999'")
+
+LASI_ds_w1$f_cont_fr <- c(NA) # I think it is required
+for(i in 1:dim(LASI_w1_f_cont_fr)[1]){
+  if( LASI_w1_f_cont_fr$fs326[i] %in% c(1,2) ){ LASI_ds_w1$f_cont_fr[i] = 1 }
+  else if( LASI_w1_f_cont_fr$fs326[i] == 3 ) { LASI_ds_w1$f_cont_fr[i] = 2 }
+  else if( LASI_w1_f_cont_fr$fs326[i] == 4 ){ LASI_ds_w1$f_cont_fr[i] = 3 }
+  else if( LASI_w1_f_cont_fr$fs326[i] %in% c(5,6) ){ LASI_ds_w1$f_cont_fr[i] = 4 }
+  else if( LASI_w1_f_cont_fr$fs326[i] %in% c(7,8) | LASI_w1_f_cont_fr$fs325[i] == 2 ){ LASI_ds_w1$f_cont_fr[i] = 5 }
+  else if( LASI_w1_f_cont_fr$fs326[i] == 9 ){ LASI_ds_w1$f_cont_fr[i] = 998 }
+  else if( LASI_w1_f_cont_fr$fs326[i] == 10 ){ LASI_ds_w1$f_cont_fr[i] = 997 }
+}
+
+LASI_ds_w1$f_cont_fr <- car::recode(as.vector(LASI_ds_w1$f_cont_fr), "NA='999'")
+LASI_ds_w1$f_cont_fr <- labelled(LASI_ds_w1$f_cont_fr, labels = c("Daily/Almost daily"=1, "Once a week"=2, "Once or few times a month"=3, "Less than once a month"=4, "Never/No friends"=5, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=F}
+vari <- LASI_ds_w1$f_cont_fr
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(LASI_ds_w1, aes(x=factor(f_cont_fr))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=F}
+
+```
+
+
+```{r save, echo=FALSE}
+f_cont_fr <- LASI_ds_w1
+save(f_cont_fr, file = "../RData/w1/f_cont_fr.RData")
+rm(f_cont_fr)
+
+
+```
+
+
+# Quality estimation
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
+
