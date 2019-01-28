@@ -35,43 +35,53 @@ source('../../_DS_Rmd/current_smokingDS.R')
 
 #### Study-specific variable description
 
-| **Name** | `ht206s1` | `ht206s2` |`ht206s3` |
-|-|-|-|-|
-| **Label** | `currently smoke or quit` | `currently smoke or quit` | `currently smoke or quit` |
-| **Table name** | `LASI-Pilot_all` | `LASI-Pilot_all` | `LASI-Pilot_all` |
-| **Categories:**| `1 = yes, i chew or sniff tobacco products` | `2 = yes, i smoke tobacco products` | `3 = no, i quit` |
-| **Missings:**| `NA` | `NA` | `NA` |
-| **Description** |  | | |
+| **Name** | `ht206s1` | `ht206s2` |`ht206s3` | `ht205` |
+|-|-|-|-|-|
+| **Label** | `currently smoke or quit` | `currently smoke or quit` | `currently smoke or quit` | `Have you ever smoked tobacco [cigarette, bidi, cigar, hookah] or used smokeless tobacco [such as chewing tobacco, gutka, pan masala, etc.]?` |
+| **Table name** | `LASI-Pilot_all` | `LASI-Pilot_all` | `LASI-Pilot_all` | `LASI-Pilot_all` |
+| **Categories** | `1 = yes, i chew or sniff tobacco products` | `2 = yes, i smoke tobacco products` | `3 = no, i quit` | `1 = yes` <br/> `2 = no` |
+| **Missings** | `NA` | `NA` | `NA` | `NA` |
+| **Description** |  |  |  |  |
 
 
 ```{r assign w1, echo=F}
-opal.assign.table.tibble(o, 'LASI_w1','LASI.LASI-Pilot_all', variables=list('ht206s1','ht206s2','ht206s3'), missings = TRUE)
+opal.assign.table.tibble(o, 'LASI_w1','LASI.LASI-Pilot_all', variables=list('ht206s1','ht206s2','ht206s3','ht205'), missings = TRUE)
 LASI_w1 <- opal.execute(o,'LASI_w1')
 ```
 
 ```{r local w1, echo=F}
 vbl <- LASI_w1$ht206s1
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "ht206s1")
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = attributes(vbl)$`spss::shortName`)
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(LASI_w1, aes(x=factor(ht206s1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+ggplot(LASI_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- LASI_w1$ht206s2
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "ht206s2")
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = attributes(vbl)$`spss::shortName`)
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(LASI_w1, aes(x=factor(ht206s2))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+ggplot(LASI_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- LASI_w1$ht206s3
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = "ht206s3")
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = attributes(vbl)$`spss::shortName`)
 kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
-ggplot(LASI_w1, aes(x=factor(ht206s3))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+ggplot(LASI_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- LASI_w1$ht205
+kable(Categorical_summary(vbl, missing_values = NA)[2], caption = attributes(vbl)$`spss::shortName`)
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(LASI_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+kable(table(LASI_w1$ht205,LASI_w1$ht206s1,useNA = "ifany"))
+kable(table(LASI_w1$ht205,LASI_w1$ht206s2,useNA = "ifany"))
+
 ```
 
 #### Harmonisation algorithm
 
-To compute `current_smoking` from the study-specific variable it has to be recoded as follows:
+To compute `current_smoking` from the study-specific variables `ht206` it has to be recoded as follows:
 
 * `1,2 into 1` 
 * `3 into 0`
+* `ht205 == 2 into 0`
 * `3 & ( 1 | 2 ) into 991`
 * `NA into 999`
 
@@ -83,6 +93,8 @@ LASI_ds_w1$current_smoking <- rep(999,length(LASI_ds_w1$id))
 LASI_ds_w1$current_smoking[which((LASI_w1$ht206s1==1)|(LASI_w1$ht206s2==2))] <- 1
 LASI_ds_w1$current_smoking[which(LASI_w1$ht206s3==3)] <- 0
 LASI_ds_w1$current_smoking[which((LASI_w1$ht206s3==3)&((LASI_w1$ht206s1==1)|(LASI_w1$ht206s2==2)))] <- 991
+LASI_ds_w1$current_smoking[which(LASI_w1$ht205==2)] <- 0
+
 ```
 
 #### Statistical description of the new harmonised variable
@@ -96,12 +108,7 @@ ggplot(LASI_ds_w1, aes(x=factor(current_smoking))) + geom_bar(stat="count", widt
 
 #### Validation
 ```{r crosstabulation w1, echo=F}
-AfterH <- table(LASI_ds_w1$current_smoking)
-X<-c(sum(na.omit(LASI_w1$ht206s3==3))-sum(na.omit(LASI_w1$ht206s3==3&(LASI_w1$ht206s1==1|LASI_w1$ht206s2==2))),sum(na.omit(LASI_w1$ht206s1==1),na.omit(LASI_w1$ht206s2==2))-sum(na.omit(LASI_w1$ht206s1==1&LASI_w1$ht206s2==2))-sum(na.omit(LASI_w1$ht206s3==3&(LASI_w1$ht206s1==1|LASI_w1$ht206s2==2))),sum(na.omit(LASI_w1$ht206s3==3&(LASI_w1$ht206s1==1|LASI_w1$ht206s2==2))))
-BeforeH <- c(X[1:3],length(LASI_w1$ht206s1)-sum(X))
-C <- rbind(BeforeH,AfterH)
-colnames(C) <- c("3->0","1,2->1","3&(1|2)->991","NA->999") 
-kable(C)
+
 ```
 
 ```{r importOPAL w1, echo=F}
