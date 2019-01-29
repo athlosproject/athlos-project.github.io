@@ -61,6 +61,36 @@ comp_age <- function(y_birth, m_birth, a_year, a_month, miss = miss_values_vecto
 
 }
 
+
+
+#function to compute the age
+compd_age <- function(y_birth, m_birth, d_birth, a_year, a_month, a_day, miss = miss_values_vector){
+  N <- length(y_birth)
+  #first, it's computed the age of all
+  age <- rep(NA,N)
+  age[which(a_month>=m_birth)] <- a_year[which(a_month>=m_birth)]-y_birth[which(a_month>=m_birth)]
+  age[which(a_month<m_birth | (a_month==m_birth & a_day<d_birth & d_birth<=31))] <- (a_year[which(a_month<m_birth | (a_month==m_birth & a_day<d_birth & d_birth<=31))]-y_birth[which(a_month<m_birth | (a_month==m_birth & a_day<d_birth & d_birth<=31))])-1
+  age[which(m_birth>12)] <- a_year[which(m_birth>12)]-y_birth[which(m_birth>12)]
+  
+  #It's emphasized the individues having missing
+  
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(y_birth==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(a_year==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+  
+  
+  age
+
+}
+
 ```
 
 ## ALSA
@@ -70,12 +100,12 @@ comp_age <- function(y_birth, m_birth, a_year, a_month, miss = miss_values_vecto
 
 #### Study-specific variable description
 
-| **Name** |`ybirth`|`mbirth`|`yintw`|`mintw`|
-|-|-|-|-|-|
-| **Label** |`Year of birth`|`Month of birth`|`Year of interview`|`Month of interview`|
-| **Table name** |`alsa_w1_hd`|`alsa_w1_hd`|`alsa_w1_hd`|`alsa_w1_hd`|
-| **Missings** |  |  |  |  |
-| **Description** |  |  |  |  |
+| **Name** |`ybirth`|`mbirth`|`dbirth`|`yintw`|`mintw`|`dintw`|
+|-|-|-|-|-|-|-|
+| **Label** |`Year of birth`|`Month of birth`|`Day of birth`|`Year of interview`|`Month of interview`|`Day of interview`|
+| **Table name** |`alsa_w1_hd`|`alsa_w1_hd`|`alsa_w1_hd`|`alsa_w1_hd`|`alsa_w1_hd`|`alsa_w1_hd`|
+| **Missings** |  |  |  |  |  |  |
+| **Description** |  |  |  |  |  |  |
 
 
 ```{r assign1, echo=F}
@@ -84,13 +114,19 @@ load(paste0(datafolder,"w1/ybirth",".RData"))
 load(paste0(datafolder,"w1/yintw",".RData"))
 load(paste0(datafolder,"w1/mbirth",".RData"))
 load(paste0(datafolder,"w1/mintw",".RData"))
+load(paste0(datafolder,"w1/dbirth",".RData"))
+load(paste0(datafolder,"w1/dintw",".RData"))
 ALSA <- left_join(ybirth,yintw, by="id")
 ALSA <- left_join(ALSA,mbirth, by="id")
 ALSA <- left_join(ALSA,mintw, by="id")
+ALSA <- left_join(ALSA,dbirth, by="id")
+ALSA <- left_join(ALSA,dintw, by="id")
 rm(ybirth)
 rm(yintw)
 rm(mbirth)
 rm(mintw)
+rm(dbirth)
+rm(dintw)
 
 ```
 
@@ -106,6 +142,11 @@ kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mbirth")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
+vari <- ALSA$dbirth
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dbirth")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 vari <- ALSA$yintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "yintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
@@ -115,6 +156,11 @@ vari <- ALSA$mintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- ALSA$dintw
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dintw")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
 ```
 
@@ -128,9 +174,9 @@ The harmonized variable is :
 ```{r harmo1}
 
 ALSA_ds_w1 <- tibble(id=ALSA$id)
-ALSA_ds_w1$age <- comp_age(ALSA$ybirth,ALSA$mbirth,ALSA$yintw,ALSA$mintw)
-rm(ALSA)
-
+ALSA$age1 <- compd_age(ALSA$ybirth,ALSA$mbirth,ALSA$dbirth,ALSA$yintw,ALSA$mintw,ALSA$dintw)
+ALSA_ds_w1$age <- ALSA$age1
+  
 ```
 
 #### Statistics of the new harmonised variable
@@ -144,7 +190,22 @@ ggplot(ALSA_ds_w1, aes(age)) + geom_histogram(stat="count", fill="steelblue") + 
 ```
 
 #### Validation
+
+On 31 December 1992 all ages are 65 (70 for participants) or more as claimed in the cohort profile.
 ```{r crosstabulation1, echo=F}
+
+ALSA$mintw <- 31
+ALSA$dintw <- 12
+ALSA$age2 <- compd_age(ALSA$ybirth,ALSA$mbirth,ALSA$dbirth,ALSA$yintw,ALSA$mintw,ALSA$dintw)
+
+vari <- ALSA$age2
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = "age at 31/12/1992")
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(ALSA_ds_w1, aes(vari)) + geom_histogram(stat="count", fill="steelblue") + xlab("age at 31/12/1992") + ylab("Frequency") 
+
+kable(frq(ALSA$age2-ALSA$age1))
+rm(ALSA)
 ```
 
 
@@ -157,12 +218,12 @@ ggplot(ALSA_ds_w1, aes(age)) + geom_histogram(stat="count", fill="steelblue") + 
 
 #### Study-specific variable description
 
-| **Name** |`ybirth`|`mbirth`|`yintw`|`mintw`|
-|-|-|-|-|-|
-| **Label** |`Year of birth`|`Month of birth`|`Year of interview`|`Month of interview`|
-| **Table name** |`alsa_w2_hd`|`alsa_w2_hd`|`alsa_w2_hd`|`alsa_w2_hd`|
-| **Missings** |  |  |  |  |
-| **Description** |  |  |  |  |
+| **Name** |`ybirth`|`mbirth`|`dbirth`|`yintw`|`mintw`|`dintw`|
+|-|-|-|-|-|-|-|
+| **Label** |`Year of birth`|`Month of birth`|`Day of birth`|`Year of interview`|`Month of interview`|`Day of interview`|
+| **Table name** |`alsa_w2_hd`|`alsa_w2_hd`|`alsa_w2_hd`|`alsa_w2_hd`|`alsa_w2_hd`|`alsa_w2_hd`|
+| **Missings** |  |  |  |  |  |  |
+| **Description** |  |  |  |  |  |  |
 
 
 ```{r assign2, echo=F}
@@ -171,13 +232,19 @@ load(paste0(datafolder,"w2/ybirth",".RData"))
 load(paste0(datafolder,"w2/yintw",".RData"))
 load(paste0(datafolder,"w2/mbirth",".RData"))
 load(paste0(datafolder,"w2/mintw",".RData"))
+load(paste0(datafolder,"w2/dbirth",".RData"))
+load(paste0(datafolder,"w2/dintw",".RData"))
 ALSA <- left_join(ybirth,yintw, by="id")
 ALSA <- left_join(ALSA,mbirth, by="id")
 ALSA <- left_join(ALSA,mintw, by="id")
+ALSA <- left_join(ALSA,dbirth, by="id")
+ALSA <- left_join(ALSA,dintw, by="id")
 rm(ybirth)
 rm(yintw)
 rm(mbirth)
 rm(mintw)
+rm(dbirth)
+rm(dintw)
 
 ```
 
@@ -193,6 +260,11 @@ kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mbirth")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
+vari <- ALSA$dbirth
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dbirth")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 vari <- ALSA$yintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "yintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
@@ -202,6 +274,11 @@ vari <- ALSA$mintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- ALSA$dintw
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dintw")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
 ```
 
@@ -214,7 +291,7 @@ The harmonized variable is :
 
 ```{r harmo2}
 ALSA_ds_w2 <- tibble(id=ALSA$id)
-ALSA_ds_w2$age <- comp_age(ALSA$ybirth,ALSA$mbirth,ALSA$yintw,ALSA$mintw)
+ALSA_ds_w2$age <- compd_age(ALSA$ybirth,ALSA$mbirth,ALSA$dbirth,ALSA$yintw,ALSA$mintw,ALSA$dintw)
 rm(ALSA)
 
 ```
@@ -244,12 +321,12 @@ ggplot(ALSA_ds_w2, aes(age)) + geom_histogram(stat="count", fill="steelblue") + 
 
 #### Study-specific variable description
 
-| **Name** |`ybirth`|`mbirth`|`yintw`|`mintw`|
-|-|-|-|-|-|
-| **Label** |`Year of birth`|`Month of birth`|`Year of interview`|`Month of interview`|
-| **Table name** |`alsa_w3_hd`|`alsa_w3_hd`|`alsa_w3_hd`|`alsa_w3_hd`|
-| **Missings** |  |  |  |  |
-| **Description** |  |  |  |  |
+| **Name** |`ybirth`|`mbirth`|`dbirth`|`yintw`|`mintw`|`dintw`|
+|-|-|-|-|-|-|-|
+| **Label** |`Year of birth`|`Month of birth`|`Day of birth`|`Year of interview`|`Month of interview`|`Day of interview`|
+| **Table name** |`alsa_w3_hd`|`alsa_w3_hd`|`alsa_w3_hd`|`alsa_w3_hd`|`alsa_w3_hd`|`alsa_w3_hd`|
+| **Missings** |  |  |  |  |  |  |
+| **Description** |  |  |  |  |  |  |
 
 
 ```{r assign3, echo=F}
@@ -258,13 +335,19 @@ load(paste0(datafolder,"w3/ybirth",".RData"))
 load(paste0(datafolder,"w3/yintw",".RData"))
 load(paste0(datafolder,"w3/mbirth",".RData"))
 load(paste0(datafolder,"w3/mintw",".RData"))
+load(paste0(datafolder,"w3/dbirth",".RData"))
+load(paste0(datafolder,"w3/dintw",".RData"))
 ALSA <- left_join(ybirth,yintw, by="id")
 ALSA <- left_join(ALSA,mbirth, by="id")
 ALSA <- left_join(ALSA,mintw, by="id")
+ALSA <- left_join(ALSA,dbirth, by="id")
+ALSA <- left_join(ALSA,dintw, by="id")
 rm(ybirth)
 rm(yintw)
 rm(mbirth)
 rm(mintw)
+rm(dbirth)
+rm(dintw)
 
 ```
 
@@ -280,6 +363,11 @@ kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mbirth")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
+vari <- ALSA$dbirth
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dbirth")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 vari <- ALSA$yintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "yintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
@@ -289,6 +377,11 @@ vari <- ALSA$mintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- ALSA$dintw
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dintw")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
 ```
 
@@ -301,7 +394,7 @@ The harmonized variable is :
 
 ```{r harmo3}
 ALSA_ds_w3 <- tibble(id=ALSA$id)
-ALSA_ds_w3$age <- comp_age(ALSA$ybirth,ALSA$mbirth,ALSA$yintw,ALSA$mintw)
+ALSA_ds_w3$age <- compd_age(ALSA$ybirth,ALSA$mbirth,ALSA$dbirth,ALSA$yintw,ALSA$mintw,ALSA$dintw)
 rm(ALSA)
 
 ```
@@ -330,12 +423,13 @@ ggplot(ALSA_ds_w3, aes(age)) + geom_histogram(stat="count", fill="steelblue") + 
 
 #### Study-specific variable description
 
-| **Name** |`ybirth`|`mbirth`|`yintw`|`mintw`|
-|-|-|-|-|-|
-| **Label** |`Year of birth`|`Month of birth`|`Year of interview`|`Month of interview`|
-| **Table name** |`alsa_w4_hd`|`alsa_w4_hd`|`alsa_w4_hd`|`alsa_w4_hd`|
-| **Missings** |  |  |  |  |
-| **Description** |  |  |  |  |
+| **Name** |`ybirth`|`mbirth`|`dbirth`|`yintw`|`mintw`|`dintw`|
+|-|-|-|-|-|-|-|
+| **Label** |`Year of birth`|`Month of birth`|`Day of birth`|`Year of interview`|`Month of interview`|`Day of interview`|
+| **Table name** |`alsa_w4_hd`|`alsa_w4_hd`|`alsa_w4_hd`|`alsa_w4_hd`|`alsa_w4_hd`|`alsa_w4_hd`|
+| **Missings** |  |  |  |  |  |  |
+| **Description** |  |  |  |  |  |  |
+
 
 
 ```{r assign4, echo=F}
@@ -344,13 +438,19 @@ load(paste0(datafolder,"w4/ybirth",".RData"))
 load(paste0(datafolder,"w4/yintw",".RData"))
 load(paste0(datafolder,"w4/mbirth",".RData"))
 load(paste0(datafolder,"w4/mintw",".RData"))
+load(paste0(datafolder,"w4/dbirth",".RData"))
+load(paste0(datafolder,"w4/dintw",".RData"))
 ALSA <- left_join(ybirth,yintw, by="id")
 ALSA <- left_join(ALSA,mbirth, by="id")
 ALSA <- left_join(ALSA,mintw, by="id")
+ALSA <- left_join(ALSA,dbirth, by="id")
+ALSA <- left_join(ALSA,dintw, by="id")
 rm(ybirth)
 rm(yintw)
 rm(mbirth)
 rm(mintw)
+rm(dbirth)
+rm(dintw)
 
 
 ```
@@ -367,6 +467,11 @@ kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mbirth")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
+vari <- ALSA$dbirth
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dbirth")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 vari <- ALSA$yintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "yintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
@@ -376,6 +481,11 @@ vari <- ALSA$mintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- ALSA$dintw
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dintw")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
 ```
 
@@ -388,7 +498,7 @@ The harmonized variable is :
 
 ```{r harmo4}
 ALSA_ds_w4 <- tibble(id=ALSA$id)
-ALSA_ds_w4$age <- comp_age(ALSA$ybirth,ALSA$mbirth,ALSA$yintw,ALSA$mintw)
+ALSA_ds_w4$age <- compd_age(ALSA$ybirth,ALSA$mbirth,ALSA$dbirth,ALSA$yintw,ALSA$mintw,ALSA$dintw)
 rm(ALSA)
 ```
 
@@ -416,12 +526,12 @@ ggplot(ALSA_ds_w4, aes(age)) + geom_histogram(stat="count", fill="steelblue") + 
 
 #### Study-specific variable description
 
-| **Name** |`ybirth`|`mbirth`|`yintw`|`mintw`|
-|-|-|-|-|-|
-| **Label** |`Year of birth`|`Month of birth`|`Year of interview`|`Month of interview`|
-| **Table name** |`alsa_w5_hd`|`alsa_w5_hd`|`alsa_w5_hd`|`alsa_w5_hd`|
-| **Missings** |  |  |  |  |
-| **Description** |  |  |  |  |
+| **Name** |`ybirth`|`mbirth`|`dbirth`|`yintw`|`mintw`|`dintw`|
+|-|-|-|-|-|-|-|
+| **Label** |`Year of birth`|`Month of birth`|`Day of birth`|`Year of interview`|`Month of interview`|`Day of interview`|
+| **Table name** |`alsa_w5_hd`|`alsa_w5_hd`|`alsa_w5_hd`|`alsa_w5_hd`|`alsa_w5_hd`|`alsa_w5_hd`|
+| **Missings** |  |  |  |  |  |  |
+| **Description** |  |  |  |  |  |  |
 
 
 
@@ -431,13 +541,19 @@ load(paste0(datafolder,"w5/ybirth",".RData"))
 load(paste0(datafolder,"w5/yintw",".RData"))
 load(paste0(datafolder,"w5/mbirth",".RData"))
 load(paste0(datafolder,"w5/mintw",".RData"))
+load(paste0(datafolder,"w5/dbirth",".RData"))
+load(paste0(datafolder,"w5/dintw",".RData"))
 ALSA <- left_join(ybirth,yintw, by="id")
 ALSA <- left_join(ALSA,mbirth, by="id")
 ALSA <- left_join(ALSA,mintw, by="id")
+ALSA <- left_join(ALSA,dbirth, by="id")
+ALSA <- left_join(ALSA,dintw, by="id")
 rm(ybirth)
 rm(yintw)
 rm(mbirth)
 rm(mintw)
+rm(dbirth)
+rm(dintw)
 
 
 ```
@@ -454,6 +570,11 @@ kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mbirth")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
+vari <- ALSA$dbirth
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dbirth")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 vari <- ALSA$yintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "yintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
@@ -463,6 +584,11 @@ vari <- ALSA$mintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- ALSA$dintw
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dintw")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -474,7 +600,7 @@ The harmonized variable is :
 
 ```{r harmo5}
 ALSA_ds_w5 <- tibble(id=ALSA$id)
-ALSA_ds_w5$age <- comp_age(ALSA$ybirth,ALSA$mbirth,ALSA$yintw,ALSA$mintw)
+ALSA_ds_w5$age <- compd_age(ALSA$ybirth,ALSA$mbirth,ALSA$dbirth,ALSA$yintw,ALSA$mintw,ALSA$dintw)
 rm(ALSA)
 ```
 
@@ -503,12 +629,12 @@ ggplot(ALSA_ds_w5, aes(age)) + geom_histogram(stat="count", fill="steelblue") + 
 
 #### Study-specific variable description
 
-| **Name** |`ybirth`|`mbirth`|`yintw`|`mintw`|
-|-|-|-|-|-|
-| **Label** |`Year of birth`|`Month of birth`|`Year of interview`|`Month of interview`|
-| **Table name** |`alsa_w6_hd`|`alsa_w6_hd`|`alsa_w6_hd`|`alsa_w6_hd`|
-| **Missings** |  |  |  |  |
-| **Description** |  |  |  |  |
+| **Name** |`ybirth`|`mbirth`|`dbirth`|`yintw`|`mintw`|`dintw`|
+|-|-|-|-|-|-|-|
+| **Label** |`Year of birth`|`Month of birth`|`Day of birth`|`Year of interview`|`Month of interview`|`Day of interview`|
+| **Table name** |`alsa_w6_hd`|`alsa_w6_hd`|`alsa_w6_hd`|`alsa_w6_hd`|`alsa_w6_hd`|`alsa_w6_hd`|
+| **Missings** |  |  |  |  |  |  |
+| **Description** |  |  |  |  |  |  |
 
 
 
@@ -519,13 +645,19 @@ load(paste0(datafolder,"w6/ybirth",".RData"))
 load(paste0(datafolder,"w6/yintw",".RData"))
 load(paste0(datafolder,"w6/mbirth",".RData"))
 load(paste0(datafolder,"w6/mintw",".RData"))
+load(paste0(datafolder,"w6/dbirth",".RData"))
+load(paste0(datafolder,"w6/dintw",".RData"))
 ALSA <- left_join(ybirth,yintw, by="id")
 ALSA <- left_join(ALSA,mbirth, by="id")
 ALSA <- left_join(ALSA,mintw, by="id")
+ALSA <- left_join(ALSA,dbirth, by="id")
+ALSA <- left_join(ALSA,dintw, by="id")
 rm(ybirth)
 rm(yintw)
 rm(mbirth)
 rm(mintw)
+rm(dbirth)
+rm(dintw)
 
 
 
@@ -543,6 +675,11 @@ kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mbirth")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
+vari <- ALSA$dbirth
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dbirth")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 vari <- ALSA$yintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "yintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
@@ -552,6 +689,11 @@ vari <- ALSA$mintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- ALSA$dintw
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dintw")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -563,7 +705,7 @@ The harmonized variable is :
 
 ```{r harmo6}
 ALSA_ds_w6 <- tibble(id=ALSA$id)
-ALSA_ds_w6$age <- comp_age(ALSA$ybirth,ALSA$mbirth,ALSA$yintw,ALSA$mintw)
+ALSA_ds_w6$age <- compd_age(ALSA$ybirth,ALSA$mbirth,ALSA$dbirth,ALSA$yintw,ALSA$mintw,ALSA$dintw)
 rm(ALSA)
 ```
 
@@ -592,13 +734,13 @@ ggplot(ALSA_ds_w6, aes(age)) + geom_histogram(stat="count", fill="steelblue") + 
 
 #### Study-specific variable description
 
-| **Name** |`ybirth`|`mbirth`|`yintw`|`mintw`|`living_status`|
-|-|-|-|-|-|-|
-| **Label** |`Year of birth`|`Month of birth`|`Year of interview`|`Month of interview`|`Living status`|
-| **Table name** |`alsa_w7_hd`|`alsa_w7_hd`|`alsa_w7_hd`|`alsa_w7_hd`|`alsa_w7_hd`|
-| **Categories** |`continuous`|`continuous`|`continuous`|`continuous`|`0 = Alive`<br/>`1 = Dead`<br/>`2 = Dropout/unknown`|
-| **Missings** |  |  |  |`999 = Missing`|  |
-| **Description** |  |  |  |  |  |
+| **Name** |`ybirth`|`mbirth`|`dbirth`|`yintw`|`mintw`|`dintw`|`living_status`|
+|-|-|-|-|-|-|-|-|
+| **Label** |`Year of birth`|`Month of birth`|`Day of birth`|`Year of interview`|`Month of interview`|`Day of interview`|`Living status`|
+| **Table name** |`alsa_w7_hd`|`alsa_w7_hd`|`alsa_w7_hd`|`alsa_w7_hd`|`alsa_w7_hd`|`alsa_w7_hd`|`alsa_w7_hd`|
+| **Categories** |`continuous`|`continuous`|`continuous`|`continuous`|`continuous`|`continuous`|`0 = Alive`<br/>`1 = Dead`<br/>`2 = Dropout/unknown`|
+| **Missings** |  |  |  |`996 = Not applicable`|`996 = Not applicable`|`996 = Not applicable`|  |
+| **Description** |  |  |  |  |  |  |  |
 
 
     
@@ -608,13 +750,19 @@ load(paste0(datafolder,"w7/ybirth",".RData"))
 load(paste0(datafolder,"w7/yintw",".RData"))
 load(paste0(datafolder,"w7/mbirth",".RData"))
 load(paste0(datafolder,"w7/mintw",".RData"))
+load(paste0(datafolder,"w7/dbirth",".RData"))
+load(paste0(datafolder,"w7/dintw",".RData"))
 ALSA <- left_join(ybirth,yintw, by="id")
 ALSA <- left_join(ALSA,mbirth, by="id")
 ALSA <- left_join(ALSA,mintw, by="id")
+ALSA <- left_join(ALSA,dbirth, by="id")
+ALSA <- left_join(ALSA,dintw, by="id")
 rm(ybirth)
 rm(yintw)
 rm(mbirth)
 rm(mintw)
+rm(dbirth)
+rm(dintw)
 
 load(paste0(datafolder,"w7/living_status.RData"))
 ALSA <- left_join(ALSA,living_status,by="id")
@@ -635,15 +783,25 @@ kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mbirth")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
+vari <- ALSA$dbirth
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dbirth")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 vari <- ALSA$yintw
-kable(Categorical_summary(vari, missing_values = NA)[2], caption = "yintw")
-kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "yintw")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(yintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
 vari <- ALSA$mintw
 kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = "mintw")
 kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- ALSA$dintw
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = "dintw")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
 vbl <- ALSA$living_status
 kable(Categorical_summary(vbl, missing_values = NA)[3], caption = "living_status")
@@ -662,7 +820,7 @@ The harmonized variable is :
 
 ```{r harmo7}
 ALSA_ds_w7 <- tibble(id=ALSA$id)
-ALSA_ds_w7$age <- comp_age(ALSA$ybirth,ALSA$mbirth,ALSA$yintw,ALSA$mintw,miss = miss_values_vector)
+ALSA_ds_w7$age <- compd_age(ALSA$ybirth,ALSA$mbirth,ALSA$dbirth,ALSA$yintw,ALSA$mintw,ALSA$dintw)
 ALSA_ds_w7$age[which(ALSA$living_status %in% c(1,2))] <- 996
 rm(ALSA)
 
@@ -692,12 +850,12 @@ ggplot(ALSA_ds_w7, aes(age)) + geom_histogram(stat="count", fill="steelblue", da
 
 #### Study-specific variable description
 
-| **Name** |`ybirth`|`mbirth`|`yintw`|`mintw`|
-|-|-|-|-|-|
-| **Label** |`Year of birth`|`Month of birth`|`Year of interview`|`Month of interview`|
-| **Table name** |`alsa_w8_hd`|`alsa_w8_hd`|`alsa_w8_hd`|`alsa_w8_hd`|
-| **Missings** |  |  |  |  |
-| **Description** |  |  |  |  |
+| **Name** |`ybirth`|`mbirth`|`dbirth`|`yintw`|`mintw`|`dintw`|
+|-|-|-|-|-|-|-|
+| **Label** |`Year of birth`|`Month of birth`|`Day of birth`|`Year of interview`|`Month of interview`|`Day of interview`|
+| **Table name** |`alsa_w8_hd`|`alsa_w8_hd`|`alsa_w8_hd`|`alsa_w8_hd`|`alsa_w8_hd`|`alsa_w8_hd`|
+| **Missings** |  |  |  |  |  |  |
+| **Description** |  |  |  |  |  |  |
 
 
 
@@ -707,13 +865,19 @@ load(paste0(datafolder,"w8/ybirth",".RData"))
 load(paste0(datafolder,"w8/yintw",".RData"))
 load(paste0(datafolder,"w8/mbirth",".RData"))
 load(paste0(datafolder,"w8/mintw",".RData"))
+load(paste0(datafolder,"w8/dbirth",".RData"))
+load(paste0(datafolder,"w8/dintw",".RData"))
 ALSA <- left_join(ybirth,yintw, by="id")
 ALSA <- left_join(ALSA,mbirth, by="id")
 ALSA <- left_join(ALSA,mintw, by="id")
+ALSA <- left_join(ALSA,dbirth, by="id")
+ALSA <- left_join(ALSA,dintw, by="id")
 rm(ybirth)
 rm(yintw)
 rm(mbirth)
 rm(mintw)
+rm(dbirth)
+rm(dintw)
 
 ```
 
@@ -729,6 +893,11 @@ kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mbirth")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
+vari <- ALSA$dbirth
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dbirth")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 vari <- ALSA$yintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "yintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
@@ -738,6 +907,11 @@ vari <- ALSA$mintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- ALSA$dintw
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dintw")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -749,7 +923,7 @@ The harmonized variable is :
 
 ```{r harmo8}
 ALSA_ds_w8 <- tibble(id=ALSA$id)
-ALSA_ds_w8$age <- comp_age(ALSA$ybirth,ALSA$mbirth,ALSA$yintw,ALSA$mintw)
+ALSA_ds_w8$age <- compd_age(ALSA$ybirth,ALSA$mbirth,ALSA$dbirth,ALSA$yintw,ALSA$mintw,ALSA$dintw)
 rm(ALSA)
 ```
 
@@ -778,13 +952,13 @@ ggplot(ALSA_ds_w8, aes(age)) + geom_histogram(stat="count", fill="steelblue") + 
 
 #### Study-specific variable description
 
-| **Name** |`ybirth`|`mbirth`|`yintw`|`mintw`|`living_status`|
-|-|-|-|-|-|-|
-| **Label** |`Year of birth`|`Month of birth`|`Year of interview`|`Month of interview`|`Living status`|
-| **Table name** |`alsa_w9_hd`|`alsa_w9_hd`|`alsa_w9_hd`|`alsa_w9_hd`|`alsa_w9_hd`|
-| **Missings** |  |  |  |`999 = Missing`|  |
-| **Description** |  |  |  |  |  |
-
+| **Name** |`ybirth`|`mbirth`|`dbirth`|`yintw`|`mintw`|`dintw`|`living_status`|
+|-|-|-|-|-|-|-|-|
+| **Label** |`Year of birth`|`Month of birth`|`Day of birth`|`Year of interview`|`Month of interview`|`Day of interview`|`Living status`|
+| **Table name** |`alsa_w9_hd`|`alsa_w9_hd`|`alsa_w9_hd`|`alsa_w9_hd`|`alsa_w9_hd`|`alsa_w9_hd`|`alsa_w9_hd`|
+| **Categories** |`continuous`|`continuous`|`continuous`|`continuous`|`continuous`|`continuous`|`0 = Alive`<br/>`1 = Dead`<br/>`2 = Dropout/unknown`|
+| **Missings** |  |  |  |`996 = Not applicable`|`996 = Not applicable`|`996 = Not applicable`|  |
+| **Description** |  |  |  |  |  |  |  |
 
 
 
@@ -793,13 +967,19 @@ load(paste0(datafolder,"w9/ybirth",".RData"))
 load(paste0(datafolder,"w9/yintw",".RData"))
 load(paste0(datafolder,"w9/mbirth",".RData"))
 load(paste0(datafolder,"w9/mintw",".RData"))
+load(paste0(datafolder,"w9/dbirth",".RData"))
+load(paste0(datafolder,"w9/dintw",".RData"))
 ALSA <- left_join(ybirth,yintw, by="id")
 ALSA <- left_join(ALSA,mbirth, by="id")
 ALSA <- left_join(ALSA,mintw, by="id")
+ALSA <- left_join(ALSA,dbirth, by="id")
+ALSA <- left_join(ALSA,dintw, by="id")
 rm(ybirth)
 rm(yintw)
 rm(mbirth)
 rm(mintw)
+rm(dbirth)
+rm(dintw)
 
 load(paste0(datafolder,"w9/living_status.RData"))
 ALSA <- left_join(ALSA,living_status,by="id")
@@ -820,6 +1000,11 @@ kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mbirth")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
+vari <- ALSA$dbirth
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dbirth")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 vari <- ALSA$yintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "yintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
@@ -829,6 +1014,11 @@ vari <- ALSA$mintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- ALSA$dintw
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dintw")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
 vbl <- ALSA$living_status
 kable(Categorical_summary(vbl, missing_values = NA)[3], caption = "living_status")
@@ -846,7 +1036,7 @@ The harmonized variable is :
 
 ```{r harmo9}
 ALSA_ds_w9 <- tibble(id=ALSA$id)
-ALSA_ds_w9$age <- comp_age(ALSA$ybirth,ALSA$mbirth,ALSA$yintw,ALSA$mintw)
+ALSA_ds_w9$age <- compd_age(ALSA$ybirth,ALSA$mbirth,ALSA$dbirth,ALSA$yintw,ALSA$mintw,ALSA$dintw)
 ALSA_ds_w9$age[which(ALSA$living_status %in% c(1,2))] <- 996
 rm(ALSA)
 
@@ -878,12 +1068,12 @@ ggplot(ALSA_ds_w9, aes(age)) + geom_histogram(stat="count", fill="steelblue", da
 
 #### Study-specific variable description
 
-| **Name** |`ybirth`|`mbirth`|`yintw`|`mintw`|
-|-|-|-|-|-|
-| **Label** |`Year of birth`|`Month of birth`|`Year of interview`|`Month of interview`|
-| **Table name** |`alsa_w10_hd`|`alsa_w10_hd`|`alsa_w10_hd`|`alsa_w10_hd`|
-| **Missings** |  |  |  |  |
-| **Description** |  |  |  |  |
+| **Name** |`ybirth`|`mbirth`|`dbirth`|`yintw`|`mintw`|`dintw`|
+|-|-|-|-|-|-|-|
+| **Label** |`Year of birth`|`Month of birth`|`Day of birth`|`Year of interview`|`Month of interview`|`Day of interview`|
+| **Table name** |`alsa_w10_hd`|`alsa_w10_hd`|`alsa_w10_hd`|`alsa_w10_hd`|`alsa_w10_hd`|`alsa_w10_hd`|
+| **Missings** |  |  |  |  |  |  |
+| **Description** |  |  |  |  |  |  |
 
 
 
@@ -893,13 +1083,19 @@ load(paste0(datafolder,"w10/ybirth",".RData"))
 load(paste0(datafolder,"w10/yintw",".RData"))
 load(paste0(datafolder,"w10/mbirth",".RData"))
 load(paste0(datafolder,"w10/mintw",".RData"))
+load(paste0(datafolder,"w10/dbirth",".RData"))
+load(paste0(datafolder,"w10/dintw",".RData"))
 ALSA <- left_join(ybirth,yintw, by="id")
 ALSA <- left_join(ALSA,mbirth, by="id")
 ALSA <- left_join(ALSA,mintw, by="id")
+ALSA <- left_join(ALSA,dbirth, by="id")
+ALSA <- left_join(ALSA,dintw, by="id")
 rm(ybirth)
 rm(yintw)
 rm(mbirth)
 rm(mintw)
+rm(dbirth)
+rm(dintw)
 
 ```
 
@@ -915,6 +1111,11 @@ kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mbirth")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
+vari <- ALSA$dbirth
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dbirth")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 vari <- ALSA$yintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "yintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
@@ -924,6 +1125,11 @@ vari <- ALSA$mintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- ALSA$dintw
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dintw")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -935,7 +1141,7 @@ The harmonized variable is :
 
 ```{r harmo10}
 ALSA_ds_w10 <- tibble(id=ALSA$id)
-ALSA_ds_w10$age <- comp_age(ALSA$ybirth,ALSA$mbirth,ALSA$yintw,ALSA$mintw)
+ALSA_ds_w10$age <- compd_age(ALSA$ybirth,ALSA$mbirth,ALSA$dbirth,ALSA$yintw,ALSA$mintw,ALSA$dintw)
 rm(ALSA)
 ```
 
@@ -966,12 +1172,13 @@ ggplot(ALSA_ds_w10, aes(age)) + geom_histogram(stat="count", fill="steelblue", d
 
 #### Study-specific variable description
 
-| **Name** |`ybirth`|`mbirth`|`yintw`|`mintw`|
-|-|-|-|-|-|
-| **Label** |`Year of birth`|`Month of birth`|`Year of interview`|`Month of interview`|
-| **Table name** |`alsa_w11_hd`|`alsa_w11_hd`|`alsa_w11_hd`|`alsa_w11_hd`|
-| **Missings** |  |  |  |  |
-| **Description** |  |  |  |  |
+| **Name** |`ybirth`|`mbirth`|`dbirth`|`yintw`|`mintw`|`dintw`|
+|-|-|-|-|-|-|-|
+| **Label** |`Year of birth`|`Month of birth`|`Day of birth`|`Year of interview`|`Month of interview`|`Day of interview`|
+| **Table name** |`alsa_w11_hd`|`alsa_w11_hd`|`alsa_w11_hd`|`alsa_w11_hd`|`alsa_w11_hd`|`alsa_w11_hd`|
+| **Missings** |  |  |  |  |  |  |
+| **Description** |  |  |  |  |  |  |
+
 
 
 
@@ -981,13 +1188,19 @@ load(paste0(datafolder,"w11/ybirth",".RData"))
 load(paste0(datafolder,"w11/yintw",".RData"))
 load(paste0(datafolder,"w11/mbirth",".RData"))
 load(paste0(datafolder,"w11/mintw",".RData"))
+load(paste0(datafolder,"w11/dbirth",".RData"))
+load(paste0(datafolder,"w11/dintw",".RData"))
 ALSA <- left_join(ybirth,yintw, by="id")
 ALSA <- left_join(ALSA,mbirth, by="id")
 ALSA <- left_join(ALSA,mintw, by="id")
+ALSA <- left_join(ALSA,dbirth, by="id")
+ALSA <- left_join(ALSA,dintw, by="id")
 rm(ybirth)
 rm(yintw)
 rm(mbirth)
 rm(mintw)
+rm(dbirth)
+rm(dintw)
 
 ```
 
@@ -1003,6 +1216,11 @@ kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mbirth")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
+vari <- ALSA$dbirth
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dbirth")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 vari <- ALSA$yintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "yintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
@@ -1012,6 +1230,11 @@ vari <- ALSA$mintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- ALSA$dintw
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dintw")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1023,7 +1246,7 @@ The harmonized variable is :
 
 ```{r harmo11}
 ALSA_ds_w11 <- tibble(id=ALSA$id)
-ALSA_ds_w11$age <- comp_age(ALSA$ybirth,ALSA$mbirth,ALSA$yintw,ALSA$mintw)
+ALSA_ds_w11$age <- compd_age(ALSA$ybirth,ALSA$mbirth,ALSA$dbirth,ALSA$yintw,ALSA$mintw,ALSA$dintw)
 rm(ALSA)
 ```
 
@@ -1055,13 +1278,12 @@ ggplot(ALSA_ds_w11, aes(age)) + geom_histogram(stat="count", fill="steelblue") +
 
 #### Study-specific variable description
 
-| **Name** |`ybirth`|`mbirth`|`yintw`|`mintw`|
-|-|-|-|-|-|
-| **Label** |`Year of birth`|`Month of birth`|`Year of interview`|`Month of interview`|
-| **Table name** |`alsa_w12_hd`|`alsa_w12_hd`|`alsa_w12_hd`|`alsa_w12_hd`|
-| **Missings** |  |  |  |  |
-| **Description** |  |  |  |  |
-
+| **Name** |`ybirth`|`mbirth`|`dbirth`|`yintw`|`mintw`|`dintw`|
+|-|-|-|-|-|-|-|
+| **Label** |`Year of birth`|`Month of birth`|`Day of birth`|`Year of interview`|`Month of interview`|`Day of interview`|
+| **Table name** |`alsa_w12_hd`|`alsa_w12_hd`|`alsa_w12_hd`|`alsa_w12_hd`|`alsa_w12_hd`|`alsa_w12_hd`|
+| **Missings** |  |  |  |  |  |  |
+| **Description** |  |  |  |  |  |  |
 
 
     
@@ -1070,13 +1292,19 @@ load(paste0(datafolder,"w12/ybirth",".RData"))
 load(paste0(datafolder,"w12/yintw",".RData"))
 load(paste0(datafolder,"w12/mbirth",".RData"))
 load(paste0(datafolder,"w12/mintw",".RData"))
+load(paste0(datafolder,"w12/dbirth",".RData"))
+load(paste0(datafolder,"w12/dintw",".RData"))
 ALSA <- left_join(ybirth,yintw, by="id")
 ALSA <- left_join(ALSA,mbirth, by="id")
 ALSA <- left_join(ALSA,mintw, by="id")
+ALSA <- left_join(ALSA,dbirth, by="id")
+ALSA <- left_join(ALSA,dintw, by="id")
 rm(ybirth)
 rm(yintw)
 rm(mbirth)
 rm(mintw)
+rm(dbirth)
+rm(dintw)
 
 ```
 
@@ -1092,6 +1320,11 @@ kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mbirth")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
+vari <- ALSA$dbirth
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dbirth")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 vari <- ALSA$yintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "yintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
@@ -1101,6 +1334,11 @@ vari <- ALSA$mintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- ALSA$dintw
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dintw")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1112,7 +1350,7 @@ The harmonized variable is :
 
 ```{r harmo12}
 ALSA_ds_w12 <- tibble(id=ALSA$id)
-ALSA_ds_w12$age <- comp_age(ALSA$ybirth,ALSA$mbirth,ALSA$yintw,ALSA$mintw)
+ALSA_ds_w12$age <- compd_age(ALSA$ybirth,ALSA$mbirth,ALSA$dbirth,ALSA$yintw,ALSA$mintw,ALSA$dintw)
 rm(ALSA)
 ```
 
@@ -1144,12 +1382,13 @@ ggplot(ALSA_ds_w12, aes(age)) + geom_histogram(stat="count", fill="steelblue") +
 
 #### Study-specific variable description
 
-| **Name** |`ybirth`|`mbirth`|`yintw`|`mintw`|
-|-|-|-|-|-|
-| **Label** |`Year of birth`|`Month of birth`|`Year of interview`|`Month of interview`|
-| **Table name** |`alsa_w13_hd`|`alsa_w13_hd`|`alsa_w13_hd`|`alsa_w13_hd`|
-| **Missings** |  |  |  |  |
-| **Description** |  |  |  |  |
+| **Name** |`ybirth`|`mbirth`|`dbirth`|`yintw`|`mintw`|`dintw`|
+|-|-|-|-|-|-|-|
+| **Label** |`Year of birth`|`Month of birth`|`Day of birth`|`Year of interview`|`Month of interview`|`Day of interview`|
+| **Table name** |`alsa_w13_hd`|`alsa_w13_hd`|`alsa_w13_hd`|`alsa_w13_hd`|`alsa_w13_hd`|`alsa_w13_hd`|
+| **Missings** |  |  |  |  |  |  |
+| **Description** |  |  |  |  |  |  |
+
 
 
 
@@ -1159,13 +1398,19 @@ load(paste0(datafolder,"w13/ybirth",".RData"))
 load(paste0(datafolder,"w13/yintw",".RData"))
 load(paste0(datafolder,"w13/mbirth",".RData"))
 load(paste0(datafolder,"w13/mintw",".RData"))
+load(paste0(datafolder,"w13/dbirth",".RData"))
+load(paste0(datafolder,"w13/dintw",".RData"))
 ALSA <- left_join(ybirth,yintw, by="id")
 ALSA <- left_join(ALSA,mbirth, by="id")
 ALSA <- left_join(ALSA,mintw, by="id")
+ALSA <- left_join(ALSA,dbirth, by="id")
+ALSA <- left_join(ALSA,dintw, by="id")
 rm(ybirth)
 rm(yintw)
 rm(mbirth)
 rm(mintw)
+rm(dbirth)
+rm(dintw)
 
 
 ```
@@ -1182,6 +1427,11 @@ kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mbirth")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 
+vari <- ALSA$dbirth
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dbirth")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
 vari <- ALSA$yintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "yintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
@@ -1191,6 +1441,11 @@ vari <- ALSA$mintw
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mintw")
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(ALSA, aes(x=factor(mintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- ALSA$dintw
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "dintw")
+pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
+ggplot(ALSA, aes(x=factor(dintw))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -1202,7 +1457,7 @@ The harmonized variable is :
 
 ```{r harmo13}
 ALSA_ds_w13 <- tibble(id=ALSA$id)
-ALSA_ds_w13$age <- comp_age(ALSA$ybirth,ALSA$mbirth,ALSA$yintw,ALSA$mintw)
+ALSA_ds_w13$age <- compd_age(ALSA$ybirth,ALSA$mbirth,ALSA$dbirth,ALSA$yintw,ALSA$mintw,ALSA$dintw)
 rm(ALSA)
 ```
 
@@ -1328,7 +1583,13 @@ if(length(l.hds)>0){
 
 
 # Quality estimation
-Due to multiple paradoxical data along waves we have decided to harmonise age from harmonised variables on dates of birth and interview, instead of study-specific variables about age.
+* Due to multiple paradoxical data along waves we have decided to harmonise age from harmonised variables on dates of birth and interview, instead of study-specific variables about age.
+
+* On cohort profile, cohort sample was chosen among people aged 70 or more on 31 December 1992, requirement relaxed for spouses to age 65. The fact the age in wave 1 is computed in the date of interview, often before the 31 December 1992 is the cause ages in wave 1 does not correspond to this information. This is observed in the validation of wave 1.
+
+>The ALSA is a population-based cohort of older men and women who resided in the Adelaide Statistical Division and were aged 70 years or more on 31 December 1992.[...]
+
+>The age requirement for spouses was relaxed to age 65 years.
 
 
 ```{r closeRsession, echo=FALSE}
