@@ -31,8 +31,23 @@ source('../../_DS_Rmd/heightDS.R')
 
 # Data process
 
+**Functions:**
 
+```{r function}
+# Assignation of new values to an old column
+assign_merge <- function(endtib,sttib,log_vec=c(T),col_end_index=NULL,col_st_index=NULL){
+  newtib <- full_join(endtib,sttib,by="id")
+  row.names(newtib) <- newtib$id
+  newtib[log_vec,col_end_index] <- newtib[log_vec,col_st_index]
+  id_ind <- match("id",names(newtib))
+  newtib <- newtib[,c(id_ind,col_end_index)]
+  names(newtib)[2] <- "x"
+  newtib$x <- car::recode(newtib$x,"NA=999")
+  names(newtib)[2] <- names(endtib)[col_end_index]
+  newtib
+}
 
+```
 
 ## SHARE
 
@@ -51,16 +66,16 @@ source('../../_DS_Rmd/heightDS.R')
 
 
 ```{r assign1, echo=F}
-opal.assign.table.tibble(o, 'SHARE_w1_heig','SHARE.sharew1_rel2-6-0_ph', variables=list('ph013_'), missings = TRUE)
-SHARE_w1_heig <- opal.execute(o,'SHARE_w1_heig')
+opal.assign.table.tibble(o, 'SHARE_w1','SHARE.sharew1_rel2-6-0_ph', variables=list('ph013_'), missings = TRUE)
+SHARE_w1 <- opal.execute(o,'SHARE_w1')
 ```
 
 ```{r local1, echo=F}
-vari <- SHARE_w1_heig$ph013_
+vari <- SHARE_w1$ph013_
 vbl_miss <- c(-2,-1)
 kable(Continuous_summary(vari, missing_values = c(-2, -1))[3], caption = "ph013_")
 pander(Continuous_summary(vari, missing_values = c(-2, -1))$summary, caption = "Summary")
-ggplot(SHARE_w1_heig, aes(ph013_)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vari %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
+ggplot(SHARE_w1, aes(ph013_)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vari %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
 ```
 
 
@@ -74,18 +89,18 @@ The harmonized variable is the same than the study-specific variable, but the mi
 **R script:**
 
 ```{r harmo1}
-SHARE_ds_w1 <- tibble(id=SHARE_w1_heig$id)
-SHARE_ds_w1$height <- car::recode(SHARE_w1_heig$ph013_, "NA=999; -2=997; -1=998")
-SHARE_ds_w1$height <- labelled(SHARE_ds_w1$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+SHARE_ds_w1 <- tibble(id=SHARE_w1$id)
+SHARE_ds_w1$height <- car::recode(SHARE_w1$ph013_, "NA=999; -2=997; -1=998")
+SHARE_ds <- SHARE_ds_w1
 ```
 
 #### Statistics of the new harmonised variable
 ```{r descript1, echo=F}
 vari <- SHARE_ds_w1$height
-kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = "height")
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = ds_label)
 kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "values")
 pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(SHARE_ds_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vari %in% miss_values_vector)) + xlab("height") + ylab("Frequency")
+ggplot(SHARE_ds_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vari %in% miss_values_vector)) + xlab(ds_label) + ylab("Frequency")
 
 ```
 
@@ -113,16 +128,16 @@ ggplot(SHARE_ds_w1, aes(height)) + geom_histogram(stat="count", fill="steelblue"
 | **Description** |  |
 
 ```{r assign2, echo=F}
-opal.assign.table.tibble(o, 'SHARE_w2_heig','SHARE.sharew2_rel2-6-0_ph',variables=list('ph013_'), missings = TRUE)
-SHARE_w2_heig <- opal.execute(o,'SHARE_w2_heig')
+opal.assign.table.tibble(o, 'SHARE_w2','SHARE.sharew2_rel2-6-0_ph',variables=list('ph013_'), missings = TRUE)
+SHARE_w2 <- opal.execute(o,'SHARE_w2')
 ```
 
 ```{r local2, echo=F}
-vari <- SHARE_w2_heig$ph013_
+vari <- SHARE_w2$ph013_
 vbl_miss <- c(-2,-1)
 kable(Continuous_summary(vari, missing_values = c(-2, -1))[3], caption = "ph013_")
 pander(Continuous_summary(vari, missing_values = c(-2, -1))$summary, caption = "Summary")
-ggplot(SHARE_w2_heig, aes(ph013_)) + geom_bar(stat="count", fill="steelblue",width = 0.4, data = .%>% filter(!vari %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
+ggplot(SHARE_w2, aes(ph013_)) + geom_bar(stat="count", fill="steelblue",width = 0.4, data = .%>% filter(!vari %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
 ```
 
 
@@ -136,29 +151,41 @@ Values between 10 and 20 are assumed to be measured in decimeters.
 Other values lower than 60 are going to be considered as mistakes and they will be recoded as 999.
 
 
+
 * `recode -2 "refusal" into 997`
 * `recode -1 "don't know" into 998`
-* `NA into 999`
+* `NA into imputed values from previous wave or 999`
 
 **R script:**
 
 ```{r harmo2}
 
+SHARE_w2$height <- SHARE_w2$ph013_
+
+# We use the harmonized variable of wave 1 instead of the study-specific variable
+SHARE_w2 <- left_join(SHARE_w2, SHARE_ds, by = "id",suffix = c("","_w1"))
+
+SHARE_w2$height[which(SHARE_w2$ph013_>=1 & SHARE_w2$ph013_<2)] <- SHARE_w2$ph013_[which(SHARE_w2$ph013_>=1 & SHARE_w2$ph013_<2)]*100
+
+SHARE_w2$height[which(SHARE_w2$ph013_>=10 & SHARE_w2$ph013_<20)] <- SHARE_w2$ph013_[which(SHARE_w2$ph013_>=10 & SHARE_w2$ph013_<20)]*10
+
+SHARE_w2$height[which((is.na(SHARE_w2$height) | SHARE_w2$height<=60) & !SHARE_w2$height_w1 %in% miss_values_vector)] <- SHARE_w2$height_w1[which((is.na(SHARE_w2$height) | SHARE_w2$height<=60) & !SHARE_w2$height_w1 %in% miss_values_vector)]
+
+SHARE_ds_w2 <- tibble(id=SHARE_w2$id)
 
 
-SHARE_w2_heig$height <- SHARE_w2_heig$ph013_
-
-SHARE_w2_heig$height[which(SHARE_w2_heig$ph013_>=1 & SHARE_w2_heig$ph013_<2)] <- SHARE_w2_heig$ph013_[which(SHARE_w2_heig$ph013_>=1 & SHARE_w2_heig$ph013_<2)]*100
-
-SHARE_w2_heig$height[which(SHARE_w2_heig$ph013_>=10 & SHARE_w2_heig$ph013_<20)] <- SHARE_w2_heig$ph013_[which(SHARE_w2_heig$ph013_>=10 & SHARE_w2_heig$ph013_<20)]*10
+SHARE_ds_w2$height <- car::recode(SHARE_w2$height, "NA=999; -2=997; -1=998; 0:60=999")
 
 
+# We update the height of the individuals in the global table
 
-SHARE_ds_w2 <- tibble(id=SHARE_w2_heig$id)
+SHARE_ds_prov <- SHARE_ds
+SHARE_ds_prov <- assign_merge(SHARE_ds_prov,SHARE_ds_w2,log_vec=SHARE_ds_w2$id,col_end_index = 2, col_st_index = 3)
+SHARE_ds <- SHARE_ds_prov
+rm(SHARE_ds_prov)
 
 
-SHARE_ds_w2$height <- car::recode(SHARE_w2_heig$height, "NA=999; -2=997; -1=998; 0:60=999")
-SHARE_ds_w2$height <- labelled(SHARE_ds_w2$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
 ```
 
 #### Statistics of the new harmonised variable
@@ -199,16 +226,16 @@ There is no variable.
 | **Description** |  |
 
 ```{r assign4, echo=F}
-opal.assign.table.tibble(o, 'SHARE_w4_heig','SHARE.sharew4_rel1-1-1_ph', variables=list('ph013_'), missings = TRUE)
-SHARE_w4_heig <- opal.execute(o,'SHARE_w4_heig')
+opal.assign.table.tibble(o, 'SHARE_w4','SHARE.sharew4_rel1-1-1_ph', variables=list('ph013_'), missings = TRUE)
+SHARE_w4 <- opal.execute(o,'SHARE_w4')
 ```
 
 ```{r local4, echo=F}
-vari <- SHARE_w4_heig$ph013_
+vari <- SHARE_w4$ph013_
 vbl_miss <- c(-2,-1)
 kable(Continuous_summary(vari, missing_values = c(-2, -1))[3], caption = "ph013_")
 pander(Continuous_summary(vari, missing_values = c(-2, -1))$summary, caption = "Summary")
-ggplot(SHARE_w4_heig, aes(ph013_)) + geom_bar(stat="count", fill="steelblue",width = 0.4, data = .%>% filter(!vari %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
+ggplot(SHARE_w4, aes(ph013_)) + geom_bar(stat="count", fill="steelblue",width = 0.4, data = .%>% filter(!vari %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
 ```
 
 
@@ -222,22 +249,29 @@ Other values lower than 60 are going to be considered as mistakes and they will 
 
 * `recode -2 "refusal" into 997`
 * `recode -1 "don't know" into 998`
-* `NA into 999`
+* `NA into imputed values from previous wave or 999`
 
 **R script:**
 
 ```{r harmo4}
 
-SHARE_w4_heig$height <- SHARE_w4_heig$ph013_
-
-SHARE_w4_heig$height[which(SHARE_w4_heig$ph013_>=1 & SHARE_w4_heig$ph013_<2)] <- SHARE_w4_heig$ph013_[which(SHARE_w4_heig$ph013_>=1 & SHARE_w4_heig$ph013_<2)]*100
-
-SHARE_w4_heig$height[which(SHARE_w4_heig$ph013_>=10 & SHARE_w4_heig$ph013_<20)] <- SHARE_w4_heig$ph013_[which(SHARE_w4_heig$ph013_>=10 & SHARE_w4_heig$ph013_<20)]*10
+SHARE_w4$height <- SHARE_w4$ph013_
 
 
-SHARE_ds_w4 <- tibble(id=SHARE_w4_heig$id)
-SHARE_ds_w4$height <- car::recode(SHARE_w4_heig$height, "NA=999; -2=997; -1=998; 0:59=999")
-SHARE_ds_w4$height <- labelled(SHARE_ds_w4$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+# We use the harmonized variable of wave 1 instead of the study-specific variable
+SHARE_w4 <- left_join(SHARE_w4, SHARE_ds, by = "id",suffix = c("","_pw"))
+
+
+SHARE_w4$height[which(SHARE_w4$ph013_>=1 & SHARE_w4$ph013_<2)] <- SHARE_w4$ph013_[which(SHARE_w4$ph013_>=1 & SHARE_w4$ph013_<2)]*100
+
+SHARE_w4$height[which(SHARE_w4$ph013_>=10 & SHARE_w4$ph013_<20)] <- SHARE_w4$ph013_[which(SHARE_w4$ph013_>=10 & SHARE_w4$ph013_<20)]*10
+
+SHARE_w4$height[which((is.na(SHARE_w4$height) | SHARE_w2$height<=59) & !SHARE_w4$height_pw %in% miss_values_vector)] <- SHARE_w4$height_pw[which((is.na(SHARE_w4$height) | SHARE_w2$height<=59) & !SHARE_w4$height_pw %in% miss_values_vector)]
+
+
+SHARE_ds_w4 <- tibble(id=SHARE_w4$id)
+SHARE_ds_w4$height <- car::recode(SHARE_w4$height, "NA=999; -2=997; -1=998; 0:59=999")
+
 ```
 
 #### Statistics of the new harmonised variable
@@ -252,7 +286,7 @@ ggplot(SHARE_ds_w4, aes(height)) + geom_bar(stat="count", fill="steelblue", data
 
 #### Validation
 ```{r crosstabulation4, echo=F}
-kable(SHARE_w4_heig[which(SHARE_w4_heig$ph013_<101 & SHARE_w4_heig$ph013_>=60),],align = 'c',caption = 'There are unusual values that are lower than 100.')
+kable(SHARE_w4[which(SHARE_w4$ph013_<101 & SHARE_w4$ph013_>=60),],align = 'c',caption = 'There are unusual values that are lower than 100.')
 ```
 
 
@@ -273,16 +307,16 @@ kable(SHARE_w4_heig[which(SHARE_w4_heig$ph013_<101 & SHARE_w4_heig$ph013_>=60),]
 | **Description** |  |
 
 ```{r assign5, echo=F}
-opal.assign.table.tibble(o, 'SHARE_w5_heig','SHARE.sharew5_rel1-0-0_ph',variables=list('ph013_'), missings = TRUE)
-SHARE_w5_heig <- opal.execute(o,'SHARE_w5_heig')
+opal.assign.table.tibble(o, 'SHARE_w5','SHARE.sharew5_rel1-0-0_ph',variables=list('ph013_'), missings = TRUE)
+SHARE_w5 <- opal.execute(o,'SHARE_w5')
 ```
 
 ```{r local5, echo=F}
-vari <- SHARE_w5_heig$ph013_
+vari <- SHARE_w5$ph013_
 vbl_miss <- c(-2,-1)
 kable(Continuous_summary(vari, missing_values = c(-2, -1))[3], caption = "ph013_")
 pander(Continuous_summary(vari, missing_values = c(-2, -1))$summary, caption = "Summary")
-ggplot(SHARE_w5_heig, aes(ph013_)) + geom_bar(stat="count", fill="steelblue", data = .%>% filter(!vari %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
+ggplot(SHARE_w5, aes(ph013_)) + geom_bar(stat="count", fill="steelblue", data = .%>% filter(!vari %in% vbl_miss)) + xlab("Height") + ylab("Frequency")
 ```
 
 
@@ -304,15 +338,15 @@ Other values lower than 60 are going to be considered as mistakes and they will 
 ```{r harmo5}
 
 
-SHARE_w5_heig$height <- SHARE_w5_heig$ph013_
+SHARE_w5$height <- SHARE_w5$ph013_
 
-SHARE_w5_heig$height[which(SHARE_w5_heig$ph013_>=1 & SHARE_w5_heig$ph013_<2)] <- SHARE_w5_heig$ph013_[which(SHARE_w5_heig$ph013_>=1 & SHARE_w5_heig$ph013_<2)]*100
+SHARE_w5$height[which(SHARE_w5$ph013_>=1 & SHARE_w5$ph013_<2)] <- SHARE_w5$ph013_[which(SHARE_w5$ph013_>=1 & SHARE_w5$ph013_<2)]*100
 
-SHARE_w5_heig$height[which(SHARE_w5_heig$ph013_>=10 & SHARE_w5_heig$ph013_<20)] <- SHARE_w5_heig$ph013_[which(SHARE_w5_heig$ph013_>=10 & SHARE_w5_heig$ph013_<20)]*10
+SHARE_w5$height[which(SHARE_w5$ph013_>=10 & SHARE_w5$ph013_<20)] <- SHARE_w5$ph013_[which(SHARE_w5$ph013_>=10 & SHARE_w5$ph013_<20)]*10
 
 
-SHARE_ds_w5 <- tibble(id=SHARE_w5_heig$id)
-SHARE_ds_w5$height <- car::recode(SHARE_w5_heig$ph013_, "NA=999; -2=997; -1=998; 0:59=999")
+SHARE_ds_w5 <- tibble(id=SHARE_w5$id)
+SHARE_ds_w5$height <- car::recode(SHARE_w5$ph013_, "NA=999; -2=997; -1=998; 0:59=999")
 SHARE_ds_w5$height <- labelled(SHARE_ds_w5$height, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
 ```
 
@@ -327,7 +361,7 @@ ggplot(SHARE_ds_w5, aes(height)) + geom_bar(stat="count", fill="steelblue", data
 
 #### Validation
 ```{r crosstabulation5, echo=F}
-kable(SHARE_w5_heig[which(SHARE_w5_heig$ph013_<100 & SHARE_w5_heig$ph013_>59),],align = 'c',caption = 'There are unusual values that are lower than 100: ')
+kable(SHARE_w5[which(SHARE_w5$ph013_<100 & SHARE_w5$ph013_>59),],align = 'c',caption = 'There are unusual values that are lower than 100: ')
 ```
 
 
@@ -372,7 +406,7 @@ summaries <- function(l.hds,m.hds,lnames){
     # First, summary values
     t.summ <- summary(m.hds[[i]][2])[1:6]
     # Next, missing/no-missing values
-    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[2]],missing_values = miss_values_vector)$values_table[1,])))
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[2]],missing_values = miss_values_vector)$values_table[2,])))
   }
   # Add sample size for each wave/population
   t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
@@ -435,7 +469,8 @@ if(length(l.hds)>0){
 
 
 # Quality estimation
-This variable was a self-reported measure.
+* This variable was a self-reported measure.
+* Due to the big quantity of missing values for new individuals in waves 2 and 4, we decided to impute the height answered in previous waves.
 
 ```{r closeRsession, echo=FALSE}
 opal.logout(o)
