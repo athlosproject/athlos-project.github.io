@@ -353,14 +353,14 @@ SHARE_w4$ph012_ <- car::recode(SHARE_w4$ph012_, "0:18=NA")
 
 SHARE_w4$height <- SHARE_w4$ph013_
 
-# We use the harmonized variable of wave 1 instead of the study-specific variable
+# We use the harmonized variable of previous waves instead of the study-specific variable
 SHARE_w4 <- left_join(SHARE_w4, SHARE_ds, by = "id",suffix = c("","_pw"))
 
 SHARE_w4$height[which(SHARE_w4$ph013_>=1 & SHARE_w4$ph013_<2)] <- SHARE_w4$ph013_[which(SHARE_w4$ph013_>=1 & SHARE_w4$ph013_<2)]*100
 
 SHARE_w4$height[which(SHARE_w4$ph013_>=10 & SHARE_w4$ph013_<20)] <- SHARE_w4$ph013_[which(SHARE_w4$ph013_>=10 & SHARE_w4$ph013_<20)]*10
 
-SHARE_w4$height[which((is.na(SHARE_w4$height) | SHARE_w2$height<=59) & !SHARE_w4$height_pw %in% miss_values_vector & !is.na(SHARE_w4$height_pw))] <- SHARE_w4$height_pw[which((is.na(SHARE_w4$height) | SHARE_w2$height<=59) & !SHARE_w4$height_pw %in% miss_values_vector & !is.na(SHARE_w4$height_pw))]
+SHARE_w4$height[which((is.na(SHARE_w4$height) | SHARE_w4$height<=59) & !SHARE_w4$height_pw %in% miss_values_vector & !is.na(SHARE_w4$height_pw))] <- SHARE_w4$height_pw[which((is.na(SHARE_w4$height) | SHARE_w4$height<=59) & !SHARE_w4$height_pw %in% miss_values_vector & !is.na(SHARE_w4$height_pw))]
 
 SHARE_w4$height <- car::recode(SHARE_w4$height, "0:59=NA")
 
@@ -371,7 +371,15 @@ SHARE_w4$bmi <- compute_bmi(Heigth = SHARE_w4$height,
 
 SHARE_ds_w4 <- tibble(id=SHARE_w4$id)
 SHARE_ds_w4$bmi <- car::recode(SHARE_w4$bmi, "NA=999; -1=998; -2=997")
-SHARE_ds_w4$bmi <- labelled(SHARE_ds_w4$bmi, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996,  "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+# We update the height of the individuals in the global table
+
+SHARE_w4$height <- car::recode(SHARE_w4$height, "NA=999; -2=997; -1=998")
+SHARE_ds_prov <- SHARE_ds
+SHARE_ds_prov <- assign_merge(SHARE_ds_prov,SHARE_w4[,c("id","height")],log_vec=SHARE_w4$id,col_end_index = 2, col_st_index = 3)
+SHARE_ds <- SHARE_ds_prov
+rm(SHARE_ds_prov)
+
 ```
 
 #### Statistics of the new harmonised variable
@@ -458,7 +466,7 @@ The missing values have to be recoded as follows:
 
 * `recode -2 "refusal" into 997`
 * `recode -1 "don't know" into 998`
-* `NA into 999`
+* `NA into imputed values from previous waves or 999`
 
 **R script:**
 
@@ -469,9 +477,14 @@ SHARE_w5$ph012_ <- car::recode(SHARE_w5$ph012_, "0:18=NA")
 
 SHARE_w5$height <- SHARE_w5$ph013_
 
+# We use the harmonized variable of previous waves instead of the study-specific variable
+SHARE_w5 <- left_join(SHARE_w5, SHARE_ds, by = "id",suffix = c("","_pw"))
+
 SHARE_w5$height[which(SHARE_w5$ph013_>=1 & SHARE_w5$ph013_<2)] <- SHARE_w5$ph013_[which(SHARE_w5$ph013_>=1 & SHARE_w5$ph013_<2)]*100
 
 SHARE_w5$height[which(SHARE_w5$ph013_>=10 & SHARE_w5$ph013_<20)] <- SHARE_w5$ph013_[which(SHARE_w5$ph013_>=10 & SHARE_w5$ph013_<20)]*10
+
+SHARE_w5$height[which((is.na(SHARE_w5$height) | SHARE_w5$height<=59) & !SHARE_w5$height_pw %in% miss_values_vector & !is.na(SHARE_w5$height_pw))] <- SHARE_w5$height_pw[which((is.na(SHARE_w5$height) | SHARE_w5$height<=59) & !SHARE_w5$height_pw %in% miss_values_vector & !is.na(SHARE_w5$height_pw))]
 
 SHARE_w5$height <- car::recode(SHARE_w5$height, "0:59=NA")
 
@@ -509,6 +522,9 @@ kable(SHARE_w5[which(!((SHARE_w5$ph013_>=1 & SHARE_w5$ph013_<2) | (SHARE_w5$ph01
 
 
 kable(SHARE_w5[which((SHARE_w5$bmi<12 & SHARE_w5$bmi>-1) | (SHARE_w5$bmi>70 & SHARE_w5$bmi<900)),],align = 'c',caption = 'There are unusual values that are lower than 12 or higher than 70:')
+
+pander(Continuous_summary(SHARE_w5$bmi[which((is.na(SHARE_w5$ph013_) | SHARE_w5$ph013_<1 | (SHARE_w5$ph013_>=2 & SHARE_w5$ph013_<10) | (SHARE_w5$ph013_>=20 & SHARE_w5$ph013_<=59)) & !SHARE_w5$height_pw %in% miss_values_vector)],missing_values = c(-1,-2,999))$summary, caption = 'BMI summary of individuals with height imputed from previous waves')
+
 ```
 
 
