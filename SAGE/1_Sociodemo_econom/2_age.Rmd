@@ -36,19 +36,41 @@ source('../../_DS_Rmd/ageDS.R')
 
 
 
-| **Name** | `q0407`|
-|-|-|
-| **Label** | `age`|
-| **Table name** | `southAfricaINDdata` |
-| **Missings** | `NA` |
-| **Description** |  |
+| **Name** | `q0407`|`ybirth`| `mbirth` | `mintw` | `yintw` |
+|-|-|-|-|-|-|
+| **Label** | `age`|  `Year of birth` | `Month of birth` | `Month of interview` | `Year of interview` |
+| **Table name** | `southAfricaINDdata` |`sage_SA_w1_hd`\* | `sage_SA_w1_hd`\* | `sage_SA_w1_hd`\* | `sage_SA_w1_hd`\* |
+| **Missings** | `NA` | `999 = Missing`   |  `999 = Missing` |  `999 = Missing` |    |
+| **Description** |  |  |  |  |  |
 
 
 ```{r assign1, echo=F}
 opal.assign.table.tibble(o, 'SAGE_SA_w1','SAGE.southAfricaINDdata',
                          variables=list('q0407'), missings = TRUE)
 SAGE_SA_w1 <- opal.execute(o,'SAGE_SA_w1')
+
+load("../RData/SA_w1/mbirth.RData")
+load("../RData/SA_w1/ybirth.RData")
+load("../RData/SA_w1/mintw.RData")
+load("../RData/SA_w1/yintw.RData")
+
+SAGE_SA_w1 <- left_join(SAGE_SA_w1, mbirth, by="id")
+SAGE_SA_w1 <- left_join(SAGE_SA_w1, ybirth, by="id")
+SAGE_SA_w1 <- left_join(SAGE_SA_w1,yintw, by="id")
+SAGE_SA_w1 <- left_join(SAGE_SA_w1,mintw, by="id")
+rm(mbirth)
+rm(ybirth)
+rm(mintw)
+rm(yintw)
+
 ```
+
+
+
+\* These tables are not extracted from the database SAGE, but from ATHLOS. They contain already harmonised variables.
+
+
+
 
 ```{r local1, echo=F}
 vbl <- SAGE_SA_w1$q0407
@@ -67,7 +89,38 @@ The harmonized variable is the same than the study-specific variable, but the mi
 ```{r harmo1}
 SAGE_ds_SA_w1 <- tibble(id=SAGE_SA_w1$id)
 SAGE_ds_SA_w1$age <- car::recode(SAGE_SA_w1$q0407, "NA=999")
-SAGE_ds_SA_w1$age <- labelled(SAGE_ds_SA_w1$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#function to compute the age
+comp_age <- function(y_birth, m_birth, y_int, m_int, miss){
+  #first, it's computed the age of all
+  age <- NULL
+  age[m_int<m_birth] <- y_int[m_int<m_birth]-y_birth[m_int<m_birth]-1
+  age[m_int>=m_birth] <- y_int[m_int>=m_birth]-y_birth[m_int>=m_birth]
+  age[m_birth>900] <- y_int[m_birth>900]-y_birth[m_birth>900]
+  
+  #It's emphasized the individues that has missing
+  mis <- rep(0,length(y_birth))
+  for(i in 1:length(miss)){
+    mis[which(y_int==miss[i])] <- miss[i]
+  }
+  age[mis!=0] <- mis[mis!=0]
+  
+  mis <- rep(0,length(y_birth))
+  for(i in 1:length(miss)){
+    mis[which(y_birth==miss[i])] <- miss[i]
+  }
+  
+  age[mis!=0] <- mis[mis!=0]
+  
+  age
+
+}
+
+SAGE_SA_w1$age <- comp_age(y_birth=SAGE_SA_w1$ybirth , m_birth=SAGE_SA_w1$mbirth ,
+         y_int=SAGE_SA_w1$yintw , m_int=SAGE_SA_w1$mintw , miss=miss_values_vector)
+
+SAGE_ds_SA_w1$age[which(SAGE_ds_SA_w1$age %in% miss_values_vector & !SAGE_SA_w1$age %in% miss_values_vector)] <- SAGE_SA_w1$age[which(SAGE_ds_SA_w1$age %in% miss_values_vector & !SAGE_SA_w1$age %in% miss_values_vector)]
+
 ```
 
 #### Statistics of the new harmonised variable
@@ -192,22 +245,40 @@ kable(SAGE_ghana_w1[which(SAGE_ghana_w1$diff>2),], align = 'c', caption = SAstr)
 
 
 
-| **Name** | `q0407`|
-|-|-|
-| **Label** | `age`|
-| **Table name** | `chinaINDData` |
-| **Missings** | `NA` |
-| **Description** |  |
+| **Name** | `q0407`| `ybirth`| `mbirth` | `mintw` | `yintw` |
+|-|-|-|-|-|-|
+| **Label** | `age`| `Year of birth` | `Month of birth` | `Month of interview` | `Year of interview` |
+| **Table name** | `chinaINDData` |`sage_china_w1_hd`\* | `sage_china_w1_hd`\* | `sage_china_w1_hd`\* | `sage_china_w1_hd`\* |
+| **Missings** | `NA` | `999 = Missing`   |  `999 = Missing` |  `999 = Missing` |    |
+| **Description** |  |  |  |  |  |
 
 
+\* These tables are not extracted from the database SAGE, but from ATHLOS. They contain already harmonised variables.
 
 ```{r assign_china, echo=F}
 opal.assign.table.tibble(o, 'SAGE_china_w1','SAGE.chinaINDData',
                          variables=list('q0407'), missings = TRUE)
+SAGE_china_w1 <- opal.execute(o,'SAGE_china_w1')
+
+
+
+load("../RData/china_w1/mbirth.RData")
+load("../RData/china_w1/ybirth.RData")
+load("../RData/china_w1/mintw.RData")
+load("../RData/china_w1/yintw.RData")
+
+SAGE_china_w1 <- left_join(SAGE_china_w1,mbirth, by="id")
+SAGE_china_w1 <- left_join(SAGE_china_w1,ybirth, by="id")
+SAGE_china_w1 <- left_join(SAGE_china_w1,yintw, by="id")
+SAGE_china_w1 <- left_join(SAGE_china_w1,mintw, by="id")
+rm(mbirth)
+rm(ybirth)
+rm(mintw)
+rm(yintw)
+
 ```
 
 ```{r local_china, echo=F}
-SAGE_china_w1 <- opal.execute(o,'SAGE_china_w1')
 vbl <- SAGE_china_w1$q0407
 kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "q0407")
 pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
@@ -226,7 +297,37 @@ The harmonized variable is the same than the study-specific variable, but the mi
 ```{r harmo_china}
 SAGE_ds_china_w1 <- tibble(id=SAGE_china_w1$id)
 SAGE_ds_china_w1$age <- car::recode(SAGE_china_w1$q0407, "NA=999; lo:17=999")
-SAGE_ds_china_w1$age <- labelled(SAGE_ds_china_w1$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+
+#function to compute the age
+comp_age <- function(y_birth, m_birth, y_int, m_int, miss){
+  #first, it's computed the age of all
+  age <- NULL
+  age[m_int<m_birth] <- y_int[m_int<m_birth]-y_birth[m_int<m_birth]-1
+  age[m_int>=m_birth] <- y_int[m_int>=m_birth]-y_birth[m_int>=m_birth]
+  age[m_birth>900] <- y_int[m_birth>900]-y_birth[m_birth>900]
+  
+  #It's emphasized the individues that has missing
+  mis <- rep(0,length(y_birth))
+  for(i in 1:length(miss)){
+    mis[which(y_int==miss[i])] <- miss[i]
+  }
+  age[mis!=0] <- mis[mis!=0]
+  
+  mis <- rep(0,length(y_birth))
+  for(i in 1:length(miss)){
+    mis[which(y_birth==miss[i])] <- miss[i]
+  }
+  
+  age[mis!=0] <- mis[mis!=0]
+  
+  age
+
+}
+
+SAGE_china_w1$age <- comp_age(y_birth=SAGE_china_w1$ybirth , m_birth=SAGE_china_w1$mbirth ,
+         y_int=SAGE_china_w1$yintw , m_int=SAGE_china_w1$mintw , miss=miss_values_vector)
+
+SAGE_ds_china_w1$age[which(SAGE_ds_china_w1$age %in% miss_values_vector & !SAGE_china_w1$age %in% miss_values_vector)] <- SAGE_china_w1$age[which(SAGE_ds_china_w1$age %in% miss_values_vector & !SAGE_china_w1$age %in% miss_values_vector)]
 ```
 
 #### Statistics of the new harmonised variable
