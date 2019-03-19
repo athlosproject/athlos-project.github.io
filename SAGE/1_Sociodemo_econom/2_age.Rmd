@@ -28,6 +28,44 @@ source('../../_DS_Rmd/ageDS.R')
 
 # Data process
 
+
+
+**Functions**
+
+```{r}
+
+#function to compute the age
+compd_age <- function(y_birth, m_birth, d_birth, y_int, m_int, d_int, miss = miss_values_vector){
+  N <- length(y_birth)
+  #first, it's computed the age of all
+  age <- NULL
+  age[which(m_int>=m_birth)] <- y_int[which(m_int>=m_birth)]-y_birth[which(m_int>=m_birth)]
+  age[which(m_int<m_birth | (m_int==m_birth & d_int<d_birth & d_birth<=31))] <- y_int[which(m_int<m_birth | (m_int==m_birth & d_int<d_birth & d_birth<=31))]-y_birth[which(m_int<m_birth | (m_int==m_birth & d_int<d_birth & d_birth<=31))]-1
+  age[which(m_birth>12)] <- y_int[which(m_birth>12)]-y_birth[which(m_birth>12)]
+  
+  #It's emphasized the individues that has missing
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(y_int==miss[i])] <- miss[i]
+  }
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+  
+  mis <- rep(0,N)
+  for(i in 1:length(miss)){
+    mis[which(y_birth==miss[i])] <- miss[i]
+  }
+  
+  age[which(mis!=0)] <- mis[which(mis!=0)]
+  
+  age
+
+}
+
+
+
+```
+
+
 ## South Africa
 
 ### Wave 1 
@@ -36,30 +74,36 @@ source('../../_DS_Rmd/ageDS.R')
 
 
 
-| **Name** | `q0407`|`ybirth`| `mbirth` | `mintw` | `yintw` |
-|-|-|-|-|-|-|
-| **Label** | `age`|  `Year of birth` | `Month of birth` | `Month of interview` | `Year of interview` |
-| **Table name** | `southAfricaINDdata` |`sage_SA_w1_hd`\* | `sage_SA_w1_hd`\* | `sage_SA_w1_hd`\* | `sage_SA_w1_hd`\* |
-| **Missings** | `NA` | `999 = Missing`   |  `999 = Missing` |  `999 = Missing` |    |
-| **Description** |  |  |  |  |  |
+| **Name** | `q1011`|`ybirth`| `mbirth` | `dbirth` | `dintw` | `mintw` | `yintw` |
+|-|-|-|-|-|-|-|-|
+| **Label** | `q1011: age in yyys`|  `Year of birth` | `Month of birth` | `Day of birth` | `Day of interview` | `Month of interview` | `Year of interview` |
+| **Table name** | `southAfricaINDdata` |`sage_SA_w1_hd`\* | `sage_SA_w1_hd`\* | `sage_SA_w1_hd`\* | `sage_SA_w1_hd`\* | `sage_SA_w1_hd`\* | `sage_SA_w1_hd`\* |
+| **Missings** | `NA` | `999 = Missing`   |  `999 = Missing` | `999 = Missing`| `999 = Missing`|  `999 = Missing` |    |
+| **Description** |  |  |  |  |  |  |
 
 
 ```{r assign1, echo=F}
 opal.assign.table.tibble(o, 'SAGE_SA_w1','SAGE.southAfricaINDdata',
-                         variables=list('q0407'), missings = TRUE)
+                         variables=list('q1011'), missings = TRUE)
 SAGE_SA_w1 <- opal.execute(o,'SAGE_SA_w1')
 
+load("../RData/SA_w1/dbirth.RData")
 load("../RData/SA_w1/mbirth.RData")
 load("../RData/SA_w1/ybirth.RData")
+load("../RData/SA_w1/dintw.RData")
 load("../RData/SA_w1/mintw.RData")
 load("../RData/SA_w1/yintw.RData")
 
+SAGE_SA_w1 <- left_join(SAGE_SA_w1, dbirth, by="id")
 SAGE_SA_w1 <- left_join(SAGE_SA_w1, mbirth, by="id")
 SAGE_SA_w1 <- left_join(SAGE_SA_w1, ybirth, by="id")
 SAGE_SA_w1 <- left_join(SAGE_SA_w1,yintw, by="id")
 SAGE_SA_w1 <- left_join(SAGE_SA_w1,mintw, by="id")
+SAGE_SA_w1 <- left_join(SAGE_SA_w1,dintw, by="id")
+rm(dbirth)
 rm(mbirth)
 rm(ybirth)
+rm(dintw)
 rm(mintw)
 rm(yintw)
 
@@ -73,53 +117,29 @@ rm(yintw)
 
 
 ```{r local1, echo=F}
-vbl <- SAGE_SA_w1$q0407
-kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "q0407")
+vbl <- SAGE_SA_w1$q1011
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "q1011")
 pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
-ggplot(SAGE_SA_w1, aes(q0407)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+ggplot(SAGE_SA_w1, aes(q1011)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
-The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+The harmonized variable is the same than the study-specific variable `q1011`, but the missing values have to be recoded as follows:
 
+* `approximated by date of interview and date of birth`
 * `NA into 999`
 
 **R script:**
 
 ```{r harmo1}
 SAGE_ds_SA_w1 <- tibble(id=SAGE_SA_w1$id)
-SAGE_ds_SA_w1$age <- car::recode(SAGE_SA_w1$q0407, "NA=999")
+SAGE_ds_SA_w1$age <- car::recode(SAGE_SA_w1$q1011, "NA=999")
 
-#function to compute the age
-comp_age <- function(y_birth, m_birth, y_int, m_int, miss){
-  #first, it's computed the age of all
-  age <- NULL
-  age[m_int<m_birth] <- y_int[m_int<m_birth]-y_birth[m_int<m_birth]-1
-  age[m_int>=m_birth] <- y_int[m_int>=m_birth]-y_birth[m_int>=m_birth]
-  age[m_birth>900] <- y_int[m_birth>900]-y_birth[m_birth>900]
-  
-  #It's emphasized the individues that has missing
-  mis <- rep(0,length(y_birth))
-  for(i in 1:length(miss)){
-    mis[which(y_int==miss[i])] <- miss[i]
-  }
-  age[mis!=0] <- mis[mis!=0]
-  
-  mis <- rep(0,length(y_birth))
-  for(i in 1:length(miss)){
-    mis[which(y_birth==miss[i])] <- miss[i]
-  }
-  
-  age[mis!=0] <- mis[mis!=0]
-  
-  age
 
-}
+SAGE_SA_w1$cage <- compd_age(y_birth=SAGE_SA_w1$ybirth , m_birth=SAGE_SA_w1$mbirth , d_birth=SAGE_SA_w1$dbirth ,
+         y_int=SAGE_SA_w1$yintw , m_int=SAGE_SA_w1$mintw , d_int=SAGE_SA_w1$dintw , miss=miss_values_vector)
 
-SAGE_SA_w1$age <- comp_age(y_birth=SAGE_SA_w1$ybirth , m_birth=SAGE_SA_w1$mbirth ,
-         y_int=SAGE_SA_w1$yintw , m_int=SAGE_SA_w1$mintw , miss=miss_values_vector)
-
-SAGE_ds_SA_w1$age[which(SAGE_ds_SA_w1$age %in% miss_values_vector & !SAGE_SA_w1$age %in% miss_values_vector)] <- SAGE_SA_w1$age[which(SAGE_ds_SA_w1$age %in% miss_values_vector & !SAGE_SA_w1$age %in% miss_values_vector)]
+SAGE_ds_SA_w1$age[which(SAGE_ds_SA_w1$age %in% miss_values_vector & !SAGE_SA_w1$cage %in% miss_values_vector)] <- SAGE_SA_w1$cage[which(SAGE_ds_SA_w1$age %in% miss_values_vector & !SAGE_SA_w1$cage %in% miss_values_vector)]
 
 ```
 
@@ -135,15 +155,9 @@ pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, cap
 #### Validation
 ```{r crosstabulation1, echo=F}
 
-SAGE_SA_w1 <- SAGE_SA_w1[,1:2]
-load(paste0(datafolder,"SA_w1/ybirth",".RData"))
-load(paste0(datafolder,"SA_w1/yintw",".RData"))
-SAGE_SA_w1 <- left_join(SAGE_SA_w1,yintw, by="id")
-SAGE_SA_w1 <- left_join(SAGE_SA_w1,ybirth, by="id")
-SAGE_SA_w1$ybirth <- car::recode(SAGE_SA_w1$ybirth, "miss_values_vector=NA")
-SAGE_SA_w1$yintw <- car::recode(SAGE_SA_w1$yintw, "miss_values_vector=NA")
-SAGE_SA_w1$cage <- SAGE_SA_w1$yintw-SAGE_SA_w1$ybirth
-SAGE_SA_w1$diff <- abs(SAGE_SA_w1$q0407 - SAGE_SA_w1$cage)
+SAGE_SA_w1 <- left_join(SAGE_SA_w1 %>% select(-mbirth,-mintw,-dbirth,-dintw),SAGE_ds_SA_w1, by="id")
+SAGE_SA_w1$diff <- abs(SAGE_SA_w1$age - SAGE_SA_w1$cage)
+SAGE_SA_w1 <- update_labelled(SAGE_SA_w1)
 SAGE_SA_w1 <- remove_val_labels(SAGE_SA_w1)
 kable(frq(SAGE_SA_w1$diff), caption = 'Frequencies of differences between harmonised age and age computed as year of interview - year of birth')
 SAstr <- paste("The",length(SAGE_SA_w1$diff[which(SAGE_SA_w1$diff>2)]),"individuals with difference greater than 2")
@@ -166,30 +180,58 @@ kable(SAGE_SA_w1[which(SAGE_SA_w1$diff>2),], align = 'c', caption = SAstr)
 
 
 
-| **Name** | `q0407`|
-|-|-|
-| **Label** | `age`|
-| **Table name** | `ghanaINDData` |
-| **Missings** | `NA` |
-| **Description** |  |
+| **Name** |`q1011`|`ybirth`| `mbirth` | `dbirth` | `dintw` | `mintw` | `yintw` |
+|-|-|-|-|-|-|-|-|
+| **Label** | `q1011: age in yyys`|  `Year of birth` | `Month of birth` | `Day of birth` | `Day of interview` | `Month of interview` | `Year of interview` |
+| **Table name** |`ghanaINDData` |`sage_ghana_w1_hd`\* | `sage_ghana_w1_hd`\* | `sage_ghana_w1_hd`\* | `sage_ghana_w1_hd`\* |  `sage_ghana_w1_hd`\* | `sage_ghana_w1_hd`\* | 
+| **Missings** | `-8 = dk`<br/>`NA` |`999 = Missing`|`998 = Do not know`<br/>`999 = Missing`|`998 = Do not know`<br/>`999 = Missing`|`999 = Missing`|`999 = Missing`|  |
+| **Description** |  |  |  |  |  |  |  |
 
 
 ```{r assign_ghana, echo=F}
 opal.assign.table.tibble(o, 'SAGE_ghana_w1','SAGE.ghanaINDData',
-                         variables=list('q0407'), missings = TRUE)
+                         variables=list('q1011'), missings = TRUE)
+SAGE_ghana_w1 <- opal.execute(o,'SAGE_ghana_w1')
+
+
+load("../RData/ghana_w1/dbirth.RData")
+load("../RData/ghana_w1/mbirth.RData")
+load("../RData/ghana_w1/ybirth.RData")
+load("../RData/ghana_w1/dintw.RData")
+load("../RData/ghana_w1/mintw.RData")
+load("../RData/ghana_w1/yintw.RData")
+
+SAGE_ghana_w1 <- left_join(SAGE_ghana_w1, dbirth, by="id")
+SAGE_ghana_w1 <- left_join(SAGE_ghana_w1, mbirth, by="id")
+SAGE_ghana_w1 <- left_join(SAGE_ghana_w1, ybirth, by="id")
+SAGE_ghana_w1 <- left_join(SAGE_ghana_w1,yintw, by="id")
+SAGE_ghana_w1 <- left_join(SAGE_ghana_w1,mintw, by="id")
+SAGE_ghana_w1 <- left_join(SAGE_ghana_w1,dintw, by="id")
+rm(dbirth)
+rm(mbirth)
+rm(ybirth)
+rm(dintw)
+rm(mintw)
+rm(yintw)
+
+
 ```
 
+\* These tables are not extracted from the database SAGE, but from ATHLOS. They contain already harmonised variables.
+
 ```{r local_ghana, echo=F}
-SAGE_ghana_w1 <- opal.execute(o,'SAGE_ghana_w1')
-vbl <- SAGE_ghana_w1$q0407
-kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "q0407")
-pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
-ggplot(SAGE_ghana_w1, aes(q0407)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+vbl <- SAGE_ghana_w1$q1011
+vbl_miss <- c(-8)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "q1011")
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(SAGE_ghana_w1, aes(q1011)) + geom_histogram(stat="count", fill="steelblue", data = . %>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
-The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+The harmonized variable is the same than the study-specific variable `q1011`, but the missing values have to be recoded as follows:
 
+* `approximated by date of interview and date of birth`
 * `NA into 999`
 
 
@@ -197,8 +239,14 @@ The harmonized variable is the same than the study-specific variable, but the mi
 
 ```{r harmo_ghana}
 SAGE_ds_ghana_w1 <- tibble(id=SAGE_ghana_w1$id)
-SAGE_ds_ghana_w1$age <- car::recode(SAGE_ghana_w1$q0407, "NA=999")
-SAGE_ds_ghana_w1$age <- labelled(SAGE_ds_ghana_w1$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+SAGE_ds_ghana_w1$age <- car::recode(SAGE_ghana_w1$q1011, "NA=999; -8 = 998")
+
+SAGE_ghana_w1$cage <- compd_age(y_birth=SAGE_ghana_w1$ybirth , m_birth=SAGE_ghana_w1$mbirth , d_birth=SAGE_ghana_w1$dbirth ,
+         y_int=SAGE_ghana_w1$yintw , m_int=SAGE_ghana_w1$mintw , d_int=SAGE_ghana_w1$dintw , miss=miss_values_vector)
+
+SAGE_ds_ghana_w1$age[which(SAGE_ds_ghana_w1$age %in% miss_values_vector & !SAGE_ghana_w1$cage %in% miss_values_vector)] <- SAGE_ghana_w1$cage[which(SAGE_ds_ghana_w1$age %in% miss_values_vector & !SAGE_ghana_w1$cage %in% miss_values_vector)]
+
+
 ```
 
 #### Statistics of the new harmonised variable
@@ -207,22 +255,16 @@ vbl <- SAGE_ds_ghana_w1$age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = "age")
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
- ggplot(SAGE_ds_ghana_w1, aes(age)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab("age") + ylab("Frequency") 
+ ggplot(SAGE_ds_ghana_w1, aes(age)) + geom_histogram(stat="count", fill="steelblue", data = . %>% filter(!vbl %in% miss_values_vector)) + xlab("age") + ylab("Frequency") 
 ```
 
 #### Validation
 ```{r crosstabulation_ghana, echo=F}
 
+SAGE_ghana_w1 <- left_join(SAGE_ghana_w1 %>% select(-mbirth,-mintw,-dbirth,-dintw),SAGE_ds_ghana_w1, by="id")
 
-SAGE_ghana_w1 <- SAGE_ghana_w1[,1:2]
-load(paste0(datafolder,"ghana_w1/ybirth",".RData"))
-load(paste0(datafolder,"ghana_w1/yintw",".RData"))
-SAGE_ghana_w1 <- left_join(SAGE_ghana_w1,yintw, by="id")
-SAGE_ghana_w1 <- left_join(SAGE_ghana_w1,ybirth, by="id")
-SAGE_ghana_w1$ybirth <- car::recode(SAGE_ghana_w1$ybirth, "miss_values_vector=NA")
-SAGE_ghana_w1$yintw <- car::recode(SAGE_ghana_w1$yintw, "miss_values_vector=NA")
-SAGE_ghana_w1$cage <- SAGE_ghana_w1$yintw-SAGE_ghana_w1$ybirth
-SAGE_ghana_w1$diff <- abs(SAGE_ghana_w1$q0407 - SAGE_ghana_w1$cage)
+SAGE_ghana_w1$diff <- abs(SAGE_ghana_w1$age - SAGE_ghana_w1$cage)
+SAGE_ghana_w1 <- update_labelled(SAGE_ghana_w1)
 SAGE_ghana_w1 <- remove_val_labels(SAGE_ghana_w1)
 kable(frq(SAGE_ghana_w1$diff), caption = 'Frequencies of differences between harmonised age and age computed as year of interview - year of birth')
 SAstr <- paste("The",length(SAGE_ghana_w1$diff[which(SAGE_ghana_w1$diff>2)]),"individuals with difference greater than 2")
@@ -245,89 +287,46 @@ kable(SAGE_ghana_w1[which(SAGE_ghana_w1$diff>2),], align = 'c', caption = SAstr)
 
 
 
-| **Name** | `q0407`| `ybirth`| `mbirth` | `mintw` | `yintw` |
-|-|-|-|-|-|-|
-| **Label** | `age`| `Year of birth` | `Month of birth` | `Month of interview` | `Year of interview` |
-| **Table name** | `chinaINDData` |`sage_china_w1_hd`\* | `sage_china_w1_hd`\* | `sage_china_w1_hd`\* | `sage_china_w1_hd`\* |
-| **Missings** | `NA` | `999 = Missing`   |  `999 = Missing` |  `999 = Missing` |    |
-| **Description** |  |  |  |  |  |
+| **Name** | `q1011`|
+|-|-|
+| **Label** |`q1011: age in yyys`|
+| **Table name** |`chinaINDData` |
+| **Missings** | `NA` |
+| **Description** |  |
 
 
-\* These tables are not extracted from the database SAGE, but from ATHLOS. They contain already harmonised variables.
 
 ```{r assign_china, echo=F}
 opal.assign.table.tibble(o, 'SAGE_china_w1','SAGE.chinaINDData',
-                         variables=list('q0407'), missings = TRUE)
+                         variables=list('q1011','q1010_yyyy'), missings = TRUE)
 SAGE_china_w1 <- opal.execute(o,'SAGE_china_w1')
 
-
-
-load("../RData/china_w1/mbirth.RData")
-load("../RData/china_w1/ybirth.RData")
-load("../RData/china_w1/mintw.RData")
-load("../RData/china_w1/yintw.RData")
-
-SAGE_china_w1 <- left_join(SAGE_china_w1,mbirth, by="id")
-SAGE_china_w1 <- left_join(SAGE_china_w1,ybirth, by="id")
-SAGE_china_w1 <- left_join(SAGE_china_w1,yintw, by="id")
-SAGE_china_w1 <- left_join(SAGE_china_w1,mintw, by="id")
-rm(mbirth)
-rm(ybirth)
-rm(mintw)
-rm(yintw)
 
 ```
 
 ```{r local_china, echo=F}
-vbl <- SAGE_china_w1$q0407
-kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "q0407")
+vbl <- SAGE_china_w1$q1011
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "q1011")
 pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
-ggplot(SAGE_china_w1, aes(q0407)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+ggplot(SAGE_china_w1, aes(q1011)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+
+kable(frq(is.na((SAGE_china_w1 %>% filter(is.na(q1011)))$q1010_yyyy)), caption = 'All missing values of q1011 (age) are also missing values of q1010_yyyy (year of birth)')
+
 ```
 
-There are values lower than 18, the limit age, therefore these individuals are going to be considered as missing and they will be recoded as 999. 
 
 #### Harmonisation algorithm
 The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
 
+* `approximated by date of interview and date of birth`
 * `NA into 999`
 
 **R script:**
 
 ```{r harmo_china}
 SAGE_ds_china_w1 <- tibble(id=SAGE_china_w1$id)
-SAGE_ds_china_w1$age <- car::recode(SAGE_china_w1$q0407, "NA=999; lo:17=999")
+SAGE_ds_china_w1$age <- car::recode(SAGE_china_w1$q1011, "NA=999")
 
-#function to compute the age
-comp_age <- function(y_birth, m_birth, y_int, m_int, miss){
-  #first, it's computed the age of all
-  age <- NULL
-  age[m_int<m_birth] <- y_int[m_int<m_birth]-y_birth[m_int<m_birth]-1
-  age[m_int>=m_birth] <- y_int[m_int>=m_birth]-y_birth[m_int>=m_birth]
-  age[m_birth>900] <- y_int[m_birth>900]-y_birth[m_birth>900]
-  
-  #It's emphasized the individues that has missing
-  mis <- rep(0,length(y_birth))
-  for(i in 1:length(miss)){
-    mis[which(y_int==miss[i])] <- miss[i]
-  }
-  age[mis!=0] <- mis[mis!=0]
-  
-  mis <- rep(0,length(y_birth))
-  for(i in 1:length(miss)){
-    mis[which(y_birth==miss[i])] <- miss[i]
-  }
-  
-  age[mis!=0] <- mis[mis!=0]
-  
-  age
-
-}
-
-SAGE_china_w1$age <- comp_age(y_birth=SAGE_china_w1$ybirth , m_birth=SAGE_china_w1$mbirth ,
-         y_int=SAGE_china_w1$yintw , m_int=SAGE_china_w1$mintw , miss=miss_values_vector)
-
-SAGE_ds_china_w1$age[which(SAGE_ds_china_w1$age %in% miss_values_vector & !SAGE_china_w1$age %in% miss_values_vector)] <- SAGE_china_w1$age[which(SAGE_ds_china_w1$age %in% miss_values_vector & !SAGE_china_w1$age %in% miss_values_vector)]
 ```
 
 #### Statistics of the new harmonised variable
@@ -341,22 +340,19 @@ pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, cap
 
 #### Validation
 ```{r crosstabulation_china, echo=F,results='asis'}
-cat("The difference between the resulting and the initial missing values are the values lower than 18:", sum(SAGE_ds_china_w1$age %in% miss_values_vector)-sum(is.na(SAGE_china_w1$q0407)),"=",sum(SAGE_china_w1$q0407 %in% 0:17))
 
-
-SAGE_china_w1 <- SAGE_china_w1[,1:2]
-load(paste0(datafolder,"china_w1/ybirth",".RData"))
+SAGE_china_w1$q1010_yyyy <- car::recode(SAGE_china_w1$q1010_yyyy, "-8=NA; 0:1850=NA; 2009:hi=NA")
 load(paste0(datafolder,"china_w1/yintw",".RData"))
 SAGE_china_w1 <- left_join(SAGE_china_w1,yintw, by="id")
-SAGE_china_w1 <- left_join(SAGE_china_w1,ybirth, by="id")
-SAGE_china_w1$ybirth <- car::recode(SAGE_china_w1$ybirth, "miss_values_vector=NA")
 SAGE_china_w1$yintw <- car::recode(SAGE_china_w1$yintw, "miss_values_vector=NA")
-SAGE_china_w1$cage <- SAGE_china_w1$yintw-SAGE_china_w1$ybirth
-SAGE_china_w1$diff <- abs(SAGE_china_w1$q0407 - SAGE_china_w1$cage)
+SAGE_china_w1$cage <- SAGE_china_w1$yintw-SAGE_china_w1$q1010_yyyy
+SAGE_china_w1$diff <- abs(SAGE_china_w1$q1011 - SAGE_china_w1$cage)
+SAGE_china_w1 <- update_labelled(SAGE_china_w1)
 SAGE_china_w1 <- remove_val_labels(SAGE_china_w1)
 kable(frq(SAGE_china_w1$diff), caption = 'Frequencies of differences between harmonised age and age computed as year of interview - year of birth')
 SAstr <- paste("The",length(SAGE_china_w1$diff[which(SAGE_china_w1$diff>2)]),"individuals with difference greater than 2")
 kable(SAGE_china_w1[which(SAGE_china_w1$diff>2),], align = 'c', caption = SAstr)
+
 
 ```
 
@@ -377,9 +373,9 @@ kable(SAGE_china_w1[which(SAGE_china_w1$diff>2),], align = 'c', caption = SAstr)
 
 
 
-| **Name** | `q0407`|
+| **Name** | `q1011`|
 |-|-|
-| **Label** | `age`|
+| **Label** |`q1011: age in yyys`|
 | **Table name** | `indiaINDData` |
 | **Description** |  |
 
@@ -387,15 +383,15 @@ kable(SAGE_china_w1[which(SAGE_china_w1$diff>2),], align = 'c', caption = SAstr)
 
 ```{r assign_india, echo=F}
 opal.assign.table.tibble(o, 'SAGE_india_w1','SAGE.indiaINDData',
-                         variables=list('q0407'), missings = TRUE)
+                         variables=list('q1011'), missings = TRUE)
+SAGE_india_w1 <- opal.execute(o,'SAGE_india_w1')
 ```
 
 ```{r local_india, echo=F}
-SAGE_india_w1 <- opal.execute(o,'SAGE_india_w1')
-vbl <- SAGE_india_w1$q0407
-kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "q0407")
+vbl <- SAGE_india_w1$q1011
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "q1011")
 pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
-ggplot(SAGE_india_w1, aes(q0407)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+ggplot(SAGE_india_w1, aes(q1011)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -407,8 +403,8 @@ The harmonized variable is the same than the study-specific variable, but the mi
 
 ```{r harmo_india}
 SAGE_ds_india_w1 <- tibble(id=SAGE_india_w1$id)
-SAGE_ds_india_w1$age <- car::recode(SAGE_india_w1$q0407, "NA=999")
-SAGE_ds_india_w1$age <- labelled(SAGE_ds_india_w1$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+SAGE_ds_india_w1$age <- car::recode(SAGE_india_w1$q1011, "NA=999")
+
 ```
 
 #### Statistics of the new harmonised variable
@@ -432,7 +428,7 @@ SAGE_india_w1 <- left_join(SAGE_india_w1,ybirth, by="id")
 SAGE_india_w1$ybirth <- car::recode(SAGE_india_w1$ybirth, "miss_values_vector=NA")
 SAGE_india_w1$yintw <- car::recode(SAGE_india_w1$yintw, "miss_values_vector=NA")
 SAGE_india_w1$cage <- SAGE_india_w1$yintw-SAGE_india_w1$ybirth
-SAGE_india_w1$diff <- abs(SAGE_india_w1$q0407 - SAGE_india_w1$cage)
+SAGE_india_w1$diff <- abs(SAGE_india_w1$q1011 - SAGE_india_w1$cage)
 SAGE_india_w1 <- remove_val_labels(SAGE_india_w1)
 kable(frq(SAGE_india_w1$diff), caption = 'Frequencies of differences between harmonised age and age computed as year of interview - year of birth')
 SAstr <- paste("The",length(SAGE_india_w1$diff[which(SAGE_india_w1$diff>2)]),"individuals with difference greater than 2")
@@ -455,39 +451,43 @@ kable(SAGE_india_w1[which(SAGE_india_w1$diff>2),], align = 'c', caption = SAstr)
 
 
 
-| **Name** | `q0407`|
-|-|-|
-| **Label** | `age`|
-| **Table name** | `russiaINDdata` |
-| **Missings** | `NA` |
-| **Description** |  |
+| **Name** | `q0407`|`q1011`|
+|-|-|-|
+| **Label** | `age`|`q1011: age in yyys`|
+| **Table name** | `russiaINDdata` |`russiaINDdata` |
+| **Missings** | `NA` | `NA` |
+| **Description** |  |  |
 
 
 
 ```{r assign_russia, echo=F}
 opal.assign.table.tibble(o, 'SAGE_russia_w1','SAGE.russiaINDdata',
-                         variables=list('q0407'), missings = TRUE)
+                         variables=list('q0407','q1011','q1010_yyyy'), missings = TRUE)
+SAGE_russia_w1 <- opal.execute(o,'SAGE_russia_w1')
 ```
 
 ```{r local_russia, echo=F}
-SAGE_russia_w1 <- opal.execute(o,'SAGE_russia_w1')
-vbl <- SAGE_russia_w1$q0407
+vbl <- SAGE_russia_w1$q1011
 kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "q0407")
 pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
-ggplot(SAGE_russia_w1, aes(q0407)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+ggplot(SAGE_russia_w1, aes(q1011)) + geom_histogram(stat="count", fill="steelblue") + xlab("age") + ylab("Frequency")
+
+kable(frq(is.na((SAGE_russia_w1 %>% filter(is.na(q1011)))$q1010_yyyy)), caption = 'All missing values of q1011 (age) are also missing values of q1010_yyyy (year of birth)')
 ```
 
 #### Harmonisation algorithm
-The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
+The harmonized variable is the same than the study-specific variable `q1011`, but the missing values have to be recoded as follows:
 
+* `harmonised using q0407`
 * `NA into 999`
 
 **R script:**
 
 ```{r harmo_russia}
 SAGE_ds_russia_w1 <- tibble(id=SAGE_russia_w1$id)
-SAGE_ds_russia_w1$age <- car::recode(SAGE_russia_w1$q0407, "NA=999")
-SAGE_ds_russia_w1$age <- labelled(SAGE_ds_russia_w1$age, labels = c("Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+SAGE_ds_russia_w1$age <- car::recode(SAGE_russia_w1$q1011, "NA=999")
+SAGE_ds_russia_w1$age[which(SAGE_ds_russia_w1$age %in% miss_values_vector & !is.na(SAGE_russia_w1$q0407))] <- SAGE_russia_w1$q0407[which(SAGE_ds_russia_w1$age %in% miss_values_vector & !is.na(SAGE_russia_w1$q0407))]
+
 ```
 
 #### Statistics of the new harmonised variable
@@ -503,15 +503,12 @@ pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, cap
 ```{r crosstabulation_russia, echo=F}
 
 
-SAGE_russia_w1 <- SAGE_russia_w1[,1:2]
-load(paste0(datafolder,"russia_w1/ybirth",".RData"))
 load(paste0(datafolder,"russia_w1/yintw",".RData"))
 SAGE_russia_w1 <- left_join(SAGE_russia_w1,yintw, by="id")
-SAGE_russia_w1 <- left_join(SAGE_russia_w1,ybirth, by="id")
-SAGE_russia_w1$ybirth <- car::recode(SAGE_russia_w1$ybirth, "miss_values_vector=NA")
+SAGE_russia_w1$q1010_yyyy <- car::recode(SAGE_russia_w1$q1010_yyyy, "-8=NA")
 SAGE_russia_w1$yintw <- car::recode(SAGE_russia_w1$yintw, "miss_values_vector=NA")
-SAGE_russia_w1$cage <- SAGE_russia_w1$yintw-SAGE_russia_w1$ybirth
-SAGE_russia_w1$diff <- abs(SAGE_russia_w1$q0407 - SAGE_russia_w1$cage)
+SAGE_russia_w1$cage <- SAGE_russia_w1$yintw-SAGE_russia_w1$q1010_yyyy
+SAGE_russia_w1$diff <- abs(SAGE_russia_w1$q1011 - SAGE_russia_w1$cage)
 SAGE_russia_w1 <- remove_val_labels(SAGE_russia_w1)
 kable(frq(SAGE_russia_w1$diff), caption = 'Frequencies of differences between harmonised age and age computed as year of interview - year of birth')
 SAstr <- paste("The",length(SAGE_russia_w1$diff[which(SAGE_russia_w1$diff>2)]),"individuals with difference greater than 2")
@@ -534,26 +531,39 @@ kable(SAGE_russia_w1[which(SAGE_russia_w1$diff>2),], align = 'c', caption = SAst
 
 
 
-| **Name** | `ybirth`| `mbirth` | `mintw` | `yintw` |
-|-|-|-|-|-|
-| **Label** |  `Year of birth` | `Month of birth` | `Month of interview` | `Year of interview` |
-| **Table name** |`sage_mexico_w1_hd`\* | `sage_mexico_w1_hd`\* | `sage_mexico_w1_hd`\* | `sage_mexico_w1_hd`\* |
-| **Missings** | `999 = Missing`   |  `999 = Missing` |  `999 = Missing` |    |
-| **Description** |  |  |  |  |
+| **Name** | `ybirth`| `mbirth` |`dbirth` | `dintw` | `mintw` | `yintw` | `q1011`|
+|-|-|-|-|-|-|
+| **Label** |  `Year of birth` | `Month of birth` | `Day of birth` | `Day of interview` | `Month of interview` | `Year of interview` | `q1011: age in yyys`|
+| **Table name** |`sage_mexico_w1_hd`\* | `sage_mexico_w1_hd`\* | `sage_mexico_w1_hd`\* | `sage_mexico_w1_hd`\* | `sage_mexico_w1_hd`\* | `sage_mexico_w1_hd`\* |`mexicoINDdata` |
+| **Missings** | `999 = Missing`   |  `999 = Missing` |  `999 = Missing` |  `999 = Missing` |  `999 = Missing` |    |`-8 = dk`<br/>`NA` |
+| **Description** |  |  |  |  |  |
 
 \* These tables are not extracted from the database SAGE, but from ATHLOS. They contain already harmonised variables.
 
 ```{r assign_Mexico, echo=F}
+
+opal.assign.table.tibble(o, 'SAGE_mexico_w1','SAGE.mexicoINDdata',
+                         variables=list('q1011'), missings = TRUE)
+SAGE_mexico_w1 <- opal.execute(o,'SAGE_mexico_w1')
+
+
+load("../RData/mexico_w1/dbirth.RData")
 load("../RData/mexico_w1/mbirth.RData")
 load("../RData/mexico_w1/ybirth.RData")
+load("../RData/mexico_w1/dintw.RData")
 load("../RData/mexico_w1/mintw.RData")
 load("../RData/mexico_w1/yintw.RData")
 
-SAGE_mexico_w1 <- left_join(mbirth,ybirth, by="id")
+SAGE_mexico_w1 <- left_join(SAGE_mexico_w1,dbirth, by="id")
+SAGE_mexico_w1 <- left_join(SAGE_mexico_w1,mbirth, by="id")
+SAGE_mexico_w1 <- left_join(SAGE_mexico_w1,ybirth, by="id")
 SAGE_mexico_w1 <- left_join(SAGE_mexico_w1,yintw, by="id")
 SAGE_mexico_w1 <- left_join(SAGE_mexico_w1,mintw, by="id")
+SAGE_mexico_w1 <- left_join(SAGE_mexico_w1,dintw, by="id")
+rm(dbirth)
 rm(mbirth)
 rm(ybirth)
+rm(dintw)
 rm(mintw)
 rm(yintw)
 
@@ -562,6 +572,12 @@ rm(yintw)
 
 
 ```{r local_Mexico, echo=F}
+
+vbl <- SAGE_mexico_w1$q1011
+vbl_miss <- c(-8)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = "q1011")
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(SAGE_mexico_w1, aes(q1011)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- SAGE_mexico_w1$ybirth
 kable(Continuous_summary(vbl, missing_values = c(999))[3], caption = "ybirth")
@@ -572,6 +588,16 @@ vbl <- SAGE_mexico_w1$mbirth
 kable(Categorical_summary(vbl, missing_values = c(999))[3], caption = "mbirth")
 kable(Categorical_summary(vbl, missing_values = c(999))[1], caption = "Summary")
 ggplot(SAGE_mexico_w1, aes(x=factor(mbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab("month of birth") + ylab("Frequency")
+
+vbl <- SAGE_mexico_w1$dbirth
+kable(Categorical_summary(vbl, missing_values = c(999))[3], caption = "dbirth")
+kable(Categorical_summary(vbl, missing_values = c(999))[1], caption = "Summary")
+ggplot(SAGE_mexico_w1, aes(x=factor(dbirth))) + geom_histogram(stat="count", fill="steelblue") + xlab("day of birth") + ylab("Frequency")
+
+vbl <- SAGE_mexico_w1$dintw
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "dintw")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Summary")
+ggplot(SAGE_mexico_w1, aes(x=factor(dintw))) + geom_histogram(stat="count", fill="steelblue") + xlab("day of interview") + ylab("Frequency")
 
 vbl <- SAGE_mexico_w1$mintw
 kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "mintw")
@@ -587,50 +613,25 @@ ggplot(SAGE_mexico_w1, aes(x=factor(yintw))) + geom_histogram(stat="count", fill
 ```
 
 #### Harmonisation algorithm
-Since all the values of the study-specific variable for age are missing data, to compute the harmonized variable it has to be applied the following formula: 
+The harmonized variable is the same than the study-specific variable `q1011`, but the missing values have to be recoded as follows:
 
-* `date of interview - date of birth`
-
-and recode the missings as follows:
-
+* `approximated by date of interview and date of birth`
 * `NA into 999`
 
 **R script:**
 
-```{r harmo_Mexico}
-#function to compute the age
-comp_age <- function(y_birth, m_birth, y_int, m_int, miss){
-  #first, it's computed the age of all
-  age <- NULL
-  age[m_int<m_birth] <- y_int[m_int<m_birth]-y_birth[m_int<m_birth]-1
-  age[m_int>=m_birth] <- y_int[m_int>=m_birth]-y_birth[m_int>=m_birth]
-  age[m_birth>900] <- y_int[m_birth>900]-y_birth[m_birth>900]
-  
-  #It's emphasized the individues that has missing
-  mis <- rep(0,length(y_birth))
-  for(i in 1:length(miss)){
-    mis[which(y_int==miss[i])] <- miss[i]
-  }
-  age[mis!=0] <- mis[mis!=0]
-  
-  mis <- rep(0,length(y_birth))
-  for(i in 1:length(miss)){
-    mis[which(y_birth==miss[i])] <- miss[i]
-  }
-  
-  age[mis!=0] <- mis[mis!=0]
-  
-  age
-
-}
+```{r harmo mexico_w1}
 SAGE_ds_mexico_w1 <- tibble(id=SAGE_mexico_w1$id)
-
-SAGE_ds_mexico_w1$age <- comp_age(y_birth=SAGE_mexico_w1$ybirth , m_birth=SAGE_mexico_w1$mbirth ,
-         y_int=SAGE_mexico_w1$yintw , m_int=SAGE_mexico_w1$mintw , miss=miss_values_vector)
+SAGE_ds_mexico_w1$age <- car::recode(SAGE_mexico_w1$q1011, "-8=998; NA=999")
 
 
+SAGE_mexico_w1$cage <- compd_age(y_birth=SAGE_mexico_w1$ybirth , m_birth=SAGE_mexico_w1$mbirth , d_birth=SAGE_mexico_w1$dbirth ,
+         y_int=SAGE_mexico_w1$yintw , m_int=SAGE_mexico_w1$mintw , d_int=SAGE_mexico_w1$dintw , miss=miss_values_vector)
+
+SAGE_ds_mexico_w1$age[which(SAGE_ds_mexico_w1$age %in% miss_values_vector & !SAGE_mexico_w1$cage %in% miss_values_vector)] <- SAGE_mexico_w1$cage[which(SAGE_ds_mexico_w1$age %in% miss_values_vector & !SAGE_mexico_w1$cage %in% miss_values_vector)]
 
 ```
+
 
 #### Statistics of the new harmonised variable
 ```{r descript_Mexico, echo=F}
@@ -643,6 +644,16 @@ pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, cap
 
 #### Validation
 ```{r crosstabulation_Mexico, echo=F}
+
+
+SAGE_mexico_w1 <- left_join(SAGE_mexico_w1 %>% select(-mbirth,-mintw,-dbirth,-dintw),SAGE_ds_mexico_w1, by="id")
+SAGE_mexico_w1$diff <- abs(SAGE_mexico_w1$age - SAGE_mexico_w1$cage)
+SAGE_mexico_w1 <- update_labelled(SAGE_mexico_w1)
+SAGE_mexico_w1 <- remove_val_labels(SAGE_mexico_w1)
+kable(frq(SAGE_mexico_w1$diff), caption = 'Frequencies of differences between harmonised age and age computed as year of interview - year of birth')
+SAstr <- paste("The",length(SAGE_mexico_w1$diff[which(SAGE_mexico_w1$diff>2)]),"individuals with difference greater than 2")
+kable(SAGE_mexico_w1[which(SAGE_mexico_w1$diff>2),], align = 'c', caption = SAstr)
+
 ```
 
 
