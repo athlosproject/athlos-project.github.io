@@ -15,76 +15,15 @@ output:
 <!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
-
-
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-* Short name: `h_diabetes`
-* Variable label: `History of  Diabetes mellitus`
-* Variable description: `History of diabetes or high blood sugar`
-* Domain: `Diseases`
-* Value type: `categorical`
-* Category coding:
-
-**Code** | **Category Label**
--------- | ------------------
-0        | Not Diabetes or high blood sugar
-1        | Diabetes or high blood sugar
-
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-* Short name: `h_diabetes_age`
-* Variable label: `Age first diagnosed diabetes`
-* Variable description: `The age first told had diabetes or high blood sugar diagnosis`
-* Domain: `Diseases`
-* Value type: `Continuous`
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-
-<!-- ########################################################## --> 
-<!-- # Global variables -->
-```{r global, include=FALSE, echo=F}
-miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
-ds_label <- "History of diabetes"
-ds_label_age <- "Age first diagnosed diabetes"
-cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
-cont_label <- cat_label[3:11]
-datafolder <- "../RData/"
-#sing_idlist <- c()
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/diabetesDS.Rmd'}
 ```
-<!-- ########################################################## --> 
-
+```{r global, echo=F}
+source('../../_DS_Rmd/diabetesDS.R')
+```
 
 
 # Data process
@@ -295,7 +234,7 @@ ggplot(COURAGE_pol_w2, aes(x=factor(q4022_diabetes_s1))) + geom_bar(stat="count"
 vbl <- COURAGE_pol_w2$age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(COURAGE_pol_w2)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(COURAGE_pol_w2, aes(age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(15,95)
+ggplot(COURAGE_pol_w2, aes(age)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% miss_values_vector)) + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- COURAGE_pol_w2$yintw_pol_w1
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(COURAGE_pol_w2)[4])
@@ -334,17 +273,17 @@ COURAGE_ds_pol_w2 <- tibble(id=COURAGE_pol_w2$id)
 
 COURAGE_pol_w2 <- left_join(COURAGE_pol_w2, COURAGE_ds_pol_w1, by = "id")
 COURAGE_ds_pol_w2$h_diabetes <- rep(999,length(COURAGE_pol_w2$id))
-COURAGE_ds_pol_w2$h_diabetes[((!is.na(COURAGE_pol_w2$q4022_diabetes_s1)) & COURAGE_pol_w2$q4022_diabetes_s1 == 2) & ((!is.na(COURAGE_pol_w2$h_diabetes)) & COURAGE_pol_w2$h_diabetes == 0)] <- 0
-COURAGE_ds_pol_w2$h_diabetes[((!is.na(COURAGE_pol_w2$q4022_diabetes_s1)) & COURAGE_pol_w2$q4022_diabetes_s1 == 1) | ((!is.na(COURAGE_pol_w2$h_diabetes)) & (!is.na(COURAGE_pol_w2$q4022_diabetes_s1)) & COURAGE_pol_w2$h_diabetes == 1)] <- 1
+COURAGE_ds_pol_w2$h_diabetes[which(((!is.na(COURAGE_pol_w2$q4022_diabetes_s1)) & COURAGE_pol_w2$q4022_diabetes_s1 == 2) & ((!is.na(COURAGE_pol_w2$h_diabetes)) & COURAGE_pol_w2$h_diabetes == 0))] <- 0
+COURAGE_ds_pol_w2$h_diabetes[which(((!is.na(COURAGE_pol_w2$q4022_diabetes_s1)) & COURAGE_pol_w2$q4022_diabetes_s1 == 1) | ((!is.na(COURAGE_pol_w2$h_diabetes)) & (!is.na(COURAGE_pol_w2$q4022_diabetes_s1)) & COURAGE_pol_w2$h_diabetes == 1))] <- 1
 
 COURAGE_ds_pol_w2$h_diabetes <- labelled(COURAGE_ds_pol_w2$h_diabetes, labels = cat_label)
 
 # Continuous variable harmonization
-diabetes_age <- COURAGE_pol_w2$age[COURAGE_ds_pol_w2$h_diabetes == 1 & COURAGE_pol_w2$h_diabetes==0 & !is.na(COURAGE_pol_w2$h_diabetes)]-(COURAGE_pol_w2$yintw_pol_w2[COURAGE_ds_pol_w2$h_diabetes == 1 & COURAGE_pol_w2$h_diabetes==0 & !is.na(COURAGE_pol_w2$h_diabetes)]-COURAGE_pol_w2$yintw_pol_w1[COURAGE_ds_pol_w2$h_diabetes == 1 & COURAGE_pol_w2$h_diabetes==0 & !is.na(COURAGE_pol_w2$h_diabetes)])/2
+diabetes_age <- floor(COURAGE_pol_w2$age[which(COURAGE_ds_pol_w2$h_diabetes == 1 & COURAGE_pol_w2$h_diabetes==0 & !is.na(COURAGE_pol_w2$h_diabetes))]-(COURAGE_pol_w2$yintw_pol_w2[which(COURAGE_ds_pol_w2$h_diabetes == 1 & COURAGE_pol_w2$h_diabetes==0 & !is.na(COURAGE_pol_w2$h_diabetes))]-COURAGE_pol_w2$yintw_pol_w1[which(COURAGE_ds_pol_w2$h_diabetes == 1 & COURAGE_pol_w2$h_diabetes==0 & !is.na(COURAGE_pol_w2$h_diabetes))])/2)
 
 COURAGE_ds_pol_w2$h_diabetes_age <- rep(999,length(COURAGE_pol_w2$id))
-COURAGE_ds_pol_w2$h_diabetes_age[COURAGE_ds_pol_w2$h_diabetes == 0] <- 996
-COURAGE_ds_pol_w2$h_diabetes_age[COURAGE_ds_pol_w2$h_diabetes == 1 & COURAGE_pol_w2$h_diabetes==0 & !is.na(COURAGE_pol_w2$h_diabetes)] <- diabetes_age
+COURAGE_ds_pol_w2$h_diabetes_age[which(COURAGE_ds_pol_w2$h_diabetes == 0)] <- 996
+COURAGE_ds_pol_w2$h_diabetes_age[which(COURAGE_ds_pol_w2$h_diabetes == 1 & COURAGE_pol_w2$h_diabetes==0 & !is.na(COURAGE_pol_w2$h_diabetes))] <- diabetes_age
 
 COURAGE_ds_pol_w2$h_diabetes_age <- labelled(COURAGE_ds_pol_w2$h_diabetes_age, labels = cont_label)
 
@@ -365,7 +304,7 @@ vbl <- COURAGE_ds_pol_w2$h_diabetes_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(COURAGE_ds_pol_w2, aes(h_diabetes_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(15,85)
+ggplot(COURAGE_ds_pol_w2, aes(h_diabetes_age)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% miss_values_vector)) + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -514,7 +453,7 @@ ggplot(COURAGE_spain_w2, aes(x=factor(q4022_diabetes_s1))) + geom_bar(stat="coun
 vbl <- COURAGE_spain_w2$age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(COURAGE_spain_w2)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(COURAGE_spain_w2, aes(age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(20,115)
+ggplot(COURAGE_spain_w2, aes(age)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% miss_values_vector)) + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- COURAGE_spain_w2$yintw_spain_w1
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(COURAGE_spain_w2)[4])
@@ -554,18 +493,18 @@ COURAGE_ds_spain_w2 <- tibble(id=COURAGE_spain_w2$id)
 
 COURAGE_spain_w2 <- left_join(COURAGE_spain_w2, COURAGE_ds_spain_w1, by = "id")
 COURAGE_ds_spain_w2$h_diabetes <- rep(999,length(COURAGE_spain_w2$id))
-COURAGE_ds_spain_w2$h_diabetes[((!is.na(COURAGE_spain_w2$q4022_diabetes_s1)) & COURAGE_spain_w2$q4022_diabetes_s1 == 2) & ((!is.na(COURAGE_spain_w2$h_diabetes)) & COURAGE_spain_w2$h_diabetes != 1)] <- 0
-COURAGE_ds_spain_w2$h_diabetes[((!is.na(COURAGE_spain_w2$q4022_diabetes_s1)) & COURAGE_spain_w2$q4022_diabetes_s1 == 1) | ((!is.na(COURAGE_spain_w2$h_diabetes)) & (!is.na(COURAGE_spain_w2$q4022_diabetes_s1)) & COURAGE_spain_w2$h_diabetes == 1)] <- 1
-COURAGE_ds_spain_w2$h_diabetes[((!is.na(COURAGE_spain_w2$q4022_diabetes_s1)) & COURAGE_spain_w2$q4022_diabetes_s1 == 8) & ((!is.na(COURAGE_spain_w2$h_diabetes)) & COURAGE_spain_w2$h_diabetes != 1)] <- 998
+COURAGE_ds_spain_w2$h_diabetes[which(((!is.na(COURAGE_spain_w2$q4022_diabetes_s1)) & COURAGE_spain_w2$q4022_diabetes_s1 == 2) & ((!is.na(COURAGE_spain_w2$h_diabetes)) & COURAGE_spain_w2$h_diabetes != 1))] <- 0
+COURAGE_ds_spain_w2$h_diabetes[which(((!is.na(COURAGE_spain_w2$q4022_diabetes_s1)) & COURAGE_spain_w2$q4022_diabetes_s1 == 1) | ((!is.na(COURAGE_spain_w2$h_diabetes)) & (!is.na(COURAGE_spain_w2$q4022_diabetes_s1)) & COURAGE_spain_w2$h_diabetes == 1))] <- 1
+COURAGE_ds_spain_w2$h_diabetes[which(((!is.na(COURAGE_spain_w2$q4022_diabetes_s1)) & COURAGE_spain_w2$q4022_diabetes_s1 == 8) & ((!is.na(COURAGE_spain_w2$h_diabetes)) & COURAGE_spain_w2$h_diabetes != 1))] <- 998
 
 COURAGE_ds_spain_w2$h_diabetes <- labelled(COURAGE_ds_spain_w2$h_diabetes, labels = cat_label)
 
 # Continuous variable harmonization
-diabetes_age <- COURAGE_spain_w2$age[COURAGE_ds_spain_w2$h_diabetes == 1 & COURAGE_spain_w2$h_diabetes==0 & !is.na(COURAGE_spain_w2$h_diabetes)]-(COURAGE_spain_w2$yintw_spain_w2[COURAGE_ds_spain_w2$h_diabetes == 1 & COURAGE_spain_w2$h_diabetes==0 & !is.na(COURAGE_spain_w2$h_diabetes)]-COURAGE_spain_w2$yintw_spain_w1[COURAGE_ds_spain_w2$h_diabetes == 1 & COURAGE_spain_w2$h_diabetes==0 & !is.na(COURAGE_spain_w2$h_diabetes)])/2
+diabetes_age <- floor(COURAGE_spain_w2$age[which(COURAGE_ds_spain_w2$h_diabetes == 1 & COURAGE_spain_w2$h_diabetes==0 & !is.na(COURAGE_spain_w2$h_diabetes))]-(COURAGE_spain_w2$yintw_spain_w2[which(COURAGE_ds_spain_w2$h_diabetes == 1 & COURAGE_spain_w2$h_diabetes==0 & !is.na(COURAGE_spain_w2$h_diabetes))]-COURAGE_spain_w2$yintw_spain_w1[which(COURAGE_ds_spain_w2$h_diabetes == 1 & COURAGE_spain_w2$h_diabetes==0 & !is.na(COURAGE_spain_w2$h_diabetes))])/2)
 
 COURAGE_ds_spain_w2$h_diabetes_age <- rep(999,length(COURAGE_spain_w2$id))
-COURAGE_ds_spain_w2$h_diabetes_age[COURAGE_ds_spain_w2$h_diabetes == 0] <- 996
-COURAGE_ds_spain_w2$h_diabetes_age[COURAGE_ds_spain_w2$h_diabetes == 1 & COURAGE_spain_w2$h_diabetes==0 & !is.na(COURAGE_spain_w2$h_diabetes)] <- diabetes_age
+COURAGE_ds_spain_w2$h_diabetes_age[which(COURAGE_ds_spain_w2$h_diabetes == 0)] <- 996
+COURAGE_ds_spain_w2$h_diabetes_age[which(COURAGE_ds_spain_w2$h_diabetes == 1 & COURAGE_spain_w2$h_diabetes==0 & !is.na(COURAGE_spain_w2$h_diabetes))] <- diabetes_age
 
 COURAGE_ds_spain_w2$h_diabetes_age <- labelled(COURAGE_ds_spain_w2$h_diabetes_age, labels = cont_label)
 
@@ -586,7 +525,7 @@ vbl <- COURAGE_ds_spain_w2$h_diabetes_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(COURAGE_ds_spain_w2, aes(h_diabetes_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(5,105)
+ggplot(COURAGE_ds_spain_w2, aes(h_diabetes_age)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% miss_values_vector)) + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -611,54 +550,242 @@ kable(C)
 
 
 
+<!--AUXILIAR FUNCTIONS-->
 
-## Descriptive statistics of the harmonised variable accross populations and waves
 
-Percentages of categories in each harmonised variable by cohort:
 
-**R script:**
+```{r helpfunctions, echo=F}
 
-```{r summ}
 
-lb.hds <- list(fin_w1 = COURAGE_ds_fin_w1, pol_w1 = COURAGE_ds_pol_w1, spain_w1 = COURAGE_ds_spain_w1)
-lf.hds <- list(pol_w2 = COURAGE_ds_pol_w2, spain_w2 = COURAGE_ds_spain_w2)
-l.hds <- list(fin_w1 = COURAGE_ds_fin_w1, pol_w1 = COURAGE_ds_pol_w1, pol_w2 = COURAGE_ds_pol_w2, spain_w1 = COURAGE_ds_spain_w1, spain_w2 = COURAGE_ds_spain_w2)
+labelling <- function(l.hds,m.hds,vbl_name,ds_lab = ds_label){
+  
+  # Labelling of the tibbles with categorical data and creating new tibbles with all missings recodified as NA
 
-for(name in names(lb.hds)) {
-  m_name <- paste0("COURAGE_m_ds_",name)
-  aux_object <- lb.hds[[name]]
-  label(lb.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
-  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
-  lb.hds[[name]][[2]] <- labelled(lb.hds[[name]][[2]], labels = cat_label)
-  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
-  assign(m_name, aux_object)
-  rm(aux_object)
-}
+  for(name in names(l.hds)) {
+    if(vbl_name %in% names(l.hds[[name]])){
+      # In the aux_object we copy the old tibble to recodify all missing values as NA.
+      aux_object <- l.hds[[name]]
+      # Labelling of variables
+      label(l.hds[[name]][[vbl_name]]) <- label(aux_object[[vbl_name]]) <- ds_lab
+      # Labelling of categories (for continues variables, only missing values)
+      l.hds[[name]][[vbl_name]] <- labelled(l.hds[[name]][[vbl_name]], labels = cat_label)
+      aux_object[[vbl_name]] <- car::recode(aux_object[[vbl_name]], "miss_values_vector=NA")
+      # Labelling of categories (for categorical variables, only non-missing values)
+      aux_object[[vbl_name]] <- labelled(aux_object[[vbl_name]], labels = cat_label[1:(length(cat_label)-9)])
+      # Saving the recodified tibble in list m.hds
+      m.hds[[name]] <- aux_object
+      rm(aux_object)
+    }
+  }
+  return(list(l.hds,m.hds))
 
-for(name in names(lf.hds)) {
-  m_name <- paste0("COURAGE_m_ds_",name)
-  aux_object <- lf.hds[[name]]
-  label(lf.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
-  label(lf.hds[[name]][[3]]) <- label(aux_object[[3]]) <- ds_label_age # Text value assigned at the DS description, at the top
-  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
-  lf.hds[[name]][[2]] <- labelled(lf.hds[[name]][[2]], labels = cat_label)
-  lf.hds[[name]][[3]] <- labelled(lf.hds[[name]][[3]], labels = cont_label)
-  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
-  assign(m_name, aux_object)
-  rm(aux_object)
 }
 
 
-t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
-for (i in seq_along(l.hds)){
-  t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+labelling_c <- function(l.hds,m.hds,vbl_name,ds_lab=ds_label){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    
+    if(vbl_name %in% names(l.hds[[name]])){
+      # In the aux_object we copy the old tibble to recodify all missing values as NA.
+      aux_object <- m.hds[[name]]
+      # Labelling of variables
+      label(l.hds[[name]][[vbl_name]]) <- label(aux_object[[vbl_name]]) <- ds_lab
+      # Labelling of categories (for continues variables, only missing values)
+      l.hds[[name]][[vbl_name]] <- labelled(l.hds[[name]][[vbl_name]], labels = cont_label)
+      aux_object[[vbl_name]] <- car::recode(aux_object[[vbl_name]], "miss_values_vector=NA")
+      aux_object[[vbl_name]] <- remove_val_labels(aux_object[[vbl_name]])
+      # Saving the recodified tibble in list m.hds
+      m.hds[[name]] <- aux_object
+      rm(aux_object)
+    }
+  }
+  return(list(l.hds,m.hds))
+
 }
-t.hds[13,] <- c("n", "sample size", 
-             length(l.hds[[1]][[2]]), length(l.hds[[2]][[2]]) , length(l.hds[[3]][[2]]), length(l.hds[[4]][[2]]), length(l.hds[[5]][[2]]))
-names(t.hds)<-c("val", "label", "Finland_w1", "Poland_W1", "Poland_W2", "Spain_W1", "Spain_W2")
-kable(t.hds)
+
+
+# Creation of summary tables for categorical data
+
+summaries <- function(l.hds,m.hds,lnames,vbl_name){
+
+  # Creation of columns with categories and labels
+  t.hds <- frq(l.hds[[1]][vbl_name])[[1]][,c(1,2)] 
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    t.hds[2+i] <- frq(l.hds[[i]][vbl_name])[[1]][,4] 
+  }
+  # Add sample size for each wave/population
+  t.hds[2+length(cat_label),] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+  )
+  # Add wave/population names
+  names(t.hds)<-c("val", "label",lnames)
+  return(t.hds)
+  
+}
+
+
+# Creation of summary tables for continuous data
+
+summaries_c <- function(l.hds,m.hds,lnames,vbl_name){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][vbl_name])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[vbl_name]], missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][vbl_name])[1:6]
+    # Next, missing/no-missing values (the 1 in $values_table[1,] stands for absolute values, while a 2 would stand for percentages)
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[vbl_name]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][vbl_name]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+  
+}
 
 ```
+
+
+
+```{r populations-waves, echo=F}
+
+
+# All study waves and populations with abbreviated and descriptive names
+
+courage.cw <- list(fin_w1 = c("fin_w1","Finland w1"), pol_w1 = c("pol_w1","Poland w1"), pol_w2 = c("pol_w2","Poland w2"), spain_w1 = c("spain_w1","Spain w1"), spain_w2 = c("spain_w2","Spain w2"))
+
+
+```
+
+
+<!--Labelling and saving-->
+
+```{r, echo=FALSE}
+
+
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(courage.cw, function(wname) if(exists(paste0("COURAGE_ds_",wname[1]))){wname = list(get(paste0("COURAGE_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_age_vbl,ds_label_age)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+couragelist <- lmlist # baseline list
+
+
+
+
+```
+
+
+
+<!--Descriptives-->
+
+## Descriptive statistics of the harmonised variable `h_diabetes` accross populations and waves
+
+Percentages of categories in each harmonised variable:
+
+
+```{r summ, echo=F}
+
+
+# Consider only harmonised waves
+l.hds <- lapply(courage.cw, function(wname) if(hd_vbl %in% names(get0(paste0("COURAGE_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- couragelist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- couragelist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
+}
+
+
+
+
+
+```
+
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable `h_diabetes_age` accross populations and waves
+
+
+
+
+
+
+```{r summ_c, echo=F}
+
+
+# Consider only harmonised waves
+l.hds <- lapply(courage.cw, function(wname) if(hd_age_vbl %in% names(get0(paste0("COURAGE_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- couragelist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- couragelist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_age_vbl),caption=ds_label_age))
+}
+
+
+
+```
+
 
 
 
@@ -666,18 +793,6 @@ kable(t.hds)
 
 We assume that if an individual answers it has diabetes in one wave, it has diabetes for all the next waves. Individuals with discrepancies with respect to this criterium are specified at the end of the corresponding validations.
 
-
-<!-- ########################################################## --> 
-<!-- # Save -->
-```{r save, include=FALSE, echo=F}
-
-for(index in seq_along(l.hds)){
-  h_diabetes <- l.hds[[index]]
-  save(h_diabetes, file = paste0(datafolder,names(l.hds)[index],"/h_diabetes.RData"))
-}
-
-```
-<!-- ########################################################## --> 
 
 
 
