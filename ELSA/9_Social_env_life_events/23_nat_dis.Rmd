@@ -13,48 +13,17 @@ output:
 ---
 
 <!-- ########################################################## --> 
-
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
 ```{r setup, include=FALSE}
-source("../../setup_iago.r")
+source("../../setup.r")
 ```
-
 <!-- ########################################################## --> 
-
-
-
-# Description of DataSchema variable
-
-The description of harmonised variables is the following:
-
-* Short name: `nat_dis`
-* Variable label: `Ever experienced any natural disaster`
-* Domain: `Social environment`
-* Value type: `categorical`
-* Categories:
-
-**Code** | **Category Label**
--------- | ------------------
-0        | No
-1        | Yes
-
-
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/nat_disDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/nat_disDS.R')
+```
 
 <!-- ########################################################## --> 
 
@@ -73,28 +42,25 @@ Not found.
 
 #### Study-specific variable description
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `rsdisas`
-* Label: `Have you ever experienced a major fire, flood, earthquake or other natural disaster?`
-* Categories: 
-    + `1 = yes`
-    + `2 = no`
-* Missings:   
-    + `-9 = Refusal`
-    + `-8 = Don't Know`
-    + `-7 = self completion not completed`
-    + `-2 = respondent missed question`
-    + `-1 = Not applicable`
-    
-* Description:
+| **Name** |`rsdisas`|
+|-|-|
+| **Label** |`Have you ever experienced a major fire, flood, earthquake or other natural disaster?`|
+| **Table name** |`wave_3_life_history_data`|
+| **Categories** |`1 = yes`<br/>`2 = no`|
+| **Missings** |`-9 = Refusal`<br/>`-8 = Don't Know`<br/>`-7 = self completion not completed`<br/>`-2 = respondent missed question`<br/>`-1 = Not applicable`|
+| **Description** |  |
+
+
 ```{r assign3, echo=FALSE}
 
 opal.assign.table.tibble(o, 'ELSA_w3_nat_dis','ELSA.wave_3_life_history_data',variables=list('rsdisas'), missings = TRUE)
 ELSA_w3_nat_dis <- opal.execute(o,'ELSA_w3_nat_dis')
-# The next IDs are removed since these individuals do not appear in the main tables of ELSA, so we do not have the essential information about them.
-specialid <- c("100026", "101418", "101544", "102264", "103505", "110381", "115918", "116000", "121394", "150589", "152048", "152225")
-ELSA_w3_nat_dis <- ELSA_w3_nat_dis[-match(specialid,ELSA_w3_nat_dis$id),]
+opal.assign.table.tibble(o, 'ELSA_w3_main','ELSA.wave_3_elsa_data_v4',variables=list('indobyr'), missings = TRUE)
+ELSA_w3_main <- opal.execute(o,'ELSA_w3_main')
+
+# The next IDs are removed since these individuals do not appear in the main tables of ELSA for wave 3, so we do not have the essential information about them.
+ELSA_w3_nat_dis <- ELSA_w3_nat_dis %>% filter(id %in% ELSA_w3_main$id)
 
 ```
 
@@ -162,6 +128,45 @@ Not found.
 ### Wave 7
 
 Not found.
+
+
+```{r final, echo=F}
+
+l.hds <- list(w3 = ELSA_ds_w3)
+
+for(name in names(l.hds)) {
+  aux_object <- l.hds[[name]]
+  label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
+  l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
+  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
+  m_name <- paste0("ELSA_m_ds_",name)
+  assign(m_name, aux_object)
+  rm(aux_object)
+}
+
+```
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+
+Percentages of categories in each harmonised variable.
+
+
+
+```{r summ, echo=FALSE}
+
+t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
+for (i in seq_along(l.hds)){
+  t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
+}
+t.hds[13,] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+             )
+names(t.hds)<-c("val", "label",names(l.hds))
+kable(t.hds)
+
+```
+
 
 ```{r save, echo=FALSE}
 nat_dis <- ELSA_ds_w3
