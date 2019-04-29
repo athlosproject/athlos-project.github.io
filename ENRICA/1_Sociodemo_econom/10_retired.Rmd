@@ -15,7 +15,7 @@ output:
 <!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
 ```{r setup, include=FALSE}
-source("../../setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
 <!-- # Loading DS description -->
@@ -121,12 +121,12 @@ kable(C)
 
 #### Study-specific variable description
 
-| **Name** | `w2labourforce` |
-|-|-|
-| **Label** |    |
-| **Table name**  | `ENRICA_spss_wave2`|
-| **Categories** | `1 = Employed`<br/>`2 = Unemployed`<br/>`3 = Retired`<br/>`4 = Housewife`<br/>`6 = Unable to work` |
-| **Description** |  |
+| **Name** | `w2labourforce` |`ybirth`|`yintw (w1)`|`yintw (w2)`|
+|-|-|-|-|-|
+| **Label** |    |`Year of birth`|`Year of interview`|`Year of interview`|
+| **Table name**  | `ENRICA_spss_wave2`|`enrica_w2_hd`|`enrica_w1_hd`|`enrica_w2_hd`|
+| **Categories** | `1 = Employed`<br/>`2 = Unemployed`<br/>`3 = Retired`<br/>`4 = Housewife`<br/>`6 = Unable to work` |`continuous`|`continuous`|`continuous`|
+| **Description** |  |  |  |  |
 
 ```{r assign w2, echo=F}
 
@@ -200,7 +200,7 @@ ENRICA_ds_w2$retired[which(ENRICA_ds_w2$id %in% sing_idlist_10999)] <- 1
 # Continuous variable harmonization
 ENRICA_ds_w2$age_retired <- rep(999,length(ENRICA_w2$id))
 ENRICA_ds_w2$age_retired[which(ENRICA_ds_w2$retired == 0)] <- 996
-ENRICA_ds_w2$age_retired[which(ENRICA_ds_w2$retired == 1 & ENRICA_w2$retired==0)] <- (ENRICA_w2$yintw_w2[which(ENRICA_ds_w2$retired == 1 & ENRICA_w2$retired==0)]+ENRICA_w2$yintw_w1[which(ENRICA_ds_w2$retired == 1 & ENRICA_w2$retired==0)])/2-ENRICA_w2$ybirth[which(ENRICA_ds_w2$retired == 1 & ENRICA_w2$retired==0)]
+ENRICA_ds_w2$age_retired[which(ENRICA_ds_w2$retired == 1 & ENRICA_w2$retired==0)] <- floor((ENRICA_w2$yintw_w2[which(ENRICA_ds_w2$retired == 1 & ENRICA_w2$retired==0)]+ENRICA_w2$yintw_w1[which(ENRICA_ds_w2$retired == 1 & ENRICA_w2$retired==0)])/2-ENRICA_w2$ybirth[which(ENRICA_ds_w2$retired == 1 & ENRICA_w2$retired==0)])
 
 ```
 
@@ -243,13 +243,13 @@ kable(C)
 
 #### Study-specific variable description
 
-| **Name** | `w3labourforce` |
-|-|-|
-| **Label** |    |
-| **Table name**  | `ENRICA_spss_wave3`|
-| **Categories** | `1 = Employed`<br/>`2 = Unemployed`<br/>`3 = Retired`<br/>`4 = Housewife`<br/>`6 = Unable to work` |
-| **Missings** | `NA` |
-| **Description** |  |
+| **Name** | `w3labourforce` |`ybirth`|`yintw (w1)`|`yintw (w2)`|
+|-|-|-|-|-|
+| **Label** |    |`Year of birth`|`Year of interview`|`Year of interview`|
+| **Table name**  | `ENRICA_spss_wave3`|`enrica_w3_hd`|`enrica_w2_hd`|`enrica_w3_hd`|
+| **Categories** | `1 = Employed`<br/>`2 = Unemployed`<br/>`3 = Retired`<br/>`4 = Housewife`<br/>`6 = Unable to work` |`continuous`|`continuous`|`continuous`|
+| **Description** |  |  |  |  |
+
 
 ```{r assign w3, echo=F}
 
@@ -324,7 +324,7 @@ ENRICA_ds_w3$retired[which(ENRICA_ds_w3$id=="15200045864041")] <- 1
 # Continuous variable harmonization
 ENRICA_ds_w3$age_retired <- rep(999,length(ENRICA_w3$id))
 ENRICA_ds_w3$age_retired[which(ENRICA_ds_w3$retired == 0)] <- 996
-ENRICA_ds_w3$age_retired[which(ENRICA_ds_w3$retired == 1 & ENRICA_w3$retired==0)] <- (ENRICA_w3$yintw_w3[which(ENRICA_ds_w3$retired == 1 & ENRICA_w3$retired==0)]+ENRICA_w3$yintw_w2[which(ENRICA_ds_w3$retired == 1 & ENRICA_w3$retired==0)])/2-ENRICA_w3$ybirth[which(ENRICA_ds_w3$retired == 1 & ENRICA_w3$retired==0)]
+ENRICA_ds_w3$age_retired[which(ENRICA_ds_w3$retired == 1 & ENRICA_w3$retired==0)] <- floor((ENRICA_w3$yintw_w3[which(ENRICA_ds_w3$retired == 1 & ENRICA_w3$retired==0)]+ENRICA_w3$yintw_w2[which(ENRICA_ds_w3$retired == 1 & ENRICA_w3$retired==0)])/2-ENRICA_w3$ybirth[which(ENRICA_ds_w3$retired == 1 & ENRICA_w3$retired==0)])
 ENRICA_ds_w3$age_retired[which(ENRICA_ds_w3$retired == 1 & !ENRICA_w3$age_retired %in% miss_values_vector)] <- ENRICA_w3$age_retired[which(ENRICA_ds_w3$retired == 1 & !ENRICA_w3$age_retired %in% miss_values_vector)]
 
 ```
@@ -364,78 +364,283 @@ kable(C)
 
 
 
+<!--AUXILIAR FUNCTIONS-->
 
-## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+
+```{r helpfunctions, echo=F}
+
+
+labelling <- function(l.hds,m.hds,vbl_name,ds_lab = ds_label){
+  
+  # Labelling of the tibbles with categorical data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    if(vbl_name %in% names(l.hds[[name]])){
+      # In the aux_object we copy the old tibble to recodify all missing values as NA.
+      aux_object <- l.hds[[name]]
+      # Labelling of variables
+      label(l.hds[[name]][[vbl_name]]) <- label(aux_object[[vbl_name]]) <- ds_lab
+      # Labelling of categories (for continues variables, only missing values)
+      l.hds[[name]][[vbl_name]] <- labelled(l.hds[[name]][[vbl_name]], labels = cat_label)
+      aux_object[[vbl_name]] <- car::recode(aux_object[[vbl_name]], "miss_values_vector=NA")
+      # Labelling of categories (for categorical variables, only non-missing values)
+      aux_object[[vbl_name]] <- labelled(aux_object[[vbl_name]], labels = cat_label[1:(length(cat_label)-9)])
+      # Saving the recodified tibble in list m.hds
+      m.hds[[name]] <- aux_object
+      rm(aux_object)
+    }
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+
+labelling_c <- function(l.hds,m.hds,vbl_name,ds_lab=ds_label){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    if(vbl_name %in% names(l.hds[[name]])){
+      # In the aux_object we copy the old tibble to recodify all missing values as NA.
+      aux_object <- m.hds[[name]]
+      # Labelling of variables
+      label(l.hds[[name]][[vbl_name]]) <- label(aux_object[[vbl_name]]) <- ds_lab
+      # Labelling of categories (for continues variables, only missing values)
+      l.hds[[name]][[vbl_name]] <- labelled(l.hds[[name]][[vbl_name]], labels = cont_label)
+      aux_object[[vbl_name]] <- car::recode(aux_object[[vbl_name]], "miss_values_vector=NA")
+      aux_object[[vbl_name]] <- remove_val_labels(aux_object[[vbl_name]])
+      # Saving the recodified tibble in list m.hds
+      m.hds[[name]] <- aux_object
+      rm(aux_object)
+    }
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+
+# Creation of summary tables for categorical data
+
+summaries <- function(l.hds,m.hds,lnames,vbl_name){
+
+  # Creation of columns with categories and labels
+  t.hds <- frq(l.hds[[1]][vbl_name])[[1]][,c(1,2)] 
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    t.hds[2+i] <- frq(l.hds[[i]][vbl_name])[[1]][,4] 
+  }
+  # Add sample size for each wave/population
+  t.hds[2+length(cat_label),] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+  )
+  # Add wave/population names
+  names(t.hds)<-c("val", "label",lnames)
+  return(t.hds)
+  
+}
+
+
+# Creation of summary tables for continuous data
+
+summaries_c <- function(l.hds,m.hds,lnames,vbl_name){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][vbl_name])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[vbl_name]], missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][vbl_name])[1:6]
+    # Next, missing/no-missing values (the 1 in $values_table[1,] stands for absolute values, while a 2 would stand for percentages)
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[vbl_name]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][vbl_name]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+
+
+# Creation of trajectories table for each population
+
+trajectories <- function(m.hds,vbl_name){
+  
+  # First wave data
+  dbb <- m.hds[[1]][,c("id",vbl_name)]
+  # Merge with next waves data
+  for(ind in 2:length(m.hds)){
+    dbb <- merge(dbb, m.hds[[ind]][,c("id",vbl_name)], by = "id", suffixes = c("", paste0(".",names(m.hds)[ind])), all = T)
+  }
+  names(dbb) <- c("id", names(m.hds))
+  
+  # Glue individual data through all waves into trajectories
+  v.dbb <- dbb[,2]
+  for(ind in 2:length(m.hds)){
+    v.dbb <- paste(v.dbb,dbb[,ind+1],sep="")
+  }
+  # Trajectories and frequencies
+  f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+  return(f.dbb)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+  
+}
+
+```
+
+
+
+```{r populations-waves, echo=F}
+
+
+# All study waves and populations with abbreviated and descriptive names
+
+enrica.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"), w3 = c("w3","W3"))
+
+
+
+```
+
+
+<!--Labelling and saving-->
+
+```{r, echo=FALSE}
+
+
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(enrica.cw, function(wname) if(exists(paste0("ENRICA_ds_",wname[1]))){wname = list(get(paste0("ENRICA_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_age_vbl,ds_label_age)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+enricalist <- lmlist # ENRICA list
+
+
+
+
+```
+
+
+
+<!--Descriptives-->
+
+## Descriptive statistics of the harmonised variable `retired` accross populations and waves
 
 Two tables are generated: 
 
 1. Percentages of categories in each harmonised variable.
 
-2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
-
-**R script:**
-
-```{r summ}
-ENRICA_ds_w1$retired <- labelled(ENRICA_ds_w1$retired, labels = cat_label)
-label(ENRICA_ds_w1$retired) <- ds_label
-ENRICA_ds_w2$retired <- labelled(ENRICA_ds_w2$retired, labels = cat_label)
-label(ENRICA_ds_w2$retired) <- ds_label
-ENRICA_ds_w2$age_retired <- labelled(ENRICA_ds_w2$age_retired, labels = cont_label)
-label(ENRICA_ds_w2$age_retired) <- ds_label_age
-ENRICA_ds_w3$retired <- labelled(ENRICA_ds_w3$retired, labels = cat_label)
-label(ENRICA_ds_w3$retired) <- ds_label
-ENRICA_ds_w3$age_retired <- labelled(ENRICA_ds_w3$age_retired, labels = cont_label)
-label(ENRICA_ds_w3$age_retired) <- ds_label_age
-
-ENRICA_m_ds_w1 <- ENRICA_ds_w1
-ENRICA_m_ds_w1$retired <- car::recode(ENRICA_m_ds_w1$retired, "miss_values_vector=NA")
-ENRICA_m_ds_w2 <- ENRICA_ds_w2
-ENRICA_m_ds_w2$retired <- car::recode(ENRICA_m_ds_w2$retired, "miss_values_vector=NA")
-ENRICA_m_ds_w3 <- ENRICA_ds_w3
-ENRICA_m_ds_w3$retired <- car::recode(ENRICA_m_ds_w3$retired, "miss_values_vector=NA")
+2. Frequencies and percentages of individuals with different trajectories.
 
 
-tt <-    frq(ENRICA_ds_w1$retired)[[1]][,c(1:2,4)]
-tt[4] <- frq(ENRICA_ds_w2$retired)[[1]][,c(4)]
-tt[5] <- frq(ENRICA_ds_w3$retired)[[1]][,c(4)]
-tt[13,] <- c("n", "sample size", 
-             length(ENRICA_ds_w1$retired), length(ENRICA_ds_w2$retired), length(ENRICA_ds_w3$retired)
-             )
-names(tt)<-c("val", "label", "w1", "w2", "w3")
-kable(tt)
+```{r summ, echo=F}
 
-dbb <- merge(ENRICA_m_ds_w1[,c("id","retired")], ENRICA_m_ds_w2[,c("id","retired")], by="id", suffixes = c(".w1",".w2"), all=T)
-dbb <- merge(dbb, ENRICA_m_ds_w3[,c("id","retired")], by="id", all=T)
-names(dbb) <- c("id", "w1", "w2", "w3")
-v.dbb <- paste(dbb[,2],dbb[,3],dbb[,4],sep="")
-f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
-kable(f.dbb)
+
+# Consider only harmonised waves
+l.hds <- lapply(enrica.cw, function(wname) if(hd_vbl %in% names(get0(paste0("ENRICA_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- enricalist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- enricalist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb))
+
+}
+
+
+
 ```
 
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable `age_retired` accross populations and waves
+
+
+
+
+
+
+```{r summ_c, echo=F}
+
+
+# Consider only harmonised waves
+l.hds <- lapply(enrica.cw, function(wname) if(hd_age_vbl %in% names(get0(paste0("ENRICA_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- enricalist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- enricalist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_age_vbl),caption=ds_label_age))
+}
+
+
+
+
+
+```
 
 
 # Quality estimation
 
-* The individuals in the vector `sing_idlist_101` appeared at the begining with trajectories 101, with all the ages over 65 and most of them over 70 years old in the wave 3. Furthermore, their most frequent answer in wave 2 is `Housewife`, so we harmonize them as retired too.
+* The individuals in the vector `sing_idlist_101` appeared initially with trajectories 101, with all the ages over 65 and most of them over 70 years old in the wave 3. Furthermore, their most frequent answer in wave 2 is `Housewife`, so we harmonize them as retired too.
 
-* The individuals in the vector `sing_idlist_10999` appeared at the begining with trajectories 10NA, with all the ages over 62 and most of them over 65 years old in the wave 1. Furthermore, their answers in wave 2 are `Housewife` and `Unable to work`, so we harmonize them as retired too.
+* The individuals in the vector `sing_idlist_10999` appeared initially with trajectories 10NA, with all the ages over 62 and most of them over 65 years old in the wave 1. Furthermore, their answers in wave 2 are `Housewife` and `Unable to work`, so we harmonize them as retired too.
 
-* The individual "15200045864041" had initially trajectory trajectory 010 and 64 years old in the second wave. Therefore we assume its retirement and harmonized the third wave in correspondence.
+* The individual "15200045864041" had initially trajectory 010 and 64 years old in the second wave. Therefore we assume its retirement and harmonized the third wave in correspondence.
 
-
-<!-- ########################################################## --> 
-<!-- # Save -->
-```{r save, include=FALSE, echo=F}
-
-l.ENRICA <- list(w1 = ENRICA_ds_w1, w2 = ENRICA_ds_w2, w3 = ENRICA_ds_w3)
-
-for(index in seq_along(l.ENRICA)){
-  retired <- l.ENRICA[[index]]
-  save(retired, file = paste0(datafolder,names(l.ENRICA)[index],"/retired.RData"))
-}
-
-```
-<!-- ########################################################## --> 
 
 
 
