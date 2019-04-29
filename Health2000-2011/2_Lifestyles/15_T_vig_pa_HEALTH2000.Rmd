@@ -34,47 +34,73 @@ source('../../_DS_Rmd/t_vig_paDS.R')
 
 #### Study-specific variable description
 
-| **Name** | `KYS1_K30M` |
-|-|-|
-| **Label** | `Vigorous and strenuous aerobic type exercise: days in a week` |
-| **Table name** | `t00_athlos_2017_02_23` |
-| **Categories:**| `continuous`|
-| **Missings:**| `NA` |
-| **Description** |  |
+| **Name** | `KYS1_K30M` |`KYS1_K30T`| `KYS1_K29`|
+|-|-|-|-|
+| **Label** | `Exercise: hard/ minutes` |`Exercise: hard/ hours`|`Exercise: hard at least 10 min/ day`|
+| **Table name** | `t00_athlos_2017_02_23` | `t00_athlos_2017_02_23` |
+| **Units** | `minutes`| `hours`|`days`|
+| **Missings** | `NA` | `NA` | `NA` |
+| **Description** |  |  |  |
 
 ```{r assign w1, echo=F}
-opal.assign.table.tibble(o, 'Health20002011_w1','Health2000-2011.t00_athlos_2017_02_23', variables=list('KYS1_K30M'), missings = TRUE)
+opal.assign.table.tibble(o, 'Health20002011_w1','Health2000-2011.t00_athlos_2017_02_23', variables=list('KYS1_K30M','KYS1_K30T','KYS1_K29'), missings = TRUE)
 Health20002011_w1 <- opal.execute(o,'Health20002011_w1')
 ```
 
 ```{r local w1, echo=F}
 vbl <- Health20002011_w1$KYS1_K30M
-kable(Continuous_summary(vbl, missing_values = NA)[3], caption = names(Health20002011_w1)[2]) 
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "KYS1_K30M") 
 pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
 ggplot(Health20002011_w1, aes(KYS1_K30M)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- Health20002011_w1$KYS1_K30T
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "KYS1_K30T") 
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(Health20002011_w1, aes(KYS1_K30T)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- Health20002011_w1$KYS1_K29
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "KYS1_K29") 
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(Health20002011_w1, aes(KYS1_K29)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+kable(table(is.na(Health20002011_w1$KYS1_K29),is.na(Health20002011_w1$KYS1_K30M)),caption = 'Cross-table of missing values between days and minutes')
+kable(table(is.na(Health20002011_w1$KYS1_K29),is.na(Health20002011_w1$KYS1_K30T)),caption = 'Cross-table of missing values between days and hours')
+kable(table(is.na(Health20002011_w1$KYS1_K30T),is.na(Health20002011_w1$KYS1_K30M)),caption = 'Cross-table of missing values between hours and minutes')
+
 ```
 
 #### Harmonisation algorithm
 
 To compute `t_vig_pa` from the study-specific variable it has to be recoded as follows:
 
-* `KYS1_K30M*2`
+* `(KYS1_K30M+60*KYS1_K30T)*KYS1_K29 * 2 weeks`
 * `NA into 999`
 
 **R script:**
 
 ```{r harmo w1}
 Health20002011_ds_w1 <- tibble(id=Health20002011_w1$id)
-Health20002011_ds_w1$t_vig_pa <- car::recode(Health20002011_w1$KYS1_K30M*2, "NA = 999 ")
+
+Health20002011_w1 <- Health20002011_w1 %>% mutate(amv = (is.na(KYS1_K30M) & is.na(KYS1_K30T)))
+
+Health20002011_w1$KYS1_K30M[which(!Health20002011_w1$amv)] <- car::recode(Health20002011_w1$KYS1_K30M[which(!Health20002011_w1$amv)], "NA=0")
+Health20002011_w1$KYS1_K30T[which(!Health20002011_w1$amv)] <- car::recode(Health20002011_w1$KYS1_K30T[which(!Health20002011_w1$amv)], "NA=0")
+Health20002011_w1$KYS1_K29[which(!Health20002011_w1$amv)] <- car::recode(Health20002011_w1$KYS1_K29[which(!Health20002011_w1$amv)], "NA=1")
+
+
+
+Health20002011_w1$min <- (Health20002011_w1$KYS1_K30M + 60*Health20002011_w1$KYS1_K30T)*Health20002011_w1$KYS1_K29
+Health20002011_ds_w1$t_vig_pa <- car::recode(Health20002011_w1$min*2, "NA = 999 ")
 ```
 
 #### Statistical description of the new harmonised variable
 ```{r descript w1, echo=F}
 vbl <- Health20002011_ds_w1$t_vig_pa
-kable(Continuous_summary(var = vbl, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
-kable(Continuous_summary(vbl, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
-pander(Continuous_summary(vbl, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(Health20002011_ds_w1, aes(t_vig_pa)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab(ds_label) + ylab("Frequency")
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(Health20002011_ds_w1, aes(t_vig_pa)) + geom_histogram(stat="bin", bins = 800, fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab(ds_label) + ylab("Frequency")
+
 ```
 
 #### Validation
@@ -89,46 +115,62 @@ ggplot(Health20002011_ds_w1, aes(t_vig_pa)) + geom_histogram(stat="count", fill=
 
 #### Study-specific variable description
 
-| **Name** | `T11_KYS1_K24_4M` |
+| **Name** | `T11_KYS1_K24_4M` | `T11_KYS1_K24_4T` |
 |-|-|
-| **Label** | `Vigorous and strenuous aerobic type exercise: minutes in a week` |
-| **Table name** | `t11_athlos_2017_02_27` |
-| **Categories:**| `continuous`|
-| **Missings:**| `NA` |
-| **Description** |  |
+| **Label** | `Vigorous and strenuous aerobic type exercise: minutes in a week` | `Vigorous and strenuous aerobic type exercise: hours in a week` |
+| **Table name** | `t11_athlos_2017_02_27` | `t11_athlos_2017_02_27` |
+| **Units** | `minutes`| `hours`|
+| **Description** |  |  |
 
 ```{r assign w2, echo=F}
-opal.assign.table.tibble(o, 'Health20002011_w2','Health2000-2011.t11_athlos_2017_02_27', variables=list('T11_KYS1_K24_4M'), missings = TRUE)
+opal.assign.table.tibble(o, 'Health20002011_w2','Health2000-2011.t11_athlos_2017_02_27', variables=list('T11_KYS1_K24_4M','T11_KYS1_K24_4T'), missings = TRUE)
 Health20002011_w2 <- opal.execute(o,'Health20002011_w2')
 ```
 
 ```{r local w2, echo=F}
+
 vbl <- Health20002011_w2$T11_KYS1_K24_4M
-kable(Continuous_summary(vbl, missing_values = NA)[3], caption = names(Health20002011_w2)[2]) 
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "T11_KYS1_K24_4M") 
 pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
 ggplot(Health20002011_w2, aes(T11_KYS1_K24_4M)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- Health20002011_w2$T11_KYS1_K24_4T
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = "T11_KYS1_K24_4T") 
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(Health20002011_w2, aes(T11_KYS1_K24_4T)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+kable(table(is.na(Health20002011_w1$T11_KYS1_K24_4T),is.na(Health20002011_w1$T11_KYS1_K24_4M)),caption = 'Cross-table of missing values between hours and minutes')
+
 ```
 
 #### Harmonisation algorithm
 
 To compute `t_vig_pa` from the study-specific variable it has to be recoded as follows:
 
-* `T11_KYS1_K24_4M*2`
+* `(T11_KYS1_K24_4M+60*T11_KYS1_K24_4T) * 2 weeks`
 * `NA into 999`
 
 **R script:**
 
 ```{r harmo w2}
 Health20002011_ds_w2 <- tibble(id=Health20002011_w2$id)
-Health20002011_ds_w2$t_vig_pa <- car::recode(Health20002011_w2$T11_KYS1_K24_4M*2, "NA = 999 ")
+
+Health20002011_w2 <- Health20002011_w2 %>% mutate(amv = (is.na(T11_KYS1_K24_4M) & is.na(T11_KYS1_K24_4T)))
+
+Health20002011_w2$T11_KYS1_K24_4M[which(!Health20002011_w2$amv)] <- car::recode(Health20002011_w2$T11_KYS1_K24_4M[which(!Health20002011_w2$amv)], "NA=0")
+Health20002011_w2$T11_KYS1_K24_4T[which(!Health20002011_w2$amv)] <- car::recode(Health20002011_w2$T11_KYS1_K24_4T[which(!Health20002011_w2$amv)], "NA=0")
+
+Health20002011_w2$min <- (Health20002011_w2$T11_KYS1_K24_4M + 60*Health20002011_w2$T11_KYS1_K24_4T)
+
+Health20002011_ds_w2$t_vig_pa <- car::recode(Health20002011_w2$min*2, "NA = 999 ")
 ```
 
 #### Statistical description of the new harmonised variable
 ```{r descript w2, echo=F}
 vbl <- Health20002011_ds_w2$t_vig_pa
-kable(Continuous_summary(var = vbl, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
-kable(Continuous_summary(vbl, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
-pander(Continuous_summary(vbl, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
 ggplot(Health20002011_ds_w2, aes(t_vig_pa)) + geom_histogram(stat="count", fill="steelblue", data = .%>% filter(!vbl %in% miss_values_vector)) + xlab(ds_label) + ylab("Frequency")
 
 ```
@@ -241,6 +283,8 @@ if(length(l.hds)>0){
 
 
 # Quality estimation
+
+In wave 1 there are two variables asking how much time on days making exercise and another asking on how many days in a week; in wave 2 there are two variables asking how much time in a week making exercise.
 
 
 <!-- ########################################################## -->
