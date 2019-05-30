@@ -1,0 +1,456 @@
+---
+title: "Years that have passed since migration"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/ymigrationDS.Rmd'}
+```
+
+```{r global, echo=F}
+source('../../_DS_Rmd/ymigrationDS.R')
+id_missings <- c("Cf-397794-01", "DE-271503-01", "Ih-306138-02", "Ih-737574-01", "Ih-907477-01", "NL-027316-01", "NL-037198-01", "NL-073637-01", "NL-155292-01", "NL-372323-01", "NL-922959-01", "NL-924571-01", "GR-190740-02", "Bn-330112-02", "DK-639322-02", "ES-932056-02", "PL-691802-02", "SE-764326-05", "AT-215568-02", "AT-864946-01", "AT-886095-01", "CZ-023045-01", "CZ-033227-01", "CZ-191583-01", "CZ-356553-01", "CZ-373473-04", "CZ-384175-01", "CZ-526053-01", "CZ-638063-01", "CZ-694720-01", "CZ-695635-01", "F1-191516-01", "F1-728117-01", "HU-042621-01", "PT-022802-01", "PT-073544-01", "PT-443942-01", "PT-713628-01", "PT-843462-01", "DK-197676-02", "Eg-036951-05", "Eg-197395-02", "Eg-758727-02", "Eg-904129-02", "Ih-826469-03", "LU-989099-01", "NL-132447-01", "NL-756812-02", "NL-785371-02", "NL-948960-02", "SE-368759-02", "SE-607164-02", "SE-684973-02", "SI-139484-02")
+
+```
+
+
+# Data process
+
+## SHARE
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `dn006_`|
+|-|-|
+| **Label** | `year came to live in country`|
+| **Table name** | `sharew1_rel2-6-0_dn` | 
+| **Categories** | `continuous` | 
+| **Missings** | `-2 = refusal`<br/>`-1 = don't know` | 
+| **Description** |  |
+
+
+
+```{r assign1, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w1','SHARE.sharew1_rel2-6-0_dn',
+                         variables=list('dn006_'), missings = TRUE)
+SHARE_w1 <- opal.execute(o,'SHARE_w1')
+
+load("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/SHARE/RData/w1/migration.Rdata")
+load("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/SHARE/RData/w1/yintw.Rdata")
+
+SHARE_w1 <- SHARE_w1 %>% 
+  left_join(migration, by = "id") %>% 
+  left_join(yintw, by = "id")
+```
+
+```{r local1, echo=F}
+vari <- SHARE_w1$dn006_
+vbl_miss <- c(-2,-1)
+kable(Continuous_summary(vari, missing_values = vbl_miss)[3], caption = "dn006_") 
+pander(Continuous_summary(vari, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(SHARE_w1, aes(x=dn006_)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = .%>% filter(!vari %in% vbl_miss)) + xlab(label(vari)) + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+To compute `ymigration` from the study-specific variables they have to be recoded as follows:
+
+* `yintw - dn006_`
+* `migration = 0 into 996`
+* `migration = 999 into 999`
+* `dn006_ = -2 into 997`
+* `dn006_ = -1 into 998`
+* `dn006_ = NA into 999`
+
+**R script:**
+
+```{r harmo1}
+SHARE_ds_w1 <- tibble(id=SHARE_w1$id)
+SHARE_ds_w1$ymigration <- car::recode(with(SHARE_w1, yintw - dn006_), "NA=999")
+SHARE_ds_w1$ymigration[which(SHARE_w1$dn006_ == -2)] <- 997
+SHARE_ds_w1$ymigration[which(SHARE_w1$dn006_ == -1)] <- 998
+SHARE_ds_w1$ymigration[which(SHARE_w1$migration == 0)] <- 996
+SHARE_ds_w1$ymigration[which(SHARE_w1$migration == 999)] <- 999
+SHARE_ds_w1$ymigration[which(SHARE_w1$migration == 997)] <- 999
+SHARE_ds_w1$ymigration[which(SHARE_w1$migration == 997)] <- 999
+```
+
+#### Statistics of the new harmonised variable
+```{r descript1, echo=F}
+vari <- SHARE_ds_w1$ymigration
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SHARE_ds_w1, aes(ymigration)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = .%>% filter(!vari %in% miss_values_vector)) + xlab("ymigration") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation1, echo=F}
+```
+
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+| **Name** | `dn006_`|
+|-|-|
+| **Label** | `year came to live in country`|
+| **Table name** | `sharew2_rel2-6-0_dn` | 
+| **Categories** | `continuous` | 
+| **Missings** | `-2 = refusal`<br/>`-1 = don't know` | 
+| **Description** |  |
+
+
+```{r assign2, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w2','SHARE.sharew2_rel2-6-0_dn',
+                         variables=list('dn006_'), missings = TRUE)
+SHARE_w2 <- opal.execute(o,'SHARE_w2')
+
+load("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/SHARE/RData/w2/migration.Rdata")
+load("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/SHARE/RData/w2/yintw.Rdata")
+
+SHARE_w2 <- SHARE_w2 %>% 
+  left_join(migration, by = "id") %>% 
+  left_join(yintw, by = "id")
+```
+
+```{r local2, echo=F}
+vari <- SHARE_w2$dn006_
+vbl_miss <- c(-2,-1)
+kable(Continuous_summary(vari, missing_values = vbl_miss)[3], caption = "dn006_") 
+pander(Continuous_summary(vari, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(SHARE_w2, aes(x=dn006_)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = .%>% filter(!vari %in% vbl_miss)) + xlab(label(vari)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute `ymigration` from the study-specific variables they have to be recoded as follows:
+
+* `yintw - dn006_`
+* `migration = 0 into 996`
+* `migration = 999 into 999`
+* `dn006_ = -2 into 997`
+* `dn006_ = -1 into 998`
+* `dn006_ = NA into 999`
+
+**R script:**
+
+```{r harmo2}
+SHARE_ds_w2 <- tibble(id=SHARE_w2$id)
+SHARE_ds_w2$ymigration <- car::recode(with(SHARE_w2, yintw - dn006_), "NA=999")
+SHARE_ds_w2$ymigration[which(SHARE_w2$dn006_ == -2)] <- 997
+SHARE_ds_w2$ymigration[which(SHARE_w2$dn006_ == -1)] <- 998
+SHARE_ds_w2$ymigration[which(SHARE_w2$migration == 0)] <- 996
+SHARE_ds_w2$ymigration[which(SHARE_w2$migration == 999)] <- 999
+SHARE_ds_w2$ymigration[which(SHARE_w2$migration == 997)] <- 999
+SHARE_ds_w2$ymigration[which(SHARE_w2$migration == 998)] <- 999
+
+SHARE_ds_w2$ymigration[which(SHARE_ds_w2$ymigration == -7135)] <- 999
+```
+
+There is a individual with year came to live in country = 9145, we guess that is a write error and therefore, we have recoded as missing value (999).
+
+#### Statistics of the new harmonised variable
+```{r descript2, echo=F}
+vari <- SHARE_ds_w2$ymigration
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SHARE_ds_w2, aes(ymigration)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = .%>% filter(!vari %in% miss_values_vector)) + xlab("ymigration") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation2, echo=F}
+```
+
+
+
+
+
+
+### Wave 3 
+
+Not found.
+
+
+
+
+
+
+### Wave 4 
+
+#### Study-specific variable description
+
+
+| **Name** | `dn006_`|
+|-|-|
+| **Label** | `year came to live in country`|
+| **Table name** | `sharew4_rel1-1-1_dn` | 
+| **Categories** | `continuous` | 
+| **Missings** | `-2 = refusal`<br/>`-1 = don't know` | 
+| **Description** |  |
+
+```{r assign4, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w4','SHARE.sharew4_rel1-1-1_dn',
+                         variables=list('dn006_'), missings = TRUE)
+SHARE_w4 <- opal.execute(o,'SHARE_w4')
+
+load("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/SHARE/RData/w4/migration.Rdata")
+load("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/SHARE/RData/w4/yintw.Rdata")
+
+SHARE_w4 <- SHARE_w4 %>% 
+  left_join(migration, by = "id") %>% 
+  left_join(yintw, by = "id")
+```
+
+```{r local4, echo=F}
+vari <- SHARE_w4$dn006_
+vbl_miss <- c(-2,-1)
+kable(Continuous_summary(vari, missing_values = vbl_miss)[3], caption = "dn006_") 
+pander(Continuous_summary(vari, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(SHARE_w4, aes(x=dn006_)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = .%>% filter(!vari %in% vbl_miss)) + xlab(label(vari)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute `ymigration` from the study-specific variables they have to be recoded as follows:
+
+* `yintw - dn006_`
+* `migration = 0 into 996`
+* `migration = 999 into 999`
+* `dn006_ = -2 into 997`
+* `dn006_ = -1 into 998`
+* `dn006_ = NA into 999`
+
+
+**R script:**
+
+```{r harmo4}
+SHARE_ds_w4 <- tibble(id=SHARE_w4$id)
+SHARE_ds_w4$ymigration <- car::recode(with(SHARE_w4, yintw - dn006_), "NA=999")
+SHARE_ds_w4$ymigration[which(SHARE_w4$dn006_ == -2)] <- 997
+SHARE_ds_w4$ymigration[which(SHARE_w4$dn006_ == -1)] <- 998
+SHARE_ds_w4$ymigration[which(SHARE_w4$migration == 0)] <- 996
+SHARE_ds_w4$ymigration[which(SHARE_w4$migration == 999)] <- 999
+SHARE_ds_w4$ymigration[which(SHARE_w4$migration == 997)] <- 999
+SHARE_ds_w4$ymigration[which(SHARE_w4$migration == 998)] <- 999
+
+```
+
+#### Statistics of the new harmonised variable
+```{r descript4, echo=F}
+vari <- SHARE_ds_w4$ymigration
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SHARE_ds_w4, aes(ymigration)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = .%>% filter(!vari %in% miss_values_vector)) + xlab("ymigration") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation4, echo=F}
+```
+
+
+
+
+
+
+
+
+### Wave 5 
+
+#### Study-specific variable description
+
+
+| **Name** | `dn006_`|
+|-|-|
+| **Label** | `year came to live in country`|
+| **Table name** | `sharew5_rel1-0-0_dn` | 
+| **Categories** | `continuous` | 
+| **Missings** | `-2 = refusal`<br/>`-1 = don't know` | 
+| **Description** |  |
+
+
+```{r assign5, echo=F}
+opal.assign.table.tibble(o, 'SHARE_w5','SHARE.sharew5_rel1-0-0_dn',
+                         variables=list('dn006_'), missings = TRUE)
+SHARE_w5 <- opal.execute(o,'SHARE_w5')
+
+load("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/SHARE/RData/w5/migration.Rdata")
+load("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/SHARE/RData/w5/yintw.Rdata")
+
+SHARE_w5 <- SHARE_w5 %>% 
+  left_join(migration, by = "id") %>% 
+  left_join(yintw, by = "id")
+```
+
+```{r local5, echo=F}
+vari <- SHARE_w5$dn006_
+vbl_miss <- c(-2,-1)
+kable(Continuous_summary(vari, missing_values = vbl_miss)[3], caption = "dn006_") 
+pander(Continuous_summary(vari, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(SHARE_w5, aes(x=dn006_)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = .%>% filter(!vari %in% vbl_miss)) + xlab(label(vari)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute `ymigration` from the study-specific variables they have to be recoded as follows:
+
+* `yintw - dn006_`
+* `migration = 0 into 996`
+* `migration = 999 into 999`
+* `dn006_ = -2 into 997`
+* `dn006_ = -1 into 998`
+* `dn006_ = NA into 999`
+
+**R script:**
+
+```{r harmo5}
+SHARE_ds_w5 <- tibble(id=SHARE_w5$id)
+SHARE_ds_w5$ymigration <- car::recode(with(SHARE_w5, yintw - dn006_), "NA=999")
+SHARE_ds_w5$ymigration[which(SHARE_w5$dn006_ == -2)] <- 997
+SHARE_ds_w5$ymigration[which(SHARE_w5$dn006_ == -1)] <- 998
+SHARE_ds_w5$ymigration[which(SHARE_w5$migration == 0)] <- 996
+SHARE_ds_w5$ymigration[which(SHARE_w5$migration == 997)] <- 999
+SHARE_ds_w5$ymigration[which(SHARE_w5$migration == 998)] <- 999
+SHARE_ds_w5$ymigration[which(SHARE_w5$migration == 999)] <- 999
+```
+
+#### Statistics of the new harmonised variable
+```{r descript5, echo=F}
+vari <- SHARE_ds_w5$ymigration
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(SHARE_ds_w5, aes(ymigration)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = .%>% filter(!vari %in% miss_values_vector)) + xlab("Age") + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation5, echo=F}
+```
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+```{r helpfunctions, echo=F}
+
+labelling <- function(l.hds,m.hds){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    # In the aux_object we copy the old tibble to recodify all missing values as NA.
+    aux_object <- l.hds[[name]]
+    # Labelling of variables
+    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
+    # Labelling of categories (for continues variables, only missing values)
+    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
+    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
+    # Saving the recodified tibble in list m.hds
+    m.hds[[name]] <- aux_object
+    rm(aux_object)
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+# Creation of summary tables for continuous data
+
+summaries <- function(l.hds,m.hds,lnames){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][2])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[2]],missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][2])[1:6]
+    # Next, missing/no-missing values
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[2]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][2]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+
+}
+
+```
+
+
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+share.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"), w3 = c("w3","W3"), w4 = c("w4","W4"), w5 = c("w5","W5"))
+
+# Consider only harmonised waves
+l.hds <- lapply(share.cw, function(wname) if(exists(paste0("SHARE_ds_",wname[1]))){wname = list(get(paste0("SHARE_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing summaries
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+```
+
+
+
+
+# Quality estimation
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
