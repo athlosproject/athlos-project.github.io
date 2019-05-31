@@ -13,65 +13,17 @@ output:
 ---
 
 
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+source("../../setup.r")
 ```
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-* Short name: `cog_imm_c`
-* Variable label: `Cognition - Immediate recall - Continuous`
-* Variable description: `Immediate recall of a list of common nouns. The number of words is exactly the same as in the study-specific variable.`
-* Domain: `Health status and functional limitations`
-* Value type: `Continuous`
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-
-
-* Short name: `cog_imm`
-* Variable label: `Cognition - Immediate recall`
-* Variable description: `Immediate recall of a list of common nouns. Discrete variable: value 0 = <=25%; value 1 = >25%.`
-* Domain: `Health status and functional limitations`
-* Value type: `Categorical`
-* Category coding:
-
-**Code** | **Category Label**
--------- | ------------------
-0        | <=25%
-1        | >25%
-
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-```{r lab, echo=FALSE}
-ds_label <- "Immediate recall"
-ds_label_cog_imm_c <- "Immediate recall of a list of common nouns. The number of words is exactly the same as in the study-specific variable"
-ds_label_cog_imm <- "Immediate recall of a list of common nouns. Discrete variable: value 0 = <=25%; value 1 = >25%"
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/cog_immDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/cog_immDS.R')
 ```
 
 # Data process
@@ -82,25 +34,27 @@ ds_label_cog_imm <- "Immediate recall of a list of common nouns. Discrete variab
 
 #### Study-specific variable description
 
-The study-specific variables elected to be harmonised is:
 
-* Name: `cog1`
-* Label: `Word recall 1 - number correct `
-* Categories:
-  + `Continuous Variable 0-10`
-* Missings
-  + `NA` 
+| **Name** |`cog1`|
+|-|-|
+| **Label** |`Word recall 1 - number correct`|
+| **Table name** |`Po_baseline_etic`|
+| **Categories** |`Continuous Variable 0-10`|
+| **Missings** |`NA`|
+| **Description** |  |
 
-```{r assign pol w1}
+
+
+```{r assign pol w1, echo=FALSE}
 opal.assign.table.tibble(o, 'HAPIEE_pol_w1_cog_imm','HAPIEE.Po_baseline_etic', variables=list('cog1'), missings = TRUE)
 HAPIEE_pol_w1_cog_imm <- opal.execute(o,'HAPIEE_pol_w1_cog_imm')
 ```
 
-```{r local pol w1}
+```{r local pol w1, echo=FALSE}
 vari <- HAPIEE_pol_w1_cog_imm$cog1
-kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Immediate recall continuous")
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "cog1")
 pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
-ggplot(HAPIEE_pol_w1_cog_imm, aes(x=factor(cog1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Immediate recall") + ylab("Frequency")
+ggplot(HAPIEE_pol_w1_cog_imm, aes(x=factor(cog1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -118,56 +72,42 @@ To compute the harmonized variable `cog_imm` from `cog_imm_c` it has to be recod
 
 ```{r harmo pol w1}
 ##cog_imm_c
-HAPIEE_pol_ds_w1 <- tibble(id=HAPIEE_pol_w1_cog_imm$id)
-HAPIEE_pol_ds_w1$cog_imm_c <- car::recode(HAPIEE_pol_w1_cog_imm$cog1, "NA = 999")
-HAPIEE_pol_ds_w1$cog_imm_c  <- labelled(HAPIEE_pol_ds_w1$cog_imm_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HAPIEE_ds_pol_w1 <- tibble(id=HAPIEE_pol_w1_cog_imm$id)
+HAPIEE_ds_pol_w1$cog_imm_c <- car::recode(HAPIEE_pol_w1_cog_imm$cog1, "NA = 999")
+
 
 ##cog_imm
-Q <- quantile(car::recode(HAPIEE_pol_ds_w1$cog_imm_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+Q <- quantile(car::recode(HAPIEE_ds_pol_w1$cog_imm_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
 
-HAPIEE_pol_ds_w1$cog_imm <- car::recode(HAPIEE_pol_ds_w1[[2]], "0:Q=0; (Q+1):10=1")
-HAPIEE_pol_ds_w1$cog_imm <- labelled(HAPIEE_pol_ds_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+HAPIEE_ds_pol_w1$cog_imm <- car::recode(HAPIEE_ds_pol_w1[[2]], "0:Q=0; (Q+1):10=1")
+
 ```
 
 #### Statistical description of the new harmonised variable
-```{r descript pol w1}
-vari <- HAPIEE_pol_ds_w1$cog_imm_c
-kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Immediate recall continuous")
-kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
-pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(HAPIEE_pol_ds_w1, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```{r descript pol w1, echo=FALSE}
+vari <- HAPIEE_ds_pol_w1$cog_imm_c
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = ds_label_cog_imm_c)
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HAPIEE_ds_pol_w1, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 
-vari <- HAPIEE_pol_ds_w1$cog_imm
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Cognition - Immediate recall")
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
-ggplot(HAPIEE_pol_ds_w1, aes(x=factor(cog_imm))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Immediate recall") + ylab("Frequency")
+vari <- HAPIEE_ds_pol_w1$cog_imm
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = ds_label_cog_imm)
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_pol_w1, aes(x=factor(cog_imm))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation pol w1}
-Continous <- c(sum(na.omit(HAPIEE_pol_ds_w1[[2]])<=Q), sum(na.omit(HAPIEE_pol_ds_w1[[2]])>Q & na.omit(HAPIEE_pol_ds_w1[[2]])<900), sum(na.omit(HAPIEE_pol_ds_w1[[2]])==999))
-Dicotomic <- table(HAPIEE_pol_ds_w1[[3]], useNA = "ifany")
+```{r crosstabulation pol w1, echo=FALSE}
+Continous <- c(sum(na.omit(HAPIEE_ds_pol_w1[[2]])<=Q), sum(na.omit(HAPIEE_ds_pol_w1[[2]])>Q & na.omit(HAPIEE_ds_pol_w1[[2]])<900), sum(na.omit(HAPIEE_ds_pol_w1[[2]])==999))
+Dicotomic <- table(HAPIEE_ds_pol_w1[[3]], useNA = "ifany")
 C <- rbind(Continous,Dicotomic)
 colnames(C) <- c("0:4->0","5:10->1","NA->999") 
 kable(C, caption = "Continuous vs Dichotomous")
 ```
 
-```{r importOPAL pol w1, echo=FALSE}
-label(HAPIEE_pol_ds_w1$cog_imm_c) <- ds_label_cog_imm_c
-label(HAPIEE_pol_ds_w1$cog_imm) <- ds_label_cog_imm
-#opal.assign.data(o, 'HAPIEE_pol_ds_w1', HAPIEE_pol_ds_w1)
-#opal.symbol_import(o,'HAPIEE_pol_ds_w1', project='_Athlos_Harm_Dataset')
-cog_del <- HAPIEE_pol_ds_w1
-save(cog_del, file = "../RData/pol_w1/cog_del.RData")
-rm(cog_del)
 
-HAPIEE_pol_m_ds_w1 <- HAPIEE_pol_ds_w1
-HAPIEE_pol_m_ds_w1$cog_imm <- car::recode(HAPIEE_pol_m_ds_w1$cog_imm, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-HAPIEE_pol_m_ds_w1$cog_imm_c <- car::recode(HAPIEE_pol_m_ds_w1$cog_imm_c, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'HAPIEE_pol_m_ds_w1', HAPIEE_pol_m_ds_w1)
-#opal.symbol_import(o,'HAPIEE_pol_m_ds_w1', project='_Athlos_Harm_Dataset')
-```
 
 
 
@@ -176,25 +116,27 @@ HAPIEE_pol_m_ds_w1$cog_imm_c <- car::recode(HAPIEE_pol_m_ds_w1$cog_imm_c, "c(991
 
 #### Study-specific variable description
 
-The study-specific variables elected to be harmonised is:
-  
-* Name: ` w2cog1`
-* Label: `Word recall 1 - number correct `
-* Categories:
-  + `Continuous Variable 0-10`
-* Missings
-  + `NA` 
 
-```{r assign pol w2}
+
+| **Name** |`w2cog1`|
+|-|-|
+| **Label** |`Word recall 1 - number correct`|
+| **Table name** |`Po_reexamination_etic`|
+| **Categories** |`Continuous Variable 0-10`|
+| **Missings** |`NA`|
+| **Description** |  |
+
+
+```{r assign pol w2, echo=FALSE}
 opal.assign.table.tibble(o, 'HAPIEE_pol_w2_cog_imm','HAPIEE.Po_reexamination_etic', variables=list('w2cog1'), missings = TRUE)
 HAPIEE_pol_w2_cog_imm <- opal.execute(o,'HAPIEE_pol_w2_cog_imm')
 ```
 
-```{r local pol w2}
+```{r local pol w2, echo=FALSE}
 vari <- HAPIEE_pol_w2_cog_imm$w2cog1
-kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Immediate recall continuous")
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "w2cog1")
 pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
-ggplot(HAPIEE_pol_w2_cog_imm, aes(x=factor(w2cog1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Immediate recall") + ylab("Frequency")
+ggplot(HAPIEE_pol_w2_cog_imm, aes(x=factor(w2cog1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -212,57 +154,42 @@ To compute the harmonized variable `cog_imm` from `cog_imm_c` it has to be recod
 
 ```{r harmo pol w2}
 ##cog_imm_c
-HAPIEE_pol_ds_w2 <- tibble(id=HAPIEE_pol_w2_cog_imm$id)
-HAPIEE_pol_ds_w2$cog_imm_c <- car::recode(HAPIEE_pol_w2_cog_imm$w2cog1, "NA = '999' ")
-HAPIEE_pol_ds_w2$cog_imm_c  <- labelled(HAPIEE_pol_ds_w2$cog_imm_c, labels = c( Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HAPIEE_ds_pol_w2 <- tibble(id=HAPIEE_pol_w2_cog_imm$id)
+HAPIEE_ds_pol_w2$cog_imm_c <- car::recode(HAPIEE_pol_w2_cog_imm$w2cog1, "NA = '999' ")
+
 
 ##cog_imm
-Q <- quantile(car::recode(HAPIEE_pol_ds_w2$cog_imm_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+Q <- quantile(car::recode(HAPIEE_ds_pol_w2$cog_imm_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
 
-HAPIEE_pol_ds_w2$cog_imm <- car::recode(HAPIEE_pol_ds_w2[[2]], "0:Q=0; (Q+1):10=1")
-HAPIEE_pol_ds_w2$cog_imm <- labelled(HAPIEE_pol_ds_w2[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+HAPIEE_ds_pol_w2$cog_imm <- car::recode(HAPIEE_ds_pol_w2[[2]], "0:Q=0; (Q+1):10=1")
+
 ```
 
 #### Statistical description of the new harmonised variable
-```{r descript pol w2}
-vari <- HAPIEE_pol_ds_w2$cog_imm_c
-kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Immediate recall continuous")
-kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
-pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(HAPIEE_pol_ds_w2, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```{r descript pol w2, echo=FALSE}
+vari <- HAPIEE_ds_pol_w2$cog_imm_c
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = ds_label_cog_imm_c)
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HAPIEE_ds_pol_w2, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 
-vari <- HAPIEE_pol_ds_w2$cog_imm
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Cognition - Immediate recall")
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
-ggplot(HAPIEE_pol_ds_w2, aes(x=factor(cog_imm))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Immediate recall") + ylab("Frequency")
+vari <- HAPIEE_ds_pol_w2$cog_imm
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = ds_label_cog_imm)
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_pol_w2, aes(x=factor(cog_imm))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation pol w2}
-Continous <- c(sum(na.omit(HAPIEE_pol_ds_w2[[2]])<=Q), sum(na.omit(HAPIEE_pol_ds_w2[[2]])>Q & na.omit(HAPIEE_pol_ds_w2[[2]])<900), sum(na.omit(HAPIEE_pol_ds_w2[[2]])==999))
-Dicotomic <- table(HAPIEE_pol_ds_w2[[3]], useNA = "ifany")
+```{r crosstabulation pol w2, echo=FALSE}
+Continous <- c(sum(na.omit(HAPIEE_ds_pol_w2[[2]])<=Q), sum(na.omit(HAPIEE_ds_pol_w2[[2]])>Q & na.omit(HAPIEE_ds_pol_w2[[2]])<900), sum(na.omit(HAPIEE_ds_pol_w2[[2]])==999))
+Dicotomic <- table(HAPIEE_ds_pol_w2[[3]], useNA = "ifany")
 C <- rbind(Continous,Dicotomic)
 colnames(C) <- c("0:5->0","6:10->1","NA->999") 
 kable(C, caption = "Continuous vs Dichotomous")
 ```
 
 
-```{r importOPAL pol w2, echo=FALSE}
-label(HAPIEE_pol_ds_w2$cog_imm_c) <- ds_label_cog_imm_c
-label(HAPIEE_pol_ds_w2$cog_imm) <- ds_label_cog_imm
-#opal.assign.data(o, 'HAPIEE_pol_ds_w2', HAPIEE_pol_ds_w2)
-#opal.symbol_import(o,'HAPIEE_pol_ds_w2', project='_Athlos_Harm_Dataset')
-cog_del <- HAPIEE_pol_ds_w2
-save(cog_del, file = "../RData/pol_w2/cog_del.RData")
-rm(cog_del)
-
-HAPIEE_pol_m_ds_w2 <- HAPIEE_pol_ds_w2
-HAPIEE_pol_m_ds_w2$cog_imm <- car::recode(HAPIEE_pol_m_ds_w2$cog_imm, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-HAPIEE_pol_m_ds_w2$cog_imm_c <- car::recode(HAPIEE_pol_m_ds_w2$cog_imm_c, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'HAPIEE_pol_m_ds_w2', HAPIEE_pol_m_ds_w2)
-#opal.symbol_import(o,'HAPIEE_pol_m_ds_w2', project='_Athlos_Harm_Dataset')
-```
 
 
 
@@ -273,25 +200,29 @@ HAPIEE_pol_m_ds_w2$cog_imm_c <- car::recode(HAPIEE_pol_m_ds_w2$cog_imm_c, "c(991
 
 #### Study-specific variable description
 
-The study-specific variables elected to be harmonised is:
-  
-* Name: `cog1`
-* Label: `Word recall 1 - number correct `
-* Categories:
-  + `Continuous Variable 0-10`
-* Missings
-  + `NA` 
 
-```{r assign cz w1}
+
+| **Name** |`cog1`|
+|-|-|
+| **Label** |`Word recall 1 - number correct`|
+| **Table name** |`Cz_baseline_etic`|
+| **Categories** |`Continuous Variable 0-10`|
+| **Missings** |`NA`|
+| **Description** |  |
+  
+
+
+
+```{r assign cz w1, echo=FALSE}
 opal.assign.table.tibble(o, 'HAPIEE_cz_w1_cog_imm','HAPIEE.Cz_baseline_etic', variables=list('cog1'), missings = TRUE)
 HAPIEE_cz_w1_cog_imm <- opal.execute(o,'HAPIEE_cz_w1_cog_imm')
 ```
 
-```{r local cz w1}
+```{r local cz w1, echo=FALSE}
 vari <- HAPIEE_cz_w1_cog_imm$cog1
-kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Immediate recall continuous")
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "cog1")
 pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
-ggplot(HAPIEE_cz_w1_cog_imm, aes(x=factor(cog1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Immediate recall") + ylab("Frequency")
+ggplot(HAPIEE_cz_w1_cog_imm, aes(x=factor(cog1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -309,56 +240,41 @@ To compute the harmonized variable `cog_imm` from `cog_imm_c` it has to be recod
 
 ```{r harmo cz w1}
 ##cog_imm_c
-HAPIEE_cz_ds_w1 <- tibble(id=HAPIEE_cz_w1_cog_imm$id)
-HAPIEE_cz_ds_w1$cog_imm_c <- car::recode(HAPIEE_cz_w1_cog_imm$cog1, "  NA = 999")
-HAPIEE_cz_ds_w1$cog_imm_c  <- labelled(HAPIEE_cz_ds_w1$cog_imm_c, labels = c( Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HAPIEE_ds_cz_w1 <- tibble(id=HAPIEE_cz_w1_cog_imm$id)
+HAPIEE_ds_cz_w1$cog_imm_c <- car::recode(HAPIEE_cz_w1_cog_imm$cog1, "  NA = 999")
+
 
 ##cog_imm
-Q <- quantile(car::recode(HAPIEE_cz_ds_w1$cog_imm_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+Q <- quantile(car::recode(HAPIEE_ds_cz_w1$cog_imm_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
 
-HAPIEE_cz_ds_w1$cog_imm <- car::recode(HAPIEE_cz_ds_w1[[2]], "0:Q=0; (Q+1):10=1")
-HAPIEE_cz_ds_w1$cog_imm <- labelled(HAPIEE_cz_ds_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+HAPIEE_ds_cz_w1$cog_imm <- car::recode(HAPIEE_ds_cz_w1[[2]], "0:Q=0; (Q+1):10=1")
+
 ```
 
 #### Statistical description of the new harmonised variable
-```{r descript cz w1}
-vari <- HAPIEE_cz_ds_w1$cog_imm_c
-kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Immediate recall continuous")
-kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
-pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(HAPIEE_cz_ds_w1, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```{r descript cz w1, echo=FALSE}
+vari <- HAPIEE_ds_cz_w1$cog_imm_c
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = ds_label_cog_imm_c)
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HAPIEE_ds_cz_w1, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 
-vari <- HAPIEE_cz_ds_w1$cog_imm
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Cognition - Immediate recall")
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
-ggplot(HAPIEE_cz_ds_w1, aes(x=factor(cog_imm))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Immediate recall") + ylab("Frequency")
+vari <- HAPIEE_ds_cz_w1$cog_imm
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = ds_label_cog_imm)
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_cz_w1, aes(x=factor(cog_imm))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation cz w1}
-Continous <- c(sum(na.omit(HAPIEE_cz_ds_w1[[2]])<=Q), sum(na.omit(HAPIEE_cz_ds_w1[[2]])>Q & na.omit(HAPIEE_cz_ds_w1[[2]])<900), sum(na.omit(HAPIEE_cz_ds_w1[[2]])==999))
-Dicotomic <- table(HAPIEE_cz_ds_w1[[3]], useNA = "ifany")
+```{r crosstabulation cz w1, echo=FALSE}
+Continous <- c(sum(na.omit(HAPIEE_ds_cz_w1[[2]])<=Q), sum(na.omit(HAPIEE_ds_cz_w1[[2]])>Q & na.omit(HAPIEE_ds_cz_w1[[2]])<900), sum(na.omit(HAPIEE_ds_cz_w1[[2]])==999))
+Dicotomic <- table(HAPIEE_ds_cz_w1[[3]], useNA = "ifany")
 C <- rbind(Continous,Dicotomic)
 colnames(C) <- c("0:3->0","4:10->1","NA->999") 
 kable(C, caption = "Continuous vs Dichotomous")
 ```
 
-```{r importOPAL cz w1, echo=FALSE}
-label(HAPIEE_cz_ds_w1$cog_imm_c) <- ds_label_cog_imm_c
-label(HAPIEE_cz_ds_w1$cog_imm) <- ds_label_cog_imm
-#opal.assign.data(o, 'HAPIEE_cz_ds_w1', HAPIEE_cz_ds_w1)
-#opal.symbol_import(o,'HAPIEE_cz_ds_w1', project='_Athlos_Harm_Dataset')
-cog_del <- HAPIEE_cz_ds_w1
-save(cog_del, file = "../RData/cz_w1/cog_del.RData")
-rm(cog_del)
-
-HAPIEE_cz_m_ds_w1 <- HAPIEE_cz_ds_w1
-HAPIEE_cz_m_ds_w1$cog_imm <- car::recode(HAPIEE_cz_m_ds_w1$cog_imm, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-HAPIEE_cz_m_ds_w1$cog_imm_c <- car::recode(HAPIEE_cz_m_ds_w1$cog_imm_c, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'HAPIEE_cz_m_ds_w1', HAPIEE_cz_m_ds_w1)
-#opal.symbol_import(o,'HAPIEE_cz_m_ds_w1', project='_Athlos_Harm_Dataset')
-```
 
 
 
@@ -366,26 +282,29 @@ HAPIEE_cz_m_ds_w1$cog_imm_c <- car::recode(HAPIEE_cz_m_ds_w1$cog_imm_c, "c(991, 
 
 #### Study-specific variable description
 
-The study-specific variables elected to be harmonised is:
-  
-* Name: ` w2cog1`
-* Label: `Word recall 1 - number correct `
-* Categories:
-  + `Continuous Variable 0-10`
-* Missings
-  + `NA` 
-  + `9`
 
-```{r assign cz w2}
+
+| **Name** |`w2cog1`|
+|-|-|
+| **Label** |`Word recall 1 - number correct`|
+| **Table name** |`Cz_reexamination_etic`|
+| **Categories** |`Continuous Variable 0-10`|
+| **Missings** |`NA`|
+| **Description** |  |
+  
+
+
+
+```{r assign cz w2, echo=FALSE}
 opal.assign.table.tibble(o, 'HAPIEE_cz_w2_cog_imm','HAPIEE.Cz_reexamination_etic', variables=list('w2cog1'), missings = TRUE)
 HAPIEE_cz_w2_cog_imm <- opal.execute(o,'HAPIEE_cz_w2_cog_imm')
 ```
 
-```{r local cz w2}
+```{r local cz w2, echo=FALSE}
 vari <- HAPIEE_cz_w2_cog_imm$w2cog1
-kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Immediate recall continuous")
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "w2cog1")
 pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
-ggplot(HAPIEE_cz_w2_cog_imm, aes(x=factor(w2cog1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Immediate recall") + ylab("Frequency")
+ggplot(HAPIEE_cz_w2_cog_imm, aes(x=factor(w2cog1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -403,56 +322,41 @@ To compute the harmonized variable `cog_imm` from `cog_imm_c` it has to be recod
 
 ```{r harmo cz w2}
 ##cog_imm_c
-HAPIEE_cz_ds_w2 <- tibble(id=HAPIEE_cz_w2_cog_imm$id)
-HAPIEE_cz_ds_w2$cog_imm_c <- car::recode(HAPIEE_cz_w2_cog_imm$w2cog1, "NA = 999")
-HAPIEE_cz_ds_w2$cog_imm_c  <- labelled(HAPIEE_cz_ds_w2$cog_imm_c, labels = c( Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HAPIEE_ds_cz_w2 <- tibble(id=HAPIEE_cz_w2_cog_imm$id)
+HAPIEE_ds_cz_w2$cog_imm_c <- car::recode(HAPIEE_cz_w2_cog_imm$w2cog1, "NA = 999")
+
 
 ##cog_imm
-Q <- quantile(car::recode(HAPIEE_cz_ds_w2$cog_imm_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+Q <- quantile(car::recode(HAPIEE_ds_cz_w2$cog_imm_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
 
-HAPIEE_cz_ds_w2$cog_imm <- car::recode(HAPIEE_cz_ds_w2[[2]], "0:Q=0; (Q+1):10=1")
-HAPIEE_cz_ds_w2$cog_imm <- labelled(HAPIEE_cz_ds_w2[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+HAPIEE_ds_cz_w2$cog_imm <- car::recode(HAPIEE_ds_cz_w2[[2]], "0:Q=0; (Q+1):10=1")
+
 ```
 
 #### Statistical description of the new harmonised variable
-```{r descript cz w2}
-vari <- HAPIEE_cz_ds_w2$cog_imm_c
-kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Immediate recall continuous")
-kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
-pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(HAPIEE_cz_ds_w2, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```{r descript cz w2, echo=FALSE}
+vari <- HAPIEE_ds_cz_w2$cog_imm_c
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = ds_label_cog_imm_c)
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HAPIEE_ds_cz_w2, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 
-vari <- HAPIEE_cz_ds_w2$cog_imm
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Cognition - Immediate recall")
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
-ggplot(HAPIEE_cz_ds_w2, aes(x=factor(cog_imm))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Immediate recall") + ylab("Frequency")
+vari <- HAPIEE_ds_cz_w2$cog_imm
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = ds_label_cog_imm)
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_cz_w2, aes(x=factor(cog_imm))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation cz w2}
-Continous <- c(sum(na.omit(HAPIEE_cz_ds_w2[[2]])<=Q), sum(na.omit(HAPIEE_cz_ds_w2[[2]])>Q & na.omit(HAPIEE_cz_ds_w2[[2]])<900), sum(na.omit(HAPIEE_cz_ds_w2[[2]])==999))
-Dicotomic <- table(HAPIEE_cz_ds_w2[[3]], useNA = "ifany")
+```{r crosstabulation cz w2, echo=FALSE}
+Continous <- c(sum(na.omit(HAPIEE_ds_cz_w2[[2]])<=Q), sum(na.omit(HAPIEE_ds_cz_w2[[2]])>Q & na.omit(HAPIEE_ds_cz_w2[[2]])<900), sum(na.omit(HAPIEE_ds_cz_w2[[2]])==999))
+Dicotomic <- table(HAPIEE_ds_cz_w2[[3]], useNA = "ifany")
 C <- rbind(Continous,Dicotomic)
 colnames(C) <- c("0:5->0","6:10->1","NA->999") 
 kable(C, caption = "Continuous vs Dichotomous")
 ```
 
-```{r importOPAL cz w2, echo=FALSE}
-label(HAPIEE_cz_ds_w2$cog_imm_c) <- ds_label_cog_imm_c
-label(HAPIEE_cz_ds_w2$cog_imm) <- ds_label_cog_imm
-#opal.assign.data(o, 'HAPIEE_cz_ds_w2', HAPIEE_cz_ds_w2)
-#opal.symbol_import(o,'HAPIEE_cz_ds_w2', project='_Athlos_Harm_Dataset')
-cog_del <- HAPIEE_cz_ds_w2
-save(cog_del, file = "../RData/cz_w2/cog_del.RData")
-rm(cog_del)
-
-HAPIEE_cz_m_ds_w2 <- HAPIEE_cz_ds_w2
-HAPIEE_cz_m_ds_w2$cog_imm <- car::recode(HAPIEE_cz_m_ds_w2$cog_imm, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-HAPIEE_cz_m_ds_w2$cog_imm_c <- car::recode(HAPIEE_cz_m_ds_w2$cog_imm_c, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'HAPIEE_cz_m_ds_w2', HAPIEE_cz_m_ds_w2)
-#opal.symbol_import(o,'HAPIEE_cz_m_ds_w2', project='_Athlos_Harm_Dataset')
-```
 
 
 
@@ -462,26 +366,27 @@ HAPIEE_cz_m_ds_w2$cog_imm_c <- car::recode(HAPIEE_cz_m_ds_w2$cog_imm_c, "c(991, 
 
 #### Study-specific variable description
 
-The study-specific variables elected to be harmonised is:
-  
-* Name: `w2cog1`
-* Label: `Word recall 1 - number correct `
-* Categories:
-  + `Continuous Variable 0-10`
-* Missings
-  + `.c`
-  + `NA` 
 
-```{r assign Li w1}
+
+| **Name** |`cog1`|
+|-|-|
+| **Label** |`Word recall 1 - number correct`|
+| **Table name** |`Li_baseline_etic`|
+| **Categories** |`Continuous Variable 0-10`|
+| **Missings** |`NA`|
+| **Description** |  |
+
+
+```{r assign Li w1, echo=FALSE}
 opal.assign.table.tibble(o, 'HAPIEE_Li_w1_cog_imm','HAPIEE.Li_baseline_etic', variables=list('cog1'), missings = TRUE)
 HAPIEE_Li_w1_cog_imm <- opal.execute(o,'HAPIEE_Li_w1_cog_imm')
 ```
 
-```{r local Li w1}
+```{r local Li w1, echo=FALSE}
 vari <- HAPIEE_Li_w1_cog_imm$cog1
-kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "Immediate recall continuous")
+kable(Continuous_summary(var = vari, missing_values = NA)[3], caption = "cog1")
 pander(Continuous_summary(vari, missing_values = NA)$summary, caption = "Summary")
-ggplot(HAPIEE_Li_w1_cog_imm, aes(x=factor(cog1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Immediate recall") + ylab("Frequency")
+ggplot(HAPIEE_Li_w1_cog_imm, aes(x=factor(cog1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -499,61 +404,284 @@ To compute the harmonized variable `cog_imm` from `cog_imm_c` it has to be recod
 
 ```{r harmo Li w1}
 ##cog_imm_c
-HAPIEE_li_ds_w1 <- tibble(id=HAPIEE_Li_w1_cog_imm$id)
-HAPIEE_li_ds_w1$cog_imm_c <- car::recode(HAPIEE_Li_w1_cog_imm$cog1, " NA = 999")
-HAPIEE_li_ds_w1$cog_imm_c  <- labelled(HAPIEE_li_ds_w1$cog_imm_c, labels = c(Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+HAPIEE_ds_li_w1 <- tibble(id=HAPIEE_Li_w1_cog_imm$id)
+HAPIEE_ds_li_w1$cog_imm_c <- car::recode(HAPIEE_Li_w1_cog_imm$cog1, " NA = 999")
+
 
 ##cog_imm
-Q <- quantile(car::recode(HAPIEE_li_ds_w1$cog_imm_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
+Q <- quantile(car::recode(HAPIEE_ds_li_w1$cog_imm_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE)
 
-HAPIEE_li_ds_w1$cog_imm <- car::recode(HAPIEE_li_ds_w1[[2]], "0:Q=0; (Q+1):10=1")
-HAPIEE_li_ds_w1$cog_imm <- labelled(HAPIEE_li_ds_w1[[3]], labels = c("<=25%"=0, ">25%"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Does not answer"=995,  "Not attempt not done"=994, "Disable to measure"=993, "Impute"=992, "CAPI interviewer error"=991))
+HAPIEE_ds_li_w1$cog_imm <- car::recode(HAPIEE_ds_li_w1[[2]], "0:Q=0; (Q+1):10=1")
+
 ```
 
 #### Statistical description of the new harmonised variable
-```{r descript Li w1}
-vari <- HAPIEE_li_ds_w1$cog_imm_c
-kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Immediate recall continuous")
-kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
-pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(HAPIEE_li_ds_w1, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```{r descript Li w1, echo=FALSE}
+vari <- HAPIEE_ds_li_w1$cog_imm_c
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = ds_label_cog_imm_c)
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(HAPIEE_ds_li_w1, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 
-vari <- HAPIEE_li_ds_w1$cog_imm
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = "Cognition - Immediate recall")
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
-ggplot(HAPIEE_li_ds_w1, aes(x=factor(cog_imm))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Cognition - Immediate recall") + ylab("Frequency")
+vari <- HAPIEE_ds_li_w1$cog_imm
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = ds_label_cog_imm)
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(HAPIEE_ds_li_w1, aes(x=factor(cog_imm))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation Li w1}
-Continous <- c(sum(na.omit(HAPIEE_li_ds_w1[[2]])<=Q), sum(na.omit(HAPIEE_li_ds_w1[[2]])>Q & na.omit(HAPIEE_li_ds_w1[[2]])<900), sum(na.omit(HAPIEE_li_ds_w1[[2]])==999))
-Dicotomic <- table(HAPIEE_li_ds_w1[[3]], useNA = "ifany")
+```{r crosstabulation Li w1, echo=FALSE}
+Continous <- c(sum(na.omit(HAPIEE_ds_li_w1[[2]])<=Q), sum(na.omit(HAPIEE_ds_li_w1[[2]])>Q & na.omit(HAPIEE_ds_li_w1[[2]])<900), sum(na.omit(HAPIEE_ds_li_w1[[2]])==999))
+Dicotomic <- table(HAPIEE_ds_li_w1[[3]], useNA = "ifany")
 C <- rbind(Continous,Dicotomic)
 colnames(C) <- c("0:5->0","6:10->1","NA->999") 
 kable(C, caption = "Continuous vs Dichotomous")
 ```
 
-```{r importOPAL Li w1, echo=FALSE}
-label(HAPIEE_li_ds_w1$cog_imm_c) <- ds_label_cog_imm_c
-label(HAPIEE_li_ds_w1$cog_imm) <- ds_label_cog_imm
-#opal.assign.data(o, 'HAPIEE_li_ds_w1', HAPIEE_li_ds_w1)
-#opal.symbol_import(o,'HAPIEE_li_ds_w1', project='_Athlos_Harm_Dataset')
-cog_del <- HAPIEE_li_ds_w1
-save(cog_del, file = "../RData/li_w1/cog_del.RData")
-rm(cog_del)
 
-HAPIEE_li_m_ds_w1 <- HAPIEE_li_ds_w1
-HAPIEE_li_m_ds_w1$cog_imm <- car::recode(HAPIEE_li_m_ds_w1$cog_imm, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-#opal.assign.data(o, 'HAPIEE_li_m_ds_w1', HAPIEE_li_m_ds_w1)
-#opal.symbol_import(o,'HAPIEE_li_m_ds_w1', project='_Athlos_Harm_Dataset')
+
+
+<!--AUXILIAR FUNCTIONS-->
+
+
+
+```{r helpfunctions, echo=F}
+
+
+labelling <- function(l.hds,m.hds,vbl_name,ds_lab = ds_label){
+  
+  # Labelling of the tibbles with categorical data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    if(vbl_name %in% names(l.hds[[name]])){
+      # In the aux_object we copy the old tibble to recodify all missing values as NA.
+      aux_object <- l.hds[[name]]
+      # Labelling of variables
+      label(l.hds[[name]][[vbl_name]]) <- label(aux_object[[vbl_name]]) <- ds_lab
+      # Labelling of categories (for continues variables, only missing values)
+      l.hds[[name]][[vbl_name]] <- labelled(l.hds[[name]][[vbl_name]], labels = cat_label)
+      aux_object[[vbl_name]] <- car::recode(aux_object[[vbl_name]], "miss_values_vector=NA")
+      # Labelling of categories (for categorical variables, only non-missing values)
+      aux_object[[vbl_name]] <- labelled(aux_object[[vbl_name]], labels = cat_label[1:(length(cat_label)-9)])
+      # Saving the recodified tibble in list m.hds
+      m.hds[[name]] <- aux_object
+      rm(aux_object)
+    }
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+
+labelling_c <- function(l.hds,m.hds,vbl_name,ds_lab=ds_label){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    
+    if(vbl_name %in% names(l.hds[[name]])){
+      # In the aux_object we copy the old tibble to recodify all missing values as NA.
+      aux_object <- m.hds[[name]]
+      # Labelling of variables
+      label(l.hds[[name]][[vbl_name]]) <- label(aux_object[[vbl_name]]) <- ds_lab
+      # Labelling of categories (for continues variables, only missing values)
+      l.hds[[name]][[vbl_name]] <- labelled(l.hds[[name]][[vbl_name]], labels = cont_label)
+      aux_object[[vbl_name]] <- car::recode(aux_object[[vbl_name]], "miss_values_vector=NA")
+      aux_object[[vbl_name]] <- remove_val_labels(aux_object[[vbl_name]])
+      # Saving the recodified tibble in list m.hds
+      m.hds[[name]] <- aux_object
+      rm(aux_object)
+    }
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+
+# Creation of summary tables for categorical data
+
+summaries <- function(l.hds,m.hds,lnames,vbl_name = hd_vbl){
+
+  # Creation of columns with categories and labels
+  t.hds <- frq(l.hds[[1]][vbl_name])[[1]][,c(1,2)] 
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    t.hds[2+i] <- frq(l.hds[[i]][vbl_name])[[1]][,4] 
+  }
+  # Add sample size for each wave/population
+  t.hds[2+length(cat_label),] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+  )
+  # Add wave/population names
+  names(t.hds)<-c("val", "label",lnames)
+  return(t.hds)
+  
+}
+
+
+# Creation of summary tables for continuous data
+
+summaries_c <- function(l.hds,m.hds,lnames,vbl_name){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][vbl_name])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[vbl_name]], missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][vbl_name])[1:6]
+    # Next, missing/no-missing values (the 1 in $values_table[1,] stands for absolute values, while a 2 would stand for percentages)
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[vbl_name]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][vbl_name]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name = hd_vbl){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+  
+}
+
+```
+
+
+
+```{r populations-waves, echo=F}
+
+
+# All study waves and populations with abbreviated and descriptive names
+
+hapiee.cw <- list(pol_w1 = c("pol_w1","Poland w1"), pol_w2 = c("pol_w2","Poland w2"), cz_w1 = c("cz_w1","Czech Republic w1"), cz_w2 = c("cz_w2","Czech Republic w2"), li_w1 = c("li_w1","Lithuania w1"))
+
+```
+
+
+<!--Labelling and saving-->
+
+```{r, echo=FALSE}
+
+
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(hapiee.cw, function(wname) if(exists(paste0("HAPIEE_ds_",wname[1]))){wname = list(get(paste0("HAPIEE_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label_cog_imm)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_vbl_c,ds_label_cog_imm_c)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+hapieelist <- lmlist # baseline list
+
+
+
+
+```
+
+
+
+<!--Descriptives-->
+
+## Descriptive statistics of the harmonised variable `cog_imm` accross populations and waves
+
+Percentages of categories in each harmonised variable:
+
+
+```{r summ, echo=F}
+
+
+# Consider only harmonised waves
+l.hds <- lapply(hapiee.cw, function(wname) if(hd_vbl %in% names(get0(paste0("HAPIEE_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- hapieelist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- hapieelist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label_cog_imm))
+}
+
+
+
+
+
 ```
 
 
 
 
+
+
+## Summary of descriptive statistics of the harmonised variable `cog_imm_c` accross populations and waves
+
+
+
+
+
+
+```{r summ_c, echo=F}
+
+
+# Consider only harmonised waves
+l.hds <- lapply(hapiee.cw, function(wname) if(hd_vbl_c %in% names(get0(paste0("HAPIEE_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- hapieelist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- hapieelist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl_c),caption=ds_label_cog_imm_c))
+}
+
+
+
+```
+
+
+
+
+
 # Quality estimation
-[Comments on the quality of the new harmonised variable. This section can be done in a later stage, once all variables are harmonised.]
 
 No comments
 
