@@ -33,6 +33,18 @@ source('../../_DS_Rmd/ydeathDS.R')
 ## England
 
 
+### Wave non-specific
+
+#### Study-specific variable description
+
+
+| **Name** |`yrdeath`|
+|-|-|
+| **Label** |`Year of death - updated Feb 2012`|
+| **Table name** |`index_file_wave_0-wave_5_v2`|
+| **Units** |`years`|
+| **Missings** |`-3 = Details being checked with ONS`<br/>`-2 = Information not available or not applicable`|
+| **Description** |  |
 
 ```{r assign_all, echo=F}
 
@@ -73,11 +85,49 @@ eol3 <- opal.execute(o,'ELSA_w3_ydeath')
 eol4 <- opal.execute(o,'ELSA_w4_ydeath')
 eol6 <- opal.execute(o,'ELSA_w6_ydeath')
 
+opal.assign.table.tibble(o,'ELSA','ELSA.index_file_wave_0-wave_5_v2',
+                         variables=list('yrdeath','mortstat'), missings = TRUE)
+elsa <- opal.execute(o,'ELSA')
+
 ```
+
+
+
+
+```{r local, echo=F}
+
+
+vbl <- elsa$yrdeath
+vbl_miss <- c(-2, -3)
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = "yrdeath")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[2], caption = "Type of missing")
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = label(vbl))
+ggplot(elsa, aes(x=factor(vbl))) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+* `Priorize year of death taken from official mortality data (the National Health Service Central Register)`
+* `Otherwise, keep years of death answered in EOL interviews`
+* `Correct an impossible year of death with the given in EOL interview`
+* `harmonise those id's dead during wave n (2000 + n*2,2001 + n*2) in wave n if they do not participate in it or otherwise in wave n+1`
 
 **R script:**
 
 ```{r global_harmo}
+
+
+# Individuals with potential information on death and in some wave up to 0. Values -2,-3 of yrdeath have no useful information to harmonise
+elsa <- elsa %>%
+  filter(id %in% Reduce(union,list(core1$id,core2$id,core3$id,core4$id,core5$id,core6$id,core7$id))) %>%
+  mutate_at("yrdeath",~replace(.,list = which(. %in% c(-2,-3)), values = NA)) %>%
+  filter_at(vars(-id),any_vars(!is.na(.)))
+# elsa <- elsa %>%
+#   filter(id %in% Reduce(union,list(core1$id,core2$id,core3$id,core4$id,core5$id,core6$id,core7$id))) %>%
+#   mutate_at("yrdeath",~replace(.,list = which(. %in% c(-2,-3)), values = NA)) %>%
+#   mutate_at("mortstat",~replace(.,list = which(. %in% c(-1,-0)), values = NA)) %>%
+#   filter_at(vars(-id),any_vars(!is.na(.)))
 
 # Individuals in EoL interviews not interviewed in any wave from 1 are removed. We keep them only in first EoL interview they appear.
 # Printed lengths of cases
@@ -95,70 +145,23 @@ ids <- Reduce(union, list(ids2,ids3,ids4,ids6))
 eol <- full_join(eol2 %>% filter(id %in% ids2),eol3 %>% filter(id %in% ids3), by = "id", suffix = c(".w2",".w3"))
 eol <- full_join(eol, eol4 %>% filter(id %in% ids4), by = "id")
 eol <- full_join(eol, eol6 %>% filter(id %in% ids6), by = "id", suffix = c(".w4",".w6"))
-
-# Years of death of id's in wave 3 and EoL interview are harmonised in wave 4
-# 374 - 2 = 372
-dids3 <- setdiff(ids3,core3$id)
-# 237 + 2 = 239
-dids4 <- union(ids4,setdiff(ids3,dids3))
-
-# Years of death before wave 3 (2006-2007) of id's in wave 3 EoL interview and neither in wave 3 nor wave 2 interviews are harmonised in wave 2
-# 134 + 160 = 294
-dids2 <- union(ids2,(eol3 %>% filter(id %in% ids3 & !id %in% union(core2$id,core3$id) & EiDateY<2006))$id)
-# 372 - 160 = 212
-dids3 <- setdiff(dids3,dids2)
-
-
-# Years of death before wave 4 (2008-2009) of id's in wave 4 EoL interview and neither in wave 4 nor wave 3 interviews but in wave 2, are harmonised in wave 3
-# 212 + 15 = 227
-dids3 <- union(dids3,(eol4 %>% filter(id %in% ids4 & id %in% setdiff(core2$id,core3$id) & EiDateY<2008))$id)
-# 239 - 15 = 224
-dids4 <- setdiff(dids4,dids3)
-
-# Years of death before wave 3 (2006-2007) of id's only in wave 4 EoL and wave 1 interviews, are harmonised in wave 2
-# 294 + 1 = 295
-dids2 <- union(dids2,(eol4 %>% filter(id %in% ids4 & id %in% setdiff(core1$id,union(core2$id,core3$id)) & EiDateY<2006))$id)
-# 224 - 1 = 223
-dids4 <- setdiff(dids4,dids2)
-
-# Years of death between wave 3 (2006-2007) and wave 4 (2008-2009) of id's only in wave 4 EoL and wave 1 interviews, are harmonised in wave 3
-# 227 + 8 = 235
-dids3 <- union(dids3,(eol4 %>% filter(id %in% ids4 & id %in% setdiff(core1$id,union(core2$id,core3$id)) & EiDateY<2008 & EiDateY>=2006))$id)
-# 223 - 8 = 215
-dids4 <- setdiff(dids4,dids3)
-
-
-# Years of death before wave 6 (2012-2013) of id's in wave 6 EoL interview and neither in wave 6 nor wave 5 interviews but in wave 4, are harmonised in wave 5. We avoid id's with years of death 2000 and 2007, since they have later year of interview so EiDateY data is considered to be missing.
-# 149
-dids5 <- (eol6 %>% filter(id %in% setdiff(core4$id,core5$id) & EiDateY<2012 & !EiDateY %in% c(-8,2000,2007)))$id
-# 240 - 149 = 91
-dids6 <- setdiff(ids6,dids5)
-
-# Years of death before wave 5 (2010-2011) of id's in wave 6 EoL interview, and wave 3 but any later interview, are harmonised in wave 4
-# 215 + 3 = 218
-dids4 <- union(dids4,(eol6 %>% filter(id %in% setdiff(core3$id,union(core4$id,core5$id)) & EiDateY<2010))$id)
-# 91 - 3 = 88
-dids6 <- setdiff(dids6,dids4)
-
-# Years of death between wave 5 (2010-2011) and wave 6 (2012-2013) of id's in wave 6 EoL interview, and wave 3 but any later interview, are harmonised in wave 5
-# 149 + 1 = 150
-dids5 <- union(dids5,(eol6 %>% filter(id %in% setdiff(core3$id,union(core4$id,core5$id)) & EiDateY<2012 & EiDateY>=2010))$id)
-# 88 - 1 = 87
-dids6 <- setdiff(dids6,dids5)
-
-# Years of death between wave 5 (2010-2011) and wave 6 (2012-2013) of id's in wave 6 EoL interview, and wave 2 but any later interview, are harmonised in wave 5
-# 150 + 1 = 151
-dids5 <- union(dids5,(eol6 %>% filter(id %in% setdiff(core2$id,Reduce(union,list(core3$id,core4$id,core5$id))) & EiDateY<2012 & EiDateY>=2010))$id)
-# 87 - 1 = 86
-dids6 <- setdiff(dids6,dids5)
-
-# Years of death between wave 5 (2010-2011) and wave 6 (2012-2013) of id's in wave 6 EoL interview, and wave 1 but any later interview, are harmonised in wave 5
-# 151 + 1 = 152
-dids5 <- union(dids5,(eol6 %>% filter(id %in% setdiff(core1$id,Reduce(union,list(core2$id,core3$id,core4$id,core5$id))) & EiDateY<2012 & EiDateY>=2010))$id)
-# 86 - 1 = 85
-dids6 <- setdiff(dids6,dids5)
-
 eol <- eol %>% mutate(EiDateY = coalesce(EiDateY.w2,EiDateY.w3,EiDateY.w4,EiDateY.w6))
+
+# elsa_eol <- full_join(eol %>% select(id,EiDateY) %>% mutate_at("EiDateY",~replace(.,list = which(. %in% c(-8,2000)), values = NA)), elsa %>% filter(!is.na(yrdeath) | id %in% eol$id), by = "id")
+
+# Priorize year of death taken from official mortality data (the National Health Service Central Register). 
+# Otherwise, keep years of death answered in EOL interviews. 
+# Correct an impossible year of death with the given in EOL interview.
+
+elsa_eol <- full_join(eol %>% select(id,EiDateY), elsa %>% filter(!is.na(yrdeath) | id %in% eol$id), by = "id") %>% mutate(ydeath = coalesce(yrdeath,as.numeric(EiDateY))) %>% mutate(ydeath=replace(ydeath,id %in% ids3 & yrdeath==2010,EiDateY[which(id %in% ids3 & yrdeath==2010)]))
+
+
+dids2 <- union((elsa_eol %>% filter(ydeath %in% c(2002,2003)))$id,(elsa_eol %>% filter(ydeath %in% c(2004,2005) & !id %in% core2$id))$id)
+dids3 <- setdiff(union((elsa_eol %>% filter(ydeath %in% c(2004,2005)))$id,(elsa_eol %>% filter(ydeath %in% c(2006,2007) & !id %in% core3$id))$id),dids2)
+dids4 <- setdiff(union((elsa_eol %>% filter(ydeath %in% c(2006,2007)))$id,(elsa_eol %>% filter(ydeath %in% c(2008,2009) & !id %in% core4$id))$id),dids3)
+dids5 <- setdiff(union((elsa_eol %>% filter(ydeath %in% c(2008,2009)))$id,(elsa_eol %>% filter(ydeath %in% c(2010,2011) & !id %in% core5$id))$id),dids4)
+dids6 <- setdiff(union((elsa_eol %>% filter(ydeath %in% c(2010,2011)))$id,(elsa_eol %>% filter(ydeath %in% c(2012,2013) & !id %in% core6$id))$id),dids5)
+
 ```
 
 
@@ -166,26 +169,41 @@ eol <- eol %>% mutate(EiDateY = coalesce(EiDateY.w2,EiDateY.w3,EiDateY.w4,EiDate
 
 ```{r descript0, echo=F}
 
-kable(frq(ids2 %in% core2$id)[[1]][1,c(1,2,4)], caption = "There are no id's in wave 2 being also in EoL interview")
-# kable(frq(eol2$EiDateY)[[1]][-c(1:3,8),c(1,3,4,6)]) # This should appear in local2
 
-kable(frq(ids3 %in% core3$id)[[1]][c(1:2),c(1,2,4,6)], caption = "There are 2 id's in wave 3 which are also in EoL interview")
-kable(frq((eol3 %>% filter(id %in% ids3 & id %in% core3$id))$EiDateY)[[1]][c(1:2),c(1,2,4,6)], caption = "Their years of death")
-kable(frq((eol3 %>% filter(id %in% ids3 & !id %in% core3$id & !id %in% core2$id))$EiDateY)[[1]][c(1:5),c(1,2,4,6)], caption = "Years of death of individuals neither in wave 3 nor in wave 2, but in wave 3 EoL interview")
-kable(frq((eol3 %>% filter(id %in% ids3 & !id %in% core3$id & id %in% core2$id))$EiDateY)[[1]][,c(1,2,4,6)], caption = "Years of death of individuals not in wave 3 but in its EoL interview and in wave 2")
+# NEW
+kable(elsa_eol %>% filter(mortstat==1), caption = "Id's with EOL interview and mortality status = alive have died mainly in 2012")
 
-kable(frq(ids4 %in% core4$id)[[1]][1,c(1,2,4)], caption = "There are no id's in wave 4 being also in EoL interview")
-kable(frq((eol4 %>% filter(id %in% ids4 & id %in% ids4 & id %in% setdiff(core2$id,core3$id)))$EiDateY)[[1]][c(1:4),c(1,2,4,6)], caption = "Years of death of individuals in wave 4 EoL interview and in wave 2 but any later wave")
-kable(frq((eol4 %>% filter(id %in% ids4 & id %in% setdiff(core1$id,union(core2$id,core3$id))))$EiDateY)[[1]][c(1:5),c(1,2,4,6)], caption = "Years of death of individuals in wave 4 EoL interview and in wave 1 but any later wave")
-kable(frq((eol4 %>% filter(id %in% ids4 & id %in% core3$id))$EiDateY)[[1]][c(1:4),c(1,2,4,6)], caption = "Years of death of individuals in wave 4 EoL interview and in wave 3")
+kable(frq((elsa_eol %>% filter(id %in% ids2))$yrdeath), caption = "Id's with associated wave 2 EOL interview have died before 2006")
+kable(frq((elsa_eol %>% filter(id %in% ids2))$EiDateY), caption = "Years of death given in wave 2 EOL interview are previous to 2006")
+kable(frq((elsa_eol %>% filter(id %in% ids3))$yrdeath), caption = "There is 1 id with associated wave 3 EOL interview and with death date after 2007")
+kable(elsa_eol %>% filter(id %in% ids3 & yrdeath==2010), caption = "This id has died in 2006")
 
-kable(frq(eol6$id %in% core6$id)[[1]][1,c(1,2,4)], caption = "There are no id's in wave 6 being also in EoL interview")
-kable(frq((eol6 %>% filter(id %in% setdiff(core4$id,core5$id)))$EiDateY)[[1]][c(1:8),c(1,2,4,6)], caption = "Years of death of individuals in wave 6 EoL interview and in wave 4 but any later wave")
-kable(frq((eol6 %>% filter(id %in% setdiff(core3$id,union(core4$id,core5$id))))$EiDateY)[[1]][c(1:3),c(1,2,4,6)], caption = "Years of death of individuals in wave 6 EoL interview and in wave 3 but any later wave")
-kable(frq((eol6 %>% filter(id %in% setdiff(core2$id,Reduce(union,list(core3$id,core4$id,core5$id)))))$EiDateY)[[1]][c(1:2),c(1,2,4,6)], caption = "Years of death of individuals in wave 6 EoL interview and in wave 2 but any later wave")
-kable(frq((eol6 %>% filter(id %in% setdiff(core1$id,Reduce(union,list(core2$id,core3$id,core4$id,core5$id)))))$EiDateY)[[1]][c(1),c(1,2,4,6)], caption = "Years of death of individuals in wave 6 EoL interview and in wave 1 but any later wave")
+kable(frq((elsa_eol %>% filter(id %in% ids3))$EiDateY), caption = "Years of death given in wave 3 EOL interview are previous to 2008")
+kable(frq((elsa_eol %>% filter(id %in% ids4))$yrdeath), caption = "Id's with associated wave 4 EOL interview have died before 2010")
+kable(frq((elsa_eol %>% filter(id %in% ids4))$EiDateY), caption = "Years of death given in wave 4 EOL interview are previous to 2010")
+kable(frq((elsa_eol %>% filter(id %in% ids6))$yrdeath), caption = "Id's with associated wave 6 interview have died before 2014")
+kable(frq((elsa_eol %>% filter(id %in% ids6))$EiDateY), caption = "Years of death given in wave 6 EOL interview are previous to 2014")
 
-kable(frq((eol[,-1] %>% mutate(nn = rowSums(!is.na(.))))$nn)[[1]][1,c(1,2,4)], caption = "In the built data frame there is a unique non NA value by row")
+
+kable(frq((elsa_eol %>% filter(id %in% Reduce(union,list(core1$id,core2$id,core3$id,core4$id,core5$id,core6$id,core7$id))))$EiDateY),caption = "There are 1618 id's with an impossible year of death (2000) or missing data answered in EOL interviews")
+kable(frq((elsa_eol %>% filter((EiDateY %in% c(-8,2000) | is.na(EiDateY)) & id %in% Reduce(union,list(core1$id,core2$id,core3$id,core4$id,core5$id,core6$id,core7$id))))$ydeath), caption = "Their years of death")
+
+kable(frq((elsa_eol %>% filter(id %in% core2$id))$yrdeath),caption = "Id's interviewed in wave 2 died in 2004 or later")
+kable(frq((elsa_eol %>% filter(id %in% core2$id))$EiDateY),caption = "Years of death given in EOL interviews of id's interviewed in wave 2 are posterior to 2004 up to the wrong or missing data commented above")
+kable(frq((elsa_eol %>% filter(id %in% core3$id))$yrdeath),caption = "Id's interviewed in wave 3 died in 2006 or later")
+kable(frq((elsa_eol %>% filter(id %in% core3$id))$EiDateY),caption = "Years of death given in EOL interviews of id's interviewed in wave 3 are posterior to 2006 up to the wrong or missing data commented above")
+kable(frq((elsa_eol %>% filter(id %in% core4$id))$yrdeath),caption = "Id's interviewed in wave 4 died in 2008 or later")
+kable(frq((elsa_eol %>% filter(id %in% core4$id))$EiDateY),caption = "Years of death given in EOL interviews of id's interviewed in wave 4 are posterior to 2008 up to the wrong or missing data commented above and a 2007 value")
+kable(elsa_eol %>% filter(id %in% core4$id & EiDateY==2007), caption = "The id with extraneous EOL data has died in 2009")
+
+kable(frq((elsa_eol %>% filter(id %in% core5$id))$yrdeath),caption = "Id's interviewed in wave 5 died in 2010 or later")
+kable(frq((elsa_eol %>% filter(id %in% core5$id))$EiDateY),caption = "Years of death given in EOL interviews of id's interviewed in wave 5 are posterior to 2010")
+
+cat(paste("There are", length((elsa_eol %>% filter(id %in% union(core6$id,core7$id)))$id),"id's died and interviewed in the two last waves"))
+
+
+
+
 
 ```
 
@@ -212,29 +230,23 @@ Not applicable.
 ```{r local2, echo=F}
 
 
-vbl <- (eol %>% filter(id %in% dids2))$EiDateY
+vbl <- (eol %>% filter(id %in% ids2))$EiDateY
 vbl_miss <- c(-9, -8, -1)
 kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = "EiDateY")
 #kable(Categorical_summary(vbl, missing_values = vbl_miss)[2], caption = "Type of missing")
 kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = label(vbl))
-ggplot(eol, aes(x=factor(EiDateY))) + geom_histogram(stat="count", fill="steelblue", data = . %>% filter(id %in% dids2)) + xlab(label(vbl)) + ylab("Frequency")
+ggplot(eol, aes(x=factor(EiDateY))) + geom_histogram(stat="count", fill="steelblue", data = . %>% filter(id %in% ids2)) + xlab(label(vbl)) + ylab("Frequency")
 
 ```
 
 #### Harmonisation algorithm
-The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
-
-* `recode -9 "Refused/not answered" into 997`
-* `recode -8 "Don't know" into 998`
-* `recode -1 "Not applicable" into 996`
-* `NA into 999`
 
 
 **R script:**
 
 ```{r harmo2}
 ELSA_ds_w2 <- tibble(id=dids2)
-ELSA_ds_w2$ydeath <- car::recode((eol %>% filter(id %in% dids2))$EiDateY, "-9=997; -8=998; -1=996; NA=999")
+ELSA_ds_w2$ydeath <-(elsa_eol %>% filter(id %in% dids2))$ydeath
 
 ```
 
@@ -275,27 +287,23 @@ ggplot(ELSA_ds_w2, aes(factor(ydeath))) + geom_histogram(stat="count", fill="ste
 
 ```{r local3, echo=F}
 
-vbl <- (eol %>% filter(id %in% dids3))$EiDateY
+vbl <- (eol %>% filter(id %in% ids3))$EiDateY
 vbl_miss <- c(-9, -8, -1)
 kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = "EiDateY")
 kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = label(vbl))
-ggplot(eol, aes(x=factor(EiDateY))) + geom_histogram(stat="count", fill="steelblue", data = . %>% filter(id %in% dids3)) + xlab(label(vbl)) + ylab("Frequency")
+ggplot(eol, aes(x=factor(EiDateY))) + geom_histogram(stat="count", fill="steelblue", data = . %>% filter(id %in% ids3)) + xlab(label(vbl)) + ylab("Frequency")
 
 ```
 
 #### Harmonisation algorithm
 The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
 
-* `recode -9 "Refused/not answered" into 997`
-* `recode -8 "Don't know" into 998`
-* `recode -1 "Not applicable" into 996`
-* `NA into 999`
 
 **R script:**
 
 ```{r harmo3}
 ELSA_ds_w3 <- tibble(id=dids3)
-ELSA_ds_w3$ydeath <- car::recode((eol %>% filter(id %in% dids3))$EiDateY, "-9=997; -8=998; -1=996; NA=999")
+ELSA_ds_w3$ydeath <-(elsa_eol %>% filter(id %in% dids3))$ydeath
 
 ```
 
@@ -333,27 +341,23 @@ ggplot(ELSA_ds_w3, aes(factor(ydeath))) + geom_histogram(stat="count", fill="ste
 
 ```{r local4, echo=F}
 
-vbl <- (eol %>% filter(id %in% dids4))$EiDateY
+vbl <- (eol %>% filter(id %in% ids4))$EiDateY
 vbl_miss <- c(-9, -8, -1)
 kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = "EiDateY")
 kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = label(vbl))
-ggplot(eol, aes(x=factor(EiDateY))) + geom_histogram(stat="count", fill="steelblue", data = . %>% filter(id %in% dids4)) + xlab(label(vbl)) + ylab("Frequency")
+ggplot(eol, aes(x=factor(EiDateY))) + geom_histogram(stat="count", fill="steelblue", data = . %>% filter(id %in% ids4)) + xlab(label(vbl)) + ylab("Frequency")
 
 ```
 
 #### Harmonisation algorithm
 The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
 
-* `recode -9 "Refused/not answered" into 997`
-* `recode -8 "Don't know" into 998`
-* `recode -1 "Not applicable" into 996`
-* `NA into 999`
 
 **R script:**
 
 ```{r harmo4}
 ELSA_ds_w4 <- tibble(id=dids4)
-ELSA_ds_w4$ydeath <- car::recode((eol %>% filter(id %in% dids4))$EiDateY, "-9=997; -8=998; -1=996; NA=999")
+ELSA_ds_w4$ydeath <-(elsa_eol %>% filter(id %in% dids4))$ydeath
 
 ```
 
@@ -383,34 +387,17 @@ ggplot(ELSA_ds_w4, aes(factor(ydeath))) + geom_histogram(stat="count", fill="ste
 #### Study-specific variable description
 
 
-
-
-
-```{r local5, echo=F}
-
-vbl <- (eol %>% filter(id %in% dids5))$EiDateY
-vbl_miss <- c(-9, -8, -1)
-kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = "EiDateY")
-kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = label(vbl))
-ggplot(eol, aes(x=factor(EiDateY))) + geom_histogram(stat="count", fill="steelblue", data = . %>% filter(id %in% dids5)) + xlab(label(vbl)) + ylab("Frequency")
-
-
-```
+There is no wave-specific variable.
 
 #### Harmonisation algorithm
 The variable is going to computed from the study-specific variable from wave 6, but the missing values have to be recoded as follows:
-
-* `recode -9 "Refused/not answered" into 997`
-* `recode -8 "Don't know" into 998`
-* `recode -1 "Not applicable" into 996`
-* `NA into 999`
 
 
 **R script:**
 
 ```{r harmo5}
 ELSA_ds_w5 <- tibble(id=dids5)
-ELSA_ds_w5$ydeath <- car::recode((eol %>% filter(id %in% dids5))$EiDateY, "-9=997; -8=998; -1=996; NA=999")
+ELSA_ds_w5$ydeath <-(elsa_eol %>% filter(id %in% dids5))$ydeath
 ```
 
 #### Statistics of the new harmonised variable
@@ -447,11 +434,11 @@ ggplot(ELSA_ds_w5, aes(factor(ydeath))) + geom_histogram(stat="count", fill="ste
 
 ```{r local6, echo=F}
 
-vbl <- (eol %>% filter(id %in% dids6))$EiDateY
+vbl <- (eol %>% filter(id %in% ids6))$EiDateY
 vbl_miss <- c(-9, -8, -1)
 kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = "EiDateY")
 kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = label(vbl))
-ggplot(eol, aes(x=factor(EiDateY))) + geom_histogram(stat="count", fill="steelblue", data = . %>% filter(id %in% dids6)) + xlab(label(vbl)) + ylab("Frequency")
+ggplot(eol, aes(x=factor(EiDateY))) + geom_histogram(stat="count", fill="steelblue", data = . %>% filter(id %in% ids6)) + xlab(label(vbl)) + ylab("Frequency")
 
 
 ```
@@ -459,17 +446,12 @@ ggplot(eol, aes(x=factor(EiDateY))) + geom_histogram(stat="count", fill="steelbl
 #### Harmonisation algorithm
 The harmonized variable is the same than the study-specific variable, but the missing values have to be recoded as follows:
 
-* `recode -9 "Refused/not answered" into 997`
-* `recode -8 "Don't know" into 998`
-* `recode -1 "Not applicable" into 996`
-* `NA into 999`
-* `Id's with years of death 2000 and 2007 have later year of interview, so data is considered to be missing.`
 
 **R script:**
 
 ```{r harmo6}
 ELSA_ds_w6 <- tibble(id=dids6)
-ELSA_ds_w6$ydeath <- car::recode((eol %>% filter(id %in% dids6))$EiDateY, "-9=997; -8=998; -1=996; NA=999; c(2000,2007)=999")
+ELSA_ds_w6$ydeath <-(elsa_eol %>% filter(id %in% dids6))$ydeath
 ```
 
 #### Statistics of the new harmonised variable

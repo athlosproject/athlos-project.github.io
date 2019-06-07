@@ -113,15 +113,14 @@ To compute the harmonized variable from the study-specific variable it has to be
 * `individuals that have date of interview into 0`
 * `individuals with date of death into 1`
 * `individuals without date of interview and death into 2`
-* `individuals dead in previous waves into 1`
 
 **R script:**
 
 ```{r harmo2}
 ELSA_ds_w2 <- tibble(id=ELSA_w2_LS$id)
 ELSA_ds_w2$living_status <- NA
-ELSA_ds_w2$living_status[!is.na(ELSA_w2_LS$iintdaty)] <- 0
 ELSA_ds_w2$living_status[!is.na(ELSA_w2_LS$ydeath)] <- 1
+ELSA_ds_w2$living_status[!is.na(ELSA_w2_LS$iintdaty)] <- 0
 ELSA_ds_w2$living_status[is.na(ELSA_w2_LS$ydeath) & is.na(ELSA_w2_LS$iintdaty)] <- 2
 
 ```
@@ -275,8 +274,8 @@ To compute the harmonized variable from the study-specific variable it has to be
 
 ELSA_ds_w4 <- tibble(id=ELSA_w4_LS$id)
 ELSA_ds_w4$living_status <- NA
-ELSA_ds_w4$living_status[!is.na(ELSA_w4_LS$iintdaty)] <- 0
 ELSA_ds_w4$living_status[!is.na(ELSA_w4_LS$ydeath)] <- 1
+ELSA_ds_w4$living_status[!is.na(ELSA_w4_LS$iintdaty)] <- 0
 ELSA_ds_w4$living_status[is.na(ELSA_w4_LS$ydeath) & is.na(ELSA_w4_LS$iintdaty)] <- 2
 ELSA_ds_w4 <- rbind(ELSA_ds_w4, ELSA_ds_w3 %>% filter(living_status == 1 & !id %in% ELSA_ds_w4$id))
 
@@ -353,8 +352,8 @@ To compute the harmonized variable from the study-specific variable it has to be
 
 ELSA_ds_w5 <- tibble(id=ELSA_w5_LS$id)
 ELSA_ds_w5$living_status <- NA
-ELSA_ds_w5$living_status[!is.na(ELSA_w5_LS$iintdaty)] <- 0
 ELSA_ds_w5$living_status[!is.na(ELSA_w5_LS$ydeath)] <- 1
+ELSA_ds_w5$living_status[!is.na(ELSA_w5_LS$iintdaty)] <- 0
 ELSA_ds_w5$living_status[is.na(ELSA_w5_LS$iintdaty) & is.na(ELSA_w5_LS$ydeath)] <- 2
 ELSA_ds_w5 <- rbind(ELSA_ds_w5, ELSA_ds_w4 %>% filter(living_status == 1 & !id %in% ELSA_ds_w5$id))
 
@@ -379,13 +378,13 @@ ggplot(ELSA_ds_w5, aes(x=factor(living_status))) + geom_bar(stat="count", width=
 #### Study-specific variables
 
 
-| **Name** |`ydeath`|`iintdaty`|
-|-|-|-|
-| **Label** |`Year of death`|`year of individual interview`|
-| **Table name** |`elsa_w6_hd`|`wave_6_ifs_derived_variables`|
-| **Units** |`years`|`years`|
-| **Missings** |`NA`|  |
-| **Description** |  |  |
+| **Name** |`ydeath`|`iintdaty`|`mortstat`|
+|-|-|-|-|
+| **Label** |`Year of death`|`year of individual interview`|`Mortality status from ONS -updated Feb 2012`|
+| **Table name** |`elsa_w6_hd`|`wave_6_ifs_derived_variables`|`index_file_wave_0-wave_5_v2`|
+| **Units** |`years`|`years`|`-2 = Dead - information from other sources`<br/>`-1 = No permission to check`<br/>`0 = Permission given but no trace`<br/>`1 = Alive`<br/>`2 = Dead`|
+| **Missings** |`NA`|  |  |
+| **Description** |  |  |  |
 
 ```{r assign6, echo=FALSE}
 
@@ -395,7 +394,11 @@ ELSA_w6_yinter <- opal.execute(o,'ELSA_w6_yinter')
 load(paste0(datafolder,"w6/ydeath",".RData"))
 ELSA_w6_LS <- full_join(ELSA_w6_yinter,ydeath, by = "id")
 rm(ydeath)
+opal.assign.table.tibble(o,'ELSA','ELSA.index_file_wave_0-wave_5_v2',
+                         variables=list('mortstat'), missings = TRUE)
+elsa <- opal.execute(o,'ELSA')
 
+ELSA_w6_LS <- left_join(ELSA_w6_LS,elsa, by = "id")
 ```
 
 ```{r local6, echo=FALSE}
@@ -412,6 +415,11 @@ kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Values")
 ggplot(ELSA_w6_LS, aes(factor(ydeath))) + geom_histogram(stat="count", fill="steelblue") +  xlab(label(vari)) + ylab("Frequency")
 
 
+vari <- ELSA_w6_LS$mortstat
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = "mortstat") 
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Values")
+ggplot(ELSA_w6_LS, aes(factor(vari))) + geom_histogram(stat="count", fill="steelblue") +  xlab(label(vari)) + ylab("Frequency")
+
 ```
 
 #### Harmonisation algorithm
@@ -427,10 +435,9 @@ To compute the harmonized variable from the study-specific variable it has to be
 ```{r harmo6}
 
 ELSA_ds_w6 <- tibble(id=ELSA_w6_LS$id)
-ELSA_ds_w6$living_status <- NA
+ELSA_ds_w6$living_status <- 2
+ELSA_ds_w6$living_status[which(!is.na(ELSA_w6_LS$ydeath) | ELSA_w6_LS$mortstat %in% c(-2,2))] <- 1
 ELSA_ds_w6$living_status[!is.na(ELSA_w6_LS$iintdaty)] <- 0
-ELSA_ds_w6$living_status[!is.na(ELSA_w6_LS$ydeath)] <- 1
-ELSA_ds_w6$living_status[is.na(ELSA_w6_LS$ydeath) & is.na(ELSA_w6_LS$iintdaty)] <- 2
 ELSA_ds_w6 <- rbind(ELSA_ds_w6, ELSA_ds_w5 %>% filter(living_status == 1 & !id %in% ELSA_ds_w6$id))
 
 ```
