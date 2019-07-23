@@ -11,7 +11,7 @@ gc(reset=T)
 knitr::opts_chunk$set(echo = TRUE, cache = FALSE, warning = FALSE, message = FALSE, tidy = TRUE, results = 'asis')
 
 # Before running the next lines, review if the following packages are already installed. Otherwise, install them and load all.
-list.of.packages <- c("knitr", "haven", "sjmisc", "bitops", "RCurl", "rjson", "mime", "opal", "tibble", "car", "labelled", "Hmisc", "scales", "dplyr", "lubridate", "stringi", "gridExtra", "pander", "tidyr")
+list.of.packages <- c("knitr", "haven", "sjmisc", "bitops", "RCurl", "rjson", "mime", "opal", "tibble", "car", "labelled", "Hmisc", "scales", "dplyr", "lubridate", "stringi", "gridExtra", "pander", "tidyr", "stringr")
 new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 if(length(new.packages)) install.packages(new.packages)
 lapply(list.of.packages, require, character.only = TRUE)
