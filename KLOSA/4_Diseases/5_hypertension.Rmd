@@ -15,75 +15,15 @@ output:
 <!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
-
-
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-* Short name: `h_hypertension`
-* Variable label: `History of Hypertension`
-* Variable description: `history of hypertension or high blood pressure`
-* Domain: `Diseases`
-* Value type: `categorical`
-* Category coding:
-
-**Code** | **Category Label**
--------- | ------------------
-0        | NOT High blood pressure or hypertension 
-1        | High blood pressure or hypertension
-
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-* Short name: `h_hypertension_age`
-* Variable label: `Age first diagnosed hypertension`
-* Variable description: `The age first told had hypertension diagnosis`
-* Domain: `Diseases`
-* Value type: `Continuous`
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-
-<!-- ########################################################## --> 
-<!-- # Global variables -->
-```{r global, include=FALSE, echo=F}
-miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
-ds_label <- "History of Hypertension"
-ds_label_age <- "Age first diagnosed hypertension"
-cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
-cont_label <- cat_label[3:11]
-datafolder <- "../RData/"
-#sing_idlist <- c()
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/hypertensionDS.Rmd'}
 ```
-<!-- ########################################################## --> 
+```{r global, echo=F}
+source('../../_DS_Rmd/hypertensionDS.R')
+```
 
 
 
@@ -124,14 +64,15 @@ kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
 ggplot(KLOSA_w1, aes(x=factor(w01C005))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- KLOSA_w1$w01C006y
+vbl_miss <- c(-9,-8)
 kable(Continuous_summary(var = vbl, missing_values = c(-9,-8))[3], caption = names(KLOSA_w1)[3])
 pander(Continuous_summary(vbl, missing_values = c(-9,-8))$summary, caption = "Summary")
-ggplot(KLOSA_w1, aes(w01C006y)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1950,2010)
+ggplot(KLOSA_w1 %>% filter(!vbl %in% vbl_miss), aes(w01C006y)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- KLOSA_w1$ybirth
-kable(Continuous_summary(var = vbl, missing_values = NA)[3], caption = names(KLOSA_w1)[3])
-pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
-ggplot(KLOSA_w1, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1900,1965)
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(KLOSA_w1)[3])
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(KLOSA_w1 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
 
@@ -163,10 +104,10 @@ KLOSA_ds_w1$h_hypertension <- labelled(KLOSA_ds_w1$h_hypertension, labels = cat_
 
 # Continuous variable harmonization
 KLOSA_ds_w1$h_hypertension_age <- rep(999,length(KLOSA_ds_w1$id))
-KLOSA_ds_w1$h_hypertension_age[KLOSA_ds_w1$h_hypertension==1 & !KLOSA_w1$w01C006y %in% c(-9,-8)] <- KLOSA_w1$w01C006y[KLOSA_ds_w1$h_hypertension==1 & !KLOSA_w1$w01C006y %in% c(-9,-8)] - KLOSA_w1$ybirth[KLOSA_ds_w1$h_hypertension==1 & !KLOSA_w1$w01C006y %in% c(-9,-8)]
-KLOSA_ds_w1$h_hypertension_age[KLOSA_ds_w1$h_hypertension==1 & KLOSA_w1$w01C006y == -9] <- 998
-KLOSA_ds_w1$h_hypertension_age[KLOSA_ds_w1$h_hypertension==1 & KLOSA_w1$w01C006y == -8] <- 997
-KLOSA_ds_w1$h_hypertension_age[KLOSA_ds_w1$h_hypertension==0] <- 996
+KLOSA_ds_w1$h_hypertension_age[which(KLOSA_ds_w1$h_hypertension==1 & !KLOSA_w1$w01C006y %in% c(-9,-8))] <- KLOSA_w1$w01C006y[which(KLOSA_ds_w1$h_hypertension==1 & !KLOSA_w1$w01C006y %in% c(-9,-8))] - KLOSA_w1$ybirth[which(KLOSA_ds_w1$h_hypertension==1 & !KLOSA_w1$w01C006y %in% c(-9,-8))]
+KLOSA_ds_w1$h_hypertension_age[which(KLOSA_ds_w1$h_hypertension==1 & KLOSA_w1$w01C006y == -9)] <- 998
+KLOSA_ds_w1$h_hypertension_age[which(KLOSA_ds_w1$h_hypertension==1 & KLOSA_w1$w01C006y == -8)] <- 997
+KLOSA_ds_w1$h_hypertension_age[which(KLOSA_ds_w1$h_hypertension==0)] <- 996
 
 KLOSA_ds_w1$h_hypertension_age <- labelled(KLOSA_ds_w1$h_hypertension_age, labels = cont_label)
 
@@ -190,7 +131,7 @@ vbl <- KLOSA_ds_w1$h_hypertension_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(KLOSA_ds_w1, aes(h_hypertension_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(10,95)
+ggplot(KLOSA_ds_w1 %>% filter(!vbl %in% miss_values_vector), aes(h_hypertension_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -246,7 +187,7 @@ ggplot(KLOSA_w2, aes(x=factor(w02C007y))) + geom_bar(stat="count", width=0.4, fi
 vbl <- KLOSA_w2$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(KLOSA_w2)[4])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(KLOSA_w2, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1900,1965)
+ggplot(KLOSA_w2 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
 
@@ -275,8 +216,8 @@ To compute `h_hypertension_age` from the study-specific variable it has to be re
 KLOSA_ds_w2 <- tibble(id=KLOSA_w2$id)
 KLOSA_w2 <- left_join(KLOSA_w2, KLOSA_ds_w1, by = "id")
 KLOSA_ds_w2$h_hypertension <- rep(999,length(KLOSA_w2$id))
-KLOSA_ds_w2$h_hypertension[((!is.na(KLOSA_w2$w02C006)) & KLOSA_w2$w02C006 == 5) & (KLOSA_w2$h_hypertension != 1)] <- 0
-KLOSA_ds_w2$h_hypertension[((!is.na(KLOSA_w2$w02C006)) & KLOSA_w2$w02C006 == 1) | ((!is.na(KLOSA_w2$h_hypertension)) & KLOSA_w2$h_hypertension == 1)] <- 1
+KLOSA_ds_w2$h_hypertension[which(((!is.na(KLOSA_w2$w02C006)) & KLOSA_w2$w02C006 == 5) & (KLOSA_w2$h_hypertension != 1))] <- 0
+KLOSA_ds_w2$h_hypertension[which(((!is.na(KLOSA_w2$w02C006)) & KLOSA_w2$w02C006 == 1) | ((!is.na(KLOSA_w2$h_hypertension)) & KLOSA_w2$h_hypertension == 1))] <- 1
 
 KLOSA_ds_w2$h_hypertension <- labelled(KLOSA_ds_w2$h_hypertension, labels = cat_label)
 
@@ -297,15 +238,15 @@ KLOSA_ds$h_hypertension <- KLOSA_ds_prov$h_hypertension
 rm(KLOSA_ds_prov)
 
 # Continuous variable harmonization
-hypertension_age <- KLOSA_w2$w02C007y[KLOSA_ds_w2$h_hypertension == 1 & (KLOSA_w2$h_hypertension==0 | is.na(KLOSA_w2$h_hypertension) | KLOSA_w2$h_hypertension_age %in% miss_values_vector)]-KLOSA_w2$ybirth[KLOSA_ds_w2$h_hypertension == 1 & (KLOSA_w2$h_hypertension==0 | is.na(KLOSA_w2$h_hypertension) | KLOSA_w2$h_hypertension_age %in% miss_values_vector)]
+hypertension_age <- KLOSA_w2$w02C007y[which(KLOSA_ds_w2$h_hypertension == 1 & (KLOSA_w2$h_hypertension==0 | is.na(KLOSA_w2$h_hypertension) | KLOSA_w2$h_hypertension_age %in% miss_values_vector))] - KLOSA_w2$ybirth[which(KLOSA_ds_w2$h_hypertension == 1 & (KLOSA_w2$h_hypertension==0 | is.na(KLOSA_w2$h_hypertension) | KLOSA_w2$h_hypertension_age %in% miss_values_vector))]
 
 KLOSA_ds_w2$h_hypertension_age <- rep(999,length(KLOSA_w2$id))
-KLOSA_ds_w2$h_hypertension_age[KLOSA_ds_w2$h_hypertension == 0] <- 996
-KLOSA_ds_w2$h_hypertension_age[KLOSA_ds_w2$h_hypertension == 1 & (KLOSA_w2$h_hypertension==0 | is.na(KLOSA_w2$h_hypertension) | KLOSA_w2$h_hypertension_age %in% miss_values_vector)] <- hypertension_age
-KLOSA_ds_w2$h_hypertension_age[KLOSA_ds_w2$h_hypertension == 1 & KLOSA_w2$w02C007y==-9] <- 998
-KLOSA_ds_w2$h_hypertension_age[KLOSA_ds_w2$h_hypertension == 1 & KLOSA_w2$h_hypertension==1 & !is.na(KLOSA_w2$h_hypertension) & !KLOSA_w2$h_hypertension_age %in% miss_values_vector] <- car::recode(KLOSA_w2$h_hypertension_age[which(KLOSA_ds_w2$h_hypertension == 1 & KLOSA_w2$h_hypertension==1 & !KLOSA_w2$h_hypertension_age %in% miss_values_vector)],"miss_values_vector=999")
+KLOSA_ds_w2$h_hypertension_age[which(KLOSA_ds_w2$h_hypertension == 0)] <- 996
+KLOSA_ds_w2$h_hypertension_age[which(KLOSA_ds_w2$h_hypertension == 1 & (KLOSA_w2$h_hypertension==0 | is.na(KLOSA_w2$h_hypertension) | KLOSA_w2$h_hypertension_age %in% miss_values_vector))] <- hypertension_age
+KLOSA_ds_w2$h_hypertension_age[which(KLOSA_ds_w2$h_hypertension == 1 & KLOSA_w2$w02C007y==-9)] <- 998
+KLOSA_ds_w2$h_hypertension_age[which(KLOSA_ds_w2$h_hypertension == 1 & KLOSA_w2$h_hypertension==1 & !is.na(KLOSA_w2$h_hypertension) & !KLOSA_w2$h_hypertension_age %in% miss_values_vector)] <- car::recode(KLOSA_w2$h_hypertension_age[which(KLOSA_ds_w2$h_hypertension == 1 & KLOSA_w2$h_hypertension==1 & !KLOSA_w2$h_hypertension_age %in% miss_values_vector)],"miss_values_vector=999")
 KLOSA_ds_w2$h_hypertension_age <- car::recode(KLOSA_ds_w2$h_hypertension_age, "NA=999")
-KLOSA_ds$h_hypertension_age[(KLOSA_ds$id %in% KLOSA_ds_w2$id) & (KLOSA_ds$h_hypertension != 999)] <- KLOSA_ds_w2$h_hypertension_age[KLOSA_ds_w2$h_hypertension != 999]
+KLOSA_ds$h_hypertension_age[which((KLOSA_ds$id %in% KLOSA_ds_w2$id) & (KLOSA_ds$h_hypertension != 999))] <- KLOSA_ds_w2$h_hypertension_age[which(KLOSA_ds_w2$h_hypertension != 999)]
 
 KLOSA_ds_w2$h_hypertension_age <- labelled(KLOSA_ds_w2$h_hypertension_age, labels = cont_label)
 
@@ -326,7 +267,7 @@ vbl <- KLOSA_ds_w2$h_hypertension_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(KLOSA_ds_w2, aes(h_hypertension_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(15,95)
+ggplot(KLOSA_ds_w2 %>% filter(!vbl %in% miss_values_vector), aes(h_hypertension_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -366,10 +307,10 @@ kable(C)
 
 opal.assign.table.tibble(o, 'KLOSA_w3','KLOSA.w03_main_e_spss_albert',variables=list('w03C006','w03C007y'), missings = T)
 KLOSA_w3 <- opal.execute(o,'KLOSA_w3')
-load(paste0(datafolder,"w3/ybirth.RData"))
-KLOSA_w3 <- left_join(KLOSA_w3,ybirth,by="id")
 # The id's in the third wave add a '.0' at the end of the id's at the previous waves. We correct this. Note that gregexpr("\\.0",ids) == nchar(ids)-1
 KLOSA_w3$id <- substr(KLOSA_w3$id,1,nchar(KLOSA_w3$id)-2)
+load(paste0(datafolder,"w3/ybirth.RData"))
+KLOSA_w3 <- left_join(KLOSA_w3,ybirth,by="id")
 
 ```
 
@@ -388,7 +329,7 @@ ggplot(KLOSA_w3, aes(factor(w03C007y))) + geom_bar(stat="count", width=0.4, fill
 vbl <- KLOSA_w3$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(KLOSA_w3)[4])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(KLOSA_w3, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1905,1965)
+ggplot(KLOSA_w3 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
 
@@ -419,8 +360,8 @@ KLOSA_ds_w3 <- tibble(id=KLOSA_w3$id)
 
 KLOSA_w3 <- left_join(KLOSA_w3, KLOSA_ds, by = "id")
 KLOSA_ds_w3$h_hypertension <- rep(999,length(KLOSA_w3$id))
-KLOSA_ds_w3$h_hypertension[((!is.na(KLOSA_w3$w03C006)) & KLOSA_w3$w03C006 == 5) & (KLOSA_w3$h_hypertension != 1)] <- 0
-KLOSA_ds_w3$h_hypertension[((!is.na(KLOSA_w3$w03C006)) & KLOSA_w3$w03C006 == 1) | ((!is.na(KLOSA_w3$h_hypertension)) & KLOSA_w3$h_hypertension == 1)] <- 1
+KLOSA_ds_w3$h_hypertension[which(((!is.na(KLOSA_w3$w03C006)) & KLOSA_w3$w03C006 == 5) & (KLOSA_w3$h_hypertension != 1))] <- 0
+KLOSA_ds_w3$h_hypertension[which(((!is.na(KLOSA_w3$w03C006)) & KLOSA_w3$w03C006 == 1) | ((!is.na(KLOSA_w3$h_hypertension)) & KLOSA_w3$h_hypertension == 1))] <- 1
 
 KLOSA_ds_w3$h_hypertension <- labelled(KLOSA_ds_w3$h_hypertension, labels = cat_label)
 
@@ -443,14 +384,14 @@ rm(KLOSA_ds_prov)
 
 
 # Continuous variable harmonization
-hypertension_age <- KLOSA_w3$w03C007y[KLOSA_ds_w3$h_hypertension == 1 & (KLOSA_w3$h_hypertension==0 | is.na(KLOSA_w3$h_hypertension) | KLOSA_w3$h_hypertension_age %in% miss_values_vector)]-KLOSA_w3$ybirth[KLOSA_ds_w3$h_hypertension == 1 & (KLOSA_w3$h_hypertension==0 | is.na(KLOSA_w3$h_hypertension) | KLOSA_w3$h_hypertension_age %in% miss_values_vector)]
+hypertension_age <- KLOSA_w3$w03C007y[which(KLOSA_ds_w3$h_hypertension == 1 & (KLOSA_w3$h_hypertension==0 | is.na(KLOSA_w3$h_hypertension) | KLOSA_w3$h_hypertension_age %in% miss_values_vector))] - KLOSA_w3$ybirth[which(KLOSA_ds_w3$h_hypertension == 1 & (KLOSA_w3$h_hypertension==0 | is.na(KLOSA_w3$h_hypertension) | KLOSA_w3$h_hypertension_age %in% miss_values_vector))]
 KLOSA_ds_w3$h_hypertension_age <- rep(999,length(KLOSA_w3$id))
-KLOSA_ds_w3$h_hypertension_age[KLOSA_ds_w3$h_hypertension == 0] <- 996
-KLOSA_ds_w3$h_hypertension_age[KLOSA_ds_w3$h_hypertension == 1 & (KLOSA_w3$h_hypertension==0 | is.na(KLOSA_w3$h_hypertension) | KLOSA_w3$h_hypertension_age %in% miss_values_vector)] <- hypertension_age
-KLOSA_ds_w3$h_hypertension_age[KLOSA_ds_w3$h_hypertension == 1 & KLOSA_w3$w03C007y==-9] <- 998
-KLOSA_ds_w3$h_hypertension_age[KLOSA_ds_w3$h_hypertension == 1 & KLOSA_w3$h_hypertension!=0 & !is.na(KLOSA_w3$h_hypertension) & ! KLOSA_w3$h_hypertension_age %in% miss_values_vector] <- car::recode(KLOSA_w3$h_hypertension_age[KLOSA_ds_w3$h_hypertension == 1 & KLOSA_w3$h_hypertension!=0 & !is.na(KLOSA_w3$h_hypertension) & !KLOSA_w3$h_hypertension_age %in% miss_values_vector],"miss_values_vector=999")
+KLOSA_ds_w3$h_hypertension_age[which(KLOSA_ds_w3$h_hypertension == 0)] <- 996
+KLOSA_ds_w3$h_hypertension_age[which(KLOSA_ds_w3$h_hypertension == 1 & (KLOSA_w3$h_hypertension==0 | is.na(KLOSA_w3$h_hypertension) | KLOSA_w3$h_hypertension_age %in% miss_values_vector))] <- hypertension_age
+KLOSA_ds_w3$h_hypertension_age[which(KLOSA_ds_w3$h_hypertension == 1 & KLOSA_w3$w03C007y==-9)] <- 998
+KLOSA_ds_w3$h_hypertension_age[which(KLOSA_ds_w3$h_hypertension == 1 & KLOSA_w3$h_hypertension!=0 & !is.na(KLOSA_w3$h_hypertension) & ! KLOSA_w3$h_hypertension_age %in% miss_values_vector)] <- car::recode(KLOSA_w3$h_hypertension_age[which(KLOSA_ds_w3$h_hypertension == 1 & KLOSA_w3$h_hypertension!=0 & !is.na(KLOSA_w3$h_hypertension) & !KLOSA_w3$h_hypertension_age %in% miss_values_vector)],"miss_values_vector=999")
 KLOSA_ds_w3$h_hypertension_age <- car::recode(KLOSA_ds_w3$h_hypertension_age, "NA=999")
-KLOSA_ds$h_hypertension_age[(KLOSA_ds$id %in% KLOSA_ds_w3$id) & (KLOSA_ds$h_hypertension != 999)] <- KLOSA_ds_w3$h_hypertension_age[KLOSA_ds_w3$h_hypertension != 999]
+KLOSA_ds$h_hypertension_age[which((KLOSA_ds$id %in% KLOSA_ds_w3$id) & (KLOSA_ds$h_hypertension != 999))] <- KLOSA_ds_w3$h_hypertension_age[which(KLOSA_ds_w3$h_hypertension != 999)]
 
 KLOSA_ds_w3$h_hypertension_age <- labelled(KLOSA_ds_w3$h_hypertension_age, labels = cont_label)
 
@@ -471,7 +412,7 @@ vbl <- KLOSA_ds_w3$h_hypertension_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(KLOSA_ds_w3, aes(h_hypertension_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(15,95)
+ggplot(KLOSA_ds_w3 %>% filter(!vbl %in% miss_values_vector), aes(h_hypertension_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -532,7 +473,7 @@ ggplot(KLOSA_w4, aes(factor(w04C007y))) + geom_bar(stat="count", width=0.4, fill
 vbl <- KLOSA_w4$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(KLOSA_w4)[4])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(KLOSA_w4, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1905,1965)
+ggplot(KLOSA_w4 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
 
@@ -563,8 +504,8 @@ KLOSA_ds_w4 <- tibble(id=KLOSA_w4$id)
 
 KLOSA_w4 <- left_join(KLOSA_w4, KLOSA_ds, by = "id")
 KLOSA_ds_w4$h_hypertension <- rep(999,length(KLOSA_w4$id))
-KLOSA_ds_w4$h_hypertension[((!is.na(KLOSA_w4$w04C006)) & KLOSA_w4$w04C006 == 5) & (KLOSA_w4$h_hypertension != 1)] <- 0
-KLOSA_ds_w4$h_hypertension[((!is.na(KLOSA_w4$w04C006)) & KLOSA_w4$w04C006 == 1) | ((!is.na(KLOSA_w4$h_hypertension)) & KLOSA_w4$h_hypertension == 1)] <- 1
+KLOSA_ds_w4$h_hypertension[which(((!is.na(KLOSA_w4$w04C006)) & KLOSA_w4$w04C006 == 5) & (KLOSA_w4$h_hypertension != 1))] <- 0
+KLOSA_ds_w4$h_hypertension[which(((!is.na(KLOSA_w4$w04C006)) & KLOSA_w4$w04C006 == 1) | ((!is.na(KLOSA_w4$h_hypertension)) & KLOSA_w4$h_hypertension == 1))] <- 1
 
 KLOSA_ds_w4$h_hypertension <- labelled(KLOSA_ds_w4$h_hypertension, labels = cat_label)
 
@@ -572,12 +513,12 @@ KLOSA_ds_w4$h_hypertension <- labelled(KLOSA_ds_w4$h_hypertension, labels = cat_
 rm(KLOSA_ds)
 
 # Continuous variable harmonization
-hypertension_age <- KLOSA_w4$w04C007y[KLOSA_ds_w4$h_hypertension == 1 & (KLOSA_w4$h_hypertension==0 | is.na(KLOSA_w4$h_hypertension) | KLOSA_w4$h_hypertension_age %in% miss_values_vector)]-KLOSA_w4$ybirth[KLOSA_ds_w4$h_hypertension == 1 & (KLOSA_w4$h_hypertension==0 | is.na(KLOSA_w4$h_hypertension) | KLOSA_w4$h_hypertension_age %in% miss_values_vector)]
+hypertension_age <- KLOSA_w4$w04C007y[which(KLOSA_ds_w4$h_hypertension == 1 & (KLOSA_w4$h_hypertension==0 | is.na(KLOSA_w4$h_hypertension) | KLOSA_w4$h_hypertension_age %in% miss_values_vector))]-KLOSA_w4$ybirth[which(KLOSA_ds_w4$h_hypertension == 1 & (KLOSA_w4$h_hypertension==0 | is.na(KLOSA_w4$h_hypertension) | KLOSA_w4$h_hypertension_age %in% miss_values_vector))]
 KLOSA_ds_w4$h_hypertension_age <- rep(999,length(KLOSA_w4$id))
-KLOSA_ds_w4$h_hypertension_age[KLOSA_ds_w4$h_hypertension == 0] <- 996
-KLOSA_ds_w4$h_hypertension_age[KLOSA_ds_w4$h_hypertension == 1 & (KLOSA_w4$h_hypertension==0 | is.na(KLOSA_w4$h_hypertension) | KLOSA_w4$h_hypertension_age %in% miss_values_vector)] <- hypertension_age
-KLOSA_ds_w4$h_hypertension_age[KLOSA_ds_w4$h_hypertension == 1 & KLOSA_w4$w04C007y==-9] <- 998
-KLOSA_ds_w4$h_hypertension_age[KLOSA_ds_w4$h_hypertension == 1 & KLOSA_w4$h_hypertension!=0 & !is.na(KLOSA_w4$h_hypertension) & !KLOSA_w4$h_hypertension_age %in% miss_values_vector] <- car::recode(KLOSA_w4$h_hypertension_age[KLOSA_ds_w4$h_hypertension == 1 & KLOSA_w4$h_hypertension!=0 & !is.na(KLOSA_w4$h_hypertension) & !KLOSA_w4$h_hypertension_age %in% miss_values_vector],"miss_values_vector=999")
+KLOSA_ds_w4$h_hypertension_age[which(KLOSA_ds_w4$h_hypertension == 0)] <- 996
+KLOSA_ds_w4$h_hypertension_age[which(KLOSA_ds_w4$h_hypertension == 1 & (KLOSA_w4$h_hypertension==0 | is.na(KLOSA_w4$h_hypertension) | KLOSA_w4$h_hypertension_age %in% miss_values_vector))] <- hypertension_age
+KLOSA_ds_w4$h_hypertension_age[which(KLOSA_ds_w4$h_hypertension == 1 & KLOSA_w4$w04C007y==-9)] <- 998
+KLOSA_ds_w4$h_hypertension_age[which(KLOSA_ds_w4$h_hypertension == 1 & KLOSA_w4$h_hypertension!=0 & !is.na(KLOSA_w4$h_hypertension) & !KLOSA_w4$h_hypertension_age %in% miss_values_vector)] <- car::recode(KLOSA_w4$h_hypertension_age[which(KLOSA_ds_w4$h_hypertension == 1 & KLOSA_w4$h_hypertension!=0 & !is.na(KLOSA_w4$h_hypertension) & !KLOSA_w4$h_hypertension_age %in% miss_values_vector)],"miss_values_vector=999")
 KLOSA_ds_w4$h_hypertension_age <- car::recode(KLOSA_ds_w4$h_hypertension_age, "NA=999")
 #KLOSA_ds$h_hypertension_age[(KLOSA_ds$id %in% KLOSA_ds_w4$id) & (KLOSA_ds$h_hypertension != 999)] <- KLOSA_ds_w4$h_hypertension_age[KLOSA_ds_w4$h_hypertension != 999]
 
@@ -600,7 +541,7 @@ vbl <- KLOSA_ds_w4$h_hypertension_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(KLOSA_ds_w4, aes(h_hypertension_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(15,95)
+ggplot(KLOSA_ds_w4 %>% filter(!vbl %in% miss_values_vector), aes(h_hypertension_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -624,83 +565,154 @@ kable(C)
 
 
 
-## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+<!--AUXILIAR FUNCTIONS-->
+
+
+
+```{r helpfunctions, echo=F}
+
+
+source("../../helpfunctions.r")
+
+```
+
+
+
+```{r populations-waves, echo=F}
+
+
+# All study waves and populations with abbreviated and descriptive names
+
+klosa.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"), w3 = c("w3","W3"), w4 = c("w4","W4"))
+
+
+
+```
+
+
+<!--Labelling and saving-->
+
+```{r, echo=FALSE}
+
+
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(klosa.cw, function(wname) if(exists(paste0("KLOSA_ds_",wname[1]))){wname = list(get(paste0("KLOSA_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_age_vbl,ds_label_age)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+klosalist <- lmlist # KLOSA list
+
+
+
+
+```
+
+
+
+<!--Descriptives-->
+
+## Descriptive statistics of the harmonised variable `h_hypertension` accross populations and waves
 
 Two tables are generated: 
 
 1. Percentages of categories in each harmonised variable.
 
-2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
+2. Frequencies and percentages of individuals with different trajectories.
 
-**R script:**
-
-```{r summ}
-KLOSA_ds_w1$h_hypertension <- labelled(KLOSA_ds_w1$h_hypertension, labels = cat_label)
-label(KLOSA_ds_w1$h_hypertension) <- ds_label
-KLOSA_ds_w1$h_hypertension_age <- labelled(KLOSA_ds_w1$h_hypertension_age, labels = cont_label)
-label(KLOSA_ds_w1$h_hypertension_age) <- ds_label_age
-KLOSA_ds_w2$h_hypertension <- labelled(KLOSA_ds_w2$h_hypertension, labels = cat_label)
-label(KLOSA_ds_w2$h_hypertension) <- ds_label
-KLOSA_ds_w2$h_hypertension_age <- labelled(KLOSA_ds_w2$h_hypertension_age, labels = cont_label)
-label(KLOSA_ds_w2$h_hypertension_age) <- ds_label_age
-KLOSA_ds_w3$h_hypertension <- labelled(KLOSA_ds_w3$h_hypertension, labels = cat_label)
-label(KLOSA_ds_w3$h_hypertension) <- ds_label
-KLOSA_ds_w3$h_hypertension_age <- labelled(KLOSA_ds_w3$h_hypertension_age, labels = cont_label)
-label(KLOSA_ds_w3$h_hypertension_age) <- ds_label_age
-KLOSA_ds_w4$h_hypertension <- labelled(KLOSA_ds_w4$h_hypertension, labels = cat_label)
-label(KLOSA_ds_w4$h_hypertension) <- ds_label
-KLOSA_ds_w4$h_hypertension_age <- labelled(KLOSA_ds_w4$h_hypertension_age, labels = cont_label)
-label(KLOSA_ds_w4$h_hypertension_age) <- ds_label_age
-
-KLOSA_m_ds_w1 <- KLOSA_ds_w1
-KLOSA_m_ds_w1$h_hypertension <- car::recode(KLOSA_m_ds_w1$h_hypertension, "miss_values_vector=NA")
-KLOSA_m_ds_w2 <- KLOSA_ds_w2
-KLOSA_m_ds_w2$h_hypertension <- car::recode(KLOSA_m_ds_w2$h_hypertension, "miss_values_vector=NA")
-KLOSA_m_ds_w3 <- KLOSA_ds_w3
-KLOSA_m_ds_w3$h_hypertension <- car::recode(KLOSA_m_ds_w3$h_hypertension, "miss_values_vector=NA")
-KLOSA_m_ds_w4 <- KLOSA_ds_w4
-KLOSA_m_ds_w4$h_hypertension <- car::recode(KLOSA_m_ds_w4$h_hypertension, "miss_values_vector=NA")
+```{r summ, echo=F}
 
 
-tt <-    frq(KLOSA_ds_w1$h_hypertension)[[1]][,c(1:2,4)]
-tt[4] <- frq(KLOSA_ds_w2$h_hypertension)[[1]][,c(4)]
-tt[5] <- frq(KLOSA_ds_w3$h_hypertension)[[1]][,c(4)]
-tt[6] <- frq(KLOSA_ds_w4$h_hypertension)[[1]][,c(4)]
-tt[13,] <- c("n", "sample size", 
-             length(KLOSA_ds_w1$h_hypertension), length(KLOSA_ds_w2$h_hypertension), length(KLOSA_ds_w3$h_hypertension), length(KLOSA_ds_w4$h_hypertension)
-             )
-names(tt)<-c("val", "label", "w1", "w2", "w3", "w4")
-kable(tt)
+# Consider only harmonised waves
+l.hds <- lapply(klosa.cw, function(wname) if(hd_vbl %in% names(get0(paste0("KLOSA_ds_",wname[1])))){wname})
 
-dbb <- merge(KLOSA_m_ds_w1[,c("id","h_hypertension")], KLOSA_m_ds_w2[,c("id","h_hypertension")], by="id", suffixes = c(".w1",".w2"), all=T)
-dbb <- merge(dbb, KLOSA_m_ds_w3[,c("id","h_hypertension")], by="id", all=T)
-dbb <- merge(dbb, KLOSA_m_ds_w4[,c("id","h_hypertension")], by="id", suffixes = c(".w3",".w4"), all=T)
-names(dbb) <- c("id", "w1", "w2", "w3", "w4")
-v.dbb <- paste(dbb[,2],dbb[,3],dbb[,4],dbb[,5],sep="")
-f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
-kable(f.dbb[f.dbb[,3]>=0.3,])
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- klosalist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- klosalist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb))
+
+}
+
+
+
 ```
+
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable `h_hypertension_age` accross populations and waves
+
+
+
+
+
+
+```{r summ_c, echo=F}
+
+
+# Consider only harmonised waves
+l.hds <- lapply(klosa.cw, function(wname) if(hd_age_vbl %in% names(get0(paste0("KLOSA_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- klosalist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- klosalist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_age_vbl),caption=ds_label_age))
+}
+
+
+
+
+
+```
+
 
 
 
 # Quality estimation
 
 The diagnostic hypertension data for individuals which tell in a wave that they have hypertension appears as missing in the next waves. Since all the individuals in the tables are alive (checked by means of the harmonized variable `living status`) we assume it is because the data is asked only for the period between interviews. Therefore we codify them as having hypertension.
-
-<!-- ########################################################## --> 
-<!-- # Save -->
-```{r save, include=FALSE, echo=F}
-
-l.KLOSA <- list(w1 = KLOSA_ds_w1, w2 = KLOSA_ds_w2, w3 = KLOSA_ds_w3, w4 = KLOSA_ds_w4)
-
-for(index in seq_along(l.KLOSA)){
-  h_hypertension <- l.KLOSA[[index]]
-  save(h_hypertension, file = paste0(datafolder,names(l.KLOSA)[index],"/h_hypertension.RData"))
-}
-
-```
-<!-- ########################################################## --> 
-
 
 
 

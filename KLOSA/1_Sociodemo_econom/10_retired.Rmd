@@ -15,7 +15,7 @@ output:
 <!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
 ```{r setup, include=FALSE}
-source("../../setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
 <!-- # Loading DS description -->
@@ -362,14 +362,14 @@ ggplot(filter(KLOSA_ds_w2,!vbl %in% miss_values_vector), aes(age_retired)) + geo
 
 opal.assign.table.tibble(o, 'KLOSA_w3','KLOSA.w03_main_e_spss_albert',variables=list('w03D006','w03D002','w03D501m','w03D501y'), missings = T)
 KLOSA_w3 <- opal.execute(o,'KLOSA_w3')
+# The id's in the third wave add a '.0' at the end of the id's at the previous waves. We correct this. Note that gregexpr("\\.0",ids) == nchar(ids)-1
+KLOSA_w3$id <- substr(KLOSA_w3$id,1,nchar(KLOSA_w3$id)-2)
 load(paste0(datafolder,"w3/mbirth.RData"))
 KLOSA_w3 <- left_join(KLOSA_w3,mbirth, by ="id")
 rm(mbirth)
 load(paste0(datafolder,"w3/ybirth.RData"))
 KLOSA_w3 <- left_join(KLOSA_w3,ybirth, by ="id")
 rm(ybirth)
-# The id's in the third wave add a '.0' at the end of the id's at the previous waves. We correct this. Note that gregexpr("\\.0",ids) == nchar(ids)-1
-KLOSA_w3$id <- substr(KLOSA_w3$id,1,nchar(KLOSA_w3$id)-2)
 
 ```
 
@@ -659,80 +659,152 @@ ggplot(filter(KLOSA_ds_w4,!vbl %in% miss_values_vector), aes(age_retired)) + geo
 
 
 
-## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+
+<!--AUXILIAR FUNCTIONS-->
+
+
+
+```{r helpfunctions, echo=F}
+
+
+source("../../helpfunctions.r")
+
+```
+
+
+
+```{r populations-waves, echo=F}
+
+
+# All study waves and populations with abbreviated and descriptive names
+
+klosa.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"), w3 = c("w3","W3"), w4 = c("w4","W4"))
+
+
+
+```
+
+
+<!--Labelling and saving-->
+
+```{r, echo=FALSE}
+
+
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(klosa.cw, function(wname) if(exists(paste0("KLOSA_ds_",wname[1]))){wname = list(get(paste0("KLOSA_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_age_vbl,ds_label_age)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+klosalist <- lmlist # KLOSA list
+
+
+
+
+```
+
+
+
+<!--Descriptives-->
+
+## Descriptive statistics of the harmonised variable `retired` accross populations and waves
 
 Two tables are generated: 
 
 1. Percentages of categories in each harmonised variable.
 
-2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
+2. Frequencies and percentages of individuals with different trajectories.
 
-**R script:**
-
-```{r summ}
-KLOSA_ds_w1$retired <- labelled(KLOSA_ds_w1$retired, labels = cat_label)
-label(KLOSA_ds_w1$retired) <- ds_label
-KLOSA_ds_w2$retired <- labelled(KLOSA_ds_w2$retired, labels = cat_label)
-label(KLOSA_ds_w2$retired) <- ds_label
-KLOSA_ds_w3$retired <- labelled(KLOSA_ds_w3$retired, labels = cat_label)
-label(KLOSA_ds_w3$retired) <- ds_label
-KLOSA_ds_w4$retired <- labelled(KLOSA_ds_w4$retired, labels = cat_label)
-label(KLOSA_ds_w4$retired) <- ds_label
-KLOSA_ds_w1$age_retired <- labelled(KLOSA_ds_w1$age_retired, labels = cont_label)
-label(KLOSA_ds_w1$age_retired) <- ds_label_age
-KLOSA_ds_w2$age_retired <- labelled(KLOSA_ds_w2$age_retired, labels = cont_label)
-label(KLOSA_ds_w2$age_retired) <- ds_label_age
-KLOSA_ds_w3$age_retired <- labelled(KLOSA_ds_w3$age_retired, labels = cont_label)
-label(KLOSA_ds_w3$age_retired) <- ds_label_age
-KLOSA_ds_w4$age_retired <- labelled(KLOSA_ds_w4$age_retired, labels = cont_label)
-label(KLOSA_ds_w4$age_retired) <- ds_label_age
-
-KLOSA_m_ds_w1 <- KLOSA_ds_w1
-KLOSA_m_ds_w1$retired <- car::recode(KLOSA_m_ds_w1$retired, "miss_values_vector=NA")
-KLOSA_m_ds_w2 <- KLOSA_ds_w2
-KLOSA_m_ds_w2$retired <- car::recode(KLOSA_m_ds_w2$retired, "miss_values_vector=NA")
-KLOSA_m_ds_w3 <- KLOSA_ds_w3
-KLOSA_m_ds_w3$retired <- car::recode(KLOSA_m_ds_w3$retired, "miss_values_vector=NA")
-KLOSA_m_ds_w4 <- KLOSA_ds_w4
-KLOSA_m_ds_w4$retired <- car::recode(KLOSA_m_ds_w4$retired, "miss_values_vector=NA")
+```{r summ, echo=F}
 
 
-tt <-    frq(KLOSA_ds_w1$retired)[[1]][,c(1:2,4)]
-tt[4] <- frq(KLOSA_ds_w2$retired)[[1]][,c(4)]
-tt[5] <- frq(KLOSA_ds_w3$retired)[[1]][,c(4)]
-tt[6] <- frq(KLOSA_ds_w4$retired)[[1]][,c(4)]
-tt[13,] <- c("n", "sample size", 
-             length(KLOSA_ds_w1$retired), length(KLOSA_ds_w2$retired), length(KLOSA_ds_w3$retired), length(KLOSA_ds_w4$retired)
-             )
-names(tt)<-c("val", "label", "w1", "w2", "w3", "w4")
-kable(tt)
+# Consider only harmonised waves
+l.hds <- lapply(klosa.cw, function(wname) if(hd_vbl %in% names(get0(paste0("KLOSA_ds_",wname[1])))){wname})
 
-dbb <- merge(KLOSA_m_ds_w1[,c("id","retired")], KLOSA_m_ds_w2[,c("id","retired")], by="id", suffixes = c(".w1",".w2"), all=T)
-dbb <- merge(dbb, KLOSA_m_ds_w3[,c("id","retired")], by="id", all=T)
-dbb <- merge(dbb, KLOSA_m_ds_w4[,c("id","retired")], by="id", suffixes = c(".w3",".w4"), all=T)
-names(dbb) <- c("id", "w1", "w2", "w3", "w4")
-v.dbb <- paste(dbb[,2],dbb[,3],dbb[,4],dbb[,5],sep="")
-f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
-kable(f.dbb[f.dbb[,3]>=0.3,])
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- klosalist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- klosalist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb))
+
+}
+
+
+
 ```
 
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable `age_retired` accross populations and waves
+
+
+
+
+
+
+```{r summ_c, echo=F}
+
+
+# Consider only harmonised waves
+l.hds <- lapply(klosa.cw, function(wname) if(hd_age_vbl %in% names(get0(paste0("KLOSA_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- klosalist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- klosalist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_age_vbl),caption=ds_label_age))
+}
+
+
+
+
+
+```
 
 
 # Quality estimation
 
-<!-- ########################################################## --> 
-<!-- # Save -->
-```{r save, include=FALSE, echo=F}
-
-l.KLOSA <- list(w1 = KLOSA_ds_w1, w2 = KLOSA_ds_w2, w3 = KLOSA_ds_w3, w4 = KLOSA_ds_w4)
-
-for(index in seq_along(l.KLOSA)){
-  retired <- l.KLOSA[[index]]
-  save(retired, file = paste0(datafolder,names(l.KLOSA)[index],"/retired.RData"))
-}
-
-```
-<!-- ########################################################## --> 
 
 
 
