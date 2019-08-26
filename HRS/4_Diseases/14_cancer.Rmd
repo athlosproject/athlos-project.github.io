@@ -15,76 +15,15 @@ output:
 <!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
-
-
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-* Short name: `cancer`
-* Variable label: `Any malignancy (C00-D48) / information about past or current neoplasm (benign, in situ, malignant)`
-* Variable description: `cancer diagnosis since the last interview`
-* Domain: `Diseases`
-* Value type: `categorical`
-* Category coding:
-
-**Code** | **Category Label**
--------- | ------------------
-0        | no cancer
-1        | cancer
-
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-* Short name: `cancer_age`
-* Variable label: `Age of cancer diagnosis`
-* Variable description: `Age of each episode of cancer`
-* Domain: `Diseases`
-* Value type: `Continuous`
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-
-<!-- ########################################################## --> 
-<!-- # Global variables -->
-```{r global, include=FALSE, echo=F}
-miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
-ds_label <- "Any malignancy (C00-D48) / information about past or current neoplasm (benign, in situ, malignant)"
-ds_label_age <- "Age of cancer diagnosis"
-cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
-cont_label <- cat_label[3:11]
-datafolder <- "../RData/"
-#sing_idlist <- c()
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/cancerDS.Rmd'}
 ```
-<!-- ########################################################## --> 
-
+```{r global, echo=F}
+source('../../_DS_Rmd/cancerDS.R')
+```
 
 
 # Data process
@@ -211,16 +150,16 @@ ggplot(HRS_hrs_w2, aes(x=factor(R2CANCRS))) + geom_bar(stat="count", width=0.4, 
 vbl <- HRS_hrs_w2$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w2)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_hrs_w2, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1900,1980)
+ggplot(HRS_hrs_w2 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_hrs_w2$yintw_hrs_w1
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_hrs_w2)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w2)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_hrs_w2, aes(x=factor(yintw_hrs_w1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_hrs_w2$yintw_hrs_w2
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_hrs_w2)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w2)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_hrs_w2, aes(x=factor(yintw_hrs_w2))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -251,7 +190,7 @@ HRS_ds_hrs_w2$cancer <- car::recode(HRS_hrs_w2$R2CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_hrs_w2$cancer_age <- rep(999,length(HRS_hrs_w2$id))
 HRS_ds_hrs_w2$cancer_age[which(HRS_ds_hrs_w2$cancer == 0)] <- 996
-HRS_ds_hrs_w2$cancer_age[which(HRS_ds_hrs_w2$cancer == 1 & !HRS_hrs_w2$ybirth %in% miss_values_vector)] <- (HRS_hrs_w2$yintw_hrs_w2[which(HRS_ds_hrs_w2$cancer == 1 & !HRS_hrs_w2$ybirth %in% miss_values_vector)]+HRS_hrs_w2$yintw_hrs_w1[which(HRS_ds_hrs_w2$cancer == 1 & !HRS_hrs_w2$ybirth %in% miss_values_vector)])/2-HRS_hrs_w2$ybirth[which(HRS_ds_hrs_w2$cancer == 1  & !HRS_hrs_w2$ybirth %in% miss_values_vector)]
+HRS_ds_hrs_w2$cancer_age[which(HRS_ds_hrs_w2$cancer == 1 & !HRS_hrs_w2$ybirth %in% miss_values_vector & !(HRS_hrs_w2$yintw_hrs_w2 %in% miss_values_vector | HRS_hrs_w2$yintw_hrs_w1 %in% miss_values_vector))] <- floor((HRS_hrs_w2$yintw_hrs_w2[which(HRS_ds_hrs_w2$cancer == 1 & !HRS_hrs_w2$ybirth %in% miss_values_vector & !(HRS_hrs_w2$yintw_hrs_w2 %in% miss_values_vector | HRS_hrs_w2$yintw_hrs_w1 %in% miss_values_vector))]+HRS_hrs_w2$yintw_hrs_w1[which(HRS_ds_hrs_w2$cancer == 1 & !HRS_hrs_w2$ybirth %in% miss_values_vector & !(HRS_hrs_w2$yintw_hrs_w2 %in% miss_values_vector | HRS_hrs_w2$yintw_hrs_w1 %in% miss_values_vector))])/2-HRS_hrs_w2$ybirth[which(HRS_ds_hrs_w2$cancer == 1  & !HRS_hrs_w2$ybirth %in% miss_values_vector & !(HRS_hrs_w2$yintw_hrs_w2 %in% miss_values_vector | HRS_hrs_w2$yintw_hrs_w1 %in% miss_values_vector))])
 
 ```
 
@@ -270,7 +209,7 @@ vbl <- HRS_ds_hrs_w2$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_hrs_w2, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(40,80)
+ggplot(HRS_ds_hrs_w2 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -331,16 +270,16 @@ ggplot(HRS_hrs_w3, aes(x=factor(R3CANCRS))) + geom_bar(stat="count", width=0.4, 
 vbl <- HRS_hrs_w3$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w3)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_hrs_w3, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1900,1980)
+ggplot(HRS_hrs_w3 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_hrs_w3$yintw_hrs_w2
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_hrs_w3)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w3)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_hrs_w3, aes(x=factor(yintw_hrs_w2))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_hrs_w3$yintw_hrs_w3
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_hrs_w3)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w3)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_hrs_w3, aes(x=factor(yintw_hrs_w3))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -373,7 +312,7 @@ HRS_ds_hrs_w3$cancer <- car::recode(HRS_hrs_w3$R3CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_hrs_w3$cancer_age <- rep(999,length(HRS_hrs_w3$id))
 HRS_ds_hrs_w3$cancer_age[which(HRS_ds_hrs_w3$cancer == 0)] <- 996
-HRS_ds_hrs_w3$cancer_age[which(HRS_ds_hrs_w3$cancer == 1  & !HRS_hrs_w3$ybirth %in% miss_values_vector)] <- (HRS_hrs_w3$yintw_hrs_w3[which(HRS_ds_hrs_w3$cancer == 1  & !HRS_hrs_w3$ybirth %in% miss_values_vector)]+HRS_hrs_w3$yintw_hrs_w2[which(HRS_ds_hrs_w3$cancer == 1  & !HRS_hrs_w3$ybirth %in% miss_values_vector)])/2-HRS_hrs_w3$ybirth[which(HRS_ds_hrs_w3$cancer == 1  & !HRS_hrs_w3$ybirth %in% miss_values_vector)]
+HRS_ds_hrs_w3$cancer_age[which(HRS_ds_hrs_w3$cancer == 1  & !HRS_hrs_w3$ybirth %in% miss_values_vector & !(HRS_hrs_w3$yintw_hrs_w3 %in% miss_values_vector | HRS_hrs_w3$yintw_hrs_w2 %in% miss_values_vector))] <- floor((HRS_hrs_w3$yintw_hrs_w3[which(HRS_ds_hrs_w3$cancer == 1  & !HRS_hrs_w3$ybirth %in% miss_values_vector & !(HRS_hrs_w3$yintw_hrs_w3 %in% miss_values_vector | HRS_hrs_w3$yintw_hrs_w2 %in% miss_values_vector))]+HRS_hrs_w3$yintw_hrs_w2[which(HRS_ds_hrs_w3$cancer == 1  & !HRS_hrs_w3$ybirth %in% miss_values_vector & !(HRS_hrs_w3$yintw_hrs_w3 %in% miss_values_vector | HRS_hrs_w3$yintw_hrs_w2 %in% miss_values_vector))])/2-HRS_hrs_w3$ybirth[which(HRS_ds_hrs_w3$cancer == 1  & !HRS_hrs_w3$ybirth %in% miss_values_vector & !(HRS_hrs_w3$yintw_hrs_w3 %in% miss_values_vector | HRS_hrs_w3$yintw_hrs_w2 %in% miss_values_vector))])
 
 ```
 
@@ -392,7 +331,7 @@ vbl <- HRS_ds_hrs_w3$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_hrs_w3, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(40,80)
+ggplot(HRS_ds_hrs_w3 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -454,16 +393,16 @@ ggplot(HRS_hrs_w4, aes(x=factor(R4CANCRS))) + geom_bar(stat="count", width=0.4, 
 vbl <- HRS_hrs_w4$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w4)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_hrs_w4, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1900,1980)
+ggplot(HRS_hrs_w4 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_hrs_w4$yintw_hrs_w3
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_hrs_w4)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w4)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_hrs_w4, aes(x=factor(yintw_hrs_w3))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_hrs_w4$yintw_hrs_w4
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_hrs_w4)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w4)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_hrs_w4, aes(x=factor(yintw_hrs_w4))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -497,7 +436,7 @@ HRS_ds_hrs_w4$cancer <- car::recode(HRS_hrs_w4$R4CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_hrs_w4$cancer_age <- rep(999,length(HRS_hrs_w4$id))
 HRS_ds_hrs_w4$cancer_age[which(HRS_ds_hrs_w4$cancer == 0)] <- 996
-HRS_ds_hrs_w4$cancer_age[which(HRS_ds_hrs_w4$cancer == 1  & !HRS_hrs_w4$ybirth %in% miss_values_vector)] <- (HRS_hrs_w4$yintw_hrs_w4[which(HRS_ds_hrs_w4$cancer == 1  & !HRS_hrs_w4$ybirth %in% miss_values_vector)]+HRS_hrs_w4$yintw_hrs_w3[which(HRS_ds_hrs_w4$cancer == 1  & !HRS_hrs_w4$ybirth %in% miss_values_vector)])/2-HRS_hrs_w4$ybirth[which(HRS_ds_hrs_w4$cancer == 1  & !HRS_hrs_w4$ybirth %in% miss_values_vector)]
+HRS_ds_hrs_w4$cancer_age[which(HRS_ds_hrs_w4$cancer == 1  & !HRS_hrs_w4$ybirth %in% miss_values_vector & !(HRS_hrs_w4$yintw_hrs_w4 %in% miss_values_vector | HRS_hrs_w4$yintw_hrs_w3 %in% miss_values_vector))] <- floor((HRS_hrs_w4$yintw_hrs_w4[which(HRS_ds_hrs_w4$cancer == 1  & !HRS_hrs_w4$ybirth %in% miss_values_vector & !(HRS_hrs_w4$yintw_hrs_w4 %in% miss_values_vector | HRS_hrs_w4$yintw_hrs_w3 %in% miss_values_vector))]+HRS_hrs_w4$yintw_hrs_w3[which(HRS_ds_hrs_w4$cancer == 1  & !HRS_hrs_w4$ybirth %in% miss_values_vector & !(HRS_hrs_w4$yintw_hrs_w4 %in% miss_values_vector | HRS_hrs_w4$yintw_hrs_w3 %in% miss_values_vector))])/2-HRS_hrs_w4$ybirth[which(HRS_ds_hrs_w4$cancer == 1  & !HRS_hrs_w4$ybirth %in% miss_values_vector & !(HRS_hrs_w4$yintw_hrs_w4 %in% miss_values_vector | HRS_hrs_w4$yintw_hrs_w3 %in% miss_values_vector))])
 
 ```
 
@@ -516,7 +455,7 @@ vbl <- HRS_ds_hrs_w4$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_hrs_w4, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(40,80)
+ggplot(HRS_ds_hrs_w4 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -577,16 +516,16 @@ ggplot(HRS_hrs_w5, aes(x=factor(R5CANCRS))) + geom_bar(stat="count", width=0.4, 
 vbl <- HRS_hrs_w5$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w5)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_hrs_w5, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1900,1980)
+ggplot(HRS_hrs_w5 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_hrs_w5$yintw_hrs_w4
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_hrs_w5)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w5)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_hrs_w5, aes(x=factor(yintw_hrs_w4))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_hrs_w5$yintw_hrs_w5
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_hrs_w5)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w5)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_hrs_w5, aes(x=factor(yintw_hrs_w5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -622,7 +561,7 @@ HRS_ds_hrs_w5$cancer <- car::recode(HRS_hrs_w5$R5CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_hrs_w5$cancer_age <- rep(999,length(HRS_hrs_w5$id))
 HRS_ds_hrs_w5$cancer_age[which(HRS_ds_hrs_w5$cancer == 0)] <- 996
-HRS_ds_hrs_w5$cancer_age[which(HRS_ds_hrs_w5$cancer == 1  & !HRS_hrs_w5$ybirth %in% miss_values_vector)] <- (HRS_hrs_w5$yintw_hrs_w5[which(HRS_ds_hrs_w5$cancer == 1  & !HRS_hrs_w5$ybirth %in% miss_values_vector)]+HRS_hrs_w5$yintw_hrs_w4[which(HRS_ds_hrs_w5$cancer == 1  & !HRS_hrs_w5$ybirth %in% miss_values_vector)])/2-HRS_hrs_w5$ybirth[which(HRS_ds_hrs_w5$cancer == 1  & !HRS_hrs_w5$ybirth %in% miss_values_vector)]
+HRS_ds_hrs_w5$cancer_age[which(HRS_ds_hrs_w5$cancer == 1  & !HRS_hrs_w5$ybirth %in% miss_values_vector & !(HRS_hrs_w5$yintw_hrs_w5 %in% miss_values_vector | HRS_hrs_w5$yintw_hrs_w4 %in% miss_values_vector))] <- floor((HRS_hrs_w5$yintw_hrs_w5[which(HRS_ds_hrs_w5$cancer == 1  & !HRS_hrs_w5$ybirth %in% miss_values_vector & !(HRS_hrs_w5$yintw_hrs_w5 %in% miss_values_vector | HRS_hrs_w5$yintw_hrs_w4 %in% miss_values_vector))]+HRS_hrs_w5$yintw_hrs_w4[which(HRS_ds_hrs_w5$cancer == 1  & !HRS_hrs_w5$ybirth %in% miss_values_vector & !(HRS_hrs_w5$yintw_hrs_w5 %in% miss_values_vector | HRS_hrs_w5$yintw_hrs_w4 %in% miss_values_vector))])/2-HRS_hrs_w5$ybirth[which(HRS_ds_hrs_w5$cancer == 1  & !HRS_hrs_w5$ybirth %in% miss_values_vector & !(HRS_hrs_w5$yintw_hrs_w5 %in% miss_values_vector | HRS_hrs_w5$yintw_hrs_w4 %in% miss_values_vector))])
 
 ```
 
@@ -641,7 +580,7 @@ vbl <- HRS_ds_hrs_w5$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_hrs_w5, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(50,85)
+ggplot(HRS_ds_hrs_w5 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -702,16 +641,16 @@ ggplot(HRS_hrs_w6, aes(x=factor(R6CANCRS))) + geom_bar(stat="count", width=0.4, 
 vbl <- HRS_hrs_w6$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w6)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_hrs_w6, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1900,1980)
+ggplot(HRS_hrs_w6 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_hrs_w6$yintw_hrs_w5
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_hrs_w6)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w6)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_hrs_w6, aes(x=factor(yintw_hrs_w5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_hrs_w6$yintw_hrs_w6
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_hrs_w6)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w6)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_hrs_w6, aes(x=factor(yintw_hrs_w6))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -747,7 +686,7 @@ HRS_ds_hrs_w6$cancer <- car::recode(HRS_hrs_w6$R6CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_hrs_w6$cancer_age <- rep(999,length(HRS_hrs_w6$id))
 HRS_ds_hrs_w6$cancer_age[which(HRS_ds_hrs_w6$cancer == 0)] <- 996
-HRS_ds_hrs_w6$cancer_age[which(HRS_ds_hrs_w6$cancer == 1  & !HRS_hrs_w6$ybirth %in% miss_values_vector)] <- (HRS_hrs_w6$yintw_hrs_w6[which(HRS_ds_hrs_w6$cancer == 1  & !HRS_hrs_w6$ybirth %in% miss_values_vector)]+HRS_hrs_w6$yintw_hrs_w5[which(HRS_ds_hrs_w6$cancer == 1  & !HRS_hrs_w6$ybirth %in% miss_values_vector)])/2-HRS_hrs_w6$ybirth[which(HRS_ds_hrs_w6$cancer == 1  & !HRS_hrs_w6$ybirth %in% miss_values_vector)]
+HRS_ds_hrs_w6$cancer_age[which(HRS_ds_hrs_w6$cancer == 1  & !HRS_hrs_w6$ybirth %in% miss_values_vector & !(HRS_hrs_w6$yintw_hrs_w6 %in% miss_values_vector | HRS_hrs_w6$yintw_hrs_w5 %in% miss_values_vector))] <- floor((HRS_hrs_w6$yintw_hrs_w6[which(HRS_ds_hrs_w6$cancer == 1  & !HRS_hrs_w6$ybirth %in% miss_values_vector & !(HRS_hrs_w6$yintw_hrs_w6 %in% miss_values_vector | HRS_hrs_w6$yintw_hrs_w5 %in% miss_values_vector))]+HRS_hrs_w6$yintw_hrs_w5[which(HRS_ds_hrs_w6$cancer == 1  & !HRS_hrs_w6$ybirth %in% miss_values_vector & !(HRS_hrs_w6$yintw_hrs_w6 %in% miss_values_vector | HRS_hrs_w6$yintw_hrs_w5 %in% miss_values_vector))])/2-HRS_hrs_w6$ybirth[which(HRS_ds_hrs_w6$cancer == 1  & !HRS_hrs_w6$ybirth %in% miss_values_vector & !(HRS_hrs_w6$yintw_hrs_w6 %in% miss_values_vector | HRS_hrs_w6$yintw_hrs_w5 %in% miss_values_vector))])
 
 ```
 
@@ -766,7 +705,7 @@ vbl <- HRS_ds_hrs_w6$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_hrs_w6, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(45,85)
+ggplot(HRS_ds_hrs_w6 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -828,16 +767,16 @@ ggplot(HRS_hrs_w7, aes(x=factor(R7CANCRS))) + geom_bar(stat="count", width=0.4, 
 vbl <- HRS_hrs_w7$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w7)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_hrs_w7, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1900,1980)
+ggplot(HRS_hrs_w7 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_hrs_w7$yintw_hrs_w6
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_hrs_w7)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w7)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_hrs_w7, aes(x=factor(yintw_hrs_w6))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_hrs_w7$yintw_hrs_w7
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_hrs_w7)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w7)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_hrs_w7, aes(x=factor(yintw_hrs_w7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -872,7 +811,7 @@ HRS_ds_hrs_w7$cancer <- car::recode(HRS_hrs_w7$R7CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_hrs_w7$cancer_age <- rep(999,length(HRS_hrs_w7$id))
 HRS_ds_hrs_w7$cancer_age[which(HRS_ds_hrs_w7$cancer == 0)] <- 996
-HRS_ds_hrs_w7$cancer_age[which(HRS_ds_hrs_w7$cancer == 1  & !HRS_hrs_w7$ybirth %in% miss_values_vector)] <- (HRS_hrs_w7$yintw_hrs_w7[which(HRS_ds_hrs_w7$cancer == 1  & !HRS_hrs_w7$ybirth %in% miss_values_vector)]+HRS_hrs_w7$yintw_hrs_w6[which(HRS_ds_hrs_w7$cancer == 1  & !HRS_hrs_w7$ybirth %in% miss_values_vector)])/2-HRS_hrs_w7$ybirth[which(HRS_ds_hrs_w7$cancer == 1  & !HRS_hrs_w7$ybirth %in% miss_values_vector)]
+HRS_ds_hrs_w7$cancer_age[which(HRS_ds_hrs_w7$cancer == 1  & !HRS_hrs_w7$ybirth %in% miss_values_vector & !(HRS_hrs_w7$yintw_hrs_w7 %in% miss_values_vector | HRS_hrs_w7$yintw_hrs_w6 %in% miss_values_vector))] <- floor((HRS_hrs_w7$yintw_hrs_w7[which(HRS_ds_hrs_w7$cancer == 1  & !HRS_hrs_w7$ybirth %in% miss_values_vector & !(HRS_hrs_w7$yintw_hrs_w7 %in% miss_values_vector | HRS_hrs_w7$yintw_hrs_w6 %in% miss_values_vector))]+HRS_hrs_w7$yintw_hrs_w6[which(HRS_ds_hrs_w7$cancer == 1  & !HRS_hrs_w7$ybirth %in% miss_values_vector & !(HRS_hrs_w7$yintw_hrs_w7 %in% miss_values_vector | HRS_hrs_w7$yintw_hrs_w6 %in% miss_values_vector))])/2-HRS_hrs_w7$ybirth[which(HRS_ds_hrs_w7$cancer == 1  & !HRS_hrs_w7$ybirth %in% miss_values_vector & !(HRS_hrs_w7$yintw_hrs_w7 %in% miss_values_vector | HRS_hrs_w7$yintw_hrs_w6 %in% miss_values_vector))])
 
 ```
 
@@ -891,7 +830,7 @@ vbl <- HRS_ds_hrs_w7$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_hrs_w7, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(50,85)
+ggplot(HRS_ds_hrs_w7 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -952,16 +891,16 @@ ggplot(HRS_hrs_w8, aes(x=factor(R8CANCRS))) + geom_bar(stat="count", width=0.4, 
 vbl <- HRS_hrs_w8$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w8)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_hrs_w8, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1900,1980)
+ggplot(HRS_hrs_w8 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_hrs_w8$yintw_hrs_w7
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_hrs_w8)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w8)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_hrs_w8, aes(x=factor(yintw_hrs_w7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_hrs_w8$yintw_hrs_w8
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_hrs_w8)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w8)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_hrs_w8, aes(x=factor(yintw_hrs_w8))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -997,7 +936,7 @@ HRS_ds_hrs_w8$cancer <- car::recode(HRS_hrs_w8$R8CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_hrs_w8$cancer_age <- rep(999,length(HRS_hrs_w8$id))
 HRS_ds_hrs_w8$cancer_age[which(HRS_ds_hrs_w8$cancer == 0)] <- 996
-HRS_ds_hrs_w8$cancer_age[which(HRS_ds_hrs_w8$cancer == 1  & !HRS_hrs_w8$ybirth %in% miss_values_vector)] <- (HRS_hrs_w8$yintw_hrs_w8[which(HRS_ds_hrs_w8$cancer == 1  & !HRS_hrs_w8$ybirth %in% miss_values_vector)]+HRS_hrs_w8$yintw_hrs_w7[which(HRS_ds_hrs_w8$cancer == 1  & !HRS_hrs_w8$ybirth %in% miss_values_vector)])/2-HRS_hrs_w8$ybirth[which(HRS_ds_hrs_w8$cancer == 1  & !HRS_hrs_w8$ybirth %in% miss_values_vector)]
+HRS_ds_hrs_w8$cancer_age[which(HRS_ds_hrs_w8$cancer == 1  & !HRS_hrs_w8$ybirth %in% miss_values_vector & !(HRS_hrs_w8$yintw_hrs_w8 %in% miss_values_vector | HRS_hrs_w8$yintw_hrs_w7 %in% miss_values_vector))] <- floor((HRS_hrs_w8$yintw_hrs_w8[which(HRS_ds_hrs_w8$cancer == 1  & !HRS_hrs_w8$ybirth %in% miss_values_vector & !(HRS_hrs_w8$yintw_hrs_w8 %in% miss_values_vector | HRS_hrs_w8$yintw_hrs_w7 %in% miss_values_vector))]+HRS_hrs_w8$yintw_hrs_w7[which(HRS_ds_hrs_w8$cancer == 1  & !HRS_hrs_w8$ybirth %in% miss_values_vector & !(HRS_hrs_w8$yintw_hrs_w8 %in% miss_values_vector | HRS_hrs_w8$yintw_hrs_w7 %in% miss_values_vector))])/2-HRS_hrs_w8$ybirth[which(HRS_ds_hrs_w8$cancer == 1  & !HRS_hrs_w8$ybirth %in% miss_values_vector & !(HRS_hrs_w8$yintw_hrs_w8 %in% miss_values_vector | HRS_hrs_w8$yintw_hrs_w7 %in% miss_values_vector))])
 
 ```
 
@@ -1016,7 +955,7 @@ vbl <- HRS_ds_hrs_w8$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_hrs_w8, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(50,90)
+ggplot(HRS_ds_hrs_w8 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -1077,16 +1016,16 @@ ggplot(HRS_hrs_w9, aes(x=factor(R9CANCRS))) + geom_bar(stat="count", width=0.4, 
 vbl <- HRS_hrs_w9$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w9)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_hrs_w9, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1900,1980)
+ggplot(HRS_hrs_w9 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_hrs_w9$yintw_hrs_w8
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_hrs_w9)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w9)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_hrs_w9, aes(x=factor(yintw_hrs_w8))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_hrs_w9$yintw_hrs_w9
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_hrs_w9)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w9)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_hrs_w9, aes(x=factor(yintw_hrs_w9))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -1122,7 +1061,7 @@ HRS_ds_hrs_w9$cancer <- car::recode(HRS_hrs_w9$R9CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_hrs_w9$cancer_age <- rep(999,length(HRS_hrs_w9$id))
 HRS_ds_hrs_w9$cancer_age[which(HRS_ds_hrs_w9$cancer == 0)] <- 996
-HRS_ds_hrs_w9$cancer_age[which(HRS_ds_hrs_w9$cancer == 1  & !HRS_hrs_w9$ybirth %in% miss_values_vector)] <- (HRS_hrs_w9$yintw_hrs_w9[which(HRS_ds_hrs_w9$cancer == 1  & !HRS_hrs_w9$ybirth %in% miss_values_vector)]+HRS_hrs_w9$yintw_hrs_w8[which(HRS_ds_hrs_w9$cancer == 1  & !HRS_hrs_w9$ybirth %in% miss_values_vector)])/2-HRS_hrs_w9$ybirth[which(HRS_ds_hrs_w9$cancer == 1  & !HRS_hrs_w9$ybirth %in% miss_values_vector)]
+HRS_ds_hrs_w9$cancer_age[which(HRS_ds_hrs_w9$cancer == 1  & !HRS_hrs_w9$ybirth %in% miss_values_vector & !(HRS_hrs_w9$yintw_hrs_w9 %in% miss_values_vector | HRS_hrs_w9$yintw_hrs_w8 %in% miss_values_vector))] <- floor((HRS_hrs_w9$yintw_hrs_w9[which(HRS_ds_hrs_w9$cancer == 1  & !HRS_hrs_w9$ybirth %in% miss_values_vector & !(HRS_hrs_w9$yintw_hrs_w9 %in% miss_values_vector | HRS_hrs_w9$yintw_hrs_w8 %in% miss_values_vector))]+HRS_hrs_w9$yintw_hrs_w8[which(HRS_ds_hrs_w9$cancer == 1  & !HRS_hrs_w9$ybirth %in% miss_values_vector & !(HRS_hrs_w9$yintw_hrs_w9 %in% miss_values_vector | HRS_hrs_w9$yintw_hrs_w8 %in% miss_values_vector))])/2-HRS_hrs_w9$ybirth[which(HRS_ds_hrs_w9$cancer == 1  & !HRS_hrs_w9$ybirth %in% miss_values_vector & !(HRS_hrs_w9$yintw_hrs_w9 %in% miss_values_vector | HRS_hrs_w9$yintw_hrs_w8 %in% miss_values_vector))])
 
 ```
 
@@ -1141,7 +1080,7 @@ vbl <- HRS_ds_hrs_w9$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_hrs_w9, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(40,85)
+ggplot(HRS_ds_hrs_w9 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -1203,16 +1142,16 @@ ggplot(HRS_hrs_w10, aes(x=factor(R10CANCRS))) + geom_bar(stat="count", width=0.4
 vbl <- HRS_hrs_w10$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w10)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_hrs_w10, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1900,1980)
+ggplot(HRS_hrs_w10 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_hrs_w10$yintw_hrs_w9
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_hrs_w10)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w10)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_hrs_w10, aes(x=factor(yintw_hrs_w9))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_hrs_w10$yintw_hrs_w10
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_hrs_w10)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w10)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_hrs_w10, aes(x=factor(yintw_hrs_w10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -1248,7 +1187,7 @@ HRS_ds_hrs_w10$cancer <- car::recode(HRS_hrs_w10$R10CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_hrs_w10$cancer_age <- rep(999,length(HRS_hrs_w10$id))
 HRS_ds_hrs_w10$cancer_age[which(HRS_ds_hrs_w10$cancer == 0)] <- 996
-HRS_ds_hrs_w10$cancer_age[which(HRS_ds_hrs_w10$cancer == 1  & !HRS_hrs_w10$ybirth %in% miss_values_vector)] <- (HRS_hrs_w10$yintw_hrs_w10[which(HRS_ds_hrs_w10$cancer == 1  & !HRS_hrs_w10$ybirth %in% miss_values_vector)]+HRS_hrs_w10$yintw_hrs_w9[which(HRS_ds_hrs_w10$cancer == 1  & !HRS_hrs_w10$ybirth %in% miss_values_vector)])/2-HRS_hrs_w10$ybirth[which(HRS_ds_hrs_w10$cancer == 1  & !HRS_hrs_w10$ybirth %in% miss_values_vector)]
+HRS_ds_hrs_w10$cancer_age[which(HRS_ds_hrs_w10$cancer == 1  & !HRS_hrs_w10$ybirth %in% miss_values_vector & !(HRS_hrs_w10$yintw_hrs_w10 %in% miss_values_vector | HRS_hrs_w10$yintw_hrs_w9 %in% miss_values_vector))] <- floor((HRS_hrs_w10$yintw_hrs_w10[which(HRS_ds_hrs_w10$cancer == 1  & !HRS_hrs_w10$ybirth %in% miss_values_vector & !(HRS_hrs_w10$yintw_hrs_w10 %in% miss_values_vector | HRS_hrs_w10$yintw_hrs_w9 %in% miss_values_vector))]+HRS_hrs_w10$yintw_hrs_w9[which(HRS_ds_hrs_w10$cancer == 1  & !HRS_hrs_w10$ybirth %in% miss_values_vector & !(HRS_hrs_w10$yintw_hrs_w10 %in% miss_values_vector | HRS_hrs_w10$yintw_hrs_w9 %in% miss_values_vector))])/2-HRS_hrs_w10$ybirth[which(HRS_ds_hrs_w10$cancer == 1  & !HRS_hrs_w10$ybirth %in% miss_values_vector & !(HRS_hrs_w10$yintw_hrs_w10 %in% miss_values_vector | HRS_hrs_w10$yintw_hrs_w9 %in% miss_values_vector))])
 
 ```
 
@@ -1267,7 +1206,7 @@ vbl <- HRS_ds_hrs_w10$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_hrs_w10, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(45,90)
+ggplot(HRS_ds_hrs_w10 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -1328,16 +1267,16 @@ ggplot(HRS_hrs_w11, aes(x=factor(R11CANCRS))) + geom_bar(stat="count", width=0.4
 vbl <- HRS_hrs_w11$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w11)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_hrs_w11, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1900,1980)
+ggplot(HRS_hrs_w11 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_hrs_w11$yintw_hrs_w10
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_hrs_w11)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w11)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_hrs_w11, aes(x=factor(yintw_hrs_w10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_hrs_w11$yintw_hrs_w11
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_hrs_w11)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_hrs_w11)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_hrs_w11, aes(x=factor(yintw_hrs_w11))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -1373,7 +1312,7 @@ HRS_ds_hrs_w11$cancer <- car::recode(HRS_hrs_w11$R11CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_hrs_w11$cancer_age <- rep(999,length(HRS_hrs_w11$id))
 HRS_ds_hrs_w11$cancer_age[which(HRS_ds_hrs_w11$cancer == 0)] <- 996
-HRS_ds_hrs_w11$cancer_age[which(HRS_ds_hrs_w11$cancer == 1  & !HRS_hrs_w11$ybirth %in% miss_values_vector)] <- (HRS_hrs_w11$yintw_hrs_w11[which(HRS_ds_hrs_w11$cancer == 1  & !HRS_hrs_w11$ybirth %in% miss_values_vector)]+HRS_hrs_w11$yintw_hrs_w10[which(HRS_ds_hrs_w11$cancer == 1  & !HRS_hrs_w11$ybirth %in% miss_values_vector)])/2-HRS_hrs_w11$ybirth[which(HRS_ds_hrs_w11$cancer == 1  & !HRS_hrs_w11$ybirth %in% miss_values_vector)]
+HRS_ds_hrs_w11$cancer_age[which(HRS_ds_hrs_w11$cancer == 1  & !HRS_hrs_w11$ybirth %in% miss_values_vector & !(HRS_hrs_w11$yintw_hrs_w11 %in% miss_values_vector | HRS_hrs_w11$yintw_hrs_w10 %in% miss_values_vector))] <- floor((HRS_hrs_w11$yintw_hrs_w11[which(HRS_ds_hrs_w11$cancer == 1  & !HRS_hrs_w11$ybirth %in% miss_values_vector & !(HRS_hrs_w11$yintw_hrs_w11 %in% miss_values_vector | HRS_hrs_w11$yintw_hrs_w10 %in% miss_values_vector))]+HRS_hrs_w11$yintw_hrs_w10[which(HRS_ds_hrs_w11$cancer == 1  & !HRS_hrs_w11$ybirth %in% miss_values_vector & !(HRS_hrs_w11$yintw_hrs_w11 %in% miss_values_vector | HRS_hrs_w11$yintw_hrs_w10 %in% miss_values_vector))])/2-HRS_hrs_w11$ybirth[which(HRS_ds_hrs_w11$cancer == 1  & !HRS_hrs_w11$ybirth %in% miss_values_vector & !(HRS_hrs_w11$yintw_hrs_w11 %in% miss_values_vector | HRS_hrs_w11$yintw_hrs_w10 %in% miss_values_vector))])
 
 ```
 
@@ -1392,7 +1331,7 @@ vbl <- HRS_ds_hrs_w11$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_hrs_w11, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(45,90)
+ggplot(HRS_ds_hrs_w11 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -1534,16 +1473,16 @@ ggplot(HRS_ahead_w3, aes(x=factor(R3CANCRS))) + geom_bar(stat="count", width=0.4
 vbl <- HRS_ahead_w3$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w3)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ahead_w3, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1890,1970)
+ggplot(HRS_ahead_w3 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ahead_w3$yintw_ahead_w2
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ahead_w3)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w3)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ahead_w3, aes(x=factor(yintw_ahead_w2))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ahead_w3$yintw_ahead_w3
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ahead_w3)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w3)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ahead_w3, aes(x=factor(yintw_ahead_w3))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -1578,7 +1517,7 @@ HRS_ds_ahead_w3$cancer <- car::recode(HRS_ahead_w3$R3CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_ahead_w3$cancer_age <- rep(999,length(HRS_ahead_w3$id))
 HRS_ds_ahead_w3$cancer_age[which(HRS_ds_ahead_w3$cancer == 0)] <- 996
-HRS_ds_ahead_w3$cancer_age[which(HRS_ds_ahead_w3$cancer == 1  & !HRS_ahead_w3$ybirth %in% miss_values_vector)] <- (HRS_ahead_w3$yintw_ahead_w3[which(HRS_ds_ahead_w3$cancer == 1  & !HRS_ahead_w3$ybirth %in% miss_values_vector)]+HRS_ahead_w3$yintw_ahead_w2[which(HRS_ds_ahead_w3$cancer == 1  & !HRS_ahead_w3$ybirth %in% miss_values_vector)])/2-HRS_ahead_w3$ybirth[which(HRS_ds_ahead_w3$cancer == 1  & !HRS_ahead_w3$ybirth %in% miss_values_vector)]
+HRS_ds_ahead_w3$cancer_age[which(HRS_ds_ahead_w3$cancer == 1  & !HRS_ahead_w3$ybirth %in% miss_values_vector & !(HRS_ahead_w3$yintw_ahead_w3 %in% miss_values_vector | HRS_ahead_w3$yintw_ahead_w2 %in% miss_values_vector))] <- floor((HRS_ahead_w3$yintw_ahead_w3[which(HRS_ds_ahead_w3$cancer == 1  & !HRS_ahead_w3$ybirth %in% miss_values_vector & !(HRS_ahead_w3$yintw_ahead_w3 %in% miss_values_vector | HRS_ahead_w3$yintw_ahead_w2 %in% miss_values_vector))]+HRS_ahead_w3$yintw_ahead_w2[which(HRS_ds_ahead_w3$cancer == 1  & !HRS_ahead_w3$ybirth %in% miss_values_vector & !(HRS_ahead_w3$yintw_ahead_w3 %in% miss_values_vector | HRS_ahead_w3$yintw_ahead_w2 %in% miss_values_vector))])/2-HRS_ahead_w3$ybirth[which(HRS_ds_ahead_w3$cancer == 1  & !HRS_ahead_w3$ybirth %in% miss_values_vector & !(HRS_ahead_w3$yintw_ahead_w3 %in% miss_values_vector | HRS_ahead_w3$yintw_ahead_w2 %in% miss_values_vector))])
 
 ```
 
@@ -1597,7 +1536,7 @@ vbl <- HRS_ds_ahead_w3$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_ahead_w3, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(55,100)
+ggplot(HRS_ds_ahead_w3 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -1659,16 +1598,16 @@ ggplot(HRS_ahead_w4, aes(x=factor(R4CANCRS))) + geom_bar(stat="count", width=0.4
 vbl <- HRS_ahead_w4$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w4)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ahead_w4, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1890,1970)
+ggplot(HRS_ahead_w4 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ahead_w4$yintw_ahead_w3
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ahead_w4)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w4)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ahead_w4, aes(x=factor(yintw_ahead_w3))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ahead_w4$yintw_ahead_w4
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ahead_w4)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w4)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ahead_w4, aes(x=factor(yintw_ahead_w4))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -1703,7 +1642,7 @@ HRS_ds_ahead_w4$cancer <- car::recode(HRS_ahead_w4$R4CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_ahead_w4$cancer_age <- rep(999,length(HRS_ahead_w4$id))
 HRS_ds_ahead_w4$cancer_age[which(HRS_ds_ahead_w4$cancer == 0)] <- 996
-HRS_ds_ahead_w4$cancer_age[which(HRS_ds_ahead_w4$cancer == 1  & !HRS_ahead_w4$ybirth %in% miss_values_vector)] <- (HRS_ahead_w4$yintw_ahead_w4[which(HRS_ds_ahead_w4$cancer == 1  & !HRS_ahead_w4$ybirth %in% miss_values_vector)]+HRS_ahead_w4$yintw_ahead_w3[which(HRS_ds_ahead_w4$cancer == 1  & !HRS_ahead_w4$ybirth %in% miss_values_vector)])/2-HRS_ahead_w4$ybirth[which(HRS_ds_ahead_w4$cancer == 1  & !HRS_ahead_w4$ybirth %in% miss_values_vector)]
+HRS_ds_ahead_w4$cancer_age[which(HRS_ds_ahead_w4$cancer == 1  & !HRS_ahead_w4$ybirth %in% miss_values_vector & !(HRS_ahead_w4$yintw_ahead_w4 %in% miss_values_vector | HRS_ahead_w4$yintw_ahead_w3 %in% miss_values_vector))] <- floor((HRS_ahead_w4$yintw_ahead_w4[which(HRS_ds_ahead_w4$cancer == 1  & !HRS_ahead_w4$ybirth %in% miss_values_vector & !(HRS_ahead_w4$yintw_ahead_w4 %in% miss_values_vector | HRS_ahead_w4$yintw_ahead_w3 %in% miss_values_vector))]+HRS_ahead_w4$yintw_ahead_w3[which(HRS_ds_ahead_w4$cancer == 1  & !HRS_ahead_w4$ybirth %in% miss_values_vector & !(HRS_ahead_w4$yintw_ahead_w4 %in% miss_values_vector | HRS_ahead_w4$yintw_ahead_w3 %in% miss_values_vector))])/2-HRS_ahead_w4$ybirth[which(HRS_ds_ahead_w4$cancer == 1  & !HRS_ahead_w4$ybirth %in% miss_values_vector & !(HRS_ahead_w4$yintw_ahead_w4 %in% miss_values_vector | HRS_ahead_w4$yintw_ahead_w3 %in% miss_values_vector))])
 
 ```
 
@@ -1722,7 +1661,7 @@ vbl <- HRS_ds_ahead_w4$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_ahead_w4, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(65,100)
+ggplot(HRS_ds_ahead_w4 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -1784,16 +1723,16 @@ ggplot(HRS_ahead_w5, aes(x=factor(R5CANCRS))) + geom_bar(stat="count", width=0.4
 vbl <- HRS_ahead_w5$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w5)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ahead_w5, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1890,1970)
+ggplot(HRS_ahead_w5 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ahead_w5$yintw_ahead_w4
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ahead_w5)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w5)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ahead_w5, aes(x=factor(yintw_ahead_w4))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ahead_w5$yintw_ahead_w5
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ahead_w5)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w5)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ahead_w5, aes(x=factor(yintw_ahead_w5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -1829,7 +1768,7 @@ HRS_ds_ahead_w5$cancer <- car::recode(HRS_ahead_w5$R5CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_ahead_w5$cancer_age <- rep(999,length(HRS_ahead_w5$id))
 HRS_ds_ahead_w5$cancer_age[which(HRS_ds_ahead_w5$cancer == 0)] <- 996
-HRS_ds_ahead_w5$cancer_age[which(HRS_ds_ahead_w5$cancer == 1  & !HRS_ahead_w5$ybirth %in% miss_values_vector)] <- (HRS_ahead_w5$yintw_ahead_w5[which(HRS_ds_ahead_w5$cancer == 1  & !HRS_ahead_w5$ybirth %in% miss_values_vector)]+HRS_ahead_w5$yintw_ahead_w4[which(HRS_ds_ahead_w5$cancer == 1  & !HRS_ahead_w5$ybirth %in% miss_values_vector)])/2-HRS_ahead_w5$ybirth[which(HRS_ds_ahead_w5$cancer == 1  & !HRS_ahead_w5$ybirth %in% miss_values_vector)]
+HRS_ds_ahead_w5$cancer_age[which(HRS_ds_ahead_w5$cancer == 1  & !HRS_ahead_w5$ybirth %in% miss_values_vector & !(HRS_ahead_w5$yintw_ahead_w5 %in% miss_values_vector | HRS_ahead_w5$yintw_ahead_w4 %in% miss_values_vector))] <- floor((HRS_ahead_w5$yintw_ahead_w5[which(HRS_ds_ahead_w5$cancer == 1  & !HRS_ahead_w5$ybirth %in% miss_values_vector & !(HRS_ahead_w5$yintw_ahead_w5 %in% miss_values_vector | HRS_ahead_w5$yintw_ahead_w4 %in% miss_values_vector))]+HRS_ahead_w5$yintw_ahead_w4[which(HRS_ds_ahead_w5$cancer == 1  & !HRS_ahead_w5$ybirth %in% miss_values_vector & !(HRS_ahead_w5$yintw_ahead_w5 %in% miss_values_vector | HRS_ahead_w5$yintw_ahead_w4 %in% miss_values_vector))])/2-HRS_ahead_w5$ybirth[which(HRS_ds_ahead_w5$cancer == 1  & !HRS_ahead_w5$ybirth %in% miss_values_vector & !(HRS_ahead_w5$yintw_ahead_w5 %in% miss_values_vector | HRS_ahead_w5$yintw_ahead_w4 %in% miss_values_vector))])
 
 ```
 
@@ -1848,7 +1787,7 @@ vbl <- HRS_ds_ahead_w5$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_ahead_w5, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(65,95)
+ggplot(HRS_ds_ahead_w5 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -1909,16 +1848,16 @@ ggplot(HRS_ahead_w6, aes(x=factor(R6CANCRS))) + geom_bar(stat="count", width=0.4
 vbl <- HRS_ahead_w6$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w6)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ahead_w6, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1890,1970)
+ggplot(HRS_ahead_w6 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ahead_w6$yintw_ahead_w5
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ahead_w6)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w6)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ahead_w6, aes(x=factor(yintw_ahead_w5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ahead_w6$yintw_ahead_w6
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ahead_w6)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w6)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ahead_w6, aes(x=factor(yintw_ahead_w6))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -1953,7 +1892,7 @@ HRS_ds_ahead_w6$cancer <- car::recode(HRS_ahead_w6$R6CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_ahead_w6$cancer_age <- rep(999,length(HRS_ahead_w6$id))
 HRS_ds_ahead_w6$cancer_age[which(HRS_ds_ahead_w6$cancer == 0)] <- 996
-HRS_ds_ahead_w6$cancer_age[which(HRS_ds_ahead_w6$cancer == 1  & !HRS_ahead_w6$ybirth %in% miss_values_vector)] <- (HRS_ahead_w6$yintw_ahead_w6[which(HRS_ds_ahead_w6$cancer == 1  & !HRS_ahead_w6$ybirth %in% miss_values_vector)]+HRS_ahead_w6$yintw_ahead_w5[which(HRS_ds_ahead_w6$cancer == 1  & !HRS_ahead_w6$ybirth %in% miss_values_vector)])/2-HRS_ahead_w6$ybirth[which(HRS_ds_ahead_w6$cancer == 1  & !HRS_ahead_w6$ybirth %in% miss_values_vector)]
+HRS_ds_ahead_w6$cancer_age[which(HRS_ds_ahead_w6$cancer == 1  & !HRS_ahead_w6$ybirth %in% miss_values_vector & !(HRS_ahead_w6$yintw_ahead_w6 %in% miss_values_vector | HRS_ahead_w6$yintw_ahead_w5 %in% miss_values_vector))] <- floor((HRS_ahead_w6$yintw_ahead_w6[which(HRS_ds_ahead_w6$cancer == 1  & !HRS_ahead_w6$ybirth %in% miss_values_vector & !(HRS_ahead_w6$yintw_ahead_w6 %in% miss_values_vector | HRS_ahead_w6$yintw_ahead_w5 %in% miss_values_vector))]+HRS_ahead_w6$yintw_ahead_w5[which(HRS_ds_ahead_w6$cancer == 1  & !HRS_ahead_w6$ybirth %in% miss_values_vector & !(HRS_ahead_w6$yintw_ahead_w6 %in% miss_values_vector | HRS_ahead_w6$yintw_ahead_w5 %in% miss_values_vector))])/2-HRS_ahead_w6$ybirth[which(HRS_ds_ahead_w6$cancer == 1  & !HRS_ahead_w6$ybirth %in% miss_values_vector & !(HRS_ahead_w6$yintw_ahead_w6 %in% miss_values_vector | HRS_ahead_w6$yintw_ahead_w5 %in% miss_values_vector))])
 
 ```
 
@@ -1972,7 +1911,7 @@ vbl <- HRS_ds_ahead_w6$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_ahead_w6, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(70,95)
+ggplot(HRS_ds_ahead_w6 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -2033,16 +1972,16 @@ ggplot(HRS_ahead_w7, aes(x=factor(R7CANCRS))) + geom_bar(stat="count", width=0.4
 vbl <- HRS_ahead_w7$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w7)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ahead_w7, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1890,1970)
+ggplot(HRS_ahead_w7 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ahead_w7$yintw_ahead_w6
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ahead_w7)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w7)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ahead_w7, aes(x=factor(yintw_ahead_w6))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ahead_w7$yintw_ahead_w7
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ahead_w7)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w7)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ahead_w7, aes(x=factor(yintw_ahead_w7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -2078,7 +2017,7 @@ HRS_ds_ahead_w7$cancer <- car::recode(HRS_ahead_w7$R7CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_ahead_w7$cancer_age <- rep(999,length(HRS_ahead_w7$id))
 HRS_ds_ahead_w7$cancer_age[which(HRS_ds_ahead_w7$cancer == 0)] <- 996
-HRS_ds_ahead_w7$cancer_age[which(HRS_ds_ahead_w7$cancer == 1  & !HRS_ahead_w7$ybirth %in% miss_values_vector)] <- (HRS_ahead_w7$yintw_ahead_w7[which(HRS_ds_ahead_w7$cancer == 1  & !HRS_ahead_w7$ybirth %in% miss_values_vector)]+HRS_ahead_w7$yintw_ahead_w6[which(HRS_ds_ahead_w7$cancer == 1  & !HRS_ahead_w7$ybirth %in% miss_values_vector)])/2-HRS_ahead_w7$ybirth[which(HRS_ds_ahead_w7$cancer == 1  & !HRS_ahead_w7$ybirth %in% miss_values_vector)]
+HRS_ds_ahead_w7$cancer_age[which(HRS_ds_ahead_w7$cancer == 1  & !HRS_ahead_w7$ybirth %in% miss_values_vector & !(HRS_ahead_w7$yintw_ahead_w7 %in% miss_values_vector | HRS_ahead_w7$yintw_ahead_w6 %in% miss_values_vector))] <- floor((HRS_ahead_w7$yintw_ahead_w7[which(HRS_ds_ahead_w7$cancer == 1  & !HRS_ahead_w7$ybirth %in% miss_values_vector & !(HRS_ahead_w7$yintw_ahead_w7 %in% miss_values_vector | HRS_ahead_w7$yintw_ahead_w6 %in% miss_values_vector))]+HRS_ahead_w7$yintw_ahead_w6[which(HRS_ds_ahead_w7$cancer == 1  & !HRS_ahead_w7$ybirth %in% miss_values_vector & !(HRS_ahead_w7$yintw_ahead_w7 %in% miss_values_vector | HRS_ahead_w7$yintw_ahead_w6 %in% miss_values_vector))])/2-HRS_ahead_w7$ybirth[which(HRS_ds_ahead_w7$cancer == 1  & !HRS_ahead_w7$ybirth %in% miss_values_vector & !(HRS_ahead_w7$yintw_ahead_w7 %in% miss_values_vector | HRS_ahead_w7$yintw_ahead_w6 %in% miss_values_vector))])
 
 ```
 
@@ -2097,7 +2036,7 @@ vbl <- HRS_ds_ahead_w7$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_ahead_w7, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(65,100)
+ggplot(HRS_ds_ahead_w7 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -2159,16 +2098,16 @@ ggplot(HRS_ahead_w8, aes(x=factor(R8CANCRS))) + geom_bar(stat="count", width=0.4
 vbl <- HRS_ahead_w8$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w8)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ahead_w8, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1890,1970)
+ggplot(HRS_ahead_w8 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ahead_w8$yintw_ahead_w7
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ahead_w8)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w8)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ahead_w8, aes(x=factor(yintw_ahead_w7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ahead_w8$yintw_ahead_w8
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ahead_w8)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w8)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ahead_w8, aes(x=factor(yintw_ahead_w8))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -2203,7 +2142,7 @@ HRS_ds_ahead_w8$cancer <- car::recode(HRS_ahead_w8$R8CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_ahead_w8$cancer_age <- rep(999,length(HRS_ahead_w8$id))
 HRS_ds_ahead_w8$cancer_age[which(HRS_ds_ahead_w8$cancer == 0)] <- 996
-HRS_ds_ahead_w8$cancer_age[which(HRS_ds_ahead_w8$cancer == 1  & !HRS_ahead_w8$ybirth %in% miss_values_vector)] <- (HRS_ahead_w8$yintw_ahead_w8[which(HRS_ds_ahead_w8$cancer == 1  & !HRS_ahead_w8$ybirth %in% miss_values_vector)]+HRS_ahead_w8$yintw_ahead_w7[which(HRS_ds_ahead_w8$cancer == 1  & !HRS_ahead_w8$ybirth %in% miss_values_vector)])/2-HRS_ahead_w8$ybirth[which(HRS_ds_ahead_w8$cancer == 1  & !HRS_ahead_w8$ybirth %in% miss_values_vector)]
+HRS_ds_ahead_w8$cancer_age[which(HRS_ds_ahead_w8$cancer == 1  & !HRS_ahead_w8$ybirth %in% miss_values_vector & !(HRS_ahead_w8$yintw_ahead_w8 %in% miss_values_vector | HRS_ahead_w8$yintw_ahead_w7 %in% miss_values_vector))] <- floor((HRS_ahead_w8$yintw_ahead_w8[which(HRS_ds_ahead_w8$cancer == 1  & !HRS_ahead_w8$ybirth %in% miss_values_vector & !(HRS_ahead_w8$yintw_ahead_w8 %in% miss_values_vector | HRS_ahead_w8$yintw_ahead_w7 %in% miss_values_vector))]+HRS_ahead_w8$yintw_ahead_w7[which(HRS_ds_ahead_w8$cancer == 1  & !HRS_ahead_w8$ybirth %in% miss_values_vector & !(HRS_ahead_w8$yintw_ahead_w8 %in% miss_values_vector | HRS_ahead_w8$yintw_ahead_w7 %in% miss_values_vector))])/2-HRS_ahead_w8$ybirth[which(HRS_ds_ahead_w8$cancer == 1  & !HRS_ahead_w8$ybirth %in% miss_values_vector & !(HRS_ahead_w8$yintw_ahead_w8 %in% miss_values_vector | HRS_ahead_w8$yintw_ahead_w7 %in% miss_values_vector))])
 
 
 ```
@@ -2223,7 +2162,7 @@ vbl <- HRS_ds_ahead_w8$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_ahead_w8, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(60,95)
+ggplot(HRS_ds_ahead_w8 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -2284,16 +2223,16 @@ ggplot(HRS_ahead_w9, aes(x=factor(R9CANCRS))) + geom_bar(stat="count", width=0.4
 vbl <- HRS_ahead_w9$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w9)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ahead_w9, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1890,1970)
+ggplot(HRS_ahead_w9 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ahead_w9$yintw_ahead_w8
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ahead_w9)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w9)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ahead_w9, aes(x=factor(yintw_ahead_w8))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ahead_w9$yintw_ahead_w9
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ahead_w9)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w9)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ahead_w9, aes(x=factor(yintw_ahead_w9))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -2328,7 +2267,7 @@ HRS_ds_ahead_w9$cancer <- car::recode(HRS_ahead_w9$R9CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_ahead_w9$cancer_age <- rep(999,length(HRS_ahead_w9$id))
 HRS_ds_ahead_w9$cancer_age[which(HRS_ds_ahead_w9$cancer == 0)] <- 996
-HRS_ds_ahead_w9$cancer_age[which(HRS_ds_ahead_w9$cancer == 1  & !HRS_ahead_w9$ybirth %in% miss_values_vector)] <- (HRS_ahead_w9$yintw_ahead_w9[which(HRS_ds_ahead_w9$cancer == 1  & !HRS_ahead_w9$ybirth %in% miss_values_vector)]+HRS_ahead_w9$yintw_ahead_w8[which(HRS_ds_ahead_w9$cancer == 1  & !HRS_ahead_w9$ybirth %in% miss_values_vector)])/2-HRS_ahead_w9$ybirth[which(HRS_ds_ahead_w9$cancer == 1  & !HRS_ahead_w9$ybirth %in% miss_values_vector)]
+HRS_ds_ahead_w9$cancer_age[which(HRS_ds_ahead_w9$cancer == 1  & !HRS_ahead_w9$ybirth %in% miss_values_vector & !(HRS_ahead_w9$yintw_ahead_w9 %in% miss_values_vector | HRS_ahead_w9$yintw_ahead_w8 %in% miss_values_vector))] <- floor((HRS_ahead_w9$yintw_ahead_w9[which(HRS_ds_ahead_w9$cancer == 1  & !HRS_ahead_w9$ybirth %in% miss_values_vector & !(HRS_ahead_w9$yintw_ahead_w9 %in% miss_values_vector | HRS_ahead_w9$yintw_ahead_w8 %in% miss_values_vector))]+HRS_ahead_w9$yintw_ahead_w8[which(HRS_ds_ahead_w9$cancer == 1  & !HRS_ahead_w9$ybirth %in% miss_values_vector & !(HRS_ahead_w9$yintw_ahead_w9 %in% miss_values_vector | HRS_ahead_w9$yintw_ahead_w8 %in% miss_values_vector))])/2-HRS_ahead_w9$ybirth[which(HRS_ds_ahead_w9$cancer == 1  & !HRS_ahead_w9$ybirth %in% miss_values_vector & !(HRS_ahead_w9$yintw_ahead_w9 %in% miss_values_vector | HRS_ahead_w9$yintw_ahead_w8 %in% miss_values_vector))])
 
 ```
 
@@ -2347,7 +2286,7 @@ vbl <- HRS_ds_ahead_w9$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_ahead_w9, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(60,100)
+ggplot(HRS_ds_ahead_w9 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -2408,16 +2347,16 @@ ggplot(HRS_ahead_w10, aes(x=factor(R10CANCRS))) + geom_bar(stat="count", width=0
 vbl <- HRS_ahead_w10$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w10)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ahead_w10, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1890,1970)
+ggplot(HRS_ahead_w10 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ahead_w10$yintw_ahead_w9
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ahead_w10)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w10)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ahead_w10, aes(x=factor(yintw_ahead_w9))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ahead_w10$yintw_ahead_w10
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ahead_w10)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w10)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ahead_w10, aes(x=factor(yintw_ahead_w10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -2452,7 +2391,7 @@ HRS_ds_ahead_w10$cancer <- car::recode(HRS_ahead_w10$R10CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_ahead_w10$cancer_age <- rep(999,length(HRS_ahead_w10$id))
 HRS_ds_ahead_w10$cancer_age[which(HRS_ds_ahead_w10$cancer == 0)] <- 996
-HRS_ds_ahead_w10$cancer_age[which(HRS_ds_ahead_w10$cancer == 1  & !HRS_ahead_w10$ybirth %in% miss_values_vector)] <- (HRS_ahead_w10$yintw_ahead_w10[which(HRS_ds_ahead_w10$cancer == 1  & !HRS_ahead_w10$ybirth %in% miss_values_vector)]+HRS_ahead_w10$yintw_ahead_w9[which(HRS_ds_ahead_w10$cancer == 1  & !HRS_ahead_w10$ybirth %in% miss_values_vector)])/2-HRS_ahead_w10$ybirth[which(HRS_ds_ahead_w10$cancer == 1  & !HRS_ahead_w10$ybirth %in% miss_values_vector)]
+HRS_ds_ahead_w10$cancer_age[which(HRS_ds_ahead_w10$cancer == 1  & !HRS_ahead_w10$ybirth %in% miss_values_vector & !(HRS_ahead_w10$yintw_ahead_w10 %in% miss_values_vector | HRS_ahead_w10$yintw_ahead_w9 %in% miss_values_vector))] <- floor((HRS_ahead_w10$yintw_ahead_w10[which(HRS_ds_ahead_w10$cancer == 1  & !HRS_ahead_w10$ybirth %in% miss_values_vector & !(HRS_ahead_w10$yintw_ahead_w10 %in% miss_values_vector | HRS_ahead_w10$yintw_ahead_w9 %in% miss_values_vector))]+HRS_ahead_w10$yintw_ahead_w9[which(HRS_ds_ahead_w10$cancer == 1  & !HRS_ahead_w10$ybirth %in% miss_values_vector & !(HRS_ahead_w10$yintw_ahead_w10 %in% miss_values_vector | HRS_ahead_w10$yintw_ahead_w9 %in% miss_values_vector))])/2-HRS_ahead_w10$ybirth[which(HRS_ds_ahead_w10$cancer == 1  & !HRS_ahead_w10$ybirth %in% miss_values_vector & !(HRS_ahead_w10$yintw_ahead_w10 %in% miss_values_vector | HRS_ahead_w10$yintw_ahead_w9 %in% miss_values_vector))])
 
 ```
 
@@ -2471,7 +2410,7 @@ vbl <- HRS_ds_ahead_w10$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_ahead_w10, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(60,105)
+ggplot(HRS_ds_ahead_w10 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -2533,16 +2472,16 @@ ggplot(HRS_ahead_w11, aes(x=factor(R11CANCRS))) + geom_bar(stat="count", width=0
 vbl <- HRS_ahead_w11$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w11)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ahead_w11, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1890,1970)
+ggplot(HRS_ahead_w11 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ahead_w11$yintw_ahead_w10
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ahead_w11)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w11)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ahead_w11, aes(x=factor(yintw_ahead_w10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ahead_w11$yintw_ahead_w11
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ahead_w11)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ahead_w11)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ahead_w11, aes(x=factor(yintw_ahead_w11))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -2577,7 +2516,7 @@ HRS_ds_ahead_w11$cancer <- car::recode(HRS_ahead_w11$R11CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_ahead_w11$cancer_age <- rep(999,length(HRS_ahead_w11$id))
 HRS_ds_ahead_w11$cancer_age[which(HRS_ds_ahead_w11$cancer == 0)] <- 996
-HRS_ds_ahead_w11$cancer_age[which(HRS_ds_ahead_w11$cancer == 1  & !HRS_ahead_w11$ybirth %in% miss_values_vector)] <- (HRS_ahead_w11$yintw_ahead_w11[which(HRS_ds_ahead_w11$cancer == 1  & !HRS_ahead_w11$ybirth %in% miss_values_vector)]+HRS_ahead_w11$yintw_ahead_w10[which(HRS_ds_ahead_w11$cancer == 1  & !HRS_ahead_w11$ybirth %in% miss_values_vector)])/2-HRS_ahead_w11$ybirth[which(HRS_ds_ahead_w11$cancer == 1  & !HRS_ahead_w11$ybirth %in% miss_values_vector)]
+HRS_ds_ahead_w11$cancer_age[which(HRS_ds_ahead_w11$cancer == 1  & !HRS_ahead_w11$ybirth %in% miss_values_vector & !(HRS_ahead_w11$yintw_ahead_w11 %in% miss_values_vector | HRS_ahead_w11$yintw_ahead_w10 %in% miss_values_vector))] <- floor((HRS_ahead_w11$yintw_ahead_w11[which(HRS_ds_ahead_w11$cancer == 1  & !HRS_ahead_w11$ybirth %in% miss_values_vector & !(HRS_ahead_w11$yintw_ahead_w11 %in% miss_values_vector | HRS_ahead_w11$yintw_ahead_w10 %in% miss_values_vector))]+HRS_ahead_w11$yintw_ahead_w10[which(HRS_ds_ahead_w11$cancer == 1  & !HRS_ahead_w11$ybirth %in% miss_values_vector & !(HRS_ahead_w11$yintw_ahead_w11 %in% miss_values_vector | HRS_ahead_w11$yintw_ahead_w10 %in% miss_values_vector))])/2-HRS_ahead_w11$ybirth[which(HRS_ds_ahead_w11$cancer == 1  & !HRS_ahead_w11$ybirth %in% miss_values_vector & !(HRS_ahead_w11$yintw_ahead_w11 %in% miss_values_vector | HRS_ahead_w11$yintw_ahead_w10 %in% miss_values_vector))])
 
 ```
 
@@ -2596,7 +2535,7 @@ vbl <- HRS_ds_ahead_w11$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_ahead_w11, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(65,100)
+ggplot(HRS_ds_ahead_w11 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -2737,16 +2676,16 @@ ggplot(HRS_coda_w5, aes(x=factor(R5CANCRS))) + geom_bar(stat="count", width=0.4,
 vbl <- HRS_coda_w5$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_coda_w5)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_coda_w5, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1910,1970)
+ggplot(HRS_coda_w5 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_coda_w5$yintw_coda_w4
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_coda_w5)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_coda_w5)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_coda_w5, aes(x=factor(yintw_coda_w4))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_coda_w5$yintw_coda_w5
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_coda_w5)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_coda_w5)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_coda_w5, aes(x=factor(yintw_coda_w5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -2780,7 +2719,7 @@ HRS_ds_coda_w5$cancer <- car::recode(HRS_coda_w5$R5CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_coda_w5$cancer_age <- rep(999,length(HRS_coda_w5$id))
 HRS_ds_coda_w5$cancer_age[which(HRS_ds_coda_w5$cancer == 0)] <- 996
-HRS_ds_coda_w5$cancer_age[which(HRS_ds_coda_w5$cancer == 1  & !HRS_coda_w5$ybirth %in% miss_values_vector)] <- (HRS_coda_w5$yintw_coda_w5[which(HRS_ds_coda_w5$cancer == 1  & !HRS_coda_w5$ybirth %in% miss_values_vector)]+HRS_coda_w5$yintw_coda_w4[which(HRS_ds_coda_w5$cancer == 1  & !HRS_coda_w5$ybirth %in% miss_values_vector)])/2-HRS_coda_w5$ybirth[which(HRS_ds_coda_w5$cancer == 1  & !HRS_coda_w5$ybirth %in% miss_values_vector)]
+HRS_ds_coda_w5$cancer_age[which(HRS_ds_coda_w5$cancer == 1  & !HRS_coda_w5$ybirth %in% miss_values_vector & !(HRS_coda_w5$yintw_coda_w5 %in% miss_values_vector | HRS_coda_w5$yintw_coda_w4 %in% miss_values_vector))] <- floor((HRS_coda_w5$yintw_coda_w5[which(HRS_ds_coda_w5$cancer == 1  & !HRS_coda_w5$ybirth %in% miss_values_vector & !(HRS_coda_w5$yintw_coda_w5 %in% miss_values_vector | HRS_coda_w5$yintw_coda_w4 %in% miss_values_vector))]+HRS_coda_w5$yintw_coda_w4[which(HRS_ds_coda_w5$cancer == 1  & !HRS_coda_w5$ybirth %in% miss_values_vector & !(HRS_coda_w5$yintw_coda_w5 %in% miss_values_vector | HRS_coda_w5$yintw_coda_w4 %in% miss_values_vector))])/2-HRS_coda_w5$ybirth[which(HRS_ds_coda_w5$cancer == 1  & !HRS_coda_w5$ybirth %in% miss_values_vector & !(HRS_coda_w5$yintw_coda_w5 %in% miss_values_vector | HRS_coda_w5$yintw_coda_w4 %in% miss_values_vector))])
 
 ```
 
@@ -2799,7 +2738,7 @@ vbl <- HRS_ds_coda_w5$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_coda_w5, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(65,80)
+ggplot(HRS_ds_coda_w5 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -2861,16 +2800,16 @@ ggplot(HRS_coda_w6, aes(x=factor(R6CANCRS))) + geom_bar(stat="count", width=0.4,
 vbl <- HRS_coda_w6$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_coda_w6)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_coda_w6, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1910,1970)
+ggplot(HRS_coda_w6 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_coda_w6$yintw_coda_w5
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_coda_w6)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_coda_w6)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_coda_w6, aes(x=factor(yintw_coda_w5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_coda_w6$yintw_coda_w6
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_coda_w6)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_coda_w6)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_coda_w6, aes(x=factor(yintw_coda_w6))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -2905,7 +2844,7 @@ HRS_ds_coda_w6$cancer <- car::recode(HRS_coda_w6$R6CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_coda_w6$cancer_age <- rep(999,length(HRS_coda_w6$id))
 HRS_ds_coda_w6$cancer_age[which(HRS_ds_coda_w6$cancer == 0)] <- 996
-HRS_ds_coda_w6$cancer_age[which(HRS_ds_coda_w6$cancer == 1  & !HRS_coda_w6$ybirth %in% miss_values_vector)] <- (HRS_coda_w6$yintw_coda_w6[which(HRS_ds_coda_w6$cancer == 1  & !HRS_coda_w6$ybirth %in% miss_values_vector)]+HRS_coda_w6$yintw_coda_w5[which(HRS_ds_coda_w6$cancer == 1  & !HRS_coda_w6$ybirth %in% miss_values_vector)])/2-HRS_coda_w6$ybirth[which(HRS_ds_coda_w6$cancer == 1  & !HRS_coda_w6$ybirth %in% miss_values_vector)]
+HRS_ds_coda_w6$cancer_age[which(HRS_ds_coda_w6$cancer == 1  & !HRS_coda_w6$ybirth %in% miss_values_vector & !(HRS_coda_w6$yintw_coda_w6 %in% miss_values_vector | HRS_coda_w6$yintw_coda_w5 %in% miss_values_vector))] <- floor((HRS_coda_w6$yintw_coda_w6[which(HRS_ds_coda_w6$cancer == 1  & !HRS_coda_w6$ybirth %in% miss_values_vector & !(HRS_coda_w6$yintw_coda_w6 %in% miss_values_vector | HRS_coda_w6$yintw_coda_w5 %in% miss_values_vector))]+HRS_coda_w6$yintw_coda_w5[which(HRS_ds_coda_w6$cancer == 1  & !HRS_coda_w6$ybirth %in% miss_values_vector & !(HRS_coda_w6$yintw_coda_w6 %in% miss_values_vector | HRS_coda_w6$yintw_coda_w5 %in% miss_values_vector))])/2-HRS_coda_w6$ybirth[which(HRS_ds_coda_w6$cancer == 1  & !HRS_coda_w6$ybirth %in% miss_values_vector & !(HRS_coda_w6$yintw_coda_w6 %in% miss_values_vector | HRS_coda_w6$yintw_coda_w5 %in% miss_values_vector))])
 
 ```
 
@@ -2924,7 +2863,7 @@ vbl <- HRS_ds_coda_w6$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_coda_w6, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(65,80)
+ggplot(HRS_ds_coda_w6 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -2986,16 +2925,16 @@ ggplot(HRS_coda_w7, aes(x=factor(R7CANCRS))) + geom_bar(stat="count", width=0.4,
 vbl <- HRS_coda_w7$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_coda_w7)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_coda_w7, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1910,1970)
+ggplot(HRS_coda_w7 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_coda_w7$yintw_coda_w6
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_coda_w7)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_coda_w7)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_coda_w7, aes(x=factor(yintw_coda_w6))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_coda_w7$yintw_coda_w7
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_coda_w7)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_coda_w7)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_coda_w7, aes(x=factor(yintw_coda_w7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -3030,7 +2969,7 @@ HRS_ds_coda_w7$cancer <- car::recode(HRS_coda_w7$R7CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_coda_w7$cancer_age <- rep(999,length(HRS_coda_w7$id))
 HRS_ds_coda_w7$cancer_age[which(HRS_ds_coda_w7$cancer == 0)] <- 996
-HRS_ds_coda_w7$cancer_age[which(HRS_ds_coda_w7$cancer == 1  & !HRS_coda_w7$ybirth %in% miss_values_vector)] <- (HRS_coda_w7$yintw_coda_w7[which(HRS_ds_coda_w7$cancer == 1  & !HRS_coda_w7$ybirth %in% miss_values_vector)]+HRS_coda_w7$yintw_coda_w6[which(HRS_ds_coda_w7$cancer == 1  & !HRS_coda_w7$ybirth %in% miss_values_vector)])/2-HRS_coda_w7$ybirth[which(HRS_ds_coda_w7$cancer == 1  & !HRS_coda_w7$ybirth %in% miss_values_vector)]
+HRS_ds_coda_w7$cancer_age[which(HRS_ds_coda_w7$cancer == 1  & !HRS_coda_w7$ybirth %in% miss_values_vector & !(HRS_coda_w7$yintw_coda_w7 %in% miss_values_vector | HRS_coda_w7$yintw_coda_w6 %in% miss_values_vector))] <- floor((HRS_coda_w7$yintw_coda_w7[which(HRS_ds_coda_w7$cancer == 1  & !HRS_coda_w7$ybirth %in% miss_values_vector & !(HRS_coda_w7$yintw_coda_w7 %in% miss_values_vector | HRS_coda_w7$yintw_coda_w6 %in% miss_values_vector))]+HRS_coda_w7$yintw_coda_w6[which(HRS_ds_coda_w7$cancer == 1  & !HRS_coda_w7$ybirth %in% miss_values_vector & !(HRS_coda_w7$yintw_coda_w7 %in% miss_values_vector | HRS_coda_w7$yintw_coda_w6 %in% miss_values_vector))])/2-HRS_coda_w7$ybirth[which(HRS_ds_coda_w7$cancer == 1  & !HRS_coda_w7$ybirth %in% miss_values_vector & !(HRS_coda_w7$yintw_coda_w7 %in% miss_values_vector | HRS_coda_w7$yintw_coda_w6 %in% miss_values_vector))])
 
 ```
 
@@ -3049,7 +2988,7 @@ vbl <- HRS_ds_coda_w7$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_coda_w7, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(70,80)+scale_y_continuous(breaks=c(0,2,4,6,8,10))+scale_x_continuous(breaks=c(70,75,80))
+ggplot(HRS_ds_coda_w7 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+scale_y_continuous(breaks=c(0,2,4,6,8,10))+scale_x_continuous(breaks=c(70,75,80))
 
 ```
 
@@ -3110,16 +3049,16 @@ ggplot(HRS_coda_w8, aes(x=factor(R8CANCRS))) + geom_bar(stat="count", width=0.4,
 vbl <- HRS_coda_w8$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_coda_w8)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_coda_w8, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1910,1970)
+ggplot(HRS_coda_w8 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_coda_w8$yintw_coda_w7
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_coda_w8)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_coda_w8)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_coda_w8, aes(x=factor(yintw_coda_w7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_coda_w8$yintw_coda_w8
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_coda_w8)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_coda_w8)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_coda_w8, aes(x=factor(yintw_coda_w8))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -3154,7 +3093,7 @@ HRS_ds_coda_w8$cancer <- car::recode(HRS_coda_w8$R8CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_coda_w8$cancer_age <- rep(999,length(HRS_coda_w8$id))
 HRS_ds_coda_w8$cancer_age[which(HRS_ds_coda_w8$cancer == 0)] <- 996
-HRS_ds_coda_w8$cancer_age[which(HRS_ds_coda_w8$cancer == 1  & !HRS_coda_w8$ybirth %in% miss_values_vector)] <- (HRS_coda_w8$yintw_coda_w8[which(HRS_ds_coda_w8$cancer == 1  & !HRS_coda_w8$ybirth %in% miss_values_vector)]+HRS_coda_w8$yintw_coda_w7[which(HRS_ds_coda_w8$cancer == 1  & !HRS_coda_w8$ybirth %in% miss_values_vector)])/2-HRS_coda_w8$ybirth[which(HRS_ds_coda_w8$cancer == 1  & !HRS_coda_w8$ybirth %in% miss_values_vector)]
+HRS_ds_coda_w8$cancer_age[which(HRS_ds_coda_w8$cancer == 1  & !HRS_coda_w8$ybirth %in% miss_values_vector & !(HRS_coda_w8$yintw_coda_w8 %in% miss_values_vector | HRS_coda_w8$yintw_coda_w7 %in% miss_values_vector))] <- floor((HRS_coda_w8$yintw_coda_w8[which(HRS_ds_coda_w8$cancer == 1  & !HRS_coda_w8$ybirth %in% miss_values_vector & !(HRS_coda_w8$yintw_coda_w8 %in% miss_values_vector | HRS_coda_w8$yintw_coda_w7 %in% miss_values_vector))]+HRS_coda_w8$yintw_coda_w7[which(HRS_ds_coda_w8$cancer == 1  & !HRS_coda_w8$ybirth %in% miss_values_vector & !(HRS_coda_w8$yintw_coda_w8 %in% miss_values_vector | HRS_coda_w8$yintw_coda_w7 %in% miss_values_vector))])/2-HRS_coda_w8$ybirth[which(HRS_ds_coda_w8$cancer == 1  & !HRS_coda_w8$ybirth %in% miss_values_vector & !(HRS_coda_w8$yintw_coda_w8 %in% miss_values_vector | HRS_coda_w8$yintw_coda_w7 %in% miss_values_vector))])
 
 ```
 
@@ -3173,7 +3112,7 @@ vbl <- HRS_ds_coda_w8$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_coda_w8, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(70,85)
+ggplot(HRS_ds_coda_w8 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -3234,16 +3173,16 @@ ggplot(HRS_coda_w9, aes(x=factor(R9CANCRS))) + geom_bar(stat="count", width=0.4,
 vbl <- HRS_coda_w9$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_coda_w9)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_coda_w9, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1910,1970)
+ggplot(HRS_coda_w9 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_coda_w9$yintw_coda_w8
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_coda_w9)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_coda_w9)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_coda_w9, aes(x=factor(yintw_coda_w8))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_coda_w9$yintw_coda_w9
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_coda_w9)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_coda_w9)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_coda_w9, aes(x=factor(yintw_coda_w9))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -3278,7 +3217,7 @@ HRS_ds_coda_w9$cancer <- car::recode(HRS_coda_w9$R9CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_coda_w9$cancer_age <- rep(999,length(HRS_coda_w9$id))
 HRS_ds_coda_w9$cancer_age[which(HRS_ds_coda_w9$cancer == 0)] <- 996
-HRS_ds_coda_w9$cancer_age[which(HRS_ds_coda_w9$cancer == 1  & !HRS_coda_w9$ybirth %in% miss_values_vector)] <- (HRS_coda_w9$yintw_coda_w9[which(HRS_ds_coda_w9$cancer == 1  & !HRS_coda_w9$ybirth %in% miss_values_vector)]+HRS_coda_w9$yintw_coda_w8[which(HRS_ds_coda_w9$cancer == 1  & !HRS_coda_w9$ybirth %in% miss_values_vector)])/2-HRS_coda_w9$ybirth[which(HRS_ds_coda_w9$cancer == 1  & !HRS_coda_w9$ybirth %in% miss_values_vector)]
+HRS_ds_coda_w9$cancer_age[which(HRS_ds_coda_w9$cancer == 1  & !HRS_coda_w9$ybirth %in% miss_values_vector & !(HRS_coda_w9$yintw_coda_w9 %in% miss_values_vector | HRS_coda_w9$yintw_coda_w8 %in% miss_values_vector))] <- floor((HRS_coda_w9$yintw_coda_w9[which(HRS_ds_coda_w9$cancer == 1  & !HRS_coda_w9$ybirth %in% miss_values_vector & !(HRS_coda_w9$yintw_coda_w9 %in% miss_values_vector | HRS_coda_w9$yintw_coda_w8 %in% miss_values_vector))]+HRS_coda_w9$yintw_coda_w8[which(HRS_ds_coda_w9$cancer == 1  & !HRS_coda_w9$ybirth %in% miss_values_vector & !(HRS_coda_w9$yintw_coda_w9 %in% miss_values_vector | HRS_coda_w9$yintw_coda_w8 %in% miss_values_vector))])/2-HRS_coda_w9$ybirth[which(HRS_ds_coda_w9$cancer == 1  & !HRS_coda_w9$ybirth %in% miss_values_vector & !(HRS_coda_w9$yintw_coda_w9 %in% miss_values_vector | HRS_coda_w9$yintw_coda_w8 %in% miss_values_vector))])
 
 ```
 
@@ -3297,7 +3236,7 @@ vbl <- HRS_ds_coda_w9$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_coda_w9, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(75,85)+scale_x_continuous(breaks=c(75,80,85))
+ggplot(HRS_ds_coda_w9 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+scale_x_continuous(breaks=c(75,80,85))
 
 ```
 
@@ -3359,16 +3298,16 @@ ggplot(HRS_coda_w10, aes(x=factor(R10CANCRS))) + geom_bar(stat="count", width=0.
 vbl <- HRS_coda_w10$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_coda_w10)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_coda_w10, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1910,1970)
+ggplot(HRS_coda_w10 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_coda_w10$yintw_coda_w9
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_coda_w10)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_coda_w10)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_coda_w10, aes(x=factor(yintw_coda_w9))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_coda_w10$yintw_coda_w10
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_coda_w10)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_coda_w10)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_coda_w10, aes(x=factor(yintw_coda_w10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -3403,7 +3342,7 @@ HRS_ds_coda_w10$cancer <- car::recode(HRS_coda_w10$R10CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_coda_w10$cancer_age <- rep(999,length(HRS_coda_w10$id))
 HRS_ds_coda_w10$cancer_age[which(HRS_ds_coda_w10$cancer == 0)] <- 996
-HRS_ds_coda_w10$cancer_age[which(HRS_ds_coda_w10$cancer == 1  & !HRS_coda_w10$ybirth %in% miss_values_vector)] <- (HRS_coda_w10$yintw_coda_w10[which(HRS_ds_coda_w10$cancer == 1  & !HRS_coda_w10$ybirth %in% miss_values_vector)]+HRS_coda_w10$yintw_coda_w9[which(HRS_ds_coda_w10$cancer == 1  & !HRS_coda_w10$ybirth %in% miss_values_vector)])/2-HRS_coda_w10$ybirth[which(HRS_ds_coda_w10$cancer == 1  & !HRS_coda_w10$ybirth %in% miss_values_vector)]
+HRS_ds_coda_w10$cancer_age[which(HRS_ds_coda_w10$cancer == 1  & !HRS_coda_w10$ybirth %in% miss_values_vector & !(HRS_coda_w10$yintw_coda_w10 %in% miss_values_vector | HRS_coda_w10$yintw_coda_w9 %in% miss_values_vector))] <- floor((HRS_coda_w10$yintw_coda_w10[which(HRS_ds_coda_w10$cancer == 1  & !HRS_coda_w10$ybirth %in% miss_values_vector & !(HRS_coda_w10$yintw_coda_w10 %in% miss_values_vector | HRS_coda_w10$yintw_coda_w9 %in% miss_values_vector))]+HRS_coda_w10$yintw_coda_w9[which(HRS_ds_coda_w10$cancer == 1  & !HRS_coda_w10$ybirth %in% miss_values_vector & !(HRS_coda_w10$yintw_coda_w10 %in% miss_values_vector | HRS_coda_w10$yintw_coda_w9 %in% miss_values_vector))])/2-HRS_coda_w10$ybirth[which(HRS_ds_coda_w10$cancer == 1  & !HRS_coda_w10$ybirth %in% miss_values_vector & !(HRS_coda_w10$yintw_coda_w10 %in% miss_values_vector | HRS_coda_w10$yintw_coda_w9 %in% miss_values_vector))])
 
 ```
 
@@ -3422,7 +3361,7 @@ vbl <- HRS_ds_coda_w10$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_coda_w10, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(55,100)
+ggplot(HRS_ds_coda_w10 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -3483,16 +3422,16 @@ ggplot(HRS_coda_w11, aes(x=factor(R11CANCRS))) + geom_bar(stat="count", width=0.
 vbl <- HRS_coda_w11$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_coda_w11)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_coda_w11, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1910,1970)
+ggplot(HRS_coda_w11 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_coda_w11$yintw_coda_w10
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_coda_w11)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_coda_w11)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_coda_w11, aes(x=factor(yintw_coda_w10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_coda_w11$yintw_coda_w11
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_coda_w11)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_coda_w11)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_coda_w11, aes(x=factor(yintw_coda_w11))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -3527,7 +3466,7 @@ HRS_ds_coda_w11$cancer <- car::recode(HRS_coda_w11$R11CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_coda_w11$cancer_age <- rep(999,length(HRS_coda_w11$id))
 HRS_ds_coda_w11$cancer_age[which(HRS_ds_coda_w11$cancer == 0)] <- 996
-HRS_ds_coda_w11$cancer_age[which(HRS_ds_coda_w11$cancer == 1  & !HRS_coda_w11$ybirth %in% miss_values_vector)] <- (HRS_coda_w11$yintw_coda_w11[which(HRS_ds_coda_w11$cancer == 1  & !HRS_coda_w11$ybirth %in% miss_values_vector)]+HRS_coda_w11$yintw_coda_w10[which(HRS_ds_coda_w11$cancer == 1  & !HRS_coda_w11$ybirth %in% miss_values_vector)])/2-HRS_coda_w11$ybirth[which(HRS_ds_coda_w11$cancer == 1  & !HRS_coda_w11$ybirth %in% miss_values_vector)]
+HRS_ds_coda_w11$cancer_age[which(HRS_ds_coda_w11$cancer == 1  & !HRS_coda_w11$ybirth %in% miss_values_vector & !(HRS_coda_w11$yintw_coda_w11 %in% miss_values_vector | HRS_coda_w11$yintw_coda_w10 %in% miss_values_vector))] <- floor((HRS_coda_w11$yintw_coda_w11[which(HRS_ds_coda_w11$cancer == 1  & !HRS_coda_w11$ybirth %in% miss_values_vector & !(HRS_coda_w11$yintw_coda_w11 %in% miss_values_vector | HRS_coda_w11$yintw_coda_w10 %in% miss_values_vector))]+HRS_coda_w11$yintw_coda_w10[which(HRS_ds_coda_w11$cancer == 1  & !HRS_coda_w11$ybirth %in% miss_values_vector & !(HRS_coda_w11$yintw_coda_w11 %in% miss_values_vector | HRS_coda_w11$yintw_coda_w10 %in% miss_values_vector))])/2-HRS_coda_w11$ybirth[which(HRS_ds_coda_w11$cancer == 1  & !HRS_coda_w11$ybirth %in% miss_values_vector & !(HRS_coda_w11$yintw_coda_w11 %in% miss_values_vector | HRS_coda_w11$yintw_coda_w10 %in% miss_values_vector))])
 
 
 ```
@@ -3547,7 +3486,7 @@ vbl <- HRS_ds_coda_w11$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_coda_w11, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(80,90)+scale_x_continuous(breaks=c(80,85,90))
+ggplot(HRS_ds_coda_w11 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+scale_x_continuous(breaks=c(80,85,90))
 
 ```
 
@@ -3688,16 +3627,16 @@ ggplot(HRS_wb_w5, aes(x=factor(R5CANCRS))) + geom_bar(stat="count", width=0.4, f
 vbl <- HRS_wb_w5$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_wb_w5)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_wb_w5, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1920,1980)
+ggplot(HRS_wb_w5 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_wb_w5$yintw_wb_w4
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_wb_w5)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_wb_w5)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_wb_w5, aes(x=factor(yintw_wb_w4))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_wb_w5$yintw_wb_w5
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_wb_w5)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_wb_w5)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_wb_w5, aes(x=factor(yintw_wb_w5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -3731,7 +3670,7 @@ HRS_ds_wb_w5$cancer <- car::recode(HRS_wb_w5$R5CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_wb_w5$cancer_age <- rep(999,length(HRS_wb_w5$id))
 HRS_ds_wb_w5$cancer_age[which(HRS_ds_wb_w5$cancer == 0)] <- 996
-HRS_ds_wb_w5$cancer_age[which(HRS_ds_wb_w5$cancer == 1  & !HRS_wb_w5$ybirth %in% miss_values_vector)] <- (HRS_wb_w5$yintw_wb_w5[which(HRS_ds_wb_w5$cancer == 1  & !HRS_wb_w5$ybirth %in% miss_values_vector)]+HRS_wb_w5$yintw_wb_w4[which(HRS_ds_wb_w5$cancer == 1  & !HRS_wb_w5$ybirth %in% miss_values_vector)])/2-HRS_wb_w5$ybirth[which(HRS_ds_wb_w5$cancer == 1  & !HRS_wb_w5$ybirth %in% miss_values_vector)]
+HRS_ds_wb_w5$cancer_age[which(HRS_ds_wb_w5$cancer == 1  & !HRS_wb_w5$ybirth %in% miss_values_vector & !(HRS_wb_w5$yintw_wb_w5 %in% miss_values_vector | HRS_wb_w5$yintw_wb_w4 %in% miss_values_vector))] <- floor((HRS_wb_w5$yintw_wb_w5[which(HRS_ds_wb_w5$cancer == 1  & !HRS_wb_w5$ybirth %in% miss_values_vector & !(HRS_wb_w5$yintw_wb_w5 %in% miss_values_vector | HRS_wb_w5$yintw_wb_w4 %in% miss_values_vector))]+HRS_wb_w5$yintw_wb_w4[which(HRS_ds_wb_w5$cancer == 1  & !HRS_wb_w5$ybirth %in% miss_values_vector & !(HRS_wb_w5$yintw_wb_w5 %in% miss_values_vector | HRS_wb_w5$yintw_wb_w4 %in% miss_values_vector))])/2-HRS_wb_w5$ybirth[which(HRS_ds_wb_w5$cancer == 1  & !HRS_wb_w5$ybirth %in% miss_values_vector & !(HRS_wb_w5$yintw_wb_w5 %in% miss_values_vector | HRS_wb_w5$yintw_wb_w4 %in% miss_values_vector))])
 
 ```
 
@@ -3750,7 +3689,7 @@ vbl <- HRS_ds_wb_w5$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_wb_w5, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(35,60)
+ggplot(HRS_ds_wb_w5 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -3812,16 +3751,16 @@ ggplot(HRS_wb_w6, aes(x=factor(R6CANCRS))) + geom_bar(stat="count", width=0.4, f
 vbl <- HRS_wb_w6$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_wb_w6)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_wb_w6, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1920,1980)
+ggplot(HRS_wb_w6 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_wb_w6$yintw_wb_w5
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_wb_w6)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_wb_w6)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_wb_w6, aes(x=factor(yintw_wb_w5))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_wb_w6$yintw_wb_w6
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_wb_w6)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_wb_w6)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_wb_w6, aes(x=factor(yintw_wb_w6))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -3856,7 +3795,7 @@ HRS_ds_wb_w6$cancer <- car::recode(HRS_wb_w6$R6CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_wb_w6$cancer_age <- rep(999,length(HRS_wb_w6$id))
 HRS_ds_wb_w6$cancer_age[which(HRS_ds_wb_w6$cancer == 0)] <- 996
-HRS_ds_wb_w6$cancer_age[which(HRS_ds_wb_w6$cancer == 1  & !HRS_wb_w6$ybirth %in% miss_values_vector)] <- (HRS_wb_w6$yintw_wb_w6[which(HRS_ds_wb_w6$cancer == 1  & !HRS_wb_w6$ybirth %in% miss_values_vector)]+HRS_wb_w6$yintw_wb_w5[which(HRS_ds_wb_w6$cancer == 1  & !HRS_wb_w6$ybirth %in% miss_values_vector)])/2-HRS_wb_w6$ybirth[which(HRS_ds_wb_w6$cancer == 1  & !HRS_wb_w6$ybirth %in% miss_values_vector)]
+HRS_ds_wb_w6$cancer_age[which(HRS_ds_wb_w6$cancer == 1  & !HRS_wb_w6$ybirth %in% miss_values_vector & !(HRS_wb_w6$yintw_wb_w6 %in% miss_values_vector | HRS_wb_w6$yintw_wb_w5 %in% miss_values_vector))] <- floor((HRS_wb_w6$yintw_wb_w6[which(HRS_ds_wb_w6$cancer == 1  & !HRS_wb_w6$ybirth %in% miss_values_vector & !(HRS_wb_w6$yintw_wb_w6 %in% miss_values_vector | HRS_wb_w6$yintw_wb_w5 %in% miss_values_vector))]+HRS_wb_w6$yintw_wb_w5[which(HRS_ds_wb_w6$cancer == 1  & !HRS_wb_w6$ybirth %in% miss_values_vector & !(HRS_wb_w6$yintw_wb_w6 %in% miss_values_vector | HRS_wb_w6$yintw_wb_w5 %in% miss_values_vector))])/2-HRS_wb_w6$ybirth[which(HRS_ds_wb_w6$cancer == 1  & !HRS_wb_w6$ybirth %in% miss_values_vector & !(HRS_wb_w6$yintw_wb_w6 %in% miss_values_vector | HRS_wb_w6$yintw_wb_w5 %in% miss_values_vector))])
 
 ```
 
@@ -3875,7 +3814,7 @@ vbl <- HRS_ds_wb_w6$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_wb_w6, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(45,75)
+ggplot(HRS_ds_wb_w6 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -3937,16 +3876,16 @@ ggplot(HRS_wb_w7, aes(x=factor(R7CANCRS))) + geom_bar(stat="count", width=0.4, f
 vbl <- HRS_wb_w7$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_wb_w7)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_wb_w7, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1920,1980)
+ggplot(HRS_wb_w7 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_wb_w7$yintw_wb_w6
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_wb_w7)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_wb_w7)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_wb_w7, aes(x=factor(yintw_wb_w6))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_wb_w7$yintw_wb_w7
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_wb_w7)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_wb_w7)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_wb_w7, aes(x=factor(yintw_wb_w7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -3981,7 +3920,7 @@ HRS_ds_wb_w7$cancer <- car::recode(HRS_wb_w7$R7CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_wb_w7$cancer_age <- rep(999,length(HRS_wb_w7$id))
 HRS_ds_wb_w7$cancer_age[which(HRS_ds_wb_w7$cancer == 0)] <- 996
-HRS_ds_wb_w7$cancer_age[which(HRS_ds_wb_w7$cancer == 1  & !HRS_wb_w7$ybirth %in% miss_values_vector)] <- (HRS_wb_w7$yintw_wb_w7[which(HRS_ds_wb_w7$cancer == 1  & !HRS_wb_w7$ybirth %in% miss_values_vector)]+HRS_wb_w7$yintw_wb_w6[which(HRS_ds_wb_w7$cancer == 1  & !HRS_wb_w7$ybirth %in% miss_values_vector)])/2-HRS_wb_w7$ybirth[which(HRS_ds_wb_w7$cancer == 1  & !HRS_wb_w7$ybirth %in% miss_values_vector)]
+HRS_ds_wb_w7$cancer_age[which(HRS_ds_wb_w7$cancer == 1  & !HRS_wb_w7$ybirth %in% miss_values_vector & !(HRS_wb_w7$yintw_wb_w7 %in% miss_values_vector | HRS_wb_w7$yintw_wb_w6 %in% miss_values_vector))] <- floor((HRS_wb_w7$yintw_wb_w7[which(HRS_ds_wb_w7$cancer == 1  & !HRS_wb_w7$ybirth %in% miss_values_vector & !(HRS_wb_w7$yintw_wb_w7 %in% miss_values_vector | HRS_wb_w7$yintw_wb_w6 %in% miss_values_vector))]+HRS_wb_w7$yintw_wb_w6[which(HRS_ds_wb_w7$cancer == 1  & !HRS_wb_w7$ybirth %in% miss_values_vector & !(HRS_wb_w7$yintw_wb_w7 %in% miss_values_vector | HRS_wb_w7$yintw_wb_w6 %in% miss_values_vector))])/2-HRS_wb_w7$ybirth[which(HRS_ds_wb_w7$cancer == 1  & !HRS_wb_w7$ybirth %in% miss_values_vector & !(HRS_wb_w7$yintw_wb_w7 %in% miss_values_vector | HRS_wb_w7$yintw_wb_w6 %in% miss_values_vector))])
 
 ```
 
@@ -4000,7 +3939,7 @@ vbl <- HRS_ds_wb_w7$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_wb_w7, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(35,65)
+ggplot(HRS_ds_wb_w7 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -4061,16 +4000,16 @@ ggplot(HRS_wb_w8, aes(x=factor(R8CANCRS))) + geom_bar(stat="count", width=0.4, f
 vbl <- HRS_wb_w8$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_wb_w8)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_wb_w8, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1920,1980)
+ggplot(HRS_wb_w8 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_wb_w8$yintw_wb_w7
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_wb_w8)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_wb_w8)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_wb_w8, aes(x=factor(yintw_wb_w7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_wb_w8$yintw_wb_w8
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_wb_w8)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_wb_w8)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_wb_w8, aes(x=factor(yintw_wb_w8))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -4105,7 +4044,7 @@ HRS_ds_wb_w8$cancer <- car::recode(HRS_wb_w8$R8CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_wb_w8$cancer_age <- rep(999,length(HRS_wb_w8$id))
 HRS_ds_wb_w8$cancer_age[which(HRS_ds_wb_w8$cancer == 0)] <- 996
-HRS_ds_wb_w8$cancer_age[which(HRS_ds_wb_w8$cancer == 1  & !HRS_wb_w8$ybirth %in% miss_values_vector)] <- (HRS_wb_w8$yintw_wb_w8[which(HRS_ds_wb_w8$cancer == 1  & !HRS_wb_w8$ybirth %in% miss_values_vector)]+HRS_wb_w8$yintw_wb_w7[which(HRS_ds_wb_w8$cancer == 1  & !HRS_wb_w8$ybirth %in% miss_values_vector)])/2-HRS_wb_w8$ybirth[which(HRS_ds_wb_w8$cancer == 1  & !HRS_wb_w8$ybirth %in% miss_values_vector)]
+HRS_ds_wb_w8$cancer_age[which(HRS_ds_wb_w8$cancer == 1  & !HRS_wb_w8$ybirth %in% miss_values_vector & !(HRS_wb_w8$yintw_wb_w8 %in% miss_values_vector | HRS_wb_w8$yintw_wb_w7 %in% miss_values_vector))] <- floor((HRS_wb_w8$yintw_wb_w8[which(HRS_ds_wb_w8$cancer == 1  & !HRS_wb_w8$ybirth %in% miss_values_vector & !(HRS_wb_w8$yintw_wb_w8 %in% miss_values_vector | HRS_wb_w8$yintw_wb_w7 %in% miss_values_vector))]+HRS_wb_w8$yintw_wb_w7[which(HRS_ds_wb_w8$cancer == 1  & !HRS_wb_w8$ybirth %in% miss_values_vector & !(HRS_wb_w8$yintw_wb_w8 %in% miss_values_vector | HRS_wb_w8$yintw_wb_w7 %in% miss_values_vector))])/2-HRS_wb_w8$ybirth[which(HRS_ds_wb_w8$cancer == 1  & !HRS_wb_w8$ybirth %in% miss_values_vector & !(HRS_wb_w8$yintw_wb_w8 %in% miss_values_vector | HRS_wb_w8$yintw_wb_w7 %in% miss_values_vector))])
 
 
 ```
@@ -4125,7 +4064,7 @@ vbl <- HRS_ds_wb_w8$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_wb_w8, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(45,65)
+ggplot(HRS_ds_wb_w8 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -4186,16 +4125,16 @@ ggplot(HRS_wb_w9, aes(x=factor(R9CANCRS))) + geom_bar(stat="count", width=0.4, f
 vbl <- HRS_wb_w9$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_wb_w9)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_wb_w9, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1920,1980)
+ggplot(HRS_wb_w9 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_wb_w9$yintw_wb_w8
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_wb_w9)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_wb_w9)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_wb_w9, aes(x=factor(yintw_wb_w8))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_wb_w9$yintw_wb_w9
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_wb_w9)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_wb_w9)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_wb_w9, aes(x=factor(yintw_wb_w9))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -4230,7 +4169,7 @@ HRS_ds_wb_w9$cancer <- car::recode(HRS_wb_w9$R9CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_wb_w9$cancer_age <- rep(999,length(HRS_wb_w9$id))
 HRS_ds_wb_w9$cancer_age[which(HRS_ds_wb_w9$cancer == 0)] <- 996
-HRS_ds_wb_w9$cancer_age[which(HRS_ds_wb_w9$cancer == 1  & !HRS_wb_w9$ybirth %in% miss_values_vector)] <- (HRS_wb_w9$yintw_wb_w9[which(HRS_ds_wb_w9$cancer == 1  & !HRS_wb_w9$ybirth %in% miss_values_vector)]+HRS_wb_w9$yintw_wb_w8[which(HRS_ds_wb_w9$cancer == 1  & !HRS_wb_w9$ybirth %in% miss_values_vector)])/2-HRS_wb_w9$ybirth[which(HRS_ds_wb_w9$cancer == 1  & !HRS_wb_w9$ybirth %in% miss_values_vector)]
+HRS_ds_wb_w9$cancer_age[which(HRS_ds_wb_w9$cancer == 1  & !HRS_wb_w9$ybirth %in% miss_values_vector & !(HRS_wb_w9$yintw_wb_w9 %in% miss_values_vector | HRS_wb_w9$yintw_wb_w8 %in% miss_values_vector))] <- floor((HRS_wb_w9$yintw_wb_w9[which(HRS_ds_wb_w9$cancer == 1  & !HRS_wb_w9$ybirth %in% miss_values_vector & !(HRS_wb_w9$yintw_wb_w9 %in% miss_values_vector | HRS_wb_w9$yintw_wb_w8 %in% miss_values_vector))]+HRS_wb_w9$yintw_wb_w8[which(HRS_ds_wb_w9$cancer == 1  & !HRS_wb_w9$ybirth %in% miss_values_vector & !(HRS_wb_w9$yintw_wb_w9 %in% miss_values_vector | HRS_wb_w9$yintw_wb_w8 %in% miss_values_vector))])/2-HRS_wb_w9$ybirth[which(HRS_ds_wb_w9$cancer == 1  & !HRS_wb_w9$ybirth %in% miss_values_vector & !(HRS_wb_w9$yintw_wb_w9 %in% miss_values_vector | HRS_wb_w9$yintw_wb_w8 %in% miss_values_vector))])
 
 ```
 
@@ -4249,7 +4188,7 @@ vbl <- HRS_ds_wb_w9$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_wb_w9, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(45,80)
+ggplot(HRS_ds_wb_w9 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -4311,16 +4250,16 @@ ggplot(HRS_wb_w10, aes(x=factor(R10CANCRS))) + geom_bar(stat="count", width=0.4,
 vbl <- HRS_wb_w10$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_wb_w10)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_wb_w10, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1920,1980)
+ggplot(HRS_wb_w10 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_wb_w10$yintw_wb_w9
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_wb_w10)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_wb_w10)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_wb_w10, aes(x=factor(yintw_wb_w9))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_wb_w10$yintw_wb_w10
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_wb_w10)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_wb_w10)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_wb_w10, aes(x=factor(yintw_wb_w10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -4355,7 +4294,7 @@ HRS_ds_wb_w10$cancer <- car::recode(HRS_wb_w10$R10CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_wb_w10$cancer_age <- rep(999,length(HRS_wb_w10$id))
 HRS_ds_wb_w10$cancer_age[which(HRS_ds_wb_w10$cancer == 0)] <- 996
-HRS_ds_wb_w10$cancer_age[which(HRS_ds_wb_w10$cancer == 1  & !HRS_wb_w10$ybirth %in% miss_values_vector)] <- (HRS_wb_w10$yintw_wb_w10[which(HRS_ds_wb_w10$cancer == 1  & !HRS_wb_w10$ybirth %in% miss_values_vector)]+HRS_wb_w10$yintw_wb_w9[which(HRS_ds_wb_w10$cancer == 1  & !HRS_wb_w10$ybirth %in% miss_values_vector)])/2-HRS_wb_w10$ybirth[which(HRS_ds_wb_w10$cancer == 1  & !HRS_wb_w10$ybirth %in% miss_values_vector)]
+HRS_ds_wb_w10$cancer_age[which(HRS_ds_wb_w10$cancer == 1  & !HRS_wb_w10$ybirth %in% miss_values_vector & !(HRS_wb_w10$yintw_wb_w10 %in% miss_values_vector | HRS_wb_w10$yintw_wb_w9 %in% miss_values_vector))] <- floor((HRS_wb_w10$yintw_wb_w10[which(HRS_ds_wb_w10$cancer == 1  & !HRS_wb_w10$ybirth %in% miss_values_vector & !(HRS_wb_w10$yintw_wb_w10 %in% miss_values_vector | HRS_wb_w10$yintw_wb_w9 %in% miss_values_vector))]+HRS_wb_w10$yintw_wb_w9[which(HRS_ds_wb_w10$cancer == 1  & !HRS_wb_w10$ybirth %in% miss_values_vector & !(HRS_wb_w10$yintw_wb_w10 %in% miss_values_vector | HRS_wb_w10$yintw_wb_w9 %in% miss_values_vector))])/2-HRS_wb_w10$ybirth[which(HRS_ds_wb_w10$cancer == 1  & !HRS_wb_w10$ybirth %in% miss_values_vector & !(HRS_wb_w10$yintw_wb_w10 %in% miss_values_vector | HRS_wb_w10$yintw_wb_w9 %in% miss_values_vector))])
 
 ```
 
@@ -4374,7 +4313,7 @@ vbl <- HRS_ds_wb_w10$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_wb_w10, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(55,90)
+ggplot(HRS_ds_wb_w10 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -4435,16 +4374,16 @@ ggplot(HRS_wb_w11, aes(x=factor(R11CANCRS))) + geom_bar(stat="count", width=0.4,
 vbl <- HRS_wb_w11$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_wb_w11)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_wb_w11, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1920,1980)
+ggplot(HRS_wb_w11 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_wb_w11$yintw_wb_w10
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_wb_w11)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_wb_w11)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_wb_w11, aes(x=factor(yintw_wb_w10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_wb_w11$yintw_wb_w11
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_wb_w11)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_wb_w11)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_wb_w11, aes(x=factor(yintw_wb_w11))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -4479,7 +4418,7 @@ HRS_ds_wb_w11$cancer <- car::recode(HRS_wb_w11$R11CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_wb_w11$cancer_age <- rep(999,length(HRS_wb_w11$id))
 HRS_ds_wb_w11$cancer_age[which(HRS_ds_wb_w11$cancer == 0)] <- 996
-HRS_ds_wb_w11$cancer_age[which(HRS_ds_wb_w11$cancer == 1  & !HRS_wb_w11$ybirth %in% miss_values_vector)] <- (HRS_wb_w11$yintw_wb_w11[which(HRS_ds_wb_w11$cancer == 1  & !HRS_wb_w11$ybirth %in% miss_values_vector)]+HRS_wb_w11$yintw_wb_w10[which(HRS_ds_wb_w11$cancer == 1  & !HRS_wb_w11$ybirth %in% miss_values_vector)])/2-HRS_wb_w11$ybirth[which(HRS_ds_wb_w11$cancer == 1  & !HRS_wb_w11$ybirth %in% miss_values_vector)]
+HRS_ds_wb_w11$cancer_age[which(HRS_ds_wb_w11$cancer == 1  & !HRS_wb_w11$ybirth %in% miss_values_vector & !(HRS_wb_w11$yintw_wb_w11 %in% miss_values_vector | HRS_wb_w11$yintw_wb_w10 %in% miss_values_vector))] <- floor((HRS_wb_w11$yintw_wb_w11[which(HRS_ds_wb_w11$cancer == 1  & !HRS_wb_w11$ybirth %in% miss_values_vector & !(HRS_wb_w11$yintw_wb_w11 %in% miss_values_vector | HRS_wb_w11$yintw_wb_w10 %in% miss_values_vector))]+HRS_wb_w11$yintw_wb_w10[which(HRS_ds_wb_w11$cancer == 1  & !HRS_wb_w11$ybirth %in% miss_values_vector & !(HRS_wb_w11$yintw_wb_w11 %in% miss_values_vector | HRS_wb_w11$yintw_wb_w10 %in% miss_values_vector))])/2-HRS_wb_w11$ybirth[which(HRS_ds_wb_w11$cancer == 1  & !HRS_wb_w11$ybirth %in% miss_values_vector & !(HRS_wb_w11$yintw_wb_w11 %in% miss_values_vector | HRS_wb_w11$yintw_wb_w10 %in% miss_values_vector))])
 
 
 ```
@@ -4499,7 +4438,7 @@ vbl <- HRS_ds_wb_w11$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_wb_w11, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(50,70)
+ggplot(HRS_ds_wb_w11 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -4641,16 +4580,16 @@ ggplot(HRS_ebb_w8, aes(x=factor(R8CANCRS))) + geom_bar(stat="count", width=0.4, 
 vbl <- HRS_ebb_w8$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ebb_w8)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ebb_w8, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1920,1995)
+ggplot(HRS_ebb_w8 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ebb_w8$yintw_ebb_w7
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ebb_w8)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ebb_w8)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ebb_w8, aes(x=factor(yintw_ebb_w7))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ebb_w8$yintw_ebb_w8
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ebb_w8)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ebb_w8)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ebb_w8, aes(x=factor(yintw_ebb_w8))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -4684,7 +4623,7 @@ HRS_ds_ebb_w8$cancer <- car::recode(HRS_ebb_w8$R8CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_ebb_w8$cancer_age <- rep(999,length(HRS_ebb_w8$id))
 HRS_ds_ebb_w8$cancer_age[which(HRS_ds_ebb_w8$cancer == 0)] <- 996
-HRS_ds_ebb_w8$cancer_age[which(HRS_ds_ebb_w8$cancer == 1  & !HRS_ebb_w8$ybirth %in% miss_values_vector)] <- (HRS_ebb_w8$yintw_ebb_w8[which(HRS_ds_ebb_w8$cancer == 1  & !HRS_ebb_w8$ybirth %in% miss_values_vector)]+HRS_ebb_w8$yintw_ebb_w7[which(HRS_ds_ebb_w8$cancer == 1  & !HRS_ebb_w8$ybirth %in% miss_values_vector)])/2-HRS_ebb_w8$ybirth[which(HRS_ds_ebb_w8$cancer == 1  & !HRS_ebb_w8$ybirth %in% miss_values_vector)]
+HRS_ds_ebb_w8$cancer_age[which(HRS_ds_ebb_w8$cancer == 1  & !HRS_ebb_w8$ybirth %in% miss_values_vector & !(HRS_ebb_w8$yintw_ebb_w8 %in% miss_values_vector | HRS_ebb_w8$yintw_ebb_w7 %in% miss_values_vector))] <- floor((HRS_ebb_w8$yintw_ebb_w8[which(HRS_ds_ebb_w8$cancer == 1  & !HRS_ebb_w8$ybirth %in% miss_values_vector & !(HRS_ebb_w8$yintw_ebb_w8 %in% miss_values_vector | HRS_ebb_w8$yintw_ebb_w7 %in% miss_values_vector))]+HRS_ebb_w8$yintw_ebb_w7[which(HRS_ds_ebb_w8$cancer == 1  & !HRS_ebb_w8$ybirth %in% miss_values_vector & !(HRS_ebb_w8$yintw_ebb_w8 %in% miss_values_vector | HRS_ebb_w8$yintw_ebb_w7 %in% miss_values_vector))])/2-HRS_ebb_w8$ybirth[which(HRS_ds_ebb_w8$cancer == 1  & !HRS_ebb_w8$ybirth %in% miss_values_vector & !(HRS_ebb_w8$yintw_ebb_w8 %in% miss_values_vector | HRS_ebb_w8$yintw_ebb_w7 %in% miss_values_vector))])
 
 ```
 
@@ -4703,7 +4642,7 @@ vbl <- HRS_ds_ebb_w8$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_ebb_w8, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(45,60)
+ggplot(HRS_ds_ebb_w8 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -4765,16 +4704,16 @@ ggplot(HRS_ebb_w9, aes(x=factor(R9CANCRS))) + geom_bar(stat="count", width=0.4, 
 vbl <- HRS_ebb_w9$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ebb_w9)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ebb_w9, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1920,1995)
+ggplot(HRS_ebb_w9 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ebb_w9$yintw_ebb_w8
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ebb_w9)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ebb_w9)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ebb_w9, aes(x=factor(yintw_ebb_w8))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ebb_w9$yintw_ebb_w9
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ebb_w9)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ebb_w9)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ebb_w9, aes(x=factor(yintw_ebb_w9))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -4809,7 +4748,7 @@ HRS_ds_ebb_w9$cancer <- car::recode(HRS_ebb_w9$R9CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_ebb_w9$cancer_age <- rep(999,length(HRS_ebb_w9$id))
 HRS_ds_ebb_w9$cancer_age[which(HRS_ds_ebb_w9$cancer == 0)] <- 996
-HRS_ds_ebb_w9$cancer_age[which(HRS_ds_ebb_w9$cancer == 1  & !HRS_ebb_w9$ybirth %in% miss_values_vector)] <- (HRS_ebb_w9$yintw_ebb_w9[which(HRS_ds_ebb_w9$cancer == 1  & !HRS_ebb_w9$ybirth %in% miss_values_vector)]+HRS_ebb_w9$yintw_ebb_w8[which(HRS_ds_ebb_w9$cancer == 1  & !HRS_ebb_w9$ybirth %in% miss_values_vector)])/2-HRS_ebb_w9$ybirth[which(HRS_ds_ebb_w9$cancer == 1  & !HRS_ebb_w9$ybirth %in% miss_values_vector)]
+HRS_ds_ebb_w9$cancer_age[which(HRS_ds_ebb_w9$cancer == 1  & !HRS_ebb_w9$ybirth %in% miss_values_vector & !(HRS_ebb_w9$yintw_ebb_w9 %in% miss_values_vector | HRS_ebb_w9$yintw_ebb_w8 %in% miss_values_vector))] <- floor((HRS_ebb_w9$yintw_ebb_w9[which(HRS_ds_ebb_w9$cancer == 1  & !HRS_ebb_w9$ybirth %in% miss_values_vector & !(HRS_ebb_w9$yintw_ebb_w9 %in% miss_values_vector | HRS_ebb_w9$yintw_ebb_w8 %in% miss_values_vector))]+HRS_ebb_w9$yintw_ebb_w8[which(HRS_ds_ebb_w9$cancer == 1  & !HRS_ebb_w9$ybirth %in% miss_values_vector & !(HRS_ebb_w9$yintw_ebb_w9 %in% miss_values_vector | HRS_ebb_w9$yintw_ebb_w8 %in% miss_values_vector))])/2-HRS_ebb_w9$ybirth[which(HRS_ds_ebb_w9$cancer == 1  & !HRS_ebb_w9$ybirth %in% miss_values_vector & !(HRS_ebb_w9$yintw_ebb_w9 %in% miss_values_vector | HRS_ebb_w9$yintw_ebb_w8 %in% miss_values_vector))])
 
 ```
 
@@ -4828,7 +4767,7 @@ vbl <- HRS_ds_ebb_w9$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_ebb_w9, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(40,60)
+ggplot(HRS_ds_ebb_w9 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -4890,16 +4829,16 @@ ggplot(HRS_ebb_w10, aes(x=factor(R10CANCRS))) + geom_bar(stat="count", width=0.4
 vbl <- HRS_ebb_w10$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ebb_w10)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ebb_w10, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1920,1995)
+ggplot(HRS_ebb_w10 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ebb_w10$yintw_ebb_w9
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ebb_w10)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ebb_w10)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ebb_w10, aes(x=factor(yintw_ebb_w9))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ebb_w10$yintw_ebb_w10
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ebb_w10)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ebb_w10)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ebb_w10, aes(x=factor(yintw_ebb_w10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -4934,7 +4873,7 @@ HRS_ds_ebb_w10$cancer <- car::recode(HRS_ebb_w10$R10CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_ebb_w10$cancer_age <- rep(999,length(HRS_ebb_w10$id))
 HRS_ds_ebb_w10$cancer_age[which(HRS_ds_ebb_w10$cancer == 0)] <- 996
-HRS_ds_ebb_w10$cancer_age[which(HRS_ds_ebb_w10$cancer == 1  & !HRS_ebb_w10$ybirth %in% miss_values_vector)] <- (HRS_ebb_w10$yintw_ebb_w10[which(HRS_ds_ebb_w10$cancer == 1  & !HRS_ebb_w10$ybirth %in% miss_values_vector)]+HRS_ebb_w10$yintw_ebb_w9[which(HRS_ds_ebb_w10$cancer == 1  & !HRS_ebb_w10$ybirth %in% miss_values_vector)])/2-HRS_ebb_w10$ybirth[which(HRS_ds_ebb_w10$cancer == 1  & !HRS_ebb_w10$ybirth %in% miss_values_vector)]
+HRS_ds_ebb_w10$cancer_age[which(HRS_ds_ebb_w10$cancer == 1  & !HRS_ebb_w10$ybirth %in% miss_values_vector & !(HRS_ebb_w10$yintw_ebb_w10 %in% miss_values_vector | HRS_ebb_w10$yintw_ebb_w9 %in% miss_values_vector))] <- floor((HRS_ebb_w10$yintw_ebb_w10[which(HRS_ds_ebb_w10$cancer == 1  & !HRS_ebb_w10$ybirth %in% miss_values_vector & !(HRS_ebb_w10$yintw_ebb_w10 %in% miss_values_vector | HRS_ebb_w10$yintw_ebb_w9 %in% miss_values_vector))]+HRS_ebb_w10$yintw_ebb_w9[which(HRS_ds_ebb_w10$cancer == 1  & !HRS_ebb_w10$ybirth %in% miss_values_vector & !(HRS_ebb_w10$yintw_ebb_w10 %in% miss_values_vector | HRS_ebb_w10$yintw_ebb_w9 %in% miss_values_vector))])/2-HRS_ebb_w10$ybirth[which(HRS_ds_ebb_w10$cancer == 1  & !HRS_ebb_w10$ybirth %in% miss_values_vector & !(HRS_ebb_w10$yintw_ebb_w10 %in% miss_values_vector | HRS_ebb_w10$yintw_ebb_w9 %in% miss_values_vector))])
 
 ```
 
@@ -4953,7 +4892,7 @@ vbl <- HRS_ds_ebb_w10$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_ebb_w10, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(40,65)
+ggplot(HRS_ds_ebb_w10 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -5014,16 +4953,16 @@ ggplot(HRS_ebb_w11, aes(x=factor(R11CANCRS))) + geom_bar(stat="count", width=0.4
 vbl <- HRS_ebb_w11$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ebb_w11)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ebb_w11, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1920,1995)
+ggplot(HRS_ebb_w11 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ebb_w11$yintw_ebb_w10
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ebb_w11)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ebb_w11)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ebb_w11, aes(x=factor(yintw_ebb_w10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_ebb_w11$yintw_ebb_w11
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_ebb_w11)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_ebb_w11)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_ebb_w11, aes(x=factor(yintw_ebb_w11))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -5058,7 +4997,7 @@ HRS_ds_ebb_w11$cancer <- car::recode(HRS_ebb_w11$R11CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_ebb_w11$cancer_age <- rep(999,length(HRS_ebb_w11$id))
 HRS_ds_ebb_w11$cancer_age[which(HRS_ds_ebb_w11$cancer == 0)] <- 996
-HRS_ds_ebb_w11$cancer_age[which(HRS_ds_ebb_w11$cancer == 1  & !HRS_ebb_w11$ybirth %in% miss_values_vector)] <- (HRS_ebb_w11$yintw_ebb_w11[which(HRS_ds_ebb_w11$cancer == 1  & !HRS_ebb_w11$ybirth %in% miss_values_vector)]+HRS_ebb_w11$yintw_ebb_w10[which(HRS_ds_ebb_w11$cancer == 1  & !HRS_ebb_w11$ybirth %in% miss_values_vector)])/2-HRS_ebb_w11$ybirth[which(HRS_ds_ebb_w11$cancer == 1  & !HRS_ebb_w11$ybirth %in% miss_values_vector)]
+HRS_ds_ebb_w11$cancer_age[which(HRS_ds_ebb_w11$cancer == 1  & !HRS_ebb_w11$ybirth %in% miss_values_vector & !(HRS_ebb_w11$yintw_ebb_w11 %in% miss_values_vector | HRS_ebb_w11$yintw_ebb_w10 %in% miss_values_vector))] <- floor((HRS_ebb_w11$yintw_ebb_w11[which(HRS_ds_ebb_w11$cancer == 1  & !HRS_ebb_w11$ybirth %in% miss_values_vector & !(HRS_ebb_w11$yintw_ebb_w11 %in% miss_values_vector | HRS_ebb_w11$yintw_ebb_w10 %in% miss_values_vector))]+HRS_ebb_w11$yintw_ebb_w10[which(HRS_ds_ebb_w11$cancer == 1  & !HRS_ebb_w11$ybirth %in% miss_values_vector & !(HRS_ebb_w11$yintw_ebb_w11 %in% miss_values_vector | HRS_ebb_w11$yintw_ebb_w10 %in% miss_values_vector))])/2-HRS_ebb_w11$ybirth[which(HRS_ds_ebb_w11$cancer == 1  & !HRS_ebb_w11$ybirth %in% miss_values_vector & !(HRS_ebb_w11$yintw_ebb_w11 %in% miss_values_vector | HRS_ebb_w11$yintw_ebb_w10 %in% miss_values_vector))])
 
 ```
 
@@ -5077,7 +5016,7 @@ vbl <- HRS_ds_ebb_w11$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_ebb_w11, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(50,80)
+ggplot(HRS_ds_ebb_w11 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -5219,16 +5158,16 @@ ggplot(HRS_mbb_w11, aes(x=factor(R11CANCRS))) + geom_bar(stat="count", width=0.4
 vbl <- HRS_mbb_w11$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(HRS_mbb_w11)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_mbb_w11, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1900,1980)
+ggplot(HRS_mbb_w11 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_mbb_w11$yintw_mbb_w10
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_mbb_w11)[4])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_mbb_w11)[4])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_mbb_w11, aes(x=factor(yintw_mbb_w10))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- HRS_mbb_w11$yintw_mbb_w11
-kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(HRS_mbb_w11)[5])
-kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = names(HRS_mbb_w11)[5])
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
 ggplot(HRS_mbb_w11, aes(x=factor(yintw_mbb_w11))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 ```
@@ -5262,7 +5201,7 @@ HRS_ds_mbb_w11$cancer <- car::recode(HRS_mbb_w11$R11CANCRS, "NA=999")
 # Continuous variable harmonization
 HRS_ds_mbb_w11$cancer_age <- rep(999,length(HRS_mbb_w11$id))
 HRS_ds_mbb_w11$cancer_age[which(HRS_ds_mbb_w11$cancer == 0)] <- 996
-HRS_ds_mbb_w11$cancer_age[which(HRS_ds_mbb_w11$cancer == 1  & !HRS_mbb_w11$ybirth %in% miss_values_vector)] <- (HRS_mbb_w11$yintw_mbb_w11[which(HRS_ds_mbb_w11$cancer == 1  & !HRS_mbb_w11$ybirth %in% miss_values_vector)]+HRS_mbb_w11$yintw_mbb_w10[which(HRS_ds_mbb_w11$cancer == 1  & !HRS_mbb_w11$ybirth %in% miss_values_vector)])/2-HRS_mbb_w11$ybirth[which(HRS_ds_mbb_w11$cancer == 1  & !HRS_mbb_w11$ybirth %in% miss_values_vector)]
+HRS_ds_mbb_w11$cancer_age[which(HRS_ds_mbb_w11$cancer == 1  & !HRS_mbb_w11$ybirth %in% miss_values_vector & !(HRS_mbb_w11$yintw_mbb_w11 %in% miss_values_vector | HRS_mbb_w11$yintw_mbb_w10 %in% miss_values_vector))] <- floor((HRS_mbb_w11$yintw_mbb_w11[which(HRS_ds_mbb_w11$cancer == 1  & !HRS_mbb_w11$ybirth %in% miss_values_vector & !(HRS_mbb_w11$yintw_mbb_w11 %in% miss_values_vector | HRS_mbb_w11$yintw_mbb_w10 %in% miss_values_vector))]+HRS_mbb_w11$yintw_mbb_w10[which(HRS_ds_mbb_w11$cancer == 1  & !HRS_mbb_w11$ybirth %in% miss_values_vector & !(HRS_mbb_w11$yintw_mbb_w11 %in% miss_values_vector | HRS_mbb_w11$yintw_mbb_w10 %in% miss_values_vector))])/2-HRS_mbb_w11$ybirth[which(HRS_ds_mbb_w11$cancer == 1  & !HRS_mbb_w11$ybirth %in% miss_values_vector & !(HRS_mbb_w11$yintw_mbb_w11 %in% miss_values_vector | HRS_mbb_w11$yintw_mbb_w10 %in% miss_values_vector))])
 
 ```
 
@@ -5281,7 +5220,7 @@ vbl <- HRS_ds_mbb_w11$cancer_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(HRS_ds_mbb_w11, aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(40,70)
+ggplot(HRS_ds_mbb_w11 %>% filter(!vbl %in% miss_values_vector), aes(cancer_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -5305,7 +5244,10 @@ rm(HRS_mbb_w11)
 
 
 
-## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+
+
+## Summary of descriptive statistics of the harmonised variable `cancer` accross populations and waves
 
 Two tables are generated: 
 
@@ -5313,181 +5255,509 @@ Two tables are generated:
 
 2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
 
-**R script:**
+<!--AUXILIAR FUNCTIONS-->
 
-```{r summ}
+```{r helpfunctions, echo=FALSE}
 
-lb.hrs <- list(hrs_w1 = HRS_ds_hrs_w1, ahead_w2 = HRS_ds_ahead_w2, coda_w4 = HRS_ds_coda_w4, wb_w4 = HRS_ds_wb_w4, ebb_w7 = HRS_ds_ebb_w7, mbb_w10 = HRS_ds_mbb_w10)
-
-lf.hrs <- list(hrs_w2 = HRS_ds_hrs_w2, hrs_w3 = HRS_ds_hrs_w3, hrs_w4 = HRS_ds_hrs_w4, hrs_w5 = HRS_ds_hrs_w5, hrs_w6 = HRS_ds_hrs_w6, hrs_w7 = HRS_ds_hrs_w7, hrs_w8 = HRS_ds_hrs_w8, hrs_w9 = HRS_ds_hrs_w9, hrs_w10 = HRS_ds_hrs_w10, hrs_w11 = HRS_ds_hrs_w11, ahead_w3 = HRS_ds_ahead_w3, ahead_w4 = HRS_ds_ahead_w4, ahead_w5 = HRS_ds_ahead_w5, ahead_w6 = HRS_ds_ahead_w6, ahead_w7 = HRS_ds_ahead_w7, ahead_w8 = HRS_ds_ahead_w8, ahead_w9 = HRS_ds_ahead_w9, ahead_w10 = HRS_ds_ahead_w10, ahead_w11 = HRS_ds_ahead_w11, coda_w5 = HRS_ds_coda_w5, coda_w6 = HRS_ds_coda_w6, coda_w7 = HRS_ds_coda_w7, coda_w8 = HRS_ds_coda_w8, coda_w9 = HRS_ds_coda_w9, coda_w10 = HRS_ds_coda_w10, coda_w11 = HRS_ds_coda_w11, wb_w5 = HRS_ds_wb_w5, wb_w6 = HRS_ds_wb_w6, wb_w7 = HRS_ds_wb_w7, wb_w8 = HRS_ds_wb_w8, wb_w9 = HRS_ds_wb_w9, wb_w10 = HRS_ds_wb_w10, wb_w11 = HRS_ds_wb_w11, ebb_w8 = HRS_ds_ebb_w8, ebb_w9 = HRS_ds_ebb_w9, ebb_w10 = HRS_ds_ebb_w10, ebb_w11 = HRS_ds_ebb_w11, mbb_w11 = HRS_ds_mbb_w11)
-
-###################
-
-for(name in names(lb.hrs)) {
-  m_name <- paste0("HRS_m_ds_",name)
-  aux_object <- lb.hrs[[name]]
-  label(lb.hrs[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
-  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
-  lb.hrs[[name]][[2]] <- labelled(lb.hrs[[name]][[2]], labels = cat_label)
-  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
-  assign(m_name, aux_object)
-  rm(aux_object)
-}
-
-for(name in names(lf.hrs)) {
-  m_name <- paste0("HRS_m_ds_",name)
-  aux_object <- lf.hrs[[name]]
-  label(lf.hrs[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label # Text value assigned at the DS description, at the top
-  label(lf.hrs[[name]][[3]]) <- label(aux_object[[3]]) <- ds_label_age # Text value assigned at the DS description, at the top
-  aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
-  lf.hrs[[name]][[2]] <- labelled(lf.hrs[[name]][[2]], labels = cat_label)
-  lf.hrs[[name]][[3]] <- labelled(lf.hrs[[name]][[3]], labels = cont_label)
-  aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
-  assign(m_name, aux_object)
-  rm(aux_object)
-}
-
-##################################
-
-mb.hrs <- list(hrs_w1 = HRS_m_ds_hrs_w1, ahead_w2 = HRS_m_ds_ahead_w2, coda_w4 = HRS_m_ds_coda_w4, wb_w4 = HRS_m_ds_wb_w4, ebb_w7 = HRS_m_ds_ebb_w7, mbb_w10 = HRS_m_ds_mbb_w10)
-
-mf.hrs <- list(hrs_w2 = HRS_m_ds_hrs_w2, hrs_w3 = HRS_m_ds_hrs_w3, hrs_w4 = HRS_m_ds_hrs_w4, hrs_w5 = HRS_m_ds_hrs_w5, hrs_w6 = HRS_m_ds_hrs_w6, hrs_w7 = HRS_m_ds_hrs_w7, hrs_w8 = HRS_m_ds_hrs_w8, hrs_w9 = HRS_m_ds_hrs_w9, hrs_w10 = HRS_m_ds_hrs_w10, hrs_w11 = HRS_m_ds_hrs_w11, ahead_w3 = HRS_m_ds_ahead_w3, ahead_w4 = HRS_m_ds_ahead_w4, ahead_w5 = HRS_m_ds_ahead_w5, ahead_w6 = HRS_m_ds_ahead_w6, ahead_w7 = HRS_m_ds_ahead_w7, ahead_w8 = HRS_m_ds_ahead_w8, ahead_w9 = HRS_m_ds_ahead_w9, ahead_w10 = HRS_m_ds_ahead_w10, ahead_w11 = HRS_m_ds_ahead_w11, coda_w5 = HRS_m_ds_coda_w5, coda_w6 = HRS_m_ds_coda_w6, coda_w7 = HRS_m_ds_coda_w7, coda_w8 = HRS_m_ds_coda_w8, coda_w9 = HRS_m_ds_coda_w9, coda_w10 = HRS_m_ds_coda_w10, coda_w11 = HRS_m_ds_coda_w11, wb_w5 = HRS_m_ds_wb_w5, wb_w6 = HRS_m_ds_wb_w6, wb_w7 = HRS_m_ds_wb_w7, wb_w8 = HRS_m_ds_wb_w8, wb_w9 = HRS_m_ds_wb_w9, wb_w10 = HRS_m_ds_wb_w10, wb_w11 = HRS_m_ds_wb_w11, ebb_w8 = HRS_m_ds_ebb_w8, ebb_w9 = HRS_m_ds_ebb_w9, ebb_w10 = HRS_m_ds_ebb_w10, ebb_w11 = HRS_m_ds_ebb_w11, mbb_w11 = HRS_m_ds_mbb_w11)
-
-#################################
-
-# Table HRS
-t.hrs <- frq(lb.hrs[[1]][2])[[1]][,c(1,2,4)] 
-for (i in 1:10){
-  t.hrs[3+i] <- frq(lf.hrs[[i]][2])[[1]][,4] 
-}
-t.hrs[13,] <- c("n", "sample size", length(lb.hrs[[1]][[2]]),
-             length(lf.hrs[[1]][[2]]), length(lf.hrs[[2]][[2]]), length(lf.hrs[[3]][[2]]), length(lf.hrs[[4]][[2]]), length(lf.hrs[[5]][[2]]), length(lf.hrs[[6]][[2]]), length(lf.hrs[[7]][[2]]), length(lf.hrs[[8]][[2]]), length(lf.hrs[[9]][[2]]), length(lf.hrs[[10]][[2]])
-             )
-names(t.hrs)<-c("val", "label", "w1", "w2", "w3", "w4", "w5", "w6", "w7", "w8", "w9", "w10", "w11")
-kable(t.hrs)
-
-dbb <- merge(HRS_m_ds_hrs_w1[,c("id","cancer")], HRS_m_ds_hrs_w2[,c("id","cancer")], by="id", suffixes = c(".w1",".w2"), all=T)
-dbb <- merge(dbb, HRS_m_ds_hrs_w3[,c("id","cancer")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_hrs_w4[,c("id","cancer")], by="id", suffixes = c(".w3",".w4"), all=T)
-dbb <- merge(dbb, HRS_m_ds_hrs_w5[,c("id","cancer")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_hrs_w6[,c("id","cancer")], by="id", suffixes = c(".w5",".w6"), all=T)
-dbb <- merge(dbb, HRS_m_ds_hrs_w7[,c("id","cancer")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_hrs_w8[,c("id","cancer")], by="id", suffixes = c(".w7",".w8"), all=T)
-dbb <- merge(dbb, HRS_m_ds_hrs_w9[,c("id","cancer")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_hrs_w10[,c("id","cancer")], by="id", suffixes = c(".w9",".w10"), all=T)
-dbb <- merge(dbb, HRS_m_ds_hrs_w11[,c("id","cancer")], by="id", all=T)
-names(dbb) <- c("id", "w1", "w2", "w3", "w4", "w5", "w6", "w7", "w8", "w9", "w10", "w11")
-v.dbb <- paste(dbb[,2],dbb[,3],dbb[,4],dbb[,5],dbb[,6],dbb[,7],dbb[,8],dbb[,9],dbb[,10],dbb[,11],sep="")
-f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
-kable(f.dbb[f.dbb[,3]>=0.3,])
-
-# Table AHEAD
-t.ahead <- frq(lb.hrs[[2]][2])[[1]][,c(1,2,4)] 
-for (i in 1:9){
-  t.ahead[3+i] <- frq(lf.hrs[[i+10]][2])[[1]][,4] 
-}
-t.ahead[13,] <- c("n", "sample size", length(lb.hrs[[2]][[2]]),
-             length(lf.hrs[[11]][[2]]), length(lf.hrs[[12]][[2]]), length(lf.hrs[[13]][[2]]), length(lf.hrs[[14]][[2]]), length(lf.hrs[[15]][[2]]), length(lf.hrs[[16]][[2]]), length(lf.hrs[[17]][[2]]), length(lf.hrs[[18]][[2]]), length(lf.hrs[[19]][[2]])
-             )
-names(t.ahead)<-c("val", "label", "w2", "w3", "w4", "w5", "w6", "w7", "w8", "w9", "w10", "w11")
-kable(t.ahead)
-
-dbb <- merge(HRS_m_ds_ahead_w2[,c("id","cancer")], HRS_m_ds_ahead_w3[,c("id","cancer")], by="id", suffixes = c(".w2",".w3"), all=T)
-dbb <- merge(dbb, HRS_m_ds_ahead_w4[,c("id","cancer")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_ahead_w5[,c("id","cancer")], by="id", suffixes = c(".w4",".w5"), all=T)
-dbb <- merge(dbb, HRS_m_ds_ahead_w6[,c("id","cancer")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_ahead_w7[,c("id","cancer")], by="id", suffixes = c(".w6",".w7"), all=T)
-dbb <- merge(dbb, HRS_m_ds_ahead_w8[,c("id","cancer")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_ahead_w9[,c("id","cancer")], by="id", suffixes = c(".w8",".w9"), all=T)
-dbb <- merge(dbb, HRS_m_ds_ahead_w10[,c("id","cancer")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_ahead_w11[,c("id","cancer")], by="id", suffixes = c(".w10",".w11"), all=T)
-names(dbb) <- c("id", "w2", "w3", "w4", "w5", "w6", "w7", "w8", "w9", "w10", "w11")
-v.dbb <- paste(dbb[,2],dbb[,3],dbb[,4],dbb[,5],dbb[,6],dbb[,7],dbb[,8],dbb[,9],dbb[,10],sep="")
-f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
-kable(f.dbb[f.dbb[,3]>=0.3,])
-
-# Table CODA
-t.coda <- frq(lb.hrs[[3]][2])[[1]][,c(1,2,4)] 
-for (i in 1:7){
-  t.coda[3+i] <- frq(lf.hrs[[19+i]][2])[[1]][,4] 
-}
-t.coda[13,] <- c("n", "sample size", length(lb.hrs[[3]][[2]]),
-             length(lf.hrs[[20]][[2]]), length(lf.hrs[[21]][[2]]), length(lf.hrs[[22]][[2]]), length(lf.hrs[[23]][[2]]), length(lf.hrs[[24]][[2]]), length(lf.hrs[[25]][[2]]), length(lf.hrs[[26]][[2]])
-             )
-names(t.coda)<-c("val", "label", "w4", "w5", "w6", "w7", "w8", "w9", "w10", "w11")
-kable(t.coda)
-
-dbb <- merge(HRS_m_ds_coda_w4[,c("id","cancer")], HRS_m_ds_coda_w5[,c("id","cancer")], by="id", suffixes = c(".w4",".w5"), all=T)
-dbb <- merge(dbb, HRS_m_ds_coda_w6[,c("id","cancer")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_coda_w7[,c("id","cancer")], by="id", suffixes = c(".w6",".w7"), all=T)
-dbb <- merge(dbb, HRS_m_ds_coda_w8[,c("id","cancer")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_coda_w9[,c("id","cancer")], by="id", suffixes = c(".w8",".w9"), all=T)
-dbb <- merge(dbb, HRS_m_ds_coda_w10[,c("id","cancer")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_coda_w11[,c("id","cancer")], by="id", suffixes = c(".w10",".w11"), all=T)
-names(dbb) <- c("id", "w4", "w5", "w6", "w7", "w8", "w9", "w10", "w11")
-v.dbb <- paste(dbb[,2],dbb[,3],dbb[,4],dbb[,5],dbb[,6],dbb[,7],dbb[,8],sep="")
-f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
-kable(f.dbb[f.dbb[,3]>=0.3,])
-
-# Table WB
-t.wb <- frq(lb.hrs[[4]][2])[[1]][,c(1,2,4)] 
-for (i in 1:7){
-  t.wb[3+i] <- frq(lf.hrs[[26+i]][2])[[1]][,4] 
-}
-t.wb[13,] <- c("n", "sample size", length(lb.hrs[[4]][[2]]),
-             length(lf.hrs[[27]][[2]]), length(lf.hrs[[28]][[2]]), length(lf.hrs[[29]][[2]]), length(lf.hrs[[30]][[2]]), length(lf.hrs[[31]][[2]]), length(lf.hrs[[32]][[2]]), length(lf.hrs[[33]][[2]])
-             )
-names(t.wb)<-c("val", "label", "w4", "w5", "w6", "w7", "w8", "w9", "w10", "w11")
-kable(t.wb)
-
-dbb <- merge(HRS_m_ds_wb_w4[,c("id","cancer")], HRS_m_ds_wb_w5[,c("id","cancer")], by="id", suffixes = c(".w4",".w5"), all=T)
-dbb <- merge(dbb, HRS_m_ds_wb_w6[,c("id","cancer")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_wb_w7[,c("id","cancer")], by="id", suffixes = c(".w6",".w7"), all=T)
-dbb <- merge(dbb, HRS_m_ds_wb_w8[,c("id","cancer")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_wb_w9[,c("id","cancer")], by="id", suffixes = c(".w8",".w9"), all=T)
-dbb <- merge(dbb, HRS_m_ds_wb_w10[,c("id","cancer")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_wb_w11[,c("id","cancer")], by="id", suffixes = c(".w10",".w11"), all=T)
-names(dbb) <- c("id", "w4", "w5", "w6", "w7", "w8", "w9", "w10", "w11")
-v.dbb <- paste(dbb[,2],dbb[,3],dbb[,4],dbb[,5],dbb[,6],dbb[,7],dbb[,8],sep="")
-f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
-kable(f.dbb[f.dbb[,3]>=0.3,])
-
-# Table EBB
-t.ebb <- frq(lb.hrs[[5]][2])[[1]][,c(1,2,4)] 
-for (i in 1:4){
-  t.ebb[3+i] <- frq(lf.hrs[[33+i]][2])[[1]][,4] 
-}
-t.ebb[13,] <- c("n", "sample size", length(lb.hrs[[5]][[2]]),
-             length(lf.hrs[[34]][[2]]), length(lf.hrs[[35]][[2]]), length(lf.hrs[[36]][[2]]), length(lf.hrs[[37]][[2]])
-             )
-names(t.ebb)<-c("val", "label", "w7", "w8", "w9", "w10", "w11")
-kable(t.ebb)
-
-dbb <- merge(HRS_m_ds_ebb_w7[,c("id","cancer")], HRS_m_ds_ebb_w8[,c("id","cancer")], by="id", suffixes = c(".w7",".w8"), all=T)
-dbb <- merge(dbb, HRS_m_ds_ebb_w9[,c("id","cancer")], by="id", all=T)
-dbb <- merge(dbb, HRS_m_ds_ebb_w10[,c("id","cancer")], by="id", suffixes = c(".w9",".w10"), all=T)
-dbb <- merge(dbb, HRS_m_ds_ebb_w11[,c("id","cancer")], by="id", all=T)
-names(dbb) <- c("id", "w7", "w8", "w9", "w10", "w11")
-v.dbb <- paste(dbb[,2],dbb[,3],dbb[,4],dbb[,5],dbb[,6],sep="")
-f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
-kable(f.dbb[f.dbb[,3]>=0.3,])
-
-# Table MBB
-t.mbb <- frq(lb.hrs[[6]][2])[[1]][,c(1,2,4)] 
-for (i in 1:1){
-  t.mbb[3+i] <- frq(lf.hrs[[37+i]][2])[[1]][,4] 
-}
-t.mbb[13,] <- c("n", "sample size", length(lb.hrs[[6]][[2]]), length(lf.hrs[[38]][[2]]))
-names(t.mbb)<-c("val", "label", "w10", "w11")
-kable(t.mbb)
-
-dbb <- merge(HRS_m_ds_mbb_w10[,c("id","cancer")], HRS_m_ds_mbb_w11[,c("id","cancer")], by="id", suffixes = c(".w10",".w11"), all=T)
-names(dbb) <- c("id", "w10", "w11")
-v.dbb <- paste(dbb[,2],dbb[,3],sep="")
-f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
-kable(f.dbb[f.dbb[,3]>=0.3,])
+source("../../helpfunctions.r")
 
 ```
+
+
+
+```{r populations-waves, echo=F}
+
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+hrs.hrs.cw <- list(hrs_w1 = c("hrs_w1","HRS w1"), hrs_w2 = c("hrs_w2","HRS w2"), hrs_w3 = c("hrs_w3","HRS w3"), hrs_w4 = c("hrs_w4","HRS w4"), hrs_w5 = c("hrs_w5","HRS w5"), hrs_w6 = c("hrs_w6","HRS w6"), hrs_w7 = c("hrs_w7","HRS w7"), hrs_w8 = c("hrs_w8","HRS w8"), hrs_w9 = c("hrs_w9","HRS w9"), hrs_w10 = c("hrs_w10","HRS w10"), hrs_w11 = c("hrs_w11","HRS w11"))
+
+hrs.ahead.cw <- list(ahead_w2 = c("ahead_w2","AHEAD w2"), ahead_w3 = c("ahead_w3","AHEAD w3"), ahead_w4 = c("ahead_w4","AHEAD w4"), ahead_w5 = c("ahead_w5","AHEAD w5"), ahead_w6 = c("ahead_w6","AHEAD w6"), ahead_w7 = c("ahead_w7","AHEAD w7"), ahead_w8 = c("ahead_w8","AHEAD w8"), ahead_w9 = c("ahead_w9","AHEAD w9"), ahead_w10 = c("ahead_w10","AHEAD w10"), ahead_w11 = c("ahead_w11","AHEAD w11"))
+
+hrs.coda.cw <- list(coda_w4 = c("coda_w4","CODA w4"), coda_w5 = c("coda_w5","CODA w5"), coda_w6 = c("coda_w6","CODA w6"), coda_w7 = c("coda_w7","CODA w7"), coda_w8 = c("coda_w8","CODA w8"), coda_w9 = c("coda_w9","CODA w9"), coda_w10 = c("coda_w10","CODA w10"), coda_w11 = c("coda_w11","CODA w11"))
+
+hrs.wb.cw <- list(wb_w4 = c("wb_w4","WB w4"), wb_w5 = c("wb_w5","WB w5"), wb_w6 = c("wb_w6","WB w6"), wb_w7 = c("wb_w7","WB w7"), wb_w8 = c("wb_w8","WB w8"), wb_w9 = c("wb_w9","WB w9"), wb_w10 = c("wb_w10","WB w10"), wb_w11 = c("wb_w11","WB w11"))
+
+hrs.ebb.cw <- list(ebb_w7 = c("ebb_w7","EBB w7"), ebb_w8 = c("ebb_w8","EBB w8"), ebb_w9 = c("ebb_w9","EBB w9"), ebb_w10 = c("ebb_w10","EBB w10"), ebb_w11 = c("ebb_w11","EBB w11"))
+
+hrs.mbb.cw <- list(mbb_w10 = c("mbb_w10","MBB w10"), mbb_w11 = c("mbb_w11","MBB w11"))
+
+
+
+
+```
+
+
+
+
+<!--Labelling and saving-->
+
+```{r, echo=FALSE}
+
+# HRS
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(hrs.hrs.cw, function(wname) if(exists(paste0("HRS_ds_",wname[1]))){wname = list(get(paste0("HRS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_age_vbl,ds_label_age)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+hrslist <- lmlist # HRS list
+
+
+# AHEAD
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(hrs.ahead.cw, function(wname) if(exists(paste0("HRS_ds_",wname[1]))){wname = list(get(paste0("HRS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_age_vbl,ds_label_age)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+aheadlist <- lmlist # AHEAD list
+
+
+
+# CODA
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(hrs.coda.cw, function(wname) if(exists(paste0("HRS_ds_",wname[1]))){wname = list(get(paste0("HRS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_age_vbl,ds_label_age)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+codalist <- lmlist # CODA list
+
+
+# WB
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(hrs.wb.cw, function(wname) if(exists(paste0("HRS_ds_",wname[1]))){wname = list(get(paste0("HRS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_age_vbl,ds_label_age)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+wblist <- lmlist # WB list
+
+
+
+# EBB
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(hrs.ebb.cw, function(wname) if(exists(paste0("HRS_ds_",wname[1]))){wname = list(get(paste0("HRS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_age_vbl,ds_label_age)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+ebblist <- lmlist # EBB list
+
+
+
+# MBB
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(hrs.mbb.cw, function(wname) if(exists(paste0("HRS_ds_",wname[1]))){wname = list(get(paste0("HRS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_age_vbl,ds_label_age)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+mbblist <- lmlist # MBB list
+
+```
+
+
+<!--Descriptives-->
+
+
+```{r summ, echo=FALSE}
+
+# HRS
+# Consider only harmonised waves
+l.hds <- lapply(hrs.hrs.cw, function(wname) if(hd_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- hrslist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- hrslist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb[f.dbb[,3]>=0.3,]))
+
+}
+
+
+
+# AHEAD
+# Consider only harmonised waves
+l.hds <- lapply(hrs.ahead.cw, function(wname) if(hd_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- aheadlist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- aheadlist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb[f.dbb[,3]>=0.3,]))
+}
+
+
+# CODA
+# Consider only harmonised waves
+l.hds <- lapply(hrs.coda.cw, function(wname) if(hd_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- codalist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- codalist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb[f.dbb[,3]>=0.3,]))
+}
+
+
+
+
+# WB
+# Consider only harmonised waves
+l.hds <- lapply(hrs.wb.cw, function(wname) if(hd_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- wblist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- wblist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb[f.dbb[,3]>=0.3,]))
+}
+
+
+
+# EBB
+# Consider only harmonised waves
+l.hds <- lapply(hrs.ebb.cw, function(wname) if(hd_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- ebblist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- ebblist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb))
+}
+
+
+
+# MBB
+# Consider only harmonised waves
+l.hds <- lapply(hrs.mbb.cw, function(wname) if(hd_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- mbblist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- mbblist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb))
+}
+
+```
+
+
+
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable `cancer_age` accross populations and waves
+
+
+
+
+
+```{r summ_c, echo=FALSE}
+
+# HRS
+# Consider only harmonised waves
+l.hds <- lapply(hrs.hrs.cw, function(wname) if(hd_age_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- hrslist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- hrslist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_age_vbl),caption=ds_label_age))
+}
+
+
+
+
+# AHEAD
+# Consider only harmonised waves
+l.hds <- lapply(hrs.ahead.cw, function(wname) if(hd_age_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- aheadlist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- aheadlist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_age_vbl),caption=ds_label_age))
+}
+
+
+
+# CODA
+# Consider only harmonised waves
+l.hds <- lapply(hrs.coda.cw, function(wname) if(hd_age_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- codalist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- codalist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_age_vbl),caption=ds_label_age))
+}
+
+
+
+
+# WB
+# Consider only harmonised waves
+l.hds <- lapply(hrs.wb.cw, function(wname) if(hd_age_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- wblist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- wblist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_age_vbl),caption=ds_label_age))
+}
+
+
+
+
+
+# EBB
+# Consider only harmonised waves
+l.hds <- lapply(hrs.ebb.cw, function(wname) if(hd_age_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- ebblist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- ebblist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_age_vbl),caption=ds_label_age))
+}
+
+
+# MBB
+# Consider only harmonised waves
+l.hds <- lapply(hrs.mbb.cw, function(wname) if(hd_age_vbl %in% names(get0(paste0("HRS_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- mbblist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- mbblist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_age_vbl),caption=ds_label_age))
+}
+
+
+```
+
 
 
 
@@ -5495,25 +5765,6 @@ kable(f.dbb[f.dbb[,3]>=0.3,])
 
 No comments
 
-
-<!-- ########################################################## --> 
-<!-- # Save -->
-```{r save, include=FALSE, echo=F}
-
-
-for(name in names(lb.hrs)){
-  cancer <- lb.hrs[[name]]
-  save(cancer, file = paste0(datafolder,name,"/cancer.RData"))
-}
-
-for(name in names(lf.hrs)) {
-  cancer <- lf.hrs[[name]]
-  save(cancer, file = paste0(datafolder,name,"/cancer.RData"))
-}
-
-
-```
-<!-- ########################################################## --> 
 
 
 
