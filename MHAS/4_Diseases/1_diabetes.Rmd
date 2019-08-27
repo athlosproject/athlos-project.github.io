@@ -15,75 +15,15 @@ output:
 <!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
-
-
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-* Short name: `h_diabetes`
-* Variable label: `History of  Diabetes mellitus`
-* Variable description: `History of diabetes or high blood sugar`
-* Domain: `Diseases`
-* Value type: `categorical`
-* Category coding:
-
-**Code** | **Category Label**
--------- | ------------------
-0        | Not Diabetes or high blood sugar
-1        | Diabetes or high blood sugar
-
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-* Short name: `h_diabetes_age`
-* Variable label: `Age first diagnosed diabetes`
-* Variable description: `The age first told had diabetes or high blood sugar diagnosis`
-* Domain: `Diseases`
-* Value type: `Continuous`
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-
-<!-- ########################################################## --> 
-<!-- # Global variables -->
-```{r global, include=FALSE, echo=F}
-miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
-ds_label <- "History of diabetes"
-ds_label_age <- "Age first diagnosed diabetes"
-cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
-cont_label <- cat_label[3:11]
-datafolder <- "../RData/"
-#sing_idlist <- c()
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/diabetesDS.Rmd'}
 ```
-<!-- ########################################################## --> 
+```{r global, echo=F}
+source('../../_DS_Rmd/diabetesDS.R')
+```
 
 
 
@@ -185,8 +125,8 @@ kable(C)
 |-|-|-|-|-|
 | **Label** | `Doctor ever say you have diabetes`|`age`|`year of interview`|`year of interview`|
 | **Table name**  | `MHAS_2003`|`age`|`yintw`|`yintw`|
-| **Categories** | `1 = Yes; 2 = No` |`continuous`|`continuous`|`continuous`|
-| **Missings** | `8 = Doesn't answer; 9 = Doesn't know; NA` | `995 = Does not answer; 998 = Do not know; 999 = Missing` |  |  |
+| **Categories** | `1 = Yes`<br/>`2 = No` |`continuous`|`continuous`|`continuous`|
+| **Missings** | `8 = Doesn't answer`<br/>`9 = Doesn't know`<br/>`NA` | `998 = Do not know`<br/>`999 = Missing` |  |  |
 | **Description** |  |  |  |  |
 
 ```{r assign w2, echo=F}
@@ -217,7 +157,7 @@ ggplot(MHAS_w2, aes(x=factor(c6))) + geom_bar(stat="count", width=0.4, fill="ste
 vbl <- MHAS_w2$age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(MHAS_w2)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(MHAS_w2, aes(age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(20,110)
+ggplot(MHAS_w2 %>% filter(!vbl %in% miss_values_vector), aes(age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- MHAS_w2$yintw_w1
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(MHAS_w2)[4])
@@ -258,15 +198,15 @@ MHAS_w2 <- left_join(MHAS_w2, MHAS_ds, by = "id")
 # Categorical variable harmonization
 MHAS_ds_w2 <- tibble(id=MHAS_w2$id)
 MHAS_ds_w2$h_diabetes <- rep(999,length(MHAS_w2$id))
-MHAS_ds_w2$h_diabetes[((!is.na(MHAS_w2$c6)) & MHAS_w2$c6 == 2) & (MHAS_w2$h_diabetes != 1)] <- 0
-MHAS_ds_w2$h_diabetes[((!is.na(MHAS_w2$c6)) & MHAS_w2$c6 == 1) | ((!is.na(MHAS_w2$h_diabetes)) & (!is.na(MHAS_w2$c6)) & MHAS_w2$h_diabetes == 1)] <- 1
-MHAS_ds_w2$h_diabetes[((!is.na(MHAS_w2$c6)) & MHAS_w2$c6 == 8) & (MHAS_w2$h_diabetes != 1)] <- 995
-MHAS_ds_w2$h_diabetes[((!is.na(MHAS_w2$c6)) & MHAS_w2$c6 == 9) & (MHAS_w2$h_diabetes != 1)] <- 998
+MHAS_ds_w2$h_diabetes[which(((!is.na(MHAS_w2$c6)) & MHAS_w2$c6 == 2) & (MHAS_w2$h_diabetes != 1))] <- 0
+MHAS_ds_w2$h_diabetes[which(((!is.na(MHAS_w2$c6)) & MHAS_w2$c6 == 1) | ((!is.na(MHAS_w2$h_diabetes)) & (!is.na(MHAS_w2$c6)) & MHAS_w2$h_diabetes == 1))] <- 1
+MHAS_ds_w2$h_diabetes[which(((!is.na(MHAS_w2$c6)) & MHAS_w2$c6 == 8) & (MHAS_w2$h_diabetes != 1))] <- 995
+MHAS_ds_w2$h_diabetes[which(((!is.na(MHAS_w2$c6)) & MHAS_w2$c6 == 9) & (MHAS_w2$h_diabetes != 1))] <- 998
 
 # Continuous variable harmonization
-diabetes_age <- MHAS_w2$age[which(MHAS_ds_w2$h_diabetes == 1 & MHAS_w2$h_diabetes==0 & !MHAS_w2$age %in% miss_values_vector)]-(MHAS_w2$yintw_w2[which(MHAS_ds_w2$h_diabetes == 1 & MHAS_w2$h_diabetes==0 & !MHAS_w2$age %in% miss_values_vector)]-MHAS_w2$yintw_w1[which(MHAS_ds_w2$h_diabetes == 1 & MHAS_w2$h_diabetes==0 & !MHAS_w2$age %in% miss_values_vector)])/2
+diabetes_age <- floor(MHAS_w2$age[which(MHAS_ds_w2$h_diabetes == 1 & MHAS_w2$h_diabetes==0 & !MHAS_w2$age %in% miss_values_vector)] - (MHAS_w2$yintw_w2[which(MHAS_ds_w2$h_diabetes == 1 & MHAS_w2$h_diabetes==0 & !MHAS_w2$age %in% miss_values_vector)] - MHAS_w2$yintw_w1[which(MHAS_ds_w2$h_diabetes == 1 & MHAS_w2$h_diabetes==0 & !MHAS_w2$age %in% miss_values_vector)])/2)
 MHAS_ds_w2$h_diabetes_age <- rep(999,length(MHAS_w2$id))
-MHAS_ds_w2$h_diabetes_age[MHAS_ds_w2$h_diabetes == 0] <- 996
+MHAS_ds_w2$h_diabetes_age[which(MHAS_ds_w2$h_diabetes == 0)] <- 996
 MHAS_ds_w2$h_diabetes_age[which(MHAS_ds_w2$h_diabetes == 1 & MHAS_w2$h_diabetes==0 & !MHAS_w2$age %in% miss_values_vector)] <- diabetes_age
 
 # We update the diabetes status of the individuals in the global table
@@ -305,7 +245,7 @@ vbl <- MHAS_ds_w2$h_diabetes_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(MHAS_ds_w2, aes(h_diabetes_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(35,100)
+ggplot(MHAS_ds_w2 %>% filter(!vbl %in% miss_values_vector), aes(h_diabetes_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -342,8 +282,8 @@ kable(frq(MHAS_w2$h_diabetes[which(MHAS_w2$c6==2)]),align='c')
 |-|-|-|-|-|
 | **Label** | `Has a physician diagnosed respondent?diabetes`|`year of birth`|`year of interview`|`year of interview`|
 | **Table name**  | `MHAS_2012_new`|`ybirth`|`yintw`|`yintw`|
-| **Categories** | `1 = Yes; 2 = No` |`continuous`|`continuous`|`continuous`|
-| **Missings** | `8 = Doesn't answer; 9 = Doesn't know; NA` | `999 = Missing` |  |  |
+| **Categories** | `1 = Yes`<br/>`2 = No` |`continuous`|`continuous`|`continuous`|
+| **Missings** | `8 = Doesn't answer`<br/>`9 = Doesn't know`<br/>`NA` | `998 = Do not know`<br/>`999 = Missing` |  |  |
 | **Description** |  |  |  |  |
 
 ```{r assign w3, echo=F}
@@ -374,7 +314,7 @@ ggplot(MHAS_w3, aes(x=factor(c6_12))) + geom_bar(stat="count", width=0.4, fill="
 vbl <- MHAS_w3$ybirth
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = names(MHAS_w3)[3])
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(MHAS_w3, aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(1895,1980)
+ggplot(MHAS_w3 %>% filter(!vbl %in% miss_values_vector), aes(ybirth)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- MHAS_w3$yintw_w3
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(MHAS_w3)[4])
@@ -416,17 +356,17 @@ MHAS_w3 <- left_join(MHAS_w3, MHAS_ds, by = "id")
 # Categorical variable harmonization
 MHAS_ds_w3 <- tibble(id=MHAS_w3$id)
 MHAS_ds_w3$h_diabetes <- rep(999,length(MHAS_w3$id))
-MHAS_ds_w3$h_diabetes[((!is.na(MHAS_w3$c6_12)) & MHAS_w3$c6_12 == 2) & (MHAS_w3$h_diabetes != 1)] <- 0
-MHAS_ds_w3$h_diabetes[((!is.na(MHAS_w3$c6_12)) & MHAS_w3$c6_12 == 1) | ((!is.na(MHAS_w3$h_diabetes)) & (!is.na(MHAS_w3$c6_12)) & MHAS_w3$h_diabetes == 1)] <- 1
-MHAS_ds_w3$h_diabetes[((!is.na(MHAS_w3$c6_12)) & MHAS_w3$c6_12 == 8) & (MHAS_w3$h_diabetes != 1)] <- 995
-MHAS_ds_w3$h_diabetes[((!is.na(MHAS_w3$c6_12)) & MHAS_w3$c6_12 == 9) & (MHAS_w3$h_diabetes != 1)] <- 998
+MHAS_ds_w3$h_diabetes[which(((!is.na(MHAS_w3$c6_12)) & MHAS_w3$c6_12 == 2) & (MHAS_w3$h_diabetes != 1))] <- 0
+MHAS_ds_w3$h_diabetes[which(((!is.na(MHAS_w3$c6_12)) & MHAS_w3$c6_12 == 1) | ((!is.na(MHAS_w3$h_diabetes)) & (!is.na(MHAS_w3$c6_12)) & MHAS_w3$h_diabetes == 1))] <- 1
+MHAS_ds_w3$h_diabetes[which(((!is.na(MHAS_w3$c6_12)) & MHAS_w3$c6_12 == 8) & (MHAS_w3$h_diabetes != 1))] <- 995
+MHAS_ds_w3$h_diabetes[which(((!is.na(MHAS_w3$c6_12)) & MHAS_w3$c6_12 == 9) & (MHAS_w3$h_diabetes != 1))] <- 998
 
 # Continuous variable harmonization
 MHAS_ds_w3$h_diabetes_age <- rep(999,length(MHAS_w3$id))
-MHAS_ds_w3$h_diabetes_age[MHAS_ds_w3$h_diabetes == 0] <- 996
+MHAS_ds_w3$h_diabetes_age[which(MHAS_ds_w3$h_diabetes == 0)] <- 996
 MHAS_ds_w3$h_diabetes_age[which(MHAS_ds_w3$h_diabetes == 1 & MHAS_w3$h_diabetes!=0 & !is.na(MHAS_w3$h_diabetes))] <- MHAS_w3$h_diabetes_age[which(MHAS_ds_w3$h_diabetes == 1 & MHAS_w3$h_diabetes!=0 & !is.na(MHAS_w3$h_diabetes))]
 MHAS_w3 <- left_join(MHAS_w3, MHAS_ds_w2[,c(1,2)], by = "id", suffix = c("","_w2"))
-MHAS_ds_w3$h_diabetes_age[which(MHAS_ds_w3$h_diabetes == 1 & MHAS_w3$h_diabetes_w2==0)] <- (MHAS_w3$yintw_w3[which(MHAS_ds_w3$h_diabetes == 1 & MHAS_w3$h_diabetes_w2==0)]+MHAS_w3$yintw_w2[which(MHAS_ds_w3$h_diabetes == 1 & MHAS_w3$h_diabetes_w2==0)])/2-MHAS_w3$ybirth[which(MHAS_ds_w3$h_diabetes == 1 & MHAS_w3$h_diabetes_w2==0)]
+MHAS_ds_w3$h_diabetes_age[which(MHAS_ds_w3$h_diabetes == 1 & MHAS_w3$h_diabetes_w2==0 & !MHAS_w3$ybirth %in% miss_values_vector)] <- floor((MHAS_w3$yintw_w3[which(MHAS_ds_w3$h_diabetes == 1 & MHAS_w3$h_diabetes_w2==0 & !MHAS_w3$ybirth %in% miss_values_vector)] + MHAS_w3$yintw_w2[which(MHAS_ds_w3$h_diabetes == 1 & MHAS_w3$h_diabetes_w2==0 & !MHAS_w3$ybirth %in% miss_values_vector)])/2 - MHAS_w3$ybirth[which(MHAS_ds_w3$h_diabetes == 1 & MHAS_w3$h_diabetes_w2==0 & !MHAS_w3$ybirth %in% miss_values_vector)])
 MHAS_ds_w3$h_diabetes_age <- car::recode(MHAS_ds_w3$h_diabetes_age, "NA=999")
 rm(MHAS_ds)
 
@@ -447,7 +387,7 @@ vbl <- MHAS_ds_w3$h_diabetes_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(MHAS_ds_w3, aes(h_diabetes_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(25,90)
+ggplot(MHAS_ds_w3 %>% filter(!vbl %in% miss_values_vector), aes(h_diabetes_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -476,74 +416,151 @@ kable(frq(MHAS_w3$h_diabetes[MHAS_w3$c6_12==2]),align='c')
 
 
 
+<!--AUXILIAR FUNCTIONS-->
 
-## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+
+```{r helpfunctions, echo=F}
+
+source("../../helpfunctions.r")
+
+```
+
+
+
+```{r populations-waves, echo=F}
+
+
+# All study waves and populations with abbreviated and descriptive names
+
+mhas.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"), w3 = c("w3","W3"))
+
+
+
+```
+
+
+<!--Labelling and saving-->
+
+```{r, echo=FALSE}
+
+
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(mhas.cw, function(wname) if(exists(paste0("MHAS_ds_",wname[1]))){wname = list(get(paste0("MHAS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_age_vbl,ds_label_age)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+mhaslist <- lmlist # MHAS list
+
+
+
+
+```
+
+
+
+<!--Descriptives-->
+
+## Descriptive statistics of the harmonised variable `h_diabetes` accross populations and waves
 
 Two tables are generated: 
 
 1. Percentages of categories in each harmonised variable.
 
-2. Frequencies and percentages of individuals with different trajectories. To avoid too large table, Only trajectories with percentages larger than 0.3 are shown.
-
-**R script:**
-
-```{r summ}
-MHAS_ds_w1$h_diabetes <- labelled(MHAS_ds_w1$h_diabetes, labels = cat_label)
-label(MHAS_ds_w1$h_diabetes) <- ds_label
-MHAS_ds_w2$h_diabetes <- labelled(MHAS_ds_w2$h_diabetes, labels = cat_label)
-label(MHAS_ds_w2$h_diabetes) <- ds_label
-MHAS_ds_w2$h_diabetes_age <- labelled(MHAS_ds_w2$h_diabetes_age, labels = cont_label)
-label(MHAS_ds_w2$h_diabetes_age) <- ds_label_age
-MHAS_ds_w3$h_diabetes <- labelled(MHAS_ds_w3$h_diabetes, labels = cat_label)
-label(MHAS_ds_w3$h_diabetes) <- ds_label
-MHAS_ds_w3$h_diabetes_age <- labelled(MHAS_ds_w3$h_diabetes_age, labels = cont_label)
-label(MHAS_ds_w3$h_diabetes_age) <- ds_label_age
+2. Frequencies and percentages of individuals with different trajectories.
 
 
-MHAS_m_ds_w1 <- MHAS_ds_w1
-MHAS_m_ds_w1$h_diabetes <- car::recode(MHAS_m_ds_w1$h_diabetes, "miss_values_vector=NA")
-MHAS_m_ds_w2 <- MHAS_ds_w2
-MHAS_m_ds_w2$h_diabetes <- car::recode(MHAS_m_ds_w2$h_diabetes, "miss_values_vector=NA")
-MHAS_m_ds_w3 <- MHAS_ds_w3
-MHAS_m_ds_w3$h_diabetes <- car::recode(MHAS_m_ds_w3$h_diabetes, "miss_values_vector=NA")
+```{r summ, echo=F}
 
 
-tt <-    frq(MHAS_ds_w1$h_diabetes)[[1]][,c(1:2,4)]
-tt[4] <- frq(MHAS_ds_w2$h_diabetes)[[1]][,c(4)]
-tt[5] <- frq(MHAS_ds_w3$h_diabetes)[[1]][,c(4)]
-tt[13,] <- c("n", "sample size", 
-             length(MHAS_ds_w1$h_diabetes), length(MHAS_ds_w2$h_diabetes), length(MHAS_ds_w3$h_diabetes)
-             )
-names(tt)<-c("val", "label", "w1", "w2", "w3")
-kable(tt)
+# Consider only harmonised waves
+l.hds <- lapply(mhas.cw, function(wname) if(hd_vbl %in% names(get0(paste0("MHAS_ds_",wname[1])))){wname})
 
-dbb <- merge(MHAS_m_ds_w1[,c("id","h_diabetes")], MHAS_m_ds_w2[,c("id","h_diabetes")], by="id", suffixes = c(".w1",".w2"), all=T)
-dbb <- merge(dbb, MHAS_m_ds_w3[,c("id","h_diabetes")], by="id", all=T)
-names(dbb) <- c("id", "w1", "w2", "w3")
-v.dbb <- paste(dbb[,2],dbb[,3],dbb[,4],sep="")
-f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
-kable(f.dbb[f.dbb[,3]>=0.3,])
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- mhaslist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- mhaslist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb))
+
+}
+
+
+
 ```
 
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable `h_diabetes_age` accross populations and waves
+
+
+
+
+
+
+```{r summ_c, echo=F}
+
+
+# Consider only harmonised waves
+l.hds <- lapply(mhas.cw, function(wname) if(hd_age_vbl %in% names(get0(paste0("MHAS_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- mhaslist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- mhaslist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_age_vbl),caption=ds_label_age))
+}
+
+
+
+
+
+```
 
 
 # Quality estimation
 
 We assume that if an individual answers it has diabetes in one wave, it has diabetes for all the next waves.
-
-<!-- ########################################################## --> 
-<!-- # Save -->
-```{r save, include=FALSE, echo=F}
-
-l.MHAS <- list(w1 = MHAS_ds_w1, w2 = MHAS_ds_w2, w3 = MHAS_ds_w3)
-
-for(index in seq_along(l.MHAS)){
-  h_diabetes <- l.MHAS[[index]]
-  save(h_diabetes, file = paste0(datafolder,names(l.MHAS)[index],"/h_diabetes.RData"))
-}
-
-```
-<!-- ########################################################## --> 
 
 
 
