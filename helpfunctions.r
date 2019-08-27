@@ -128,7 +128,7 @@ summaries_c <- function(l.hds, m.hds, lnames, vbl_name) {
 
 
 
-trajectories <- function(m.hds, vbl_name) {
+trajectories <- function(m.hds, vbl_name, global.df = FALSE) {
   
   # First wave data
   dbb <- m.hds[[1]][, c("id", vbl_name)] %>% as.data.frame()
@@ -139,6 +139,10 @@ trajectories <- function(m.hds, vbl_name) {
       dbb <- merge(dbb, m.hds[[ind]][, c("id", vbl_name)], by = "id", suffixes = c("", paste0(".", names(m.hds)[ind])), all = T)
     }
     names(dbb) <- c("id", names(m.hds))
+    
+    if(isTRUE(global.df)) {
+      dbb <<- dbb
+    }
     
     # Glue individual data through all waves into trajectories
     v.dbb <- dbb[,2] %>% as.character()
