@@ -2,14 +2,31 @@
 
 
 
-labelling <- function(l.hds, m.hds, vbl_name, ds_lab = ds_label, cat_lab = cat_label) {
+labelling <- function(l.hds, m.hds, vbl_name = hd_vbl, ds_lab = ds_label, cat_lab = cat_label) {
+  
+  
+  # If there are more than one variable (e.g., a categorical and a continuous) and
+  # If labelling or labelling_c were called first, then
+  # m.hds has been already created and
+  # Other variables have been already relabelled in m.hds, therefore
+  # m.hds should be used to modify it
+  
+  # Otherwise, l.hds should be used to start,
+  # In particular, when there is a unique variable
+  
+  if (is.empty.list(m.hds)) {
+    aux_list <- l.hds
+  } else {
+    aux_list <- m.hds
+  }
+  
   
   # Labelling of the tibbles with categorical data and creating new tibbles with all missings recodified as NA
   
   for(name in names(l.hds)) {
     if(vbl_name %in% names(l.hds[[name]])) {
       # In the aux_object we copy the old tibble to recodify all missing values as NA.
-      aux_object <- l.hds[[name]]
+      aux_object <- aux_list[[name]]
       # Labelling of variables
       label(l.hds[[name]][[vbl_name]]) <- label(aux_object[[vbl_name]]) <- ds_lab
       # Labelling of categories (for continues variables, only missing values)
@@ -28,11 +45,36 @@ labelling <- function(l.hds, m.hds, vbl_name, ds_lab = ds_label, cat_lab = cat_l
 
 
 
+is.empty.list <- function(a_list) {
+  if(is.list(a_list)) {
+    if(length(a_list) == 0 && is.null(attributes(a_list))) {
+      return(TRUE)
+    } else {
+      return(FALSE)
+    }
+  } else {
+    return(FALSE)
+  }
+}
 
 
 
-
-labelling_c <- function(l.hds, m.hds, vbl_name, ds_lab = ds_label) {
+labelling_c <- function(l.hds, m.hds, vbl_name = hd_vbl, ds_lab = ds_label) {
+  
+  # If there are more than one variable (e.g., a categorical and a continuous) and
+  # If labelling or labelling_c were called first, then
+  # m.hds has been already created and
+  # Other variables have been already relabelled in m.hds, therefore
+  # m.hds should be used to modify it
+  
+  # Otherwise, l.hds should be used to start,
+  # In particular, when there is a unique variable
+  
+  if (is.empty.list(m.hds)) {
+    aux_list <- l.hds
+  } else {
+    aux_list <- m.hds
+  }
   
   # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
   
@@ -40,7 +82,7 @@ labelling_c <- function(l.hds, m.hds, vbl_name, ds_lab = ds_label) {
     
     if(vbl_name %in% names(l.hds[[name]])) {
       # In the aux_object we copy the old tibble to recodify all missing values as NA.
-      aux_object <- m.hds[[name]]
+      aux_object <- aux_list[[name]]
       # Labelling of variables
       label(l.hds[[name]][[vbl_name]]) <- label(aux_object[[vbl_name]]) <- ds_lab
       # Labelling of categories (for continues variables, only missing values)
@@ -87,7 +129,7 @@ summaries <- function(l.hds, m.hds, lnames, vbl_name = hd_vbl, cat_lab = cat_lab
 
 
 
-summaries_c <- function(l.hds, m.hds, lnames, vbl_name) {
+summaries_c <- function(l.hds, m.hds, lnames, vbl_name = hd_vbl) {
   
   # Creation of column with summary table categories
   t.summ <- summary(m.hds[[1]][vbl_name])[1:6]
