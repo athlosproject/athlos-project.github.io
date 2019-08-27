@@ -15,75 +15,16 @@ output:
 <!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
-
-
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-* Short name: `h_joint_disorders`
-* Variable label: `History of arthritis, rheumatism or osteoarthritis`
-* Variable description: `history of arthritis, rheumatism or osteoarthritis`
-* Domain: `Diseases`
-* Value type: `categorical`
-* Category coding:
-
-**Code** | **Category Label**
--------- | ------------------
-0        | NOT joint_disorders 
-1        | joint_disorders
-
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-* Short name: `h_joint_disorders_age`
-* Variable label: `Age first diagnosed joint disorder`
-* Variable description: `The age first told had joint disorder diagnosis`
-* Domain: `Diseases`
-* Value type: `Continuous`
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-
-<!-- ########################################################## --> 
-<!-- # Global variables -->
-```{r global, include=FALSE, echo=F}
-miss_values_vector <- c(991, 992, 993, 994, 995, 996, 997, 998, 999)
-ds_label <- "History of arthritis, rheumatism or osteoarthritis"
-ds_label_age <- "Age first diagnosed joint disorder"
-cat_label <- c("No" = 0, "Yes" = 1, "Missing" = 999, "Do not know" = 998, "Refuse" = 997, "Not applicable" = 996, "Does not answer" = 995, "Not attempt not done" = 994, "Disable to measure" = 993, "Impute" = 992, "CAPI interviewer error" = 991)
-cont_label <- cat_label[3:11]
-datafolder <- "../RData/"
-#sing_idlist <- c()
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/joint_disordersDS.Rmd'}
 ```
-<!-- ########################################################## --> 
+```{r global, echo=F}
+source('../../_DS_Rmd/joint_disordersDS.R')
+```
+
 
 
 
@@ -157,7 +98,7 @@ TILDA_ds_w1 <- tibble(id=TILDA_w1$id)
 TILDA_ds_w1$h_joint_disorders <-TILDA_w1$ph301_03
 
 # Continuous variable harmonization
-arthritis_age <- car::recode(TILDA_w1$ph305[TILDA_ds_w1$h_joint_disorders==1],"49=40;59=50;69=60;-98=998")
+arthritis_age <- car::recode(TILDA_w1$ph305[which(TILDA_ds_w1$h_joint_disorders==1)],"49=40;59=50;69=60;-98=998")
 TILDA_ds_w1$h_joint_disorders_age <- car::recode(TILDA_ds_w1$h_joint_disorders, "0=996; 1=arthritis_age")
 
 ```
@@ -239,7 +180,7 @@ ggplot(TILDA_w2, aes(x=factor(ph301_03))) + geom_bar(stat="count", width=0.4, fi
 vbl <- TILDA_w2$age
 kable(Continuous_summary(var = vbl, missing_values = NA)[3], caption = names(TILDA_w2)[3])
 pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
-ggplot(TILDA_w2, aes(age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")+xlim(50,85)
+ggplot(TILDA_w2 %>% filter(!vbl %in% miss_values_vector), aes(age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
 
 vbl <- TILDA_w2$yintw_w1
 kable(Categorical_summary(vbl, missing_values = NA)[2], caption = names(TILDA_w2)[4])
@@ -283,7 +224,7 @@ TILDA_ds_w2$h_joint_disorders[which(TILDA_w2$ph301_03==1 | (!is.na(TILDA_w2$ph30
 # Continuous variable harmonization
 TILDA_ds_w2$h_joint_disorders_age <- rep(999,length(TILDA_w2$id))
 TILDA_ds_w2$h_joint_disorders_age[which(TILDA_ds_w2$h_joint_disorders == 1 & !is.na(TILDA_w2$h_joint_disorders_age) & !TILDA_w2$h_joint_disorders_age %in% miss_values_vector)] <- TILDA_w2$h_joint_disorders_age[which(TILDA_ds_w2$h_joint_disorders == 1 & !is.na(TILDA_w2$h_joint_disorders_age) & !TILDA_w2$h_joint_disorders_age %in% miss_values_vector)]
-TILDA_ds_w2$h_joint_disorders_age[which(TILDA_ds_w2$h_joint_disorders == 1 & TILDA_w2$h_joint_disorders == 0)] <- TILDA_w2$age[which(TILDA_ds_w2$h_joint_disorders == 1 & TILDA_w2$h_joint_disorders == 0)] - (TILDA_w2$yintw_w2[which(TILDA_ds_w2$h_joint_disorders == 1 & TILDA_w2$h_joint_disorders == 0)] - TILDA_w2$yintw_w1[which(TILDA_ds_w2$h_joint_disorders == 1 & TILDA_w2$h_joint_disorders == 0)])/2
+TILDA_ds_w2$h_joint_disorders_age[which(TILDA_ds_w2$h_joint_disorders == 1 & TILDA_w2$h_joint_disorders == 0)] <- floor(TILDA_w2$age[which(TILDA_ds_w2$h_joint_disorders == 1 & TILDA_w2$h_joint_disorders == 0)] - (TILDA_w2$yintw_w2[which(TILDA_ds_w2$h_joint_disorders == 1 & TILDA_w2$h_joint_disorders == 0)] - TILDA_w2$yintw_w1[which(TILDA_ds_w2$h_joint_disorders == 1 & TILDA_w2$h_joint_disorders == 0)])/2)
 
 ```
 
@@ -302,7 +243,7 @@ vbl <- TILDA_ds_w2$h_joint_disorders_age
 kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label_age)
 kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
 pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
-ggplot(TILDA_ds_w2, aes(h_joint_disorders_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")+xlim(35,85)
+ggplot(TILDA_ds_w2 %>% filter(!vbl %in% miss_values_vector), aes(h_joint_disorders_age)) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label_age) + ylab("Frequency")
 
 ```
 
@@ -327,41 +268,145 @@ kable(C)
 
 
 
-## Descriptive statistics of the harmonised variable accross populations and waves
-
-Percentages of categories in each harmonised variable:
+<!--AUXILIAR FUNCTIONS-->
 
 
-**R script:**
 
-```{r summ}
-TILDA_ds_w1$h_joint_disorders <- labelled(TILDA_ds_w1$h_joint_disorders, labels = cat_label)
-label(TILDA_ds_w1$h_joint_disorders) <- ds_label
-TILDA_ds_w1$h_joint_disorders_age <- labelled(TILDA_ds_w1$h_joint_disorders_age, labels = cont_label)
-label(TILDA_ds_w1$h_joint_disorders_age) <- ds_label_age
-TILDA_ds_w2$h_joint_disorders <- labelled(TILDA_ds_w2$h_joint_disorders, labels = cat_label)
-label(TILDA_ds_w2$h_joint_disorders) <- ds_label
-TILDA_ds_w2$h_joint_disorders_age <- labelled(TILDA_ds_w2$h_joint_disorders_age, labels = cont_label)
-label(TILDA_ds_w2$h_joint_disorders_age) <- ds_label_age
+```{r helpfunctions, echo=F}
 
-TILDA_m_ds_w1 <- TILDA_ds_w1
-TILDA_m_ds_w1$h_joint_disorders <- car::recode(TILDA_m_ds_w1$h_joint_disorders, "miss_values_vector=NA")
-TILDA_m_ds_w2 <- TILDA_ds_w1
-TILDA_m_ds_w2$h_joint_disorders <- car::recode(TILDA_m_ds_w2$h_joint_disorders, "miss_values_vector=NA")
 
-tt <- frq(TILDA_ds_w1$h_joint_disorders)[[1]][,c(1:2,4)]
-tt[4] <- frq(TILDA_ds_w2$h_joint_disorders)[[1]][,c(4)]
-tt[13,] <- c("n", "sample size", 
-             length(TILDA_ds_w1$h_joint_disorders), length(TILDA_ds_w2$h_joint_disorders)
-             )
-names(tt)<-c("val", "label", "w1", "w2")
-kable(tt)
+source("../../helpfunctions.r")
 
-dbb <- merge(TILDA_m_ds_w1[,c("id","h_joint_disorders")], TILDA_m_ds_w2[,c("id","h_joint_disorders")], by="id", suffixes = c(".w1",".w2"), all=T)
-names(dbb) <- c("id", "w1", "w2")
-v.dbb <- paste(dbb[,2],dbb[,3],sep="")
-f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
-kable(f.dbb[f.dbb[,3]>=0.3,])
+```
+
+
+
+```{r populations-waves, echo=F}
+
+
+# All study waves and populations with abbreviated and descriptive names
+
+tilda.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"))
+
+
+
+```
+
+
+<!--Labelling and saving-->
+
+```{r, echo=FALSE}
+
+
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(tilda.cw, function(wname) if(exists(paste0("TILDA_ds_",wname[1]))){wname = list(get(paste0("TILDA_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_age_vbl,ds_label_age)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+tildalist <- lmlist # TILDA list
+
+
+
+
+```
+
+
+
+<!--Descriptives-->
+
+## Descriptive statistics of the harmonised variable `h_joint_disorders` accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories.
+
+
+```{r summ, echo=F}
+
+
+# Consider only harmonised waves
+l.hds <- lapply(tilda.cw, function(wname) if(hd_vbl %in% names(get0(paste0("TILDA_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- tildalist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- tildalist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb))
+
+}
+
+
+
+```
+
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable `h_joint_disorders_age` accross populations and waves
+
+
+
+
+
+
+```{r summ_c, echo=F}
+
+
+# Consider only harmonised waves
+l.hds <- lapply(tilda.cw, function(wname) if(hd_age_vbl %in% names(get0(paste0("TILDA_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- tildalist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- tildalist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_age_vbl),caption=ds_label_age))
+}
+
+
+
+
 
 ```
 
@@ -370,21 +415,6 @@ kable(f.dbb[f.dbb[,3]>=0.3,])
 # Quality estimation
 
 * To compute age of diagnostic in the second wave we use the harmonized variable age, which is identical with the study-specific variable age. We have to note that in this variable, the individuals with ages less than 52 and greater or equal than 82 are collapsed to 51 and 82 years old respectively.
-
-<!-- ########################################################## --> 
-<!-- # Save -->
-```{r save, include=FALSE, echo=F}
-
-l.TILDA <- list(w1 = TILDA_ds_w1, w2 = TILDA_ds_w2)
-
-for(index in seq_along(l.TILDA)){
-  h_joint_disorders <- l.TILDA[[index]]
-  save(h_joint_disorders, file = paste0(datafolder,names(l.TILDA)[index],"/h_joint_disorders.RData"))
-}
-
-```
-<!-- ########################################################## --> 
-
 
 
 
