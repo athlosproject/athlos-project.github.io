@@ -1,0 +1,770 @@
+---
+title: "dementia_age case"
+output: 
+  html_document:
+    theme: united
+    highlight: tango
+    toc: true
+    toc_depth: 6
+    toc_float:
+      collapsed: true
+      smooth_scroll: true
+    number_sections: true
+---
+
+<!-- ########################################################## --> 
+
+<!-- # Installation, loading packages -->
+<!-- **R script:** -->
+
+
+
+```{r setup, include=FALSE, echo=FALSE}
+source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```
+
+<!-- ########################################################## --> 
+
+```{r main, child='../../_DS_Rmd/dementia_ageDS.Rmd'}
+```
+
+```{r global, echo=F}
+source('../../_DS_Rmd/dementia_ageDS.R')
+```
+
+
+# Data process
+
+## England 
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `HeAgj`| `HeAgjRY` |
+|-|-|-|
+| **Label** | `Age told had dementia`| `Year told had dementia since last interview` | 
+| **Table name** | `wave_3_elsa_data_v4` | `wave_3_elsa_data_v4` | 
+| **Missing** |`-9 = Refusal` <br/> `-8 = Don't Know` <br/> `-1 = Item not applicable`| `-9 = Refusal` <br/> `-8 = Don't Know` <br/> `-1 = Item not applicable`|
+| **Description** | | |
+
+```{r assign1, echo=FALSE}
+opal.assign.table.tibble(o, 'ELSA_dem','ELSA.wave_3_elsa_data_v4',
+                         variables=list('heagjry', 'heagj'), missings = TRUE)
+ELSA_dem <- opal.execute(o,'ELSA_dem')
+
+load("../RData/w1/dementia.RData")
+load("../RData/w1/ybirth.RData")
+
+ELSA_dem_a <- left_join(dementia,ELSA_dem)
+ELSA_dem_a <- left_join(ELSA_dem_a, ybirth)
+```
+
+```{r local1, echo=FALSE}
+vari <- ELSA_dem_a[[2]]
+kable(Continuous_summary(var = vari, missing_values = c(-1,-8,-9))[3], caption = label(vari))
+kable(Continuous_summary(vari, missing_values = c(-1,-8,-9))[2], caption = "values")
+pander(Continuous_summary(vari, missing_values = c(-1,-8,-9))$summary, caption = "Summary")
+ggplot(ELSA_dem_a, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- ELSA_dem_a[[3]]
+kable(Continuous_summary(var = vari, missing_values = c(-1,-8,-9))[3], caption = label(vari))
+kable(Continuous_summary(vari, missing_values = c(-1,-8,-9))[2], caption = "values")
+pander(Continuous_summary(vari, missing_values = c(-1,-8,-9))$summary, caption = "Summary")
+ggplot(ELSA_dem_a, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be computed as follows:
+
+`heagjry - ybirth` or `heagj`
+
+and the missing values have to be recoded as follows:
+
+* `-9 into 997`
+* `-8 into 998`
+* `-1 into 996`
+* `NA into 996`
+
+**R script:**
+
+```{r harmo1, echo=TRUE}
+ELSA_ds_w1 <- tibble(id=ELSA_dem_a$id)
+ELSA_ds_w1$dementia_age <- ELSA_dem_a$heagjry - ELSA_dem_a$ybirth
+
+ELSA_ds_w1$dementia_age[ELSA_dem_a$heagjry == -1] <- 996
+ELSA_ds_w1$dementia_age[ELSA_dem_a$heagjry == -8] <- 998
+ELSA_ds_w1$dementia_age[ELSA_dem_a$heagjry == -9] <- 997
+
+ELSA_ds_w1$dementia_age[ELSA_dem_a$dementia==1 & ELSA_dem_a$heagjry %in% c(-8,-2,-1)] <- car::recode(ELSA_dem_a$heagj[ELSA_dem_a$dementia==1 & ELSA_dem_a$heagjry %in% c(-8,-2,-1)], "-9=997; -8=998; -1=996")
+
+ELSA_ds_w1$dementia_age[ELSA_ds_w1$dementia_age == 996 & ELSA_dem_a$dementia == 1] <- 999
+ELSA_ds_w1$dementia_age[ELSA_dem_a$dementia == 0] <- 996
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript1, echo=FALSE}
+vari <- ELSA_ds_w1$dementia_age
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = 'dementia age')
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(ELSA_ds_w1, aes(vari)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+```
+
+#### Validation
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `HeAgj`| `HeAgjRY` |
+|-|-|-|
+| **Label** | `Age told had dementia`| `Year told had dementia since last interview` | 
+| **Table name** | `wave_3_elsa_data_v4` | `wave_3_elsa_data_v4` | 
+| **Missing** |`-9 = Refusal` <br/> `-8 = Don't Know` <br/> `-1 = Item not applicable`| `-9 = Refusal` <br/> `-8 = Don't Know` <br/> `-1 = Item not applicable`|
+| **Description** | | |
+
+
+```{r assign2, echo=FALSE}
+opal.assign.table.tibble(o, 'ELSA_dem','ELSA.wave_3_elsa_data_v4',
+                         variables=list('heagjry', 'heagj'), missings = TRUE)
+ELSA_dem <- opal.execute(o,'ELSA_dem')
+
+load("../RData/w2/dementia.RData")
+load("../RData/w3/ybirth.RData")
+
+ELSA_dem_a <- left_join(dementia, ELSA_dem)
+ELSA_dem_a <- left_join(ELSA_dem_a, ybirth)
+```
+
+```{r local2, echo=FALSE}
+vari <- ELSA_dem_a[[2]]
+kable(Continuous_summary(var = vari, missing_values = c(-1,-8,-9))[3], caption = label(vari))
+kable(Continuous_summary(vari, missing_values = c(-1,-8,-9))[2], caption = "values")
+pander(Continuous_summary(vari, missing_values = c(-1,-8,-9))$summary, caption = "Summary")
+ggplot(ELSA_dem_a, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- ELSA_dem_a[[3]]
+kable(Continuous_summary(var = vari, missing_values = c(-1,-8,-9))[3], caption = label(vari))
+kable(Continuous_summary(vari, missing_values = c(-1,-8,-9))[2], caption = "values")
+pander(Continuous_summary(vari, missing_values = c(-1,-8,-9))$summary, caption = "Summary")
+ggplot(ELSA_dem_a, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be computed as follows:
+
+`heagjry - ybirth` or `heagj`
+
+and the missing values have to be recoded as follows:
+
+* `-9 into 997`
+* `-8 into 998`
+* `-1 into 996`
+* `NA into 996`
+
+**R script:**
+
+```{r harmo2, echo=TRUE}
+ELSA_ds_w2 <- tibble(id=ELSA_dem_a$id)
+ELSA_ds_w2$dementia_age <- ELSA_dem_a$heagjry - ELSA_dem_a$ybirth
+
+ELSA_ds_w2$dementia_age[ELSA_dem_a$heagjry == -1] <- 996
+ELSA_ds_w2$dementia_age[ELSA_dem_a$heagjry == -8] <- 998
+ELSA_ds_w2$dementia_age[ELSA_dem_a$heagjry == -9] <- 997
+
+ELSA_ds_w2$dementia_age[ELSA_dem_a$dementia==1 & ELSA_dem_a$heagjry %in% c(-8,-2,-1)] <- car::recode(ELSA_dem_a$heagj[ELSA_dem_a$dementia==1 & ELSA_dem_a$heagjry %in% c(-8,-2,-1)], "-9=997; -8=998; -1=996")
+
+ELSA_ds_w2$dementia_age[ELSA_ds_w2$dementia_age == 996 & ELSA_dem_a$dementia == 1] <- 999
+ELSA_ds_w2$dementia_age[ELSA_dem_a$dementia == 0] <- 996
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript2, echo=FALSE}
+vari <- ELSA_ds_w2$dementia_age
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = 'dementia age')
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(ELSA_ds_w2, aes(vari)) + geom_histogram(stat="count", fill="steelblue") + ylab("Frequency") + xlab("Dementia age") 
+```
+
+
+
+### Wave 3
+
+#### Study-specific variable description
+
+
+| **Name** | `HeAgj`| `HeAgjRY` |
+|-|-|-|
+| **Label** | `Age told had dementia`| `Year told had dementia since last interview` | 
+| **Table name** | `wave_3_elsa_data_v4` | `wave_3_elsa_data_v4` | 
+| **Missing** |`-9 = Refusal` <br/> `-8 = Don't Know` <br/> `-1 = Item not applicable`| `-9 = Refusal` <br/> `-8 = Don't Know` <br/> `-1 = Item not applicable`|
+| **Description** | | |
+
+```{r assign3, echo=FALSE}
+opal.assign.table.tibble(o, 'ELSA_dem','ELSA.wave_3_elsa_data_v4',
+                         variables=list('heagjry', 'heagj'), missings = TRUE)
+ELSA_dem <- opal.execute(o,'ELSA_dem')
+
+load("../RData/w3/dementia.RData")
+load("../RData/w3/ybirth.RData")
+
+ELSA_dem_a <- left_join(ELSA_dem, dementia)
+ELSA_dem_a <- left_join(ELSA_dem_a, ybirth)
+```
+
+```{r local3, echo=FALSE}
+vari <- ELSA_dem_a[[2]]
+kable(Continuous_summary(var = vari, missing_values = c(-1,-8,-9))[3], caption = label(vari))
+kable(Continuous_summary(vari, missing_values = c(-1,-8,-9))[2], caption = "values")
+pander(Continuous_summary(vari, missing_values = c(-1,-8,-9))$summary, caption = "Summary")
+ggplot(ELSA_dem_a, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- ELSA_dem_a[[3]]
+kable(Continuous_summary(var = vari, missing_values = c(-1,-8,-9))[3], caption = label(vari))
+kable(Continuous_summary(vari, missing_values = c(-1,-8,-9))[2], caption = "values")
+pander(Continuous_summary(vari, missing_values = c(-1,-8,-9))$summary, caption = "Summary")
+ggplot(ELSA_dem_a, aes(ybirth)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be computed as follows:
+
+`heagjry - ybirth` or `heagj`
+
+and the missing values have to be recoded as follows:
+
+* `-9 into 997`
+* `-8 into 998`
+* `-1 into 996`
+* `NA into 996`
+
+
+**R script:**
+
+```{r harmo3, echo=TRUE}
+ELSA_ds_w3 <- tibble(id=ELSA_dem_a$id)
+ELSA_ds_w3$dementia_age <- ELSA_dem_a$heagjry - ELSA_dem_a$ybirth
+
+ELSA_ds_w3$dementia_age[ELSA_dem_a$heagjry == -1] <- 996
+ELSA_ds_w3$dementia_age[ELSA_dem_a$heagjry == -8] <- 998
+ELSA_ds_w3$dementia_age[ELSA_dem_a$heagjry == -9] <- 997
+
+ELSA_ds_w3$dementia_age[ELSA_dem_a$dementia==1 & ELSA_dem_a$heagjry %in% c(-8,-2,-1)] <- car::recode(ELSA_dem_a$heagj[ELSA_dem_a$dementia==1 & ELSA_dem_a$heagjry %in% c(-8,-2,-1)], "-9=997; -8=998; -1=996")
+
+ELSA_ds_w3$dementia_age[ELSA_ds_w3$dementia_age == 996 & ELSA_dem_a$dementia == 1] <- 999
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript3, echo=FALSE}
+vari <- ELSA_ds_w3$dementia_age
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = 'dementia age')
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(ELSA_ds_w3, aes(vari)) + geom_histogram(stat="count", fill="steelblue") + ylab("Frequency") + xlab("Dementia age") 
+```
+
+#### Validation
+
+
+### Wave 4
+
+#### Study-specific variable description
+
+| **Name** | `heagj`| `heagjry` |
+|-|-|-|
+| **Label** | `Age told had dementia`| `Year told had dementia since last interview` |
+| **Table name** | `wave_4_elsa_data_v3` | `wave_4_elsa_data_v3` | 
+| **Missing** |`-9 = Refusal` <br/> `-8 = Don't know` <br/> `-2 = Capi/Interview Error` <br/> `-1 = Not applicable`|`-9 = Refusal` <br/> `-8 = Don't know` <br/> `-2 = Capi/Interview Error` <br/> `-1 = Not applicable`|
+| **Description** | |  | 
+
+```{r assign4, echo=FALSE}
+opal.assign.table.tibble(o, 'ELSA_dem_a','ELSA.wave_4_elsa_data_v3',
+                         variables=list('heagj', 'heagjry'), missings = TRUE)
+ELSA_dem_a <- opal.execute(o,'ELSA_dem_a')
+
+load("../RData/w4/dementia.RData")
+load("../RData/w3/ybirth.RData")
+
+ELSA_dem_a <- left_join(ELSA_dem_a, dementia)
+ELSA_dem_a <- left_join(ELSA_dem_a, ybirth)
+```
+
+```{r local4, echo=FALSE}
+vari <- ELSA_dem_a[[2]]
+kable(Continuous_summary(var = vari, missing_values = c(-1,-8,-9,-2))[3], caption = label(vari))
+kable(Continuous_summary(vari, missing_values = c(-1,-8,-9,-2))[2], caption = "values")
+pander(Continuous_summary(vari, missing_values = c(-1,-8,-9,-2))$summary, caption = "Summary")
+ggplot(ELSA_dem_a, aes(vari)) + geom_histogram(stat="count", fill="steelblue") + xlab("heagj") + ylab("Frequency")
+
+vari <- ELSA_dem_a[[3]]
+kable(Continuous_summary(var = vari, missing_values = c(-1,-8,-9,-2))[3], caption = label(vari))
+kable(Continuous_summary(vari, missing_values = c(-1,-8,-9,-2))[2], caption = "values")
+pander(Continuous_summary(vari, missing_values = c(-1,-8,-9,-2))$summary, caption = "Summary")
+ggplot(ELSA_dem_a, aes(vari)) + geom_histogram(stat="count", fill="steelblue") + xlab("heagjry") + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be computed as follows:
+
+`heagjry - ybirth` or `heagj`
+
+and the missing values have to be recoded as follows:
+
+* `-9 into 997`
+* `-8 into 998`
+* `-1 into 996`
+* `-2 into 991`
+* `NA into 996`
+
+**R script:**
+
+```{r harmo4, echo=TRUE}
+ELSA_ds_w4 <- tibble(id=ELSA_dem_a$id)
+ELSA_ds_w4$dementia_age <- ELSA_dem_a$heagjry - ELSA_dem_a$ybirth
+
+ELSA_ds_w4$dementia_age[ELSA_dem_a$heagjry == -1] <- 996
+ELSA_ds_w4$dementia_age[ELSA_dem_a$heagjry == -8] <- 998
+ELSA_ds_w4$dementia_age[ELSA_dem_a$heagjry == -9] <- 997
+ELSA_ds_w4$dementia_age[ELSA_dem_a$heagjry == -2] <- 991
+
+ELSA_ds_w4$dementia_age[ELSA_dem_a$dementia==1 & ELSA_dem_a$heagjry %in% c(-8,-2,-1)] <- car::recode(ELSA_dem_a$heagj[ELSA_dem_a$dementia==1 & ELSA_dem_a$heagjry %in% c(-8,-2,-1)], "-9=997; -8=998; -1=996")
+
+ELSA_ds_w4$dementia_age[ELSA_ds_w4$dementia_age == 996 & ELSA_dem_a$dementia == 1] <- 999
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript4, echo=FALSE}
+vari <- ELSA_ds_w4$dementia_age
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = 'dementia age')
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(ELSA_ds_w4, aes(vari))+ geom_histogram(stat="count", fill="steelblue") + ylab("Frequency") + xlab("Dementia age") 
+```
+
+#### Validation
+
+### Wave 5
+
+#### Study-specific variable description
+
+| **Name** | `heagjry`| 
+|-|-|
+| **Label** | `Year told had dementia since last interview`| 
+| **Table name** | `wave_5_elsa_data_v4` |
+| **Missing** |`-9 = Refusal` <br/> `-8 = Don't know` <br/> `-1 = Item Not Applicable` |
+| **Description** | | 
+
+```{r assign5, echo=FALSE}
+opal.assign.table.tibble(o, 'ELSA_dem_a','ELSA.wave_5_elsa_data_v4',
+                         variables=list('heagjry'), missings = TRUE)
+ELSA_dem_a <- opal.execute(o,'ELSA_dem_a')
+
+load("../RData/w5/dementia.RData")
+load("../RData/w5/ybirth.RData")
+
+ELSA_dem_a <- left_join(ELSA_dem_a, dementia)
+ELSA_dem_a <- left_join(ELSA_dem_a, ybirth)
+```
+
+```{r local5, echo=FALSE}
+vari <- ELSA_dem_a[[2]]
+kable(Continuous_summary(var = vari, missing_values = c(-1,-8,-9))[3], caption = label(vari))
+kable(Continuous_summary(vari, missing_values = c(-1,-8,-9))[2], caption = "values")
+pander(Continuous_summary(vari, missing_values = c(-1,-8,-9))$summary, caption = "Summary")
+ggplot(ELSA_dem_a, aes(vari)) + geom_histogram(stat="count", fill="steelblue") + xlab(label(vari)) + ylab("Frequency") + xlim(c(1900,2000))
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be computed as follows:
+
+`heagjry - ybirth`
+
+and the missing values have to be recoded as follows:
+
+* `-9 into 997`
+* `-8 into 998`
+* `-1 into 996`
+* `NA into 996`
+
+**R script:**
+
+```{r harmo5, echo=TRUE}
+ELSA_ds_w5 <- tibble(id=ELSA_dem_a$id)
+ELSA_ds_w5$dementia_age <- ELSA_dem_a$heagjry - ELSA_dem_a$ybirth
+
+ELSA_ds_w5$dementia_age[ELSA_dem_a$heagjry == -1] <- 996
+ELSA_ds_w5$dementia_age[ELSA_dem_a$heagjry == -8] <- 998
+ELSA_ds_w5$dementia_age[ELSA_dem_a$heagjry == -9] <- 997
+
+ELSA_ds_w5$dementia_age[ELSA_ds_w5$dementia_age == 996 & ELSA_dem_a$dementia == 1] <- 999
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript5, echo=FALSE}
+vari <- ELSA_ds_w5$dementia_age
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = 'dementia age')
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(ELSA_ds_w5, aes(vari)) + geom_histogram(stat="count", fill="steelblue") + ylab("Frequency") + xlab("Dementia age") 
+```
+
+#### Validation
+
+
+
+### Wave 6
+
+#### Study-specific variable description
+
+| **Name** | `HeAgj`| `HeAgjRY` |
+|-|-|-|
+| **Label** | `Age told had dementia`| `Year told had dementia since last interview` | 
+| **Table name** | `wave_6_elsa_data_v2` | `wave_6_elsa_data_v2` | 
+| **Missing** |`-9 = Refusal` <br/> `-8 = Don't Know` <br/> `-1 = Item not applicable`| `-9 = Refusal` <br/> `-8 = Don't Know` <br/> `-1 = Item not applicable`|
+| **Description** | | |
+
+```{r assign6, echo=FALSE}
+opal.assign.table.tibble(o, 'ELSA_dem_a','ELSA.wave_6_elsa_data_v2',
+                         variables=list('HeAgj', 'HeAgjRY'), missings = TRUE)
+ELSA_dem_a <- opal.execute(o,'ELSA_dem_a')
+
+load("../RData/w6/dementia.RData")
+load("../RData/w6/ybirth.RData")
+
+ELSA_dem_a <- left_join(ELSA_dem_a, dementia)
+ELSA_dem_a <- left_join(ELSA_dem_a, ybirth)
+```
+
+```{r local6, echo=FALSE}
+vari <- ELSA_dem_a[[2]]
+kable(Continuous_summary(var = vari, missing_values = c(-1,-8,-9))[3], caption = label(vari))
+kable(Continuous_summary(vari, missing_values = c(-1,-8,-9))[2], caption = "values")
+pander(Continuous_summary(vari, missing_values = c(-1,-8,-9))$summary, caption = "Summary")
+ggplot(ELSA_dem_a, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- ELSA_dem_a[[3]]
+kable(Continuous_summary(var = vari, missing_values = c(-1,-8,-9))[3], caption = label(vari))
+kable(Continuous_summary(vari, missing_values = c(-1,-8,-9))[2], caption = "values")
+pander(Continuous_summary(vari, missing_values = c(-1,-8,-9))$summary, caption = "Summary")
+ggplot(ELSA_dem_a, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be computed as follows:
+
+`HeAgjRY - ybirth` or `HeAgj`
+
+and the missing values have to be recoded as follows:
+
+* `-9 into 997`
+* `-8 into 998`
+* `-1 into 996`
+* `NA into 996`
+
+
+**R script:**
+
+```{r harmo6, echo=TRUE}
+ELSA_ds_w6 <- tibble(id=ELSA_dem_a$id)
+ELSA_ds_w6$dementia_age <- ELSA_dem_a$HeAgjRY - ELSA_dem_a$ybirth
+
+ELSA_ds_w6$dementia_age[ELSA_dem_a$HeAgjRY == -1] <- 996
+ELSA_ds_w6$dementia_age[ELSA_dem_a$HeAgjRY == -8] <- 998
+ELSA_ds_w6$dementia_age[ELSA_dem_a$HeAgjRY == -9] <- 997
+
+ELSA_ds_w6$dementia_age[ELSA_dem_a$dementia==1 & ELSA_dem_a$HeAgjRY %in% c(-8,-1)] <- car::recode(ELSA_dem_a$HeAgj[ELSA_dem_a$dementia==1 & ELSA_dem_a$HeAgjRY %in% c(-8,-1)], "-9=997; -8=998; -1=996")
+
+
+ELSA_ds_w6$dementia_age[ELSA_ds_w6$dementia_age == 996 & ELSA_dem_a$dementia == 1] <- 999
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript6, echo=FALSE}
+vari <- ELSA_ds_w6$dementia_age
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = 'dementia age')
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(ELSA_ds_w6, aes(vari)) + geom_histogram(stat="count", fill="steelblue") + ylab("Frequency") + xlab("Dementia age") 
+```
+
+#### Validation
+
+
+### Wave 7
+
+#### Study-specific variable description
+
+| **Name** | `HeAgj`| `HeAgjRY` |
+|-|-|-|
+| **Label** | `Age told had dementia`| `Year told had dementia since last interview` | 
+| **Table name** | `wave_6_elsa_data_v2` | `wave_6_elsa_data_v2` | 
+| **Missing** |`-9 = Refusal` <br/> `-8 = Don't Know` <br/> `-1 = Item not applicable`| `-9 = Refusal` <br/> `-8 = Don't Know` <br/> `-1 = Item not applicable`|
+| **Description** | | |
+
+```{r assign7, echo=FALSE}
+opal.assign.table.tibble(o, 'ELSA_dem_a','ELSA.wave_7_elsa_data',
+                         variables=list('HeAgj', 'HeAgjRY'), missings = TRUE)
+ELSA_dem_a <- opal.execute(o,'ELSA_dem_a')
+
+load("../RData/w7/dementia.RData")
+load("../RData/w7/ybirth.RData")
+
+ELSA_dem_a <- left_join(ELSA_dem_a, dementia)
+ELSA_dem_a <- left_join(ELSA_dem_a, ybirth)
+```
+
+```{r local7, echo=FALSE}
+vari <- ELSA_dem_a[[2]]
+kable(Categorical_summary(vari, missing_values = c(-1, -8,-9))[3], caption = label(vari)) 
+kable(Categorical_summary(vari, missing_values = c(-1, -8,-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-1, -8,-9))[2], caption = "Type of missing")
+ggplot(ELSA_dem_a, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- ELSA_dem_a[[3]]
+kable(Categorical_summary(vari, missing_values = c(-1, -8,-9))[3], caption = label(vari)) 
+kable(Categorical_summary(vari, missing_values = c(-1, -8,-9))[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = c(-1, -8,-9))[2], caption = "Type of missing")
+ggplot(ELSA_dem_a, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+To compute the harmonized variable from the study-specific variable it has to be computed as follows:
+
+`HeAgjRY - ybirth` or `HeAgj`
+
+and the missing values have to be recoded as follows:
+
+* `-9 into 997`
+* `-8 into 998`
+* `-1 into 996`
+* `NA into 996`
+
+**R script:**
+
+```{r harmo7, echo=TRUE}
+ELSA_ds_w7 <- tibble(id=ELSA_dem_a$id)
+ELSA_ds_w7$dementia_age <- ELSA_dem_a$HeAgjRY - ELSA_dem_a$ybirth
+
+ELSA_ds_w7$dementia_age[ELSA_dem_a$HeAgjRY == -1] <- 996
+ELSA_ds_w7$dementia_age[ELSA_dem_a$HeAgjRY == -8] <- 998
+ELSA_ds_w7$dementia_age[ELSA_dem_a$HeAgjRY == -9] <- 997
+
+ELSA_ds_w7$dementia_age[ELSA_dem_a$dementia==1 & ELSA_dem_a$HeAgjRY %in% c(-8,-1)] <- car::recode(ELSA_dem_a$HeAgj[ELSA_dem_a$dementia==1 & ELSA_dem_a$HeAgjRY %in% c(-8,-1)], "-9=997; -8=998; -1=996")
+
+
+ELSA_ds_w7$dementia_age[ELSA_ds_w7$dementia_age == 996 & ELSA_dem_a$dementia == 1] <- 999
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript7, echo=FALSE}
+vari <- ELSA_ds_w7$dementia_age
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = 'dementia age')
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(ELSA_ds_w7, aes(vari)) + geom_histogram(stat="count", fill="steelblue") + ylab("Frequency") + xlab("Dementia age") 
+```
+
+#### Validation
+
+# Quality estimation
+
+
+
+```{r helpfunctions, echo=F}
+
+
+labelling <- function(l.hds,m.hds,vbl_name,ds_lab = ds_label){
+  
+  # Labelling of the tibbles with categorical data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    if(vbl_name %in% names(l.hds[[name]])){
+      # In the aux_object we copy the old tibble to recodify all missing values as NA.
+      aux_object <- l.hds[[name]]
+      # Labelling of variables
+      label(l.hds[[name]][[vbl_name]]) <- label(aux_object[[vbl_name]]) <- ds_lab
+      # Labelling of categories (for continues variables, only missing values)
+      l.hds[[name]][[vbl_name]] <- labelled(l.hds[[name]][[vbl_name]], labels = cat_label)
+      aux_object[[vbl_name]] <- car::recode(aux_object[[vbl_name]], "miss_values_vector=NA")
+      # Labelling of categories (for categorical variables, only non-missing values)
+      aux_object[[vbl_name]] <- labelled(aux_object[[vbl_name]], labels = cat_label[1:(length(cat_label)-9)])
+      # Saving the recodified tibble in list m.hds
+      m.hds[[name]] <- aux_object
+      rm(aux_object)
+    }
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+
+labelling_c <- function(l.hds,m.hds,vbl_name,ds_lab=ds_label){
+  
+  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+
+  for(name in names(l.hds)) {
+    if(vbl_name %in% names(l.hds[[name]])){
+      # In the aux_object we copy the old tibble to recodify all missing values as NA.
+      aux_object <- m.hds[[name]]
+      # Labelling of variables
+      label(l.hds[[name]][[vbl_name]]) <- label(aux_object[[vbl_name]]) <- ds_lab
+      # Labelling of categories (for continues variables, only missing values)
+      l.hds[[name]][[vbl_name]] <- labelled(l.hds[[name]][[vbl_name]], labels = cont_label)
+      aux_object[[vbl_name]] <- car::recode(aux_object[[vbl_name]], "miss_values_vector=NA")
+      aux_object[[vbl_name]] <- remove_val_labels(aux_object[[vbl_name]])
+      # Saving the recodified tibble in list m.hds
+      m.hds[[name]] <- aux_object
+      rm(aux_object)
+    }
+  }
+  return(list(l.hds,m.hds))
+
+}
+
+
+# Creation of summary tables for categorical data
+
+summaries <- function(l.hds,m.hds,lnames,vbl_name){
+
+  # Creation of columns with categories and labels
+  t.hds <- frq(l.hds[[1]][vbl_name])[[1]][,c(1,2)] 
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    t.hds[2+i] <- frq(l.hds[[i]][vbl_name])[[1]][,4] 
+  }
+  # Add sample size for each wave/population
+  t.hds[2+length(cat_label),] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+  )
+  # Add wave/population names
+  names(t.hds)<-c("val", "label",lnames)
+  return(t.hds)
+  
+}
+
+
+# Creation of summary tables for continuous data
+
+summaries_c <- function(l.hds,m.hds,lnames,vbl_name){
+
+  # Creation of column with summary table categories
+  t.summ <- summary(m.hds[[1]][vbl_name])[1:6]
+  # Adding of missing/no-missing values categories
+  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[vbl_name]], missing_values = miss_values_vector)$values_table)[[2]])
+  # For each wave/population in l.hds, add the correponding values
+  for (i in seq_along(l.hds)){
+    # First, summary values
+    t.summ <- summary(m.hds[[i]][vbl_name])[1:6]
+    # Next, missing/no-missing values (the 1 in $values_table[1,] stands for absolute values, while a 2 would stand for percentages)
+    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[vbl_name]],missing_values = miss_values_vector)$values_table[1,])))
+  }
+  # Add sample size for each wave/population
+  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
+  # Add wave/population names
+  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][vbl_name]))[[2]],lnames)
+  return(t.hds)
+  
+}
+
+
+
+# Creation of trajectories table for each population
+
+trajectories <- function(m.hds,vbl_name){
+  
+  # First wave data
+  dbb <- m.hds[[1]][,c("id",vbl_name)]
+  # Merge with next waves data
+  for(ind in 2:length(m.hds)){
+    dbb <- merge(dbb, m.hds[[ind]][,c("id",vbl_name)], by = "id", suffixes = c("", paste0(".",names(m.hds)[ind])), all = T)
+  }
+  names(dbb) <- c("id", names(m.hds))
+  
+  # Glue individual data through all waves into trajectories
+  v.dbb <- dbb[,2]
+  for(ind in 2:length(m.hds)){
+    v.dbb <- paste(v.dbb,dbb[,ind+1],sep="")
+  }
+  # Trajectories and frequencies
+  f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
+  return(f.dbb)
+  
+}
+
+# Save data tables
+
+savingRD <- function(l.hds,vbl_name){
+  
+  for(index in seq_along(l.hds)){
+    assign(vbl_name,l.hds[[index]])
+    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
+  }
+  
+}
+
+```
+
+
+
+```{r populations-waves, echo=F}
+
+
+# All study waves and populations with abbreviated and descriptive names
+
+elsa.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"), w3 = c("w3","W3"), w4 = c("w4","W4"), w5 = c("w5","W5"), w6 = c("w6","W6"), w7 = c("w7","W7"))
+
+
+
+```
+
+
+<!--Labelling and saving-->
+
+```{r, echo=FALSE}
+
+
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(elsa.cw, function(wname) if(exists(paste0("ELSA_ds_",wname[1]))){wname = list(get(paste0("ELSA_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+elsalist <- lmlist # ELSA list
+
+
+```
+
+
+
+# Quality estimation
+
+
+No comments
+
+
+
+
+
+
+
+<!-- ########################################################## -->
+<!--- # Close OPAL R Session -->
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
+
