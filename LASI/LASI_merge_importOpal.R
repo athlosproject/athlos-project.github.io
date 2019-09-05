@@ -10,11 +10,9 @@ source("../setup.r")
 load("M:/WPs/WP1/Maelstrom/data_process/ATHLOS_cohort/ids2/ids_athlos_ds_LASI.Rdata")
 
 # Load 'healthstatus' measure data for current study
-load("M:/WPs/WP1/Maelstrom/data_process/hsm_process/athlos_v1.4_hsm_rescaled_by_study_country_wave.rdata")
-hs <- filter(ath, study==13)
-rm(ath)
-hs <- hs %>% select(-healthstatus)
-names(hs)[match("hsm",names(hs))] <- "healthstatus"
+load("M:/WPs/WP1/Maelstrom/data_process/hsm_process/mirt/hs.rdata")
+names(hs)[match("trait_eq",names(hs))] <- "trait"
+names(hs)[match("hs_eq",names(hs))] <- "healthstatus"
 
 
 # lf is a list of Rdata folder addresses. 
@@ -28,8 +26,8 @@ integ.var <- c("adl_bathing","adl_bed","adl_dressing","adl_eating","adl_moving",
                "ah","anxiety_symp","athlos_id2","bereav","cancer","child","close_spouse",
                "cog_del","cog_imm","cog_num","cog_proc","cog_stat","cog_verb",
                "confidant","conseq_falls","cont_fr","cont_rel","country","current_oh","current_smoking",
-               "cvd","cvd_all","cvd_hard","depression","divorce","dizziness",
-               "education","emot_sup","employed","energy","ever_smoked","eye_far","eye_gen","eye_near",
+               "cvd","cvd_all","cvd_hard","dementia","depression","divorce","dizziness",
+               "education","emot_sup","employed","energy","evaluative_wb","ever_smoked","eye_far","eye_gen","eye_near",
                "f_cont_fr","f_mod_pa","f_other_fr","f_vig_pa","fin_prob","freq_oh","grchild",
                "h_angina","h_asthma","h_cpd","h_diabetes","h_hypertension","h_joint_disorders","h_respiratory",
                "hearing_conv","hearing_gen",
@@ -41,6 +39,7 @@ integ.var <- c("adl_bathing","adl_bed","adl_dressing","adl_eating","adl_moving",
                "pain","part_clubs","past_oh","pol_act","pol_vot","proxy",
                "recent_falls","relig","resid_place","residence","respondent","retired",
                "sen_club","sex","sickdis","sleep","smoking","sport","spouse","srh","stroke","study",
+               "suicidal_ideation_12m","suicidal_ideation_lm",
                "t_walks","trust","vig_pa","violence","volun","walking_speed","wave","wealth","weight_loss")
 
 # Vector with the names of those variables that should be text format
