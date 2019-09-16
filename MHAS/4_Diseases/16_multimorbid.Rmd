@@ -1,0 +1,406 @@
+---
+title: "Multimorbidity"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/multimorbidDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/multimorbidDS.R')
+```
+
+
+
+# Data process
+
+
+## Mexico
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+| **Name** |`h_diabetes`|`h_respiratory`|`h_hypertension`|`h_joint_disorders`| `stroke` |`mi_ha`|
+|-|-|-|-|-|-|-|
+| **Label** |`History of diabetes mellitus`|`Chronic respiratory diseases such respiratory, CPD, COPD, bronchitis, emphysema`|`History of hypertension`|`History of arthritis, rheumatism or osteoarthritis`| `Stroke` |`Myocardial infarction or heart attack`|
+| **Table name**  |`mhas_w1_hd`|`mhas_w1_hd`|`mhas_w1_hd`|`mhas_w1_hd`|`mhas_w1_hd`| `mhas_w1_hd` |
+| **Categories** |`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`| `0 = No`<br/>`1 = Yes` |
+| **Missings** | `995 = Does not answer`<br/>`998 = Do not know`<br/>`999 = Missing` | `995 = Does not answer`<br/>`998 = Do not know`<br/>`999 = Missing` |`995 = Does not answer`<br/>`998 = Do not know`<br/>`999 = Missing`|  `995 = Does not answer`<br/>`998 = Do not know`<br/>`999 = Missing` |  `995 = Does not answer`<br/>`998 = Do not know`<br/>`999 = Missing` |  `995 = Does not answer`<br/>`998 = Do not know`<br/>`999 = Missing` |
+| **Description** |  |  |  |  |  |  |  |  |
+
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'MHAS_w1','MHAS_HD.mhas_w1_hd',variables=list('h_diabetes','h_respiratory','h_hypertension','h_joint_disorders','stroke','mi_ha'), missings = T)
+MHAS_w1 <- opal.execute(o,'MHAS_w1')
+
+```
+
+
+
+```{r local w1, echo=F}
+
+vbl <- MHAS_w1$h_diabetes
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_diabetes")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w1$h_respiratory
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_respiratory")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w1$h_hypertension
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_hypertension")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w1$h_joint_disorders
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_joint_disorders")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w1$stroke
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "stroke")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w1$mi_ha
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "mi_ha")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+To compute `multimorbid` from the study-specific variables they have to be recoded as follows:
+
+* `Multimorbid_score = sum(h_diabetes, h_respiratory, h_hypertension,mi_ha, h_joint_disorders, stroke)`
+* `Multimorbid_status = 1 if multimorbid_score > = 2`
+* `Multimorbid_status = 0 if multimorbid_score < 2`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo w1}
+
+MHAS_ds_w1 <- MHAS_w1 %>% 
+  mutate(dead = purrr::pmap(mutate_at(., vars(-id), `==`, 996) %>% select(., -id), all) %>% unlist()) %>%
+  mutate_at(names(MHAS_w1[,-1]), ~replace(., list = which(. %in% 991:999), values = NA)) %>% 
+  mutate(multimorbid_score = rowSums(select(., -1, -dead), na.rm = T)) %>%
+  mutate(cardNA = rowSums(!is.na(select(., -1, -dead, -multimorbid_score)))) %>%
+  mutate(cardNA = cardNA/cardNA) %>%
+  mutate(multimorbid_score = multimorbid_score * cardNA) %>%
+  mutate(multimorbid = case_when(multimorbid_score >= 2 ~ 1, multimorbid_score < 2 ~ 0, dead ~ 996, TRUE ~ 999)) %>%
+  select(id, multimorbid)
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w1, echo=F}
+
+vbl <- MHAS_ds_w1$multimorbid
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(MHAS_ds_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w1, echo=F}
+```
+
+
+### Wave 2
+
+
+#### Study-specific variable description
+
+| **Name** |`h_diabetes`|`h_respiratory`|`h_hypertension`|`h_joint_disorders`| `stroke` |`mi_ha`|
+|-|-|-|-|-|-|-|
+| **Label** |`History of diabetes mellitus`|`Chronic respiratory diseases such respiratory, CPD, COPD, bronchitis, emphysema`|`History of hypertension`|`History of arthritis, rheumatism or osteoarthritis`| `Stroke` |`Myocardial infarction or heart attack`|
+| **Table name**  |`mhas_w2_hd`|`mhas_w2_hd`|`mhas_w2_hd`|`mhas_w2_hd`|`mhas_w2_hd`| `mhas_w2_hd` |
+| **Categories** |`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`| `0 = No`<br/>`1 = Yes` |
+| **Missings** | `995 = Does not answer`<br/>`996 = Not applicable`<br/>`998 = Do not know`<br/>`999 = Missing` |  `995 = Does not answer`<br/>`996 = Not applicable`<br/>`998 = Do not know` |`996 = Not applicable`<br/>`998 = Do not know`|`996 = Not applicable`<br/>`998 = Do not know`|  `995 = Does not answer`<br/>`996 = Not applicable`<br/>`998 = Do not know` |  `995 = Does not answer`<br/>`996 = Not applicable`<br/>`998 = Do not know`<br/>`999 = Missing` |
+| **Description** |  |  |  |  |  |  |  |  |
+
+
+```{r assign w2, echo=F}
+
+opal.assign.table.tibble(o, 'MHAS_w2','MHAS_HD.mhas_w2_hd',variables=list('h_diabetes','h_respiratory','h_hypertension','h_joint_disorders','stroke','mi_ha'), missings = T)
+MHAS_w2 <- opal.execute(o,'MHAS_w2')
+
+```
+
+
+
+```{r local w2, echo=F}
+
+vbl <- MHAS_w2$h_diabetes
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_diabetes")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w2$h_respiratory
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_respiratory")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w2$h_hypertension
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_hypertension")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w2$h_joint_disorders
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_joint_disorders")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w2$stroke
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "stroke")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w2$mi_ha
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "mi_ha")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+To compute `multimorbid` from the study-specific variables they have to be recoded as follows:
+
+* `Multimorbid_score = sum(h_diabetes, h_respiratory, h_hypertension,mi_ha, h_joint_disorders, stroke)`
+* `Multimorbid_status = 1 if multimorbid_score > = 2`
+* `Multimorbid_status = 0 if multimorbid_score < 2`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo w2}
+
+MHAS_ds_w2 <- MHAS_w2 %>% 
+  mutate(dead = purrr::pmap(mutate_at(., vars(-id), `==`, 996) %>% select(., -id), all) %>% unlist()) %>%
+  mutate_at(names(MHAS_w2[,-1]), ~replace(., list = which(. %in% 991:999), values = NA)) %>% 
+  mutate(multimorbid_score = rowSums(select(., -1, -dead), na.rm = T)) %>%
+  mutate(cardNA = rowSums(!is.na(select(., -1, -dead, -multimorbid_score)))) %>%
+  mutate(cardNA = cardNA/cardNA) %>%
+  mutate(multimorbid_score = multimorbid_score * cardNA) %>%
+  mutate(multimorbid = case_when(multimorbid_score >= 2 ~ 1, multimorbid_score < 2 ~ 0, dead ~ 996, TRUE ~ 999)) %>%
+  select(id, multimorbid)
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w2, echo=F}
+
+vbl <- MHAS_ds_w2$multimorbid
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(MHAS_ds_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w2, echo=F}
+```
+
+
+### Wave 3
+
+
+#### Study-specific variable description
+
+| **Name** |`h_diabetes`|`h_respiratory`|`h_hypertension`|`h_joint_disorders`| `stroke` |`mi_ha`|
+|-|-|-|-|-|-|-|
+| **Label** |`History of diabetes mellitus`|`Chronic respiratory diseases such respiratory, CPD, COPD, bronchitis, emphysema`|`History of hypertension`|`History of arthritis, rheumatism or osteoarthritis`| `Stroke` |`Myocardial infarction or heart attack`|
+| **Table name**  |`mhas_w3_hd`|`mhas_w3_hd`|`mhas_w3_hd`|`mhas_w3_hd`|`mhas_w3_hd`| `mhas_w3_hd` |
+| **Categories** |`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`| `0 = No`<br/>`1 = Yes` |
+| **Missings** | `995 = Does not answer`<br/>`996 = Not applicable`<br/>`998 = Do not know`<br/>`999 = Missing` | `995 = Does not answer`<br/>`996 = Not applicable`<br/>`998 = Do not know`<br/>`999 = Missing` |`995 = Does not answer`<br/>`996 = Not applicable`<br/>`998 = Do not know`<br/>`999 = Missing`|`995 = Does not answer`<br/>`996 = Not applicable`<br/>`998 = Do not know`<br/>`999 = Missing` |`995 = Does not answer`<br/>`996 = Not applicable`<br/>`998 = Do not know`<br/>`999 = Missing` |`995 = Does not answer`<br/>`996 = Not applicable`<br/>`998 = Do not know`<br/>`999 = Missing` |
+| **Description** |  |  |  |  |  |  |  |  |
+
+
+```{r assign w3, echo=F}
+
+opal.assign.table.tibble(o, 'MHAS_w3','MHAS_HD.mhas_w3_hd',variables=list('h_diabetes','h_respiratory','h_hypertension','h_joint_disorders','stroke','mi_ha'), missings = T)
+MHAS_w3 <- opal.execute(o,'MHAS_w3')
+
+```
+
+
+
+```{r local w3, echo=F}
+
+vbl <- MHAS_w3$h_diabetes
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_diabetes")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w3, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w3$h_respiratory
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_respiratory")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w3, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w3$h_hypertension
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_hypertension")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w3, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w3$h_joint_disorders
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_joint_disorders")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w3, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w3$stroke
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "stroke")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w3, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- MHAS_w3$mi_ha
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "mi_ha")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(MHAS_w3, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+To compute `multimorbid` from the study-specific variables they have to be recoded as follows:
+
+* `Multimorbid_score = sum(h_diabetes, h_respiratory, h_hypertension,mi_ha, h_joint_disorders, stroke)`
+* `Multimorbid_status = 1 if multimorbid_score > = 2`
+* `Multimorbid_status = 0 if multimorbid_score < 2`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo w3}
+
+MHAS_ds_w3 <- MHAS_w3 %>% 
+  mutate(dead = purrr::pmap(mutate_at(., vars(-id), `==`, 996) %>% select(., -id), all) %>% unlist()) %>%
+  mutate_at(names(MHAS_w3[,-1]), ~replace(., list = which(. %in% 991:999), values = NA)) %>% 
+  mutate(multimorbid_score = rowSums(select(., -1, -dead), na.rm = T)) %>%
+  mutate(cardNA = rowSums(!is.na(select(., -1, -dead, -multimorbid_score)))) %>%
+  mutate(cardNA = cardNA/cardNA) %>%
+  mutate(multimorbid_score = multimorbid_score * cardNA) %>%
+  mutate(multimorbid = case_when(multimorbid_score >= 2 ~ 1, multimorbid_score < 2 ~ 0, dead ~ 996, TRUE ~ 999)) %>%
+  select(id, multimorbid)
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript w3, echo=F}
+
+vbl <- MHAS_ds_w3$multimorbid
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(MHAS_ds_w3, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation w3, echo=F}
+```
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories.
+
+
+
+
+```{r helpfunctions, echo=F}
+
+source("../../helpfunctions.r")
+
+```
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+mhas.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"), w3 = c("w3","W3"))
+
+# Consider only harmonised waves
+l.hds <- lapply(mhas.cw, function(wname) if(exists(paste0("MHAS_ds_",wname[1]))){wname = list(get(paste0("MHAS_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+```
+
+
+
+
+# Quality estimation
+
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```

@@ -1,0 +1,651 @@
+---
+title: "Multimorbidity"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/multimorbidDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/multimorbidDS.R')
+```
+
+
+# Data process
+
+
+
+## Finland
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+
+| **Name** |`h_diabetes`|`h_asthma`|`h_hypertension`|`h_joint_disorders`|`h_cpd`| `stroke` |`h_angina`|
+|-|-|-|-|-|-|-|-|
+| **Label** |`History of diabetes mellitus`|`History of asthma`|`History of hypertension`|`History of arthritis, rheumatism or osteoarthritis`|`History of chronic pulmonary disorders`| `Stroke` |`History of angina`|
+| **Table name**  |`courage_fin_w1_hd`|`courage_fin_w1_hd`|`courage_fin_w1_hd`|`courage_fin_w1_hd`|`courage_fin_w1_hd`| `courage_fin_w1_hd` | `courage_fin_w1_hd` |
+| **Categories** |`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`| `0 = No`<br/>`1 = Yes` |`0 = No`<br/>`1 = Yes`|
+| **Missings** |`999 = Missing` |`999 = Missing` |`999 = Missing` |`999 = Missing` |`999 = Missing` |`999 = Missing` | `999 = Missing` |
+| **Description** |  |  |  |  |  |  |  |
+
+
+```{r assign fin_w1, echo=F}
+
+opal.assign.table.tibble(o, 'COURAGE_fin_w1','COURAGE_HD.courage_fin_w1_hd',variables=list('h_diabetes','h_asthma','h_hypertension','h_joint_disorders','h_cpd','stroke','h_angina'), missings = T)
+COURAGE_fin_w1 <- opal.execute(o,'COURAGE_fin_w1')
+
+```
+
+
+```{r local fin_w1, echo=F}
+
+vbl <- COURAGE_fin_w1$h_diabetes
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_diabetes")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_fin_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_fin_w1$h_asthma
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_asthma")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_fin_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_fin_w1$h_hypertension
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_hypertension")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_fin_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_fin_w1$h_joint_disorders
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_joint_disorders")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_fin_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_fin_w1$h_cpd
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_cpd")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_fin_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_fin_w1$stroke
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "stroke")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_fin_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_fin_w1$h_angina
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_angina")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_fin_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `multimorbid` from the study-specific variables they have to be recoded as follows:
+
+* `Multimorbid_score = sum(h_diabetes, h_asthma, h_hypertension, h_angina, h_joint_disorders, stroke, h_cpd)`
+* `Multimorbid_status = 1 if multimorbid_score > = 2`
+* `Multimorbid_status = 0 if multimorbid_score < 2`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo fin_w1}
+
+COURAGE_ds_fin_w1 <- COURAGE_fin_w1 %>% 
+  mutate(dead = purrr::pmap(mutate_at(., vars(-id), `==`, 996) %>% select(., -id), all) %>% unlist()) %>%
+  mutate_at(names(COURAGE_fin_w1[,-1]), ~replace(., list = which(. %in% 991:999), values = NA))
+COURAGE_ds_fin_w1 <- COURAGE_ds_fin_w1 %>% 
+  mutate(multimorbid_score = rowSums(select(., -1, -dead), na.rm = T)) %>%
+  mutate(cardNA = rowSums(!is.na(select(., -1, -dead, -multimorbid_score)))) %>%
+  mutate(cardNA = cardNA/cardNA) %>%
+  mutate(multimorbid_score = multimorbid_score * cardNA) %>%
+  mutate(multimorbid = case_when(multimorbid_score >= 2 ~ 1, multimorbid_score < 2 ~ 0, dead ~ 996, TRUE ~ 999)) %>%
+  select(id, multimorbid)
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript fin_w1, echo=F}
+
+vbl <- COURAGE_ds_fin_w1$multimorbid
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(COURAGE_ds_fin_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation fin_w1, echo=F}
+```
+
+
+## Poland
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+
+| **Name** |`h_diabetes`|`h_asthma`|`h_hypertension`|`h_joint_disorders`|`h_cpd`| `stroke` |`h_angina`|
+|-|-|-|-|-|-|-|-|
+| **Label** |`History of diabetes mellitus`|`History of asthma`|`History of hypertension`|`History of arthritis, rheumatism or osteoarthritis`|`History of chronic pulmonary disorders`| `Stroke` |`History of angina`|
+| **Table name**  |`courage_pol_w1_hd`|`courage_pol_w1_hd`|`courage_pol_w1_hd`|`courage_pol_w1_hd`|`courage_pol_w1_hd`| `courage_pol_w1_hd` | `courage_pol_w1_hd` |
+| **Categories** |`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`| `0 = No`<br/>`1 = Yes` |`0 = No`<br/>`1 = Yes`|
+| **Missings** |  |`998 = Do not know` |`998 = Do not know` |`998 = Do not know` |  |`998 = Do not know` | `998 = Do not know` |
+| **Description** |  |  |  |  |  |  |  |
+
+
+```{r assign pol_w1, echo=F}
+
+opal.assign.table.tibble(o, 'COURAGE_pol_w1','COURAGE_HD.courage_pol_w1_hd',variables=list('h_diabetes','h_asthma','h_hypertension','h_joint_disorders','h_cpd','stroke','h_angina'), missings = T)
+COURAGE_pol_w1 <- opal.execute(o,'COURAGE_pol_w1')
+
+```
+
+
+```{r local pol_w1, echo=F}
+
+vbl <- COURAGE_pol_w1$h_diabetes
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_diabetes")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_pol_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_pol_w1$h_asthma
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_asthma")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_pol_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_pol_w1$h_hypertension
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_hypertension")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_pol_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_pol_w1$h_joint_disorders
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_joint_disorders")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_pol_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_pol_w1$h_cpd
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_cpd")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_pol_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_pol_w1$stroke
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "stroke")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_pol_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_pol_w1$h_angina
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_angina")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_pol_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `multimorbid` from the study-specific variables they have to be recoded as follows:
+
+* `Multimorbid_score = sum(h_diabetes, h_asthma, h_hypertension, h_angina, h_joint_disorders, stroke, h_cpd)`
+* `Multimorbid_status = 1 if multimorbid_score > = 2`
+* `Multimorbid_status = 0 if multimorbid_score < 2`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo pol_w1}
+
+COURAGE_ds_pol_w1 <- COURAGE_pol_w1 %>% 
+  mutate(dead = purrr::pmap(mutate_at(., vars(-id), `==`, 996) %>% select(., -id), all) %>% unlist()) %>%
+  mutate_at(names(COURAGE_pol_w1[,-1]), ~replace(., list = which(. %in% 991:999), values = NA))
+COURAGE_ds_pol_w1 <- COURAGE_ds_pol_w1 %>% 
+  mutate(multimorbid_score = rowSums(select(., -1, -dead), na.rm = T)) %>%
+  mutate(cardNA = rowSums(!is.na(select(., -1, -dead, -multimorbid_score)))) %>%
+  mutate(cardNA = cardNA/cardNA) %>%
+  mutate(multimorbid_score = multimorbid_score * cardNA) %>%
+  mutate(multimorbid = case_when(multimorbid_score >= 2 ~ 1, multimorbid_score < 2 ~ 0, dead ~ 996, TRUE ~ 999)) %>%
+  select(id, multimorbid)
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript pol_w1, echo=F}
+
+vbl <- COURAGE_ds_pol_w1$multimorbid
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(COURAGE_ds_pol_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation pol_w1, echo=F}
+```
+
+
+### Wave 2
+
+
+#### Study-specific variable description
+
+
+| **Name** |`h_diabetes`|`h_asthma`|`h_hypertension`|`h_joint_disorders`|`h_cpd`| `stroke` |`h_angina`|
+|-|-|-|-|-|-|-|-|
+| **Label** |`History of diabetes mellitus`|`History of asthma`|`History of hypertension`|`History of arthritis, rheumatism or osteoarthritis`|`History of chronic pulmonary disorders`| `Stroke` |`History of angina`|
+| **Table name**  |`courage_pol_w2_hd`|`courage_pol_w2_hd`|`courage_pol_w2_hd`|`courage_pol_w2_hd`|`courage_pol_w2_hd`| `courage_pol_w2_hd` | `courage_pol_w2_hd` |
+| **Categories** |`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`| `0 = No`<br/>`1 = Yes` |`0 = No`<br/>`1 = Yes`|
+| **Missings** |`999 = Missing` |`999 = Missing` |`999 = Missing` |`999 = Missing` |`999 = Missing` |`999 = Missing` | `999 = Missing` |
+| **Description** |  |  |  |  |  |  |  |
+
+
+```{r assign pol_w2, echo=F}
+
+opal.assign.table.tibble(o, 'COURAGE_pol_w2','COURAGE_HD.courage_pol_w2_hd',variables=list('h_diabetes','h_asthma','h_hypertension','h_joint_disorders','h_cpd','stroke','h_angina'), missings = T)
+COURAGE_pol_w2 <- opal.execute(o,'COURAGE_pol_w2')
+
+```
+
+
+```{r local pol_w2, echo=F}
+
+vbl <- COURAGE_pol_w2$h_diabetes
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_diabetes")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_pol_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_pol_w2$h_asthma
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_asthma")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_pol_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_pol_w2$h_hypertension
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_hypertension")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_pol_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_pol_w2$h_joint_disorders
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_joint_disorders")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_pol_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_pol_w2$h_cpd
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_cpd")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_pol_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_pol_w2$stroke
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "stroke")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_pol_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_pol_w2$h_angina
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_angina")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_pol_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `multimorbid` from the study-specific variables they have to be recoded as follows:
+
+* `Multimorbid_score = sum(h_diabetes, h_asthma, h_hypertension, h_angina, h_joint_disorders, stroke, h_cpd)`
+* `Multimorbid_status = 1 if multimorbid_score > = 2`
+* `Multimorbid_status = 0 if multimorbid_score < 2`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo pol_w2}
+
+COURAGE_ds_pol_w2 <- COURAGE_pol_w2 %>% 
+  mutate(dead = purrr::pmap(mutate_at(., vars(-id), `==`, 996) %>% select(., -id), all) %>% unlist()) %>%
+  mutate_at(names(COURAGE_pol_w2[,-1]), ~replace(., list = which(. %in% 991:999), values = NA))
+COURAGE_ds_pol_w2 <- COURAGE_ds_pol_w2 %>% 
+  mutate(multimorbid_score = rowSums(select(., -1, -dead), na.rm = T)) %>%
+  mutate(cardNA = rowSums(!is.na(select(., -1, -dead, -multimorbid_score)))) %>%
+  mutate(cardNA = cardNA/cardNA) %>%
+  mutate(multimorbid_score = multimorbid_score * cardNA) %>%
+  mutate(multimorbid = case_when(multimorbid_score >= 2 ~ 1, multimorbid_score < 2 ~ 0, dead ~ 996, TRUE ~ 999)) %>%
+  select(id, multimorbid)
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript pol_w2, echo=F}
+
+vbl <- COURAGE_ds_pol_w2$multimorbid
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(COURAGE_ds_pol_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation pol_w2, echo=F}
+```
+
+
+
+## Spain
+
+
+### Wave 1
+
+
+#### Study-specific variable description
+
+
+| **Name** |`h_diabetes`|`h_asthma`|`h_hypertension`|`h_joint_disorders`|`h_cpd`| `stroke` |`h_angina`|
+|-|-|-|-|-|-|-|-|
+| **Label** |`History of diabetes mellitus`|`History of asthma`|`History of hypertension`|`History of arthritis, rheumatism or osteoarthritis`|`History of chronic pulmonary disorders`| `Stroke` |`History of angina`|
+| **Table name**  |`courage_spain_w1_hd`|`courage_spain_w1_hd`|`courage_spain_w1_hd`|`courage_spain_w1_hd`|`courage_spain_w1_hd`| `courage_spain_w1_hd` | `courage_spain_w1_hd` |
+| **Categories** |`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`| `0 = No`<br/>`1 = Yes` |`0 = No`<br/>`1 = Yes`|
+| **Missings** |`998 = Do not know` |`998 = Do not know` |`998 = Do not know` |`998 = Do not know` |`998 = Do not know` |`998 = Do not know` | `998 = Do not know` |
+| **Description** |  |  |  |  |  |  |  |
+
+
+```{r assign spain_w1, echo=F}
+
+opal.assign.table.tibble(o, 'COURAGE_spain_w1','COURAGE_HD.courage_spain_w1_hd',variables=list('h_diabetes','h_asthma','h_hypertension','h_joint_disorders','h_cpd','stroke','h_angina'), missings = T)
+COURAGE_spain_w1 <- opal.execute(o,'COURAGE_spain_w1')
+
+```
+
+
+```{r local spain_w1, echo=F}
+
+vbl <- COURAGE_spain_w1$h_diabetes
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_diabetes")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_spain_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_spain_w1$h_asthma
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_asthma")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_spain_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_spain_w1$h_hypertension
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_hypertension")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_spain_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_spain_w1$h_joint_disorders
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_joint_disorders")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_spain_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_spain_w1$h_cpd
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_cpd")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_spain_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_spain_w1$stroke
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "stroke")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_spain_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_spain_w1$h_angina
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_angina")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_spain_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `multimorbid` from the study-specific variables they have to be recoded as follows:
+
+* `Multimorbid_score = sum(h_diabetes, h_asthma, h_hypertension, h_angina, h_joint_disorders, stroke, h_cpd)`
+* `Multimorbid_status = 1 if multimorbid_score > = 2`
+* `Multimorbid_status = 0 if multimorbid_score < 2`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo spain_w1}
+
+COURAGE_ds_spain_w1 <- COURAGE_spain_w1 %>% 
+  mutate(dead = purrr::pmap(mutate_at(., vars(-id), `==`, 996) %>% select(., -id), all) %>% unlist()) %>%
+  mutate_at(names(COURAGE_spain_w1[,-1]), ~replace(., list = which(. %in% 991:999), values = NA))
+COURAGE_ds_spain_w1 <- COURAGE_ds_spain_w1 %>% 
+  mutate(multimorbid_score = rowSums(select(., -1, -dead), na.rm = T)) %>%
+  mutate(cardNA = rowSums(!is.na(select(., -1, -dead, -multimorbid_score)))) %>%
+  mutate(cardNA = cardNA/cardNA) %>%
+  mutate(multimorbid_score = multimorbid_score * cardNA) %>%
+  mutate(multimorbid = case_when(multimorbid_score >= 2 ~ 1, multimorbid_score < 2 ~ 0, dead ~ 996, TRUE ~ 999)) %>%
+  select(id, multimorbid)
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript spain_w1, echo=F}
+
+vbl <- COURAGE_ds_spain_w1$multimorbid
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(COURAGE_ds_spain_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation spain_w1, echo=F}
+```
+
+
+### Wave 2
+
+
+#### Study-specific variable description
+
+
+| **Name** |`h_diabetes`|`h_asthma`|`h_hypertension`|`h_joint_disorders`|`h_cpd`| `stroke` |`h_angina`|
+|-|-|-|-|-|-|-|-|
+| **Label** |`History of diabetes mellitus`|`History of asthma`|`History of hypertension`|`History of arthritis, rheumatism or osteoarthritis`|`History of chronic pulmonary disorders`| `Stroke` |`History of angina`|
+| **Table name**  |`courage_spain_w2_hd`|`courage_spain_w2_hd`|`courage_spain_w2_hd`|`courage_spain_w2_hd`|`courage_spain_w2_hd`| `courage_spain_w2_hd` | `courage_spain_w2_hd` |
+| **Categories** |`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`|`0 = No`<br/>`1 = Yes`| `0 = No`<br/>`1 = Yes` |`0 = No`<br/>`1 = Yes`|
+| **Missings** |`998 = Do not know`<br/>`999 = Missing` |`999 = Missing` |`998 = Do not know`<br/>`999 = Missing` |`998 = Do not know`<br/>`999 = Missing` |`999 = Missing` |`998 = Do not know`<br/>`999 = Missing` |`999 = Missing` | 
+| **Description** |  |  |  |  |  |  |  |
+
+
+```{r assign spain_w2, echo=F}
+
+opal.assign.table.tibble(o, 'COURAGE_spain_w2','COURAGE_HD.courage_spain_w2_hd',variables=list('h_diabetes','h_asthma','h_hypertension','h_joint_disorders','h_cpd','stroke','h_angina'), missings = T)
+COURAGE_spain_w2 <- opal.execute(o,'COURAGE_spain_w2')
+
+```
+
+
+```{r local spain_w2, echo=F}
+
+vbl <- COURAGE_spain_w2$h_diabetes
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_diabetes")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_spain_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_spain_w2$h_asthma
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_asthma")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_spain_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_spain_w2$h_hypertension
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_hypertension")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_spain_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_spain_w2$h_joint_disorders
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_joint_disorders")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_spain_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_spain_w2$h_cpd
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_cpd")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_spain_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_spain_w2$stroke
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "stroke")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_spain_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- COURAGE_spain_w2$h_angina
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = "h_angina")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+ggplot(COURAGE_spain_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+To compute `multimorbid` from the study-specific variables they have to be recoded as follows:
+
+* `Multimorbid_score = sum(h_diabetes, h_asthma, h_hypertension, h_angina, h_joint_disorders, stroke, h_cpd)`
+* `Multimorbid_status = 1 if multimorbid_score > = 2`
+* `Multimorbid_status = 0 if multimorbid_score < 2`
+* `otherwise into 999`
+
+**R script:**
+
+```{r harmo spain_w2}
+
+COURAGE_ds_spain_w2 <- COURAGE_spain_w2 %>% 
+  mutate(dead = purrr::pmap(mutate_at(., vars(-id), `==`, 996) %>% select(., -id), all) %>% unlist()) %>%
+  mutate_at(names(COURAGE_spain_w2[,-1]), ~replace(., list = which(. %in% 991:999), values = NA))
+COURAGE_ds_spain_w2 <- COURAGE_ds_spain_w2 %>% 
+  mutate(multimorbid_score = rowSums(select(., -1, -dead), na.rm = T)) %>%
+  mutate(cardNA = rowSums(!is.na(select(., -1, -dead, -multimorbid_score)))) %>%
+  mutate(cardNA = cardNA/cardNA) %>%
+  mutate(multimorbid_score = multimorbid_score * cardNA) %>%
+  mutate(multimorbid = case_when(multimorbid_score >= 2 ~ 1, multimorbid_score < 2 ~ 0, dead ~ 996, TRUE ~ 999)) %>%
+  select(id, multimorbid)
+
+```
+
+
+#### Statistics of the new harmonized variable
+
+```{r descript spain_w2, echo=F}
+
+vbl <- COURAGE_ds_spain_w2$multimorbid
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(COURAGE_ds_spain_w2, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+
+#### Validation
+
+```{r crosstabulation spain_w2, echo=F}
+```
+
+
+
+
+## Descriptive statistics of the harmonised variable accross populations and waves
+
+Percentages of categories in each harmonised variable by cohort:
+
+
+
+
+
+
+
+```{r helpfunctions, echo=F}
+
+source("../../helpfunctions.r")
+
+```
+
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+courage.cw <- list(fin_w1 = c("fin_w1","Finland w1"), pol_w1 = c("pol_w1","Poland w1"), pol_w2 = c("pol_w2","Poland w2"), spain_w1 = c("spain_w1","Spain w1"), spain_w2 = c("spain_w2","Spain w2"))
+
+# Consider only harmonised waves
+l.hds <- lapply(courage.cw, function(wname) if(exists(paste0("COURAGE_ds_",wname[1]))){wname = list(get(paste0("COURAGE_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+```
+
+
+
+
+# Quality estimation
+
+
+
+
+```{r closeRsession, echo=FALSE} 
+opal.logout(o)
+```
