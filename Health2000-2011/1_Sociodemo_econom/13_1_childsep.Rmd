@@ -1,0 +1,178 @@
+---
+title: "Childhood socioeconomic position"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/childsepDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/childsepDS.R')
+```
+
+
+
+# Data process
+
+
+## Finland
+
+### Wave 1 
+
+#### Study-specific variable description
+
+| **Name** | `CB02` |`CB07`|
+|-|-|-|
+| **Label** | `Father's occupational status`| `Mother's occupational status`|
+| **Table name** | ` t00_athlos_2017_02_23`| ` t00_athlos_2017_02_23`|
+| **Categories** | `1 = farmer` <br/> `2 = employing entrepreneur` <br/> `3 = sole trader` <br/> `4 = employee` <br/> `5 = clerical worker` <br/> `6 = pensioner`|  `1 = farmer` <br/> `2 = employing entrepreneur` <br/> `3 = sole trader` <br/> `4 = employee` <br/> `5 = clerical worker` <br/> `6 = pensioner`|
+| **Missings** | `7 = other; what other professional status?`<br/>`8 = 	don't know`<br/>`NA` |  `7 = other; what other professional status?`<br/>`8 = 	don't know`<br/>`NA`  |
+| **Description** |  |  |
+
+
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'Health20002011_w1','Health2000-2011.t00_athlos_2017_02_23', variables=list('CB02','CB07'), missings = TRUE)
+Health20002011_w1 <- opal.execute(o,'Health20002011_w1')
+
+```
+
+```{r local w1, echo=F}
+
+vbl <- Health20002011_w1$CB02
+vbl_miss <- c(7,8)
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = attr(vbl, "spss::shortName"))
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(Health20002011_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+vbl <- Health20002011_w1$CB07
+vbl_miss <- c(7,8)
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = attr(vbl, "spss::shortName"))
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(Health20002011_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+To compute `childsep` from the study-specific variables its minimum (highest occupation) has to be recoded as follows:
+
+* `2:4 into 0`
+* `1 into 1`
+* `5 into 2`
+* `8 into 998`
+* `6:7, NA into 999`
+
+**R script:**
+
+```{r harmo w1}
+
+Health20002011_ds_w1 <- tibble(id=Health20002011_w1$id)
+Health20002011_ds_w1$childsep <- car::recode(pmin(Health20002011_w1$CB02,Health20002011_w1$CB07, na.rm = T), "2:4 = 0; 1 = 1; 5 = 2; 6:7 = 999; 8 = 998; NA = 999")
+
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=F}
+vbl <- Health20002011_ds_w1$childsep
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(Health20002011_ds_w1, aes(x=factor(childsep))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1, echo=F}
+```
+
+
+
+### Wave 2
+
+Not found.
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories.
+
+
+```{r helpfunctions, echo=F}
+
+source("../../helpfunctions.r")
+```
+
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+health2000.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"))
+
+# Consider only harmonised waves
+l.hds <- lapply(health2000.cw, function(wname) if(exists(paste0("Health20002011_ds_",wname[1]))){wname = list(get(paste0("Health20002011_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+```
+
+
+
+
+
+
+
+# Quality estimation
+
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
