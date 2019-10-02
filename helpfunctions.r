@@ -110,13 +110,13 @@ summaries <- function(l.hds, m.hds, lnames, vbl_name = hd_vbl, cat_lab = cat_lab
   t.hds <- frq(l.hds[[1]][vbl_name])[[1]][, c("val", "label")] 
   # For each wave/population in l.hds, add the correponding values
   for (i in seq_along(l.hds)) {
-    t.hds[2+i] <- frq(l.hds[[i]][vbl_name])[[1]][, "raw.prc"] 
+    t.hds[2 + i] <- frq(l.hds[[i]][vbl_name])[[1]][, "raw.prc"] 
   }
   # Add sample size for each wave/population
-  t.hds[2+length(cat_lab),] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
+  t.hds[2 + length(cat_lab),] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
   )
   # Add wave/population names
-  names(t.hds)<-c("val", "label", lnames)
+  names(t.hds) <- c("val", "label", lnames)
   return(t.hds)
   
 }
@@ -187,13 +187,13 @@ trajectories <- function(m.hds, vbl_name, global.df = FALSE) {
     }
     
     # Glue individual data through all waves into trajectories
-    v.dbb <- dbb[,2] %>% as.character()
+    v.dbb <- dbb[, 2] %>% as.character()
     for(ind in 2:length(m.hds)) {
       v.dbb <- paste(v.dbb, dbb[, ind + 1], sep="")
     }
   }
   else {
-    v.dbb <- dbb[,2] %>% as.character()
+    v.dbb <- dbb[, 2] %>% as.character()
   }
   
   # Trajectories and frequencies
