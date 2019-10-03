@@ -12,56 +12,21 @@ output:
     number_sections: true
 ---
 
+
 <!-- ########################################################## --> 
-
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
-
-
-```{r setup, include=FALSE,  echo=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+```{r setup, include=FALSE}
+source("../../setup.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/adl_bathingDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/adl_bathingDS.R')
 ```
 
-<!-- ########################################################## --> 
-
-# Description of DataSchema variable 
-
-* Short name: `adl_bathing`
-* Variable label: `ADL-Difficulties for bathing or showering`
-* Domain: `Health status and functional limitations`
-* Value type: `categorical`
-* Category coding:
-
-**Code** | **Category Label**
--------- | ------------------
-0        | yes
-1        | no
-
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-
-
-<!-- ########################################################## --> 
-
 # Data process
-```{r, dataDirectory, echo=FALSE}
-datafolder <- "../RData"
-``` 
-
-
 ## Ireland
 ### Wave 1
 
@@ -70,91 +35,146 @@ datafolder <- "../RData"
  
 
 
-| **Name** | `fl011`|
-|-|-|
-| **Label** | `Does anyone ever help you with bathing or showering?` |
-| **Table name** | `TILDA-AMF-v16` |
-| **Categories** |`1 = Yes; 5 = No`|
-| **Missings** |`-1 = Not applicable`|
-| **Description** |  |
+| **Name** | `fl002_3`|`DISimpairments`|
+|-|-|-|
+| **Label** | `Because of a physical or mental health problem, do you have difficulty Bathing or showering` |`Number of physical limitations (from fl001)`\*|
+| **Table name** | `TILDA-AMF-v16` | `TILDA-AMF-v16` |
+| **Categories** |`0 = NOT`<br/>`1 = YES`|`continuous`|
+| **Missings** |`-1 = Not applicable`|`NA`|
+| **Description** |  |  |
 
- 
-```{r assign w1,  echo=FALSE}
-opal.assign.table.tibble(o, 'TILDA_w1_adl_bathing','TILDA.TILDA-AMF-v16', variables=list('fl011'), missings = TRUE)
+\* `fl001` has data on mobility related ADLs
+
+```{r assign w1, echo=FALSE}
+
+opal.assign.table.tibble(o, 'TILDA_w1','TILDA.TILDA-AMF-v16', variables=list('fl002_3','DISimpairments'), missings = TRUE)
+TILDA_w1 <- opal.execute(o,'TILDA_w1')
+
 ```
 
-```{r local w1,  echo=FALSE}
-TILDA_w1_adl_bathing <- opal.execute(o,'TILDA_w1_adl_bathing')
-vari <- TILDA_w1_adl_bathing$fl011 # VARIABLE
-kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
-kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
-#Categorical_summary(TILDA_w1_adl_bathing$fl011)
-ggplot(TILDA_w1_adl_bathing, aes(x=factor(fl011))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Difficulty bathing or showering") + ylab("Frequency")
+
+```{r local w1, , echo=FALSE}
+
+vbl <- TILDA_w1$fl002_3
+vbl_miss <- c(-1)
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = attributes(vbl)$`spss::shortName`)
+kable(Categorical_summary(vbl, missing_values = NA)[1], caption = "Category")
+ggplot(TILDA_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("difficulty Bathing or showering") + ylab("Frequency")
+
+kable(table(TILDA_w1$fl002_3,TILDA_w1$DISimpairments, useNA = "ifany"), caption = 'Cross data of fl002_3 with DISimpairments')
+
 ```
 
 #### Harmonisation algorithm
 
-To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+To compute the harmonize variable from the study-specific variable `fl002_3` it has to be recoded as follows:
 
+* `0 into 1` 
 * `1 into 0` 
-* `5 into 1` 
-* `-1 Not applicable into 996`
+* Since `-1` category coincides with no physical limitations (`DISimpairments = 0`) we recode it as 0.
 
-**R script:** 
-```{r harmo w1,   echo=TRUE}
-TILDA_ds_w1 <- tibble(id=TILDA_w1_adl_bathing$id)
-TILDA_ds_w1$adl_bathing <- car::recode(TILDA_w1_adl_bathing$fl011, "0 = '1';5 = '0';-1 = '996' ")
-TILDA_ds_w1$adl_bathing <- labelled(TILDA_ds_w1$adl_bathing, labels = c(Yes=0, No=1,Missing=999, Do_not_know=998, Refuse=997, Not_applicable=996, Does_not_answer=995,  Not_attempt_not_done=994, Disable_to_measure=993, Impute=992, CAPI_interviewer_error=991))
+**R script:**
+
+```{r harmo w1, echo=TRUE, tidy=FALSE}
+
+TILDA_ds_w1 <- TILDA_w1 %>%
+  mutate(adl_bathing = case_when(
+    fl002_3 == 0 ~ 1,
+    fl002_3 == 1 ~ 0,
+    DISimpairments == 0 ~ 1,
+    TRUE ~ 999
+  )) %>%
+  select(id, adl_bathing)
+
 ```
 
 #### Statistical description of the new harmonised variable
-```{r descript w1,  echo=FALSE}
-vari <- TILDA_ds_w1$adl_bathing # variable you want to descrive
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3])
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
-#Categorical_summary(var = TILDA_ds_w1$adl_bathing, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(TILDA_ds_w1, aes(x=factor(adl_bathing))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("ADL - Difficulty bathing or showering") + ylab("Frequency")
+
+```{r descript w1, echo= FALSE}
+
+vbl <- TILDA_ds_w1$adl_bathing
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(TILDA_ds_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
 ```
 
 #### Validation
-```{r crosstabulation w1,  echo=FALSE}
-AfterH <- table(TILDA_ds_w1$adl_bathing)
-X<-table(TILDA_w1_adl_bathing$fl011)
-BeforeH <- X[c(3:1)]
-C <- rbind(BeforeH,AfterH)
-colnames(C) <- c("1->0","5->1","-1->996") 
-kable(C)
+  
+```{r crosstabulation w1, echo= FALSE}
+
 ```
 
 
-```{r importOPAL w1, echo=FALSE,  echo=FALSE}
-val_labels(TILDA_ds_w1) <- NULL
-label(TILDA_ds_w1$adl_bathing) <- "Difficulties for bathing or showering"
-opal.assign.data(o, 'TILDA_ds_w1', TILDA_ds_w1)
-#opal.symbol_import(o,'TILDA_ds_w1', project='_Athlos_Harm_Dataset')
-
-TILDA_m_ds_w1 <- TILDA_ds_w1
-TILDA_m_ds_w1$adl_bathing <- car::recode(TILDA_m_ds_w1$adl_bathing, "c(991, 992, 993, 994, 995, 996, 997,998, 999)=NA")
-opal.assign.data(o, 'TILDA_m_ds_w1', TILDA_m_ds_w1)
-#opal.symbol_import(o,'TILDA_m_ds_w1', project='_Athlos_Harm_Dataset')
-```
-
-```{r,  echo=FALSE}
-adl_bathing <- TILDA_ds_w1
-save(adl_bathing, file = paste0(datafolder, "/w1/adl_bathing.RData"))
-```
 
 ### Wave 2
 
-Not found.
+Not found
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories.
+
+
+```{r helpfunctions, echo=F}
+
+source("../../helpfunctions.r")
+
+```
+
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+tilda.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"))
+
+# Consider only harmonised waves
+l.hds <- lapply(tilda.cw, function(wname) if(exists(paste0("TILDA_ds_",wname[1]))){wname = list(get(paste0("TILDA_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],sapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+```
+
 
 
 
 # Quality estimation
 
-No comments
+CAPI questionnaire ADL section, first ask about physical/mobility limitations (`fl001`; counted in `DISimpairments`) and if respondents answer to have no difficulties they are not asked on ADL's in `fl002`, assuming they also have no difficulties for these ADL's (`DISadl` is coded as 0 if `DISimpairments` is 0). Thus, we make this assumption too.
 
-```{r closeRsession, echo=FALSE,  echo=FALSE}
+
+```{r closeRsession, echo=FALSE}
 opal.logout(o)
 ```
