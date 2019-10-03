@@ -1,5 +1,5 @@
 ---
-title: "Walking speed"
+title: "Walking Speed"
 output:
   html_document:
     highlight: tango
@@ -12,71 +12,23 @@ output:
       smooth_scroll: yes
 ---
 
-<!-- ########################################################## --> 
 
+<!-- ########################################################## --> 
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_iago.r")
+source("../../setup.r")
 ```
 <!-- ########################################################## --> 
-
-
-
-# Description of DataSchema variable
-
-The description of harmonised variable is the following:
-
-* Short name: `walking_speed_c`
-* Variable label: `Walking speed - Continuous`
-* Variable description: `Walking speed - Continuous. It is measured assessing the time that is taken to walk a distance.`
-* Value type: `continuous`
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-
-* Short name: `walking_speed`
-* Variable label: `Walking speed`
-* Variable description: `Walking speed. It is measured assessing the time that is taken to walk a distance.Discrete variable: value 0 = <=25%; value 1 = >25%.`
-* Value type: `Categorical`
-* Category coding:
-
-**Code** | **Category Label**
--------- | ------------------
-0        | <=25%
-1        | >25%
-
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-```{r lab, echo=FALSE}
-ds_label <- "Walking speed"
-ds_label_walking_speed_c <- "Walking speed - Continuous. It is measured assessing the time that is taken to walk a distance"
-ds_label_walking_speed <- "Walking speed. It is measured assessing the time that is taken to walk a distance.Discrete variable: value 0 = <=25%; value 1 = >25%."
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/walking_speedDS.Rmd'}
 ```
+```{r global, echo=F}
+source('../../_DS_Rmd/walking_speedDS.R')
+```
+
+
+
+
 
 
 # Data process
@@ -85,8 +37,84 @@ ds_label_walking_speed <- "Walking speed. It is measured assessing the time that
 
 ### Wave 1
 
-Not found.
+#### Study-specific variable description
 
+| **Name** |`FRtugSpeed`|
+|-|-|
+| **Label** |`Speed of time up and go (reciprocal of tugTimeSec)`|
+| **Table name** |`TILDA-AMF-v16`|
+| **Missings** |`NA`|
+| **Description** |  |
+
+
+
+
+```{r assign w1, echo=F}
+
+opal.assign.table.tibble(o, 'TILDA_w1','TILDA.TILDA-AMF-v16', variables=list('FRtugSpeed'), missings = TRUE)
+TILDA_w1 <- opal.execute(o,'TILDA_w1') %>% update_labelled()
+
+```
+
+
+
+```{r local w1, echo=F}
+
+vbl <- TILDA_w1$FRtugSpeed
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = attributes(vbl)$`spss::shortName`)
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(TILDA_w1, aes(vbl)) + geom_bar(stat="count", width=0.001, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable `walking_speed_c` from the study-specific variables it has to be recoded as follows:
+
+* `NA into 999`
+
+To compute the harmonized variable `walking_speed` from `walking_speed_c` it has to be recoded as follows:
+
+* `walking_speed_c <=25% into 0`
+* `walking_speed_c >25% into 1`
+
+
+```{r harmo w1, tidy=FALSE}
+
+Q <- quantile(TILDA_w1$FRtugSpeed, probs = 1/4, na.rm = TRUE, names = FALSE)
+
+TILDA_ds_w1 <- TILDA_w1 %>%
+  mutate(walking_speed_c = replace_na(FRtugSpeed, 999)) %>%
+  mutate(walking_speed = case_when(
+    walking_speed_c <= Q ~ 0,
+    walking_speed_c %in% c(991:999) ~ walking_speed_c,
+    walking_speed_c > Q ~ 1
+  )) %>%
+  select(id, walking_speed_c, walking_speed)
+
+
+```
+
+
+#### Statistical description of the new harmonised variable
+```{r descript w1, echo=F}
+vari <- TILDA_ds_w1$walking_speed_c
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(TILDA_ds_w1 %>% filter(!vari %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.001, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vari <- TILDA_ds_w1$walking_speed
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(TILDA_ds_w1, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation w1, echo=F}
+
+```
 
 
 ### Wave 2 
@@ -109,19 +137,20 @@ TILDA_w2_walking <- opal.execute(o,'TILDA_w2_walking')
 
 ```{r local w2, echo=F}
 vari <- TILDA_w2_walking$tug009m
-kable(Continuous_summary(vari, missing_values = c(-1))[3], caption = "tug009m")
-pander(Continuous_summary(vari, missing_values = c(-1))$summary, caption = "Summary")
-ggplot(TILDA_w2_walking, aes(tug009m)) + geom_bar(stat="count", width=0.1, fill="steelblue") + xlab("time") + ylab("Frequency")+xlim(-0.5,11)
+vbl_miss <- c(-1)
+kable(Continuous_summary(vari, missing_values = vbl_miss)[3], caption = "tug009m")
+pander(Continuous_summary(vari, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(TILDA_w2_walking %>% filter(!vari %in% vbl_miss), aes(tug009m)) + geom_bar(stat="count", width=0.1, fill="steelblue") + xlab("time") + ylab("Frequency")
 
 vari <- TILDA_w2_walking$tug009s
-kable(Continuous_summary(vari, missing_values = c(-1))[3], caption = "tug009s")
-pander(Continuous_summary(vari, missing_values = c(-1))$summary, caption = "Summary")
-ggplot(TILDA_w2_walking, aes(tug009s)) + geom_bar(stat="count", width=0.1, fill="steelblue") + xlab("time") + ylab("Frequency")+xlim(0,61)
+kable(Continuous_summary(vari, missing_values = vbl_miss)[3], caption = "tug009s")
+pander(Continuous_summary(vari, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(TILDA_w2_walking %>% filter(!vari %in% vbl_miss), aes(tug009s)) + geom_bar(stat="count", width=0.1, fill="steelblue") + xlab("time") + ylab("Frequency")
 
 vari <- TILDA_w2_walking$tug009c
-kable(Continuous_summary(vari, missing_values = c(-1))[3], caption = "tug009c")
-pander(Continuous_summary(vari, missing_values = c(-1))$summary, caption = "Summary")
-ggplot(TILDA_w2_walking, aes(tug009c)) + geom_bar(stat="count", width=0.1, fill="steelblue") + xlab("time") + ylab("Frequency")+xlim(0,101)
+kable(Continuous_summary(vari, missing_values = vbl_miss)[3], caption = "tug009c")
+pander(Continuous_summary(vari, missing_values = vbl_miss)$summary, caption = "Summary")
+ggplot(TILDA_w2_walking %>% filter(!vari %in% vbl_miss), aes(tug009c)) + geom_bar(stat="count", width=0.1, fill="steelblue") + xlab("time") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
@@ -155,23 +184,23 @@ TILDA_ds_w2$walking_speed <- labelled(TILDA_ds_w2[[3]], labels = c("<=25%"=0, ">
 #### Statistical description of the new harmonised variable
 ```{r descript w2, echo=F}
 vari <- TILDA_ds_w2$walking_speed_c
-kable(Continuous_summary(var = vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label)
-kable(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Values")
-pander(Continuous_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))$summary, caption = "Summary")
-ggplot(TILDA_ds_w2, aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.01, fill="steelblue") + xlab(ds_label) + ylab("Frequency") + xlim(0,0.6)
+kable(Continuous_summary(var = vari, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vari, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vari, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(TILDA_ds_w2 %>% filter(!vari %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.01, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 
 vari <- TILDA_ds_w2$walking_speed
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3], caption = ds_label) 
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
 ggplot(TILDA_ds_w2, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 ```
 
 #### Validation
 ```{r crosstabulation w2, echo=F}
-Continous <- c(sum(na.omit(TILDA_ds_w2[[2]])<=Q), sum(na.omit(TILDA_ds_w2[[2]])>Q & na.omit(TILDA_ds_w2[[2]])<900), sum(na.omit(TILDA_ds_w2[[2]])==996))
-Dicotomic <- table(TILDA_ds_w2[[3]], useNA = "ifany")
-C <- rbind(Continous,Dicotomic)
+continuous <- c(sum(na.omit(TILDA_ds_w2[[2]])<=Q), sum(na.omit(TILDA_ds_w2[[2]])>Q & na.omit(TILDA_ds_w2[[2]])<900), sum(na.omit(TILDA_ds_w2[[2]])==996))
+dichotomous <- table(TILDA_ds_w2[[3]], useNA = "ifany")
+C <- rbind(continuous,dichotomous)
 colnames(C) <- c("0:Q->0","Q:900->1", "-1->996") 
 kable(C, caption = "Continuous vs Dichotomous")
 ```
@@ -181,15 +210,156 @@ kable(C, caption = "Continuous vs Dichotomous")
 
 
 
-```{r importOPAL w2, echo=FALSE}
-#opal.assign.data(o, 'TILDA_ds_w2', TILDA_ds_w2)
-#opal.symbol_import(o,'TILDA_ds_w2', project='_Athlos_Harm_Dataset')
 
-label(TILDA_ds_w2$walking_speed_c) <- ds_label_walking_speed_c
-label(TILDA_ds_w2$walking_speed) <- ds_label_walking_speed
-walking_speed <- TILDA_ds_w2
-save(walking_speed, file = "../RData/w2/walking_speed.RData")
+## Descriptive statistics of the harmonised variable `walking_speed` accross populations and waves
+
+
+
+
+
+
+
+<!--AUXILIAR FUNCTIONS-->
+
+
+
+```{r helpfunctions, echo=F}
+
+source("../../helpfunctions.r")
+
 ```
+
+
+
+```{r populations-waves, echo=F}
+
+
+# All study waves and populations with abbreviated and descriptive names
+
+tilda.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"))
+
+
+
+```
+
+
+<!--Labelling and saving-->
+
+```{r, echo=FALSE}
+
+
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(tilda.cw, function(wname) if(exists(paste0("TILDA_ds_",wname[1]))){wname = list(get(paste0("TILDA_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label_walking_speed)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_vbl_c,ds_label_walking_speed_c)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+tildalist <- lmlist # TILDA list
+
+
+
+
+```
+
+
+
+<!--Descriptives-->
+
+
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories.
+
+```{r summ, echo=F}
+
+
+# Consider only harmonised waves
+l.hds <- lapply(tilda.cw, function(wname) if(hd_vbl %in% names(get0(paste0("TILDA_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- tildalist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- tildalist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label_walking_speed))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb))
+
+}
+
+
+
+```
+
+
+
+
+
+
+## Summary of descriptive statistics of the harmonised variable `walking_speed_c` accross populations and waves
+
+
+
+
+
+
+```{r summ_c, echo=F}
+
+
+# Consider only harmonised waves
+l.hds <- lapply(tilda.cw, function(wname) if(hd_vbl_c %in% names(get0(paste0("TILDA_ds_",wname[1])))){wname})
+
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+
+
+if(length(l.hds)>0){
+  lmlist[[1]] <- tildalist[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- tildalist[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl_c),caption=ds_label_walking_speed_c))
+}
+
+
+
+
+
+```
+
+
 
 
 # Quality estimation
