@@ -1,73 +1,107 @@
 ---
 title: "Education"
-output: 
+output:
   html_document:
-    theme: united
     highlight: tango
-    toc: true
+    number_sections: yes
+    theme: united
+    toc: yes
     toc_depth: 6
     toc_float:
-      collapsed: true
-      smooth_scroll: true
-    number_sections: true
+      collapsed: yes
+      smooth_scroll: yes
 ---
 
 <!-- ########################################################## --> 
-
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
-
-
-```{r setup, include=FALSE, echo=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_laia.r")
+```{r setup, include=FALSE}
+source("../../setup.r")
 ```
-
 <!-- ########################################################## --> 
-
-# Description of DataSchema variable 
-
-* Short name: `education`
-* Variable label: `Highest level of formal education achieved`
-* Domain: `Socio-demographic and economic characteristics`
-* Value type: `categorical`
-* Category coding:
-
-**Code** | **Category Label**
--------- | ------------------
-0        | less than primary education
-1        | primary education
-2        | secondary education
-3        | tertiary education
-
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-
-
-
-
-<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/educationDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/educationDS.R')
+```
 
 # Data process
 
-## Australian population
+## Australia
+
 ### Wave 1 
 
-There is no variable
+#### Study-specific variable description
+
+| **Name** |`TYPQUAL`|
+|-|-|
+| **Label** |`Highest qualification`|
+| **Table name** |`ALSA-Wave1`|
+| **Categories** |`1 = Primary School Course`<br/>`2 = Secondary School Course`<br/>`3 = Trade or Apprenticeship`<br/>`4 = Certificate or Diploma`<br/>`5 = Bachelor Degree or Post Graduate Diploma`<br/>`6 = Higher Qualification`<br/>`7 = Adult Education or Hobby Course`<br/>`8 = Other`<br/>`9 = No Formal Tuition`|
+| **Missings** |`99`<br/>`NA`|
+| **Description** |  |
 
 
+```{r assign w1, echo=FALSE}
+
+opal.assign.table.tibble(o, 'ALSA_w1','ALSA.ALSA-Wave1', variables=list('TYPQUAL'), missings = TRUE)
+ALSA_w1 <- opal.execute(o,'ALSA_w1') %>% update_labelled()
+
+```
+
+
+```{r local w1, echo=FALSE}
+
+vbl <- ALSA_w1$TYPQUAL
+vbl_miss <- c(99)
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[3], caption = attributes(vbl)$`spss::shortName`) 
+kable(Categorical_summary(vbl, missing_values = vbl_miss)[1], caption = "Category")
+ggplot(ALSA_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vbl)) + ylab("Frequency")
+
+```
+
+
+#### Harmonisation algorithm
+
+The harmonized variable is the study-specific recoded as follows:
+
+* `1 into 1`
+* `2,3 into 2`
+* `5,6 into 3`
+* `9 into 0`
+* `4,7,8,NA into 999`
+
+**R script:**
+
+```{r harmo w1, echo=TRUE, tidy=FALSE}
+
+ALSA_ds_w1 <- ALSA_w1 %>%
+  mutate(education = recode(tidyr::replace_na(TYPQUAL, 999L), 
+                            `1` = 1L, 
+                            `2` = 2L, `3` = 2L, `4` = 999L, 
+                            `5` = 3L, `6` = 3L,
+                            `7` = 999L, `8` = 999L, `9` = 0L)) %>%
+  select(id, education)
+
+```
+
+
+
+#### Statistics of the new harmonised variable
+```{r descript w1, echo=FALSE}
+
+vbl <- ALSA_ds_w1$education
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w1, aes(x=factor(vbl))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+```
+
+#### Validation
+```{r crosstabulation w1, echo=FALSE}
+
+```
 
 
 ### Wave 2 
@@ -76,35 +110,36 @@ There is no variable
 
  
 
-* Name: `Q40`
-* Label: `Education attained`
-* Categories: 
-    + `1 = No formal education`
-    + `2 = Primary school only`
-    + `3 = Primary / secondary school no certificat`
-    + `4 = Intermediate certificate`
-    + `5 = Leaving certificate`
-    + `6 = Trade or apprenticeship`
-    + `7 = University degree or higher`
+| **Name** |`Q40`|
+|-|-|
+| **Label** |`Education attained`|
+| **Table name** |`ALSA-Wave2`|
+| **Categories** |`1 = No formal education`<br/>`2 = Primary school only`<br/>`3 = Primary / secondary school no certificat`<br/>`4 = Intermediate certificate`<br/>`5 = Leaving certificate`<br/>`6 = Trade or apprenticeship`<br/>`7 = University degree or higher`|
+| **Description** |  |
 
-* Description:    
 ```{r assign2, echo=FALSE}
+
 opal.assign.table.tibble(o, 'ALSA_w2_educ','ALSA.ALSA-Wave2',
                          variables=list('Q40'), missings = TRUE)
+ALSA_w2_educ <- opal.execute(o,'ALSA_w2_educ')
+
 ```
 
 ```{r local2, echo=FALSE}
-ALSA_w2_educ <- opal.execute(o,'ALSA_w2_educ')
 vari <- ALSA_w2_educ$Q40
 kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`) 
 kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
-#Categorical_summary(var = ALSA_w2_educ$Q40, missing_values = NA)
-ggplot(ALSA_w2_educ, aes(x=factor(Q40))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+ggplot(ALSA_w2_educ, aes(x=factor(vari))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
-The harmonized variable is the same than the study-specific variable plus 1 years, but the missing values have to be recoded as follows:
 
+The harmonized variable is the study-specific recoded as follows:
+
+* `1 into 0`
+* `2 into 1`
+* `3,4,5,6 into 2`
+* `7 into 3`
 * `NA into 999`
 
 **R script:**
@@ -118,11 +153,10 @@ ALSA_ds_w2$education <- labelled(ALSA_ds_w2$education, labels = c("less than pri
 #### Statistics of the new harmonised variable
 ```{r descript2, echo=FALSE}
 vari <- ALSA_ds_w2$education
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
-#Categorical_summary(var = ALSA_ds_w2$education, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(ALSA_ds_w2, aes(x=factor(education))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Level of education") + ylab("Frequency")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(ALSA_ds_w2, aes(x=factor(education))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 ```
 
 #### Validation
@@ -217,16 +251,71 @@ There is no variable.
 There is no variable.
 
 
-```{r save, echo=FALSE}
-education <- ALSA_ds_w2
-save(education, file = "../RData/w2/education.RData")
-rm(education)
+
+
+
+## Summary of descriptive statistics of the harmonised variable accross populations and waves
+
+Two tables are generated: 
+
+1. Percentages of categories in each harmonised variable.
+
+2. Frequencies and percentages of individuals with different trajectories.
+
+
+```{r helpfunctions, echo=F}
+
+source("../../helpfunctions.r")
+
 ```
+
+
+
+
+```{r summ, echo=F}
+
+# All study waves and populations with abbreviated and descriptive names
+
+
+alsa.cw <- list(w1 = c("w1","W1"), w2 = c("w2","W2"), w3 = c("w3","W3"), w4 = c("w4","W4"), w5 = c("w5","W5"), w6 = c("w6","W6"), w7 = c("w7","W7"), w8 = c("w8","W8"), w9 = c("w9","W9"), w10 = c("w10","W10"), w11 = c("w11","W11"), w12 = c("w12","W12"), w13 = c("w13","W13"))
+
+# Consider only harmonised waves
+l.hds <- lapply(alsa.cw, function(wname) if(exists(paste0("ALSA_ds_",wname[1]))){wname = list(get(paste0("ALSA_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Printing table of trajectories
+  f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  print(knitr::kable(f.dbb))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+
+
+```
+
+
+
 
 
 # Quality estimation
 
-The chosen original variable is available in the second wave
+* The chosen original variable is available in the second and first waves.
+
+* Data on waves 1 and 2 does not match well, as trajectories show. Because of this reason, we keep some doubtful categories in wave 1 as missing. Even so, we don't change any other data.
 
 ```{r closeRsession, echo=FALSE} 
 opal.logout(o)
