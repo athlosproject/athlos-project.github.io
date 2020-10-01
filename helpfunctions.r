@@ -30,10 +30,10 @@ labelling <- function(l.hds, m.hds, vbl_name = hd_vbl, ds_lab = ds_label, cat_la
       # Labelling of variables
       label(l.hds[[name]][[vbl_name]]) <- label(aux_object[[vbl_name]]) <- ds_lab
       # Labelling of categories (for continues variables, only missing values)
-      l.hds[[name]][[vbl_name]] <- labelled(l.hds[[name]][[vbl_name]], labels = cat_lab)
-      aux_object[[vbl_name]] <- car::recode(aux_object[[vbl_name]], "miss_values_vector = NA")
+      l.hds[[name]][[vbl_name]] <- labelled(l.hds[[name]][[vbl_name]], labels = cat_lab, label = ds_lab)
+      aux_object[[vbl_name]] <- car::recode(unclass(aux_object[[vbl_name]]), "miss_values_vector = NA")
       # Labelling of categories (for categorical variables, only non-missing values)
-      aux_object[[vbl_name]] <- labelled(aux_object[[vbl_name]], labels = cat_lab[1:(length(cat_lab)-9)])
+      aux_object[[vbl_name]] <- labelled(aux_object[[vbl_name]], labels = cat_lab[1:(length(cat_lab)-9)], label = ds_lab)
       # Saving the recodified tibble in list m.hds
       m.hds[[name]] <- aux_object
       rm(aux_object)
@@ -86,8 +86,8 @@ labelling_c <- function(l.hds, m.hds, vbl_name = hd_vbl, ds_lab = ds_label) {
       # Labelling of variables
       label(l.hds[[name]][[vbl_name]]) <- label(aux_object[[vbl_name]]) <- ds_lab
       # Labelling of categories (for continues variables, only missing values)
-      l.hds[[name]][[vbl_name]] <- labelled(l.hds[[name]][[vbl_name]], labels = cont_label)
-      aux_object[[vbl_name]] <- car::recode(aux_object[[vbl_name]], "miss_values_vector = NA")
+      l.hds[[name]][[vbl_name]] <- labelled(l.hds[[name]][[vbl_name]], labels = cont_label, label = ds_lab)
+      aux_object[[vbl_name]] <- car::recode(unclass(aux_object[[vbl_name]]), "miss_values_vector = NA")
       aux_object[[vbl_name]] <- remove_val_labels(aux_object[[vbl_name]])
       # Saving the recodified tibble in list m.hds
       m.hds[[name]] <- aux_object
@@ -136,7 +136,7 @@ summaries_c <- function(l.hds, m.hds, lnames, vbl_name = hd_vbl) {
   # Adding of missing/no-missing values categories
   t.hds <- c(substr(t.summ, 1, regexpr(":", t.summ, fixed=T) - 1), 
              labels(Continuous_summary(l.hds[[1]][[vbl_name]], missing_values = miss_values_vector)$values_table)[[2]]
-             )
+  )
   # For each wave/population in l.hds, add the correponding values
   for (i in seq_along(l.hds)) {
     # First, summary values
@@ -145,15 +145,15 @@ summaries_c <- function(l.hds, m.hds, lnames, vbl_name = hd_vbl) {
     t.hds <- cbind(t.hds, 
                    c(as.numeric(substr(t.summ, regexpr(":", t.summ, fixed=T) + 1, nchar(t.summ))), 
                      as.numeric(Continuous_summary(l.hds[[i]][[vbl_name]], missing_values = miss_values_vector)$values_table[1, ])
-                     )
                    )
+    )
   }
   # Add sample size for each wave/population
   t.hds <- rbind(t.hds, 
                  c("sample size", 
                    sapply(l.hds, function(wave) length(wave[[1]]))
-                   )
                  )
+  )
   # Add wave/population names
   dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][vbl_name]))[[2]], lnames)
   return(t.hds)
@@ -198,6 +198,10 @@ trajectories <- function(m.hds, vbl_name, global.df = FALSE) {
   
   # Trajectories and frequencies
   f.dbb <- frq(v.dbb)[[1]][, c("val", "frq", "raw.prc")]
+  if(is.numeric(f.dbb$val)) {
+    f.dbb <- transform(frq(v.dbb)[[1]][, c("val", "frq", "raw.prc")],
+                       val = formatC(frq(v.dbb)[[1]]$val, digits = length(m.hds), width = length(m.hds), flag = "0"))
+  }
   return(f.dbb)
   
 }
