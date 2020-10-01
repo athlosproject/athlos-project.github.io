@@ -15,47 +15,16 @@ output:
 <!-- ########################################################## --> 
 
 <!-- # Installation, loading packages -->
-<!-- **R script:** -->
-
 ```{r setup, include=FALSE}
-source("M:/WPs/WP1/Maelstrom/data_process/athlos-project.github.io/setup_ania.r")
+source("../../setup.r")
 ```
-
 <!-- ########################################################## --> 
-
-
-
-# Description of DataSchema variable
-
-The description of harmonised variables is the following:
-
-* Short name: `sen_club`
-* Variable label: `Participation in senior club/organization`
-* Domain: `Social environment`
-* Value type: `cathegorical`
-* Categories:
-
-**Code** | **Category Label**
--------- | ------------------
-0        | No
-1        | Yes
-
-
-* Category missings: 
-
-**Code** | **Category Label**
-----| ------------------
-991 | CAPI/interviewer error
-992 | Impute
-993 | Disable to measure
-994 | Not attempt/not done
-995 | Does not answer
-996 | Not applicable
-997 | Refuse
-998 | Do not know
-999 | Missing
-
-
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/sen_clubDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/sen_clubDS.R')
+```
 
 <!-- ########################################################## --> 
 
@@ -67,57 +36,62 @@ The description of harmonised variables is the following:
 
 #### Study-specific variables
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `	tome230`
-* Label: `In the past month, have you done non-work activities with anyone other than family or friends? What kind of activity was it? 1 Local activity (including seniors clubs and festivals)`
-* Categories:
-    + `1 = Yes`
-    + `2 = No`
-    + `3 = Don't know`
 
-* Description: 
-```{r assign1 5cities}
-opal.assign.table.tibble(o, 'JSTAR_aksst_w1_sen_club','JSTAR_datasets_restricted.jstar_2007_5cities',variables=list('tome230'), missings = TRUE)
+| **Name** | `tome229`| `	tome230`|
+|-|-|-|
+| **Label** |`In the past month, have you done non-work activities with anyone other than family or friends?` |`What kind of activity was it? 1 Local activity (including seniors clubs and festivals)`|
+| **Table name** |`jstar_2007_5cities`|`jstar_2007_5cities`|
+| **Categories** |`1 = Yes`<br/>`2 = No`|`1 = Yes`|
+| **Missings** |`3 = Don't know`<br/>`NA`|`NA`|
+| **Description** |  |  |
+
+```{r assign1 5cities, echo=F}
+opal.assign.table.tibble(o, 'JSTAR_aksst_w1_sen_club','JSTAR_datasets_restricted.jstar_2007_5cities',variables=list('tome229','tome230'), missings = TRUE)
+JSTAR_aksst_w1_sen_club <- opal.execute(o,'JSTAR_aksst_w1_sen_club')
 ```
 
-```{r local1 5cities}
-JSTAR_aksst_w1_sen_club <- opal.execute(o,'JSTAR_aksst_w1_sen_club')
-vari <- JSTAR_aksst_w1_sen_club$tome230
-kable(Categorical_summary(vari, missing_values = c(3))[3]) 
+```{r local1 5cities, echo=F}
+vari <- JSTAR_aksst_w1_sen_club$tome229
+kable(Categorical_summary(vari, missing_values = c(3))[3], caption = attributes(vari)$`spss::shortName`)
 kable(Categorical_summary(vari, missing_values = c(3))[1], caption = "Category")
-kable(Categorical_summary(vari, missing_values = c(3))[2], caption = "Type of missing")
-#Categorical_summary(var = JSTAR_aksst_w1_sen_club$tome230, missing_values = NA)
+ggplot(JSTAR_aksst_w1_sen_club, aes(x=factor(tome229))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- JSTAR_aksst_w1_sen_club$tome230
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(JSTAR_aksst_w1_sen_club, aes(x=factor(tome230))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Local activity (including seniors clubs and festivals) in the past month") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
-To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+To compute the harmonize variable from the study-specific variables they have to be recoded as follows:
 
-* `1 into 1, 2 into 0`
+* `all 1 into 1, some 2 into 0`
 * `3 into 998`
 * `NA into 999`
+
 
  **R script:**
 
 ```{r harmo1 5cities, echo=TRUE}
-JSTAR_aksst_ds_w1 <- tibble(id=JSTAR_aksst_w1_sen_club$id)
-JSTAR_aksst_ds_w1$sen_club <- car::recode(as.vector(JSTAR_aksst_w1_sen_club$tome230), "1='1'; 2='0'; 3='998'; NA='999'")
-JSTAR_aksst_ds_w1$sen_club <- labelled(JSTAR_aksst_ds_w1$sen_club, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+
+JSTAR_ds_aksst_w1 <- JSTAR_aksst_w1_sen_club %>% 
+  mutate(sen_club = case_when((tome229 == 1 & tome230 == 1) ~ 1, tome229 == 2 ~ 0, tome229 == 3 ~ 998, TRUE ~ 999)) %>%
+  select(id, sen_club)
+
 ```
 
 #### Statistical description of the new harmonised variable
-```{r descript1 5cities}
-vari <- JSTAR_aksst_ds_w1$sen_club
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
-#Categorical_summary(var = JSTAR_aksst_ds_w1$sen_club, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(JSTAR_aksst_ds_w1, aes(x=factor(sen_club))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Participation in senior club/organization") + ylab("Frequency")
+```{r descript1 5cities, echo=F}
+vari <- JSTAR_ds_aksst_w1$sen_club
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(JSTAR_ds_aksst_w1, aes(x=factor(sen_club))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation1 5cities}
+```{r crosstabulation1 5cities, echo=F}
 
 ```
 
@@ -130,57 +104,63 @@ ggplot(JSTAR_aksst_ds_w1, aes(x=factor(sen_club))) + geom_bar(stat="count", widt
 
 #### Study-specific variables
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `	tome246`
-* Label: `In the past month, have you done non-work activities with anyone other than family or friends? What kind of activity was it? 1 Local activity (including seniors’ clubs and festivals)`
-* Categories:
-    + `1 = Yes`
-    + `2 = No`
-    + `3 = Don't know`
 
-* Description: 
-```{r assign2 5cities}
-opal.assign.table.tibble(o, 'JSTAR_aksst_w2_sen_club','JSTAR_datasets_restricted.jstar_2009_5cities',variables=list('tome246'), missings = TRUE)
+| **Name** | `tome245`| `	tome246`|
+|-|-|-|
+| **Label** |`In the past month, have you done non-work activities with anyone other than family or friends?` |`What kind of activity was it? 1 Local activity (including seniors? clubs and festivals)`|
+| **Table name** |`jstar_2009_5cities`|`jstar_2009_5cities`|
+| **Categories** |`1 = Yes`<br/>`2 = No`|`1 = Yes`|
+| **Missings** |`3 = Don't know`<br/>`NA`|`NA`|
+| **Description** |  |  |
+ 
+```{r assign2 5cities, echo=F}
+opal.assign.table.tibble(o, 'JSTAR_aksst_w2_sen_club','JSTAR_datasets_restricted.jstar_2009_5cities',variables=list('tome245','tome246'), missings = TRUE)
+JSTAR_aksst_w2_sen_club <- opal.execute(o,'JSTAR_aksst_w2_sen_club')
 ```
 
-```{r local2 5cities}
-JSTAR_aksst_w2_sen_club <- opal.execute(o,'JSTAR_aksst_w2_sen_club')
-vari <- JSTAR_aksst_w2_sen_club$tome246
-kable(Categorical_summary(vari, missing_values = c(3))[3]) 
+```{r local2 5cities, echo=F}
+
+vari <- JSTAR_aksst_w2_sen_club$tome245
+kable(Categorical_summary(vari, missing_values = c(3))[3], caption = attributes(vari)$`spss::shortName`)
 kable(Categorical_summary(vari, missing_values = c(3))[1], caption = "Category")
-kable(Categorical_summary(vari, missing_values = c(3))[2], caption = "Type of missing")
-#Categorical_summary(var = JSTAR_aksst_w2_sen_club$tome246, missing_values = NA)
+ggplot(JSTAR_aksst_w2_sen_club, aes(x=factor(tome245))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- JSTAR_aksst_w2_sen_club$tome246
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(JSTAR_aksst_w2_sen_club, aes(x=factor(tome246))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Local activity (including seniors clubs and festivals)") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
-To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+To compute the harmonize variable from the study-specific variables they have to be recoded as follows:
 
-* `1 into 1, 2 into 0`
+* `all 1 into 1, some 2 into 0`
 * `3 into 998`
 * `NA into 999`
 
  **R script:**
 
 ```{r harmo2 5cities, echo=TRUE}
-JSTAR_aksst_ds_w2 <- tibble(id=JSTAR_aksst_w2_sen_club$id)
-JSTAR_aksst_ds_w2$sen_club <- car::recode(as.vector(JSTAR_aksst_w2_sen_club$tome246), "1='1'; 2='0'; 3='998'; NA='999'")
-JSTAR_aksst_ds_w2$sen_club <- labelled(JSTAR_aksst_ds_w2$sen_club, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+
+
+JSTAR_ds_aksst_w2 <- JSTAR_aksst_w2_sen_club %>% 
+  mutate(sen_club = case_when((tome245 == 1 & tome246 == 1) ~ 1, tome245 == 2 ~ 0, tome245 == 3 ~ 998, TRUE ~ 999)) %>%
+  select(id, sen_club)
+
 ```
 
 #### Statistical description of the new harmonised variable
-```{r descript2 5cities}
-vari <- JSTAR_aksst_ds_w2$sen_club
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
-#Categorical_summary(var = JSTAR_aksst_ds_w2$sen_club, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(JSTAR_aksst_ds_w2, aes(x=factor(sen_club))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Participation in senior club/organization") + ylab("Frequency")
+```{r descript2 5cities, echo=F}
+vari <- JSTAR_ds_aksst_w2$sen_club
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(JSTAR_ds_aksst_w2, aes(x=factor(sen_club))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation2 5cities}
+```{r crosstabulation2 5cities, echo=F}
 
 ```
 
@@ -193,57 +173,62 @@ ggplot(JSTAR_aksst_ds_w2, aes(x=factor(sen_club))) + geom_bar(stat="count", widt
 
 #### Study-specific variables
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `q17_1_1`
-* Label: `In the past month, have you done non-work activities with anyone other than family or friends? What kind of activity was it? 1 Local activity (including seniors’ clubs and festivals)`
-* Categories:
-    + `1 = Yes`
-    + `2 = No`
-    + `3 = Don't know`
 
-* Description: 
-```{r assign3 5cities}
-opal.assign.table.tibble(o, 'JSTAR_aksst_w3_sen_club','JSTAR_datasets_restricted.jstar_2011_5cities',variables=list('q17_1_1'), missings = TRUE)
+| **Name** | `q17`| `q17_1_1`|
+|-|-|-|
+| **Label** |`In the past month, have you done non-work activities with anyone other than family or friends?` |`What kind of activity was it? 1 Local activity (including seniors? clubs and festivals)`|
+| **Table name** |`jstar_2011_5cities`|`jstar_2011_5cities`|
+| **Categories** |`1 = Yes`<br/>`2 = No`|`1 = Yes`|
+| **Missings** |`3 = Don't know`<br/>`NA`|`NA`|
+| **Description** |  |  |
+
+```{r assign3 5cities, echo=F}
+opal.assign.table.tibble(o, 'JSTAR_aksst_w3_sen_club','JSTAR_datasets_restricted.jstar_2011_5cities',variables=list('q17','q17_1_1'), missings = TRUE)
+JSTAR_aksst_w3_sen_club <- opal.execute(o,'JSTAR_aksst_w3_sen_club')
 ```
 
-```{r local3 5cities}
-JSTAR_aksst_w3_sen_club <- opal.execute(o,'JSTAR_aksst_w3_sen_club')
-vari <- JSTAR_aksst_w3_sen_club$q17_1_1
-kable(Categorical_summary(vari, missing_values = c(3))[3]) 
+```{r local3 5cities, echo=F}
+
+vari <- JSTAR_aksst_w3_sen_club$q17
+kable(Categorical_summary(vari, missing_values = c(3))[3], caption = attributes(vari)$`spss::shortName`)
 kable(Categorical_summary(vari, missing_values = c(3))[1], caption = "Category")
-kable(Categorical_summary(vari, missing_values = c(3))[2], caption = "Type of missing")
-#Categorical_summary(var = JSTAR_aksst_w3_sen_club$q17_1_1, missing_values = NA)
+ggplot(JSTAR_aksst_w3_sen_club, aes(x=factor(q17))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- JSTAR_aksst_w3_sen_club$q17_1_1
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(JSTAR_aksst_w3_sen_club, aes(x=factor(q17_1_1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Local activity (including seniors clubs and festivals)") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
-To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+To compute the harmonize variable from the study-specific variables they have to be recoded as follows:
 
-* `1 into 1, 2 into 0`
+* `all 1 into 1, some 2 into 0`
 * `3 into 998`
 * `NA into 999`
 
  **R script:**
 
 ```{r harmo3 5cities, echo=TRUE}
-JSTAR_aksst_ds_w3 <- tibble(id=JSTAR_aksst_w3_sen_club$id)
-JSTAR_aksst_ds_w3$sen_club <- car::recode(as.vector(JSTAR_aksst_w3_sen_club$q17_1_1), "1='1'; 2='0'; 3='998'; NA='999'")
-JSTAR_aksst_ds_w3$sen_club <- labelled(JSTAR_aksst_ds_w3$sen_club, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+
+JSTAR_ds_aksst_w3 <- JSTAR_aksst_w3_sen_club %>% 
+  mutate(sen_club = case_when((q17 == 1 & q17_1_1 == 1) ~ 1, q17 == 2 ~ 0, q17 == 3 ~ 998, TRUE ~ 999)) %>%
+  select(id, sen_club)
+
 ```
 
 #### Statistical description of the new harmonised variable
-```{r descript3 5cities}
-vari <- JSTAR_aksst_ds_w3$sen_club
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
-#Categorical_summary(var = JSTAR_aksst_ds_w3$sen_club, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(JSTAR_aksst_ds_w3, aes(x=factor(sen_club))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Participation in senior club/organization") + ylab("Frequency")
+```{r descript3 5cities, echo=F}
+vari <- JSTAR_ds_aksst_w3$sen_club
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(JSTAR_ds_aksst_w3, aes(x=factor(sen_club))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation3 5cities}
+```{r crosstabulation3 5cities, echo=F}
 
 ```
 
@@ -256,57 +241,62 @@ ggplot(JSTAR_aksst_ds_w3, aes(x=factor(sen_club))) + geom_bar(stat="count", widt
 
 #### Study-specific variables
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `	tome230`
-* Label: `In the past month, have you done non-work activities with anyone other than family or friends? What kind of activity was it? 1 Local activity (including seniors’ clubs and festivals)`
-* Categories:
-    + `1 = Yes`
-    + `2 = No`
-    + `3 = Don't know`
 
-* Description: 
-```{r assign1 2cities}
-opal.assign.table.tibble(o, 'JSTAR_tn_w1_sen_club','JSTAR_datasets_restricted.jstar_2009_2cities',variables=list('tome230'), missings = TRUE)
+| **Name** | `tome229`| `	tome230`|
+|-|-|-|
+| **Label** |`In the past month, have you done non-work activities with anyone other than family or friends?` |`What kind of activity was it? 1 Local activity (including seniors? clubs and festivals)`|
+| **Table name** |`jstar_2009_2cities`|`jstar_2009_2cities`|
+| **Categories** |`1 = Yes`<br/>`2 = No`|`1 = Yes`|
+| **Missings** |`3 = Don't know`<br/>`NA`|`NA`|
+| **Description** |  |  |
+
+```{r assign1 2cities, echo=F}
+opal.assign.table.tibble(o, 'JSTAR_tn_w1_sen_club','JSTAR_datasets_restricted.jstar_2009_2cities',variables=list('tome229','tome230'), missings = TRUE)
+JSTAR_tn_w1_sen_club <- opal.execute(o,'JSTAR_tn_w1_sen_club')
 ```
 
-```{r local1 2cities}
-JSTAR_tn_w1_sen_club <- opal.execute(o,'JSTAR_tn_w1_sen_club')
-vari <- JSTAR_tn_w1_sen_club$tome230
-kable(Categorical_summary(vari, missing_values = c(3))[3]) 
+```{r local1 2cities, echo=F}
+
+vari <- JSTAR_tn_w1_sen_club$tome229
+kable(Categorical_summary(vari, missing_values = c(3))[3], caption = attributes(vari)$`spss::shortName`)
 kable(Categorical_summary(vari, missing_values = c(3))[1], caption = "Category")
-kable(Categorical_summary(vari, missing_values = c(3))[2], caption = "Type of missing")
-#Categorical_summary(var = JSTAR_tn_w1_sen_club$tome230, missing_values = NA)
-ggplot(JSTAR_tn_w1_sen_club, aes(x=factor(tome230))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Local activity (including seniors’ clubs and festivals)") + ylab("Frequency")
+ggplot(JSTAR_tn_w1_sen_club, aes(x=factor(tome229))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- JSTAR_tn_w1_sen_club$tome230
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
+ggplot(JSTAR_tn_w1_sen_club, aes(x=factor(tome230))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Local activity (including seniors? clubs and festivals)") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
-To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+To compute the harmonize variable from the study-specific variables they have to be recoded as follows:
 
-* `1 into 1, 2 into 0`
+* `all 1 into 1, some 2 into 0`
 * `3 into 998`
 * `NA into 999`
 
  **R script:**
 
 ```{r harmo1 2cities, echo=TRUE}
-JSTAR_tn_ds_w1 <- tibble(id=JSTAR_tn_w1_sen_club$id)
-JSTAR_tn_ds_w1$sen_club <- car::recode(as.vector(JSTAR_tn_w1_sen_club$tome230), "1='1'; 2='0'; 3='998'; NA='999'")
-JSTAR_tn_ds_w1$sen_club <- labelled(JSTAR_tn_ds_w1$sen_club, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+
+JSTAR_ds_tn_w1 <- JSTAR_tn_w1_sen_club %>% 
+  mutate(sen_club = case_when(((tome229 == 1 | is.na(tome229)) & tome230 == 1) ~ 1, tome229 == 2 ~ 0, tome229 == 3 ~ 998, TRUE ~ 999)) %>%
+  select(id, sen_club)
+
 ```
 
 #### Statistical description of the new harmonised variable
-```{r descript1 2cities}
-vari <- JSTAR_tn_ds_w1$sen_club
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
-#Categorical_summary(var = JSTAR_tn_ds_w1$sen_club, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(JSTAR_tn_ds_w1, aes(x=factor(sen_club))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Participation in senior club/organization") + ylab("Frequency")
+```{r descript1 2cities, echo=F}
+vari <- JSTAR_ds_tn_w1$sen_club
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(JSTAR_ds_tn_w1, aes(x=factor(sen_club))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation1 2cities}
+```{r crosstabulation1 2cities, echo=F}
 
 ```
 
@@ -319,57 +309,63 @@ ggplot(JSTAR_tn_ds_w1, aes(x=factor(sen_club))) + geom_bar(stat="count", width=0
 
 #### Study-specific variables
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `q17_1_1`
-* Label: `In the past month, have you done non-work activities with anyone other than family or friends? What kind of activity was it? 1 Local activity (including seniors’ clubs and festivals)`
-* Categories:
-    + `1 = Yes`
-    + `2 = No`
-    + `3 = Don't know`
 
-* Description: 
-```{r assign2 2cities}
-opal.assign.table.tibble(o, 'JSTAR_tn_w2_sen_club','JSTAR_datasets_restricted.jstar_2011_2cities',variables=list('q17_1_1'), missings = TRUE)
+| **Name** | `q17`| `q17_1_1`|
+|-|-|-|
+| **Label** |`In the past month, have you done non-work activities with anyone other than family or friends?` |`What kind of activity was it? 1 Local activity (including seniors? clubs and festivals)`|
+| **Table name** |`jstar_2011_2cities`|`jstar_2011_2cities`|
+| **Categories** |`1 = Yes`<br/>`2 = No`|`1 = Yes`|
+| **Missings** |`3 = Don't know`<br/>`NA`|`NA`|
+| **Description** |  |  |
+
+```{r assign2 2cities, echo=F}
+opal.assign.table.tibble(o, 'JSTAR_tn_w2_sen_club','JSTAR_datasets_restricted.jstar_2011_2cities',variables=list('q17','q17_1_1'), missings = TRUE)
+JSTAR_tn_w2_sen_club <- opal.execute(o,'JSTAR_tn_w2_sen_club')
 ```
 
-```{r local2 2cities}
-JSTAR_tn_w2_sen_club <- opal.execute(o,'JSTAR_tn_w2_sen_club')
-vari <- JSTAR_tn_w2_sen_club$q17_1_1
-kable(Categorical_summary(vari, missing_values = c(3))[3]) 
+```{r local2 2cities, echo=F}
+
+vari <- JSTAR_tn_w2_sen_club$q17
+kable(Categorical_summary(vari, missing_values = c(3))[3], caption = attributes(vari)$`spss::shortName`)
 kable(Categorical_summary(vari, missing_values = c(3))[1], caption = "Category")
-kable(Categorical_summary(vari, missing_values = c(3))[2], caption = "Type of missing")
-#Categorical_summary(var = JSTAR_tn_w2_sen_club$q17_1_1, missing_values = NA)
+ggplot(JSTAR_tn_w2_sen_club, aes(x=factor(q17))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- JSTAR_tn_w2_sen_club$q17_1_1
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(JSTAR_tn_w2_sen_club, aes(x=factor(q17_1_1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("sLocal activity (including seniors clubs and festivals)") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
-To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+To compute the harmonize variable from the study-specific variables they have to be recoded as follows:
 
-* `1 into 1, 2 into 0`
+* `all 1 into 1, some 2 into 0`
 * `3 into 998`
 * `NA into 999`
+
 
  **R script:**
 
 ```{r harmo2 2cities, echo=TRUE}
-JSTAR_tn_ds_w2 <- tibble(id=JSTAR_tn_w2_sen_club$id)
-JSTAR_tn_ds_w2$sen_club <- car::recode(as.vector(JSTAR_tn_w2_sen_club$q17_1_1), "1='1'; 2='0'; 3='998'; NA='999'")
-JSTAR_tn_ds_w2$sen_club <- labelled(JSTAR_tn_ds_w2$sen_club, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+
+JSTAR_ds_tn_w2 <- JSTAR_tn_w2_sen_club %>% 
+  mutate(sen_club = case_when((q17 == 1 & q17_1_1 == 1) ~ 1, q17 == 2 ~ 0, q17 == 3 ~ 998, TRUE ~ 999)) %>%
+  select(id, sen_club)
+
 ```
 
 #### Statistical description of the new harmonised variable
-```{r descript2 2cities}
-vari <- JSTAR_tn_ds_w2$sen_club
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
-#Categorical_summary(var = JSTAR_tn_ds_w2$sen_club, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(JSTAR_tn_ds_w2, aes(x=factor(sen_club))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Participation in senior club/organization") + ylab("Frequency")
+```{r descript2 2cities, echo=F}
+vari <- JSTAR_ds_tn_w2$sen_club
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(JSTAR_ds_tn_w2, aes(x=factor(sen_club))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation2 2cities}
+```{r crosstabulation2 2cities, echo=F}
 
 ```
 
@@ -382,90 +378,113 @@ ggplot(JSTAR_tn_ds_w2, aes(x=factor(sen_club))) + geom_bar(stat="count", width=0
 
 #### Study-specific variables
 
-The study-specific variable elected to be harmonised is:
 
-* Name: `	q24_1_1`
-* Label: `In the past month, have you done non-work activities with anyone other than family or friends? What kind of activity was it? 1 Local activity (including seniors’ clubs and festivals)`
-* Categories:
-    + `1 = Yes`
-    + `2 = No`
-    + `3 = Don't know`
 
-* Description: 
-```{r assign1 3cities}
-opal.assign.table.tibble(o, 'JSTAR_cth_w1_sen_club','JSTAR_datasets_restricted.jstar_2011_3cities',variables=list('q24_1_1'), missings = TRUE)
+| **Name** | `q24`| `	q24_1_1`|
+|-|-|-|
+| **Label** |`In the past month, have you done non-work activities with anyone other than family or friends?` |`What kind of activity was it? 1 Local activity (including seniors? clubs and festivals)`|
+| **Table name** |`jstar_2011_3cities`|`jstar_2011_3cities`|
+| **Categories** |`1 = Yes`<br/>`2 = No`|`1 = Yes`|
+| **Missings** |`3 = Don't know`<br/>`NA`|`NA`|
+| **Description** |  |  |
+
+```{r assign1 3cities, echo=F}
+opal.assign.table.tibble(o, 'JSTAR_cth_w1_sen_club','JSTAR_datasets_restricted.jstar_2011_3cities',variables=list('q24','q24_1_1'), missings = TRUE)
+JSTAR_cth_w1_sen_club <- opal.execute(o,'JSTAR_cth_w1_sen_club')
 ```
 
-```{r local1 3cities}
-JSTAR_cth_w1_sen_club <- opal.execute(o,'JSTAR_cth_w1_sen_club')
-vari <- JSTAR_cth_w1_sen_club$q24_1_1
-kable(Categorical_summary(vari, missing_values = c(3))[3]) 
+```{r local1 3cities, echo=F}
+
+vari <- JSTAR_cth_w1_sen_club$q24
+kable(Categorical_summary(vari, missing_values = c(3))[3], caption = attributes(vari)$`spss::shortName`)
 kable(Categorical_summary(vari, missing_values = c(3))[1], caption = "Category")
-kable(Categorical_summary(vari, missing_values = c(3))[2], caption = "Type of missing")
-#Categorical_summary(var = JSTAR_cth_w1_sen_club$q24_1_1, missing_values = NA)
+ggplot(JSTAR_cth_w1_sen_club, aes(x=factor(q24))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(label(vari)) + ylab("Frequency")
+
+vari <- JSTAR_cth_w1_sen_club$q24_1_1
+kable(Categorical_summary(vari, missing_values = NA)[2], caption = attributes(vari)$`spss::shortName`)
+kable(Categorical_summary(vari, missing_values = NA)[1], caption = "Category")
 ggplot(JSTAR_cth_w1_sen_club, aes(x=factor(q24_1_1))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Local activity (including seniors clubs and festivals)") + ylab("Frequency")
 ```
 
 #### Harmonisation algorithm
-To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+To compute the harmonize variable from the study-specific variables they have to be recoded as follows:
 
-* `1 into 1, 2 into 0`
+* `all 1 into 1, some 2 into 0`
 * `3 into 998`
 * `NA into 999`
 
  **R script:**
 
 ```{r harmo1 3cities, echo=TRUE}
-JSTAR_cth_ds_w1 <- tibble(id=JSTAR_cth_w1_sen_club$id)
-JSTAR_cth_ds_w1$sen_club <- car::recode(as.vector(JSTAR_cth_w1_sen_club$q24_1_1), "1='1'; 2='0'; 3='998'; NA='999'")
-JSTAR_cth_ds_w1$sen_club <- labelled(JSTAR_cth_ds_w1$sen_club, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+JSTAR_ds_cth_w1 <- tibble(id=JSTAR_cth_w1_sen_club$id)
+JSTAR_ds_cth_w1$sen_club <- car::recode(as.vector(JSTAR_cth_w1_sen_club$q24_1_1), "1='1'; 2='0'; 3='998'; NA='999'")
+JSTAR_ds_cth_w1$sen_club <- labelled(JSTAR_ds_cth_w1$sen_club, labels = c("No"=0, "Yes"=1, "Missing"=999, "Do not know"=998, "Refuse"=997, "Not applicable"=996, "Don't answer"=995,  "Not attempt/not done/not yet recorded"=994, "Disable to measure"=993, "Impute"=992, "CAPI/interviewer error"=991))
+
+JSTAR_ds_cth_w1 <- JSTAR_cth_w1_sen_club %>% 
+  mutate(sen_club = case_when(((q24 == 1 | is.na(q24)) & q24_1_1 == 1) ~ 1, q24 == 2 ~ 0, q24 == 3 ~ 998, TRUE ~ 999)) %>%
+  select(id, sen_club)
+
 ```
 
 #### Statistical description of the new harmonised variable
-```{r descript1 3cities}
-vari <- JSTAR_cth_ds_w1$sen_club
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[3]) 
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[1], caption = "Category")
-kable(Categorical_summary(vari, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))[2], caption = "Type of missing")
-#Categorical_summary(var = JSTAR_cth_ds_w1$sen_club, missing_values = c(991, 992, 993, 994, 995, 996, 997, 998, 999))
-ggplot(JSTAR_cth_ds_w1, aes(x=factor(sen_club))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab("Participation in senior club/organization") + ylab("Frequency")
+```{r descript1 3cities, echo=F}
+vari <- JSTAR_ds_cth_w1$sen_club
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vari, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(JSTAR_ds_cth_w1, aes(x=factor(sen_club))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
 ```
 
 #### Validation
-```{r crosstabulation1 3cities}
+```{r crosstabulation1 3cities, echo=F}
 
 ```
 
  
- 
-```{r save, echo=FALSE}
-sen_club <- JSTAR_tn_ds_w1
-save(sen_club, file = "../RData/tn_w1/sen_club.RData")
-rm(sen_club)
+## Descriptive statistics of the harmonised variable accross populations and waves
 
-sen_club <- JSTAR_tn_ds_w2
-save(sen_club, file = "../RData/tn_w2/sen_club.RData")
-rm(sen_club)
+Percentages of categories in each harmonised variable by cohort:
+
+```{r helpfunctions, echo=F}
+
+source("../../helpfunctions.r")
+
+```
 
 
-sen_club <- JSTAR_aksst_ds_w1
-save(sen_club, file = "../RData/aksst_w1/sen_club.RData")
-rm(sen_club)
+```{r summ, echo=F}
 
-sen_club <- JSTAR_aksst_ds_w2
-save(sen_club, file = "../RData/aksst_w2/sen_club.RData")
-rm(sen_club)
+# All study waves and populations with abbreviated and descriptive names
 
-sen_club <- JSTAR_aksst_ds_w3
-save(sen_club, file = "../RData/aksst_w3/sen_club.RData")
-rm(sen_club)
 
-sen_club <- JSTAR_cth_ds_w1
-save(sen_club, file = "../RData/cth_w1/sen_club.RData")
-rm(sen_club)
+jstar.cw <- list(aksst_w1 = c("aksst_w1","AKSST w1"), aksst_w2 = c("aksst_w2","AKSST w2"), aksst_w3 = c("aksst_w3","AKSST w3"), tn_w1 = c("tn_w1","TN w1"), tn_w2 = c("tn_w2","TN w2"), cth_w1 = c("cth_w1","CTH w1"))
+
+# Consider only harmonised waves
+l.hds <- lapply(jstar.cw, function(wname) if(exists(paste0("JSTAR_ds_",wname[1]))){wname = list(get(paste0("JSTAR_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
 
 
 ```
+
+
 
 # Quality estimation
 ```{r closeRsession, echo=FALSE} 
