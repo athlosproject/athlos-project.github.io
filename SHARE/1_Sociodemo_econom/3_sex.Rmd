@@ -511,83 +511,10 @@ Two tables are generated:
 2. Frequencies and percentages of individuals with different trajectories.
 
 
+
 ```{r helpfunctions, echo=F}
 
-
-labelling <- function(l.hds,m.hds){
-  
-  # Labelling of the tibbles with categorical data and creating new tibbles with all missings recodified as NA
-
-  for(name in names(l.hds)) {
-    # In the aux_object we copy the old tibble to recodify all missing values as NA.
-    aux_object <- l.hds[[name]]
-    # Labelling of variables
-    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
-    # Labelling of categories (for continues variables, only missing values)
-    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cat_label)
-    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
-    # Labelling of categories (for categorical variables, only non-missing values)
-    aux_object[[2]] <- labelled(aux_object[[2]], labels = cat_label[1:2])
-  # Saving the recodified tibble in list m.hds
-    m.hds[[name]] <- aux_object
-    rm(aux_object)
-  }
-  return(list(l.hds,m.hds))
-
-}
-
-# Creation of summary tables for categorical data
-
-summaries <- function(l.hds,m.hds,lnames){
-
-  # Creation of columns with categories and labels
-  t.hds <- frq(l.hds[[1]][2])[[1]][,c(1,2)] 
-  # For each wave/population in l.hds, add the correponding values
-  for (i in seq_along(l.hds)){
-    t.hds[2+i] <- frq(l.hds[[i]][2])[[1]][,4] 
-  }
-  # Add sample size for each wave/population
-  t.hds[13,] <- c("n", "sample size", sapply(l.hds,function(wave) length(wave[[1]]))
-  )
-  # Add wave/population names
-  names(t.hds)<-c("val", "label",lnames)
-  return(t.hds)
-  
-}
-
-# Creation of trajectories table for each population
-
-trajectories <- function(m.hds,vbl_name){
-  
-  # First wave data
-  dbb <- m.hds[[1]][,c("id",vbl_name)]
-  # Merge with next waves data
-  for(ind in 2:length(m.hds)){
-    dbb <- merge(dbb, m.hds[[ind]][,c("id",vbl_name)], by = "id", suffixes = c("", paste0(".",names(m.hds)[ind])), all = T)
-  }
-  names(dbb) <- c("id", names(m.hds))
-  
-  # Glue individual data through all waves into trajectories
-  v.dbb <- dbb[,2]
-  for(ind in 2:length(m.hds)){
-    v.dbb <- paste(v.dbb,dbb[,ind+1],sep="")
-  }
-  # Trajectories and frequencies
-  f.dbb <- frq(v.dbb)[[1]][,c(1,2,4)]
-  return(f.dbb)
-  
-}
-
-# Save data tables
-
-savingRD <- function(l.hds,vbl_name){
-  
-  for(index in seq_along(l.hds)){
-    assign(vbl_name,l.hds[[index]])
-    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
-  }
-
-}
+source("../../helpfunctions.r")
 
 ```
 
@@ -645,10 +572,10 @@ SHARE <- full_join(SHARE,SHARE_ds_w4[which(!SHARE_ds_w4$sex %in% miss_values_vec
 SHARE <- full_join(SHARE,SHARE_ds_w5[which(!SHARE_ds_w5$sex %in% miss_values_vector),], by="id")
 SHARE$var <- apply(SHARE[,-1],1,function(x) var(x, na.rm = T))
 
-SHstr <- paste("There are ",length(SHARE$id[which(SHARE$var!=0)])," individuals with year of birth data changing across waves.")
+SHstr <- paste("There are ",length(SHARE$id[which(SHARE$var!=0)])," individuals with sex changing across waves.")
 
 kable(frq(SHARE$var==0), align = 'c', caption = SHstr)
-kable(SHARE[which(SHARE$var>0 & SHARE$var!=0),], align = 'c', caption = 'There are 11 individuals with sex data changing across waves.')
+kable(SHARE[which(SHARE$var>0 & SHARE$var!=0),], align = 'c', caption = 'The trajectories of the 11 individuals with sex data changing across waves.')
 
 ```
 
