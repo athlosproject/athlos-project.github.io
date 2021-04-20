@@ -1,0 +1,1811 @@
+---
+title: "Walking Speed"
+output:
+  html_document:
+    highlight: tango
+    number_sections: yes
+    theme: united
+    toc: yes
+    toc_depth: 6
+    toc_float:
+      collapsed: yes
+      smooth_scroll: yes
+---
+
+
+<!-- ########################################################## --> 
+<!-- # Installation, loading packages -->
+```{r setup, include=FALSE}
+source("../../setup.r")
+```
+<!-- ########################################################## --> 
+<!-- # Loading DS description -->
+```{r main, child='../../_DS_Rmd/walking_speedDS.Rmd'}
+```
+```{r global, echo=F}
+source('../../_DS_Rmd/walking_speedDS.R')
+```
+
+
+# Data process
+
+## Cuba
+
+### Wave 1
+
+#### Study-specific variable description
+
+| **Name** | `NEO12B` | 
+|-|-|
+| **Label** | `gait - time in seconds taken to walk 10 metres?` | 
+| **Table name** | `1066-Cuba-Baseline` | 
+| **Units** | `seconds` |
+| **Missing Values** | `0; 1; 992; NA` |
+| **Description** |  |
+
+```{r assign_cuba1, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_ws','10-66.1066-Cuba-Baseline', variables=list('NEO12B'), missings = TRUE)
+t1066_ws <- opal.execute(o,'t1066_ws')
+```
+
+```{r local_cuba1, echo=FALSE}
+vbl <- t1066_ws$NEO12B
+vbl_miss <- c(0, 1, 992)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = attributes(vbl)$`spss::shortName`)
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+ggplot(t1066_ws, aes(x=NEO12B)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `10m/s -> walking_speed_c`
+* `walking_speed_c <=25% into walking_speed=0`
+* `walking_speed_c >25% into walking_speed=1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_cuba1}
+
+t1066_ds_cuba_w1 <- t1066_ws %>% structure(spec=NULL) %>%
+  mutate(walking_speed_c = case_when(!NEO12B %in% c(NA, vbl_miss) ~ 10/as.vector(NEO12B),
+                                     NEO12B < 2.5 ~ 991,
+                                     TRUE ~ 999),
+         q = quantile(car::recode(walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE),
+         walking_speed = case_when(walking_speed_c <= q ~ 0, 
+                                   walking_speed_c %in% c(991:999) ~ walking_speed_c, 
+                                   walking_speed_c > q ~ 1)) %>%
+  select(-NEO12B, -q)
+
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_cuba1, echo=FALSE}
+
+vbl <- t1066_ds_cuba_w1$walking_speed_c
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(t1066_ds_cuba_w1 %>% filter(!vbl %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.001, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+
+vbl <- t1066_ds_cuba_w1$walking_speed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_cuba_w1, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `f_NEO12B` | 
+|-|-|
+| **Label** | `gait - time in seconds taken to walk 10 metres?` | 
+| **Table name** | `1066-Cuba-Followup` | 
+| **Units** | `seconds` |
+| **Missing Values** | `0; 1; 2; NA` |
+| **Description** |  |
+
+
+```{r assign_cuba2, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_ws','10-66.1066-Cuba-Followup',
+                         variables=list('f_NEO12B'), missings = TRUE)
+t1066_ws <- opal.execute(o,'t1066_ws')
+```
+
+```{r local_cuba2, echo=FALSE}
+vbl <- t1066_ws$f_NEO12B
+vbl_miss <- c(0, 1, 2)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = attributes(vbl)$`spss::shortName`)
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+ggplot(t1066_ws, aes(x=f_NEO12B)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `10m/s -> walking_speed_c`
+* `walking_speed_c <=25% into walking_speed=0`
+* `walking_speed_c >25% into walking_speed=1`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo_cuba2, echo=TRUE}
+
+t1066_ds_cuba_w2 <- t1066_ws %>% structure(spec=NULL) %>%
+  mutate(walking_speed_c = case_when(!f_NEO12B %in% c(NA, vbl_miss) ~ 10/as.vector(f_NEO12B),
+                                     f_NEO12B < 2.5 ~ 991,
+                                     TRUE ~ 999),
+         q = quantile(car::recode(walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE),
+         walking_speed = case_when(walking_speed_c <= q ~ 0, walking_speed_c %in% c(991:999) ~ walking_speed_c, walking_speed_c > q ~ 1)) %>%
+  select(-f_NEO12B, -q)
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_cuba2, echo=FALSE}
+
+
+vbl <- t1066_ds_cuba_w2$walking_speed_c
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(t1066_ds_cuba_w2 %>% filter(!vbl %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.001, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+
+vbl <- t1066_ds_cuba_w2$walking_speed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_cuba_w2, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+
+
+
+
+
+
+
+## India
+
+### Wave 1
+#### Study-specific variable description
+
+| **Name** | `NEO12B` | 
+|-|-|
+| **Label** | `gait - time in seconds taken to walk 10 metres?` | 
+| **Table name** | `1066-India-Baseline` | 
+| **Units** | `seconds` |
+| **Missing Values** | `0; 1; 2; NA` |
+| **Description** |  |
+
+
+```{r assign_india1, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_ws','10-66.1066-India-Baseline',
+                         variables=list('NEO12B'), missings = TRUE)
+t1066_ws <- opal.execute(o,'t1066_ws')
+
+```
+
+```{r local_india1, echo=FALSE}
+vbl <- t1066_ws$NEO12B
+vbl_miss <- c(0,1, 2)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = attributes(vbl)$`spss::shortName`)
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+ggplot(t1066_ws, aes(x=NEO12B)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `10m/s -> walking_speed_c`
+* `walking_speed_c <=25% into walking_speed=0`
+* `walking_speed_c >25% into walking_speed=1`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo_india1}
+
+t1066_ds_india_w1 <- t1066_ws %>% structure(spec=NULL) %>%
+  mutate(walking_speed_c = case_when(!NEO12B %in% c(NA, vbl_miss) ~ 10/as.vector(NEO12B),
+                                     NEO12B < 2.5 ~ 991,
+                                     TRUE ~ 999),
+         q = quantile(car::recode(walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE),
+         walking_speed = case_when(walking_speed_c <= q ~ 0, walking_speed_c %in% c(991:999) ~ walking_speed_c, walking_speed_c > q ~ 1)) %>%
+  select(-NEO12B, -q)
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_india1, echo=FALSE}
+
+
+vbl <- t1066_ds_india_w1$walking_speed_c
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(t1066_ds_india_w1 %>% filter(!vbl %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.001, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- t1066_ds_india_w1$walking_speed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_india_w1, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_india1, echo=FALSE}
+```
+
+
+
+
+## Urban China
+
+### Wave 1
+
+#### Study-specific variable description
+
+| **Name** | `NEO12B` | 
+|-|-|
+| **Label** | `gait - time in seconds taken to walk 10 metres?` | 
+| **Table name** | `1066-UrbanChina-Baseline` | 
+| **Units** | `seconds` |
+| **Missing Values** | `NA` |
+| **Description** |  |
+
+
+```{r assign__UCh1, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_ws','10-66.1066-UrbanChina-Baseline',
+                         variables=list('NEO12B'), missings = TRUE)
+t1066_ws <- opal.execute(o,'t1066_ws')
+```
+
+```{r local_UCh1, echo=FALSE}
+vbl <- t1066_ws$NEO12B
+vbl_miss <- c(0)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = attributes(vbl)$`spss::shortName`)
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+# kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+ggplot(t1066_ws, aes(x=NEO12B)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+```
+
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `10m/s -> walking_speed_c`
+* `walking_speed_c <=25% into walking_speed=0`
+* `walking_speed_c >25% into walking_speed=1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_UCh1, echo=FALSE}
+
+t1066_ds_UCh_w1 <- t1066_ws %>% structure(spec=NULL) %>%
+  mutate(walking_speed_c = case_when(!NEO12B %in% c(NA, vbl_miss) ~ 10/as.vector(NEO12B),
+                                     NEO12B < 2.5 ~ 991,
+                                     TRUE ~ 999),
+         q = quantile(car::recode(walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE),
+         walking_speed = case_when(walking_speed_c <= q ~ 0, walking_speed_c %in% c(991:999) ~ walking_speed_c, walking_speed_c > q ~ 1)) %>%
+  select(-NEO12B, -q)
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_UCh1, echo=FALSE}
+
+vbl <- t1066_ds_UCh_w1$walking_speed_c
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(t1066_ds_UCh_w1 %>% filter(!vbl %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.01, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- t1066_ds_UCh_w1$walking_speed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_UCh_w1, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+
+
+
+
+
+
+
+### Wave 2 
+
+#### Study-specific variable description
+
+
+| **Name** | `f_NEO12B` | 
+|-|-|
+| **Label** | `gait - time in seconds taken to walk 10 metres?` | 
+| **Table name** | `1066-UrbanChina-Followup` | 
+| **Units** | `seconds` |
+| **Missing Values** | `NA` |
+| **Description** |  |
+
+
+```{r assign_UCh2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_ws','10-66.1066-UrbanChina-Followup',
+                         variables=list('f_NEO12B'), missings = TRUE)
+t1066_ws <- opal.execute(o,'t1066_ws')
+
+```
+
+```{r local_UCh2, echo=FALSE} 
+vbl <- t1066_ws$f_NEO12B
+vbl_miss <- c(0)
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = attributes(vbl)$`spss::shortName`)
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+# kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+ggplot(t1066_ws, aes(x=f_NEO12B)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `10m/s -> walking_speed_c`
+* `walking_speed_c <=25% into walking_speed=0`
+* `walking_speed_c >25% into walking_speed=1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_UCh2, echo=TRUE} 
+
+t1066_ds_UCh_w2 <- t1066_ws %>% structure(spec=NULL) %>%
+  mutate(walking_speed_c = case_when(!f_NEO12B %in% c(NA, vbl_miss) ~ 10/as.vector(f_NEO12B),
+                                     f_NEO12B < 2.5 ~ 991,
+                                     TRUE ~ 999),
+         q = quantile(car::recode(walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE),
+         walking_speed = case_when(walking_speed_c <= q ~ 0, walking_speed_c %in% c(991:999) ~ walking_speed_c, walking_speed_c > q ~ 1)) %>%
+  select(-f_NEO12B, -q)
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_UCh2, echo=FALSE} 
+
+
+vbl <- t1066_ds_UCh_w2$walking_speed_c
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(t1066_ds_UCh_w2 %>% filter(!vbl %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.001, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- t1066_ds_UCh_w2$walking_speed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_UCh_w2, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_UCh2, echo=FALSE} 
+```
+
+
+
+
+
+## Rural China
+
+### Wave 1
+#### Study-specific variable description
+
+
+| **Name** | `NEO12B` | 
+|-|-|
+| **Label** | `gait - time in seconds taken to walk 10 metres?` | 
+| **Table name** | `1066-RuralChina-Baseline` | 
+| **Units** | `seconds` |
+| **Missing Values** | `900; NA` |
+| **Description** |  |
+
+```{r assign__RCh1, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_ws','10-66.1066-RuralChina-Baseline',
+                         variables=list('NEO12B'), missings = TRUE)
+t1066_ws <- opal.execute(o,'t1066_ws')
+```
+
+```{r local_RCh1, echo=FALSE}
+vbl <- t1066_ws$NEO12B
+vbl_miss <- c(0, 900)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = attributes(vbl)$`spss::shortName`)
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+ggplot(t1066_ws, aes(x=NEO12B)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `10m/s -> walking_speed_c`
+* `walking_speed_c <=25% into walking_speed=0`
+* `walking_speed_c >25% into walking_speed=1`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo_RCh1}
+
+t1066_ds_RCh_w1 <- t1066_ws %>% structure(spec=NULL) %>%
+  mutate(walking_speed_c = case_when(!NEO12B %in% c(NA, vbl_miss) ~ 10/as.vector(NEO12B),
+                                     NEO12B < 2.5 ~ 991,
+                                     TRUE ~ 999),
+         q = quantile(car::recode(walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE),
+         walking_speed = case_when(walking_speed_c <= q ~ 0, walking_speed_c %in% c(991:999) ~ walking_speed_c, walking_speed_c > q ~ 1)) %>%
+  select(-NEO12B, -q)
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_RCh1, echo=FALSE}
+
+vbl <- t1066_ds_RCh_w1$walking_speed_c
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(t1066_ds_RCh_w1 %>% filter(!vbl %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.001, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- t1066_ds_RCh_w1$walking_speed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_RCh_w1, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `f_NEO12B` | 
+|-|-|
+| **Label** | `gait - time in seconds taken to walk 10 metres?` | 
+| **Table name** | `1066-RuralChina-Followup` | 
+| **Units** | `seconds` |
+| **Missing Values** | `NA` |
+| **Description** |  |
+
+
+```{r assign_RCh2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_ws','10-66.1066-RuralChina-Followup',
+                         variables=list('f_NEO12B'), missings = TRUE)
+t1066_ws <- opal.execute(o,'t1066_ws')
+```
+
+```{r local_RCh2, echo=FALSE} 
+vbl <- t1066_ws$f_NEO12B
+vbl_miss <- c(0, 999)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = attributes(vbl)$`spss::shortName`)
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+# kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+ggplot(t1066_ws, aes(x=f_NEO12B)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `10m/s -> walking_speed_c`
+* `walking_speed_c <=25% into walking_speed=0`
+* `walking_speed_c >25% into walking_speed=1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_RCh2, echo=TRUE} 
+
+t1066_ds_RCh_w2 <- t1066_ws %>% structure(spec=NULL) %>%
+  mutate(walking_speed_c = case_when(!f_NEO12B %in% c(NA, vbl_miss) ~ 10/as.vector(f_NEO12B),
+                                     f_NEO12B < 2.5 ~ 991,
+                                     TRUE ~ 999),
+         q = quantile(car::recode(walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE),
+         walking_speed = case_when(walking_speed_c <= q ~ 0, walking_speed_c %in% c(991:999) ~ walking_speed_c, walking_speed_c > q ~ 1)) %>%
+  select(-f_NEO12B, -q)
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_RCh2, echo=FALSE} 
+
+vbl <- t1066_ds_RCh_w2$walking_speed_c
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(t1066_ds_RCh_w2 %>% filter(!vbl %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.001, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- t1066_ds_RCh_w2$walking_speed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_RCh_w2, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_RCh2, echo=FALSE} 
+```
+
+
+
+
+
+## Dominican Republic
+
+### Wave 1
+#### Study-specific variable description
+
+| **Name** | `NEO12B` | 
+|-|-|
+| **Label** | `gait - time in seconds taken to walk 10 metres?` | 
+| **Table name** | `1066-DominicanRepublic-Baseline` | 
+| **Units** | `seconds` |
+| **Missing Values** | `0; 2; NA` |
+| **Description** |  |
+
+```{r assign_DR1, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_ws','10-66.1066-DominicanRepublic-Baseline',
+                         variables=list('NEO12B'), missings = TRUE)
+t1066_ws <- opal.execute(o,'t1066_ws')
+```
+
+```{r local_DR1, echo=FALSE}
+vbl <- t1066_ws$NEO12B
+vbl_miss <- c(0, 2)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = attributes(vbl)$`spss::shortName`)
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+ggplot(t1066_ws, aes(x=NEO12B)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+```
+
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `10m/s -> walking_speed_c`
+* `walking_speed_c <=25% into walking_speed=0`
+* `walking_speed_c >25% into walking_speed=1`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo_DR1}
+
+t1066_ds_DR_w1 <- t1066_ws %>% structure(spec=NULL) %>%
+  mutate(walking_speed_c = case_when(!NEO12B %in% c(NA, vbl_miss) ~ 10/as.vector(NEO12B),
+                                     NEO12B < 2.5 ~ 991,
+                                     TRUE ~ 999),
+         q = quantile(car::recode(walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE),
+         walking_speed = case_when(walking_speed_c <= q ~ 0, walking_speed_c %in% c(991:999) ~ walking_speed_c, walking_speed_c > q ~ 1)) %>%
+  select(-NEO12B, -q)
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_DR1, echo=FALSE}
+
+vbl <- t1066_ds_DR_w1$walking_speed_c
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(t1066_ds_DR_w1 %>% filter(!vbl %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.001, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- t1066_ds_DR_w1$walking_speed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_DR_w1, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+
+
+
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `f_NEO12B` | 
+|-|-|
+| **Label** | `gait - time in seconds taken to walk 10 metres?` | 
+| **Table name** | `1066-DominicanRepublic-Followup` | 
+| **Units** | `seconds` |
+| **Missing Values** | `0; 900; NA` |
+| **Description** |  |
+
+
+```{r assign_DR2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_ws','10-66.1066-DominicanRepublic-Followup',
+                         variables=list('f_NEO12B'), missings = TRUE)
+t1066_ws <- opal.execute(o,'t1066_ws')
+```
+
+```{r local_DR2, echo=FALSE} 
+vbl <- t1066_ws$f_NEO12B
+vbl_miss <- c(0, 900)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = attributes(vbl)$`spss::shortName`)
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+ggplot(t1066_ws, aes(x=f_NEO12B)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `10m/s -> walking_speed_c`
+* `walking_speed_c <=25% into walking_speed=0`
+* `walking_speed_c >25% into walking_speed=1`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo_DR2, echo=TRUE} 
+
+t1066_ds_DR_w2 <- t1066_ws %>% structure(spec=NULL) %>%
+  mutate(walking_speed_c = case_when(!f_NEO12B %in% c(NA, vbl_miss) ~ 10/as.vector(f_NEO12B),
+                                     f_NEO12B < 2.5 ~ 991,
+                                     TRUE ~ 999),
+         q = quantile(car::recode(walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE),
+         walking_speed = case_when(walking_speed_c <= q ~ 0, walking_speed_c %in% c(991:999) ~ walking_speed_c, walking_speed_c > q ~ 1)) %>%
+  select(-f_NEO12B, -q)
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_DR2, echo=FALSE} 
+
+vbl <- t1066_ds_DR_w2$walking_speed_c
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(t1066_ds_DR_w2 %>% filter(!vbl %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.001, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- t1066_ds_DR_w2$walking_speed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_DR_w2, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_DR2, echo=FALSE} 
+```
+
+
+
+
+## Venezuela
+
+### Wave 1
+#### Study-specific variable description
+
+| **Name** | `NEO12B` | 
+|-|-|
+| **Label** | `gait - time in seconds taken to walk 10 metres?` | 
+| **Table name** | `1066-Venezuela-Baseline` | 
+| **Units** | `seconds` |
+| **Missing Values** | `NA` |
+| **Description** |  |
+
+
+```{r assign_V1, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_ws','10-66.1066-Venezuela-Baseline',
+                         variables=list('NEO12B'), missings = TRUE)
+t1066_ws <- opal.execute(o,'t1066_ws')
+```
+
+```{r local_V1, echo=FALSE}
+vbl <- t1066_ws$NEO12B
+vbl_miss <- c(0)
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = attributes(vbl)$`spss::shortName`)
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+# kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+ggplot(t1066_ws, aes(x=NEO12B)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+```
+
+
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `10m/s -> walking_speed_c`
+* `walking_speed_c <=25% into walking_speed=0`
+* `walking_speed_c >25% into walking_speed=1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_V1}
+
+t1066_ds_Ven_w1 <- t1066_ws %>% structure(spec=NULL) %>%
+  mutate(walking_speed_c = case_when(!NEO12B %in% c(NA, vbl_miss) ~ 10/as.vector(NEO12B),
+                                     NEO12B < 2.5 ~ 991,
+                                     TRUE ~ 999),
+         q = quantile(car::recode(walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE),
+         walking_speed = case_when(walking_speed_c <= q ~ 0, walking_speed_c %in% c(991:999) ~ walking_speed_c, walking_speed_c > q ~ 1)) %>%
+  select(-NEO12B, -q)
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_V1, echo=FALSE}
+
+vbl <- t1066_ds_Ven_w1$walking_speed_c
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(t1066_ds_Ven_w1 %>% filter(!vbl %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.001, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- t1066_ds_Ven_w1$walking_speed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_Ven_w1, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+
+
+
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `f_NEO12B` | 
+|-|-|
+| **Label** | `gait - time in seconds taken to walk 10 metres?` | 
+| **Table name** | `1066-Venezuela-Followup` | 
+| **Units** | `seconds` |
+| **Missing Values** | `NA` |
+| **Description** |  |
+
+
+```{r assign_V2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_ws','10-66.1066-Venezuela-Followup',
+                         variables=list('f_NEO12B'), missings = TRUE)
+t1066_ws <- opal.execute(o,'t1066_ws')
+```
+
+```{r local_V2, echo=FALSE} 
+vbl <- t1066_ws$f_NEO12B
+vbl_miss <- c(0)
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = attributes(vbl)$`spss::shortName`)
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+# kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+ggplot(t1066_ws, aes(x=f_NEO12B)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `10m/s -> walking_speed_c`
+* `walking_speed_c <=25% into walking_speed=0`
+* `walking_speed_c >25% into walking_speed=1`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo_V2, echo=TRUE} 
+
+t1066_ds_Ven_w2 <- t1066_ws %>% structure(spec=NULL) %>%
+  mutate(walking_speed_c = case_when(!f_NEO12B %in% c(NA, vbl_miss) ~ 10/as.vector(f_NEO12B),
+                                     f_NEO12B < 2.5 ~ 991,
+                                     TRUE ~ 999),
+         q = quantile(car::recode(walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE),
+         walking_speed = case_when(walking_speed_c <= q ~ 0, walking_speed_c %in% c(991:999) ~ walking_speed_c, walking_speed_c > q ~ 1)) %>%
+  select(-f_NEO12B, -q)
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_V2, echo=FALSE} 
+
+vbl <- t1066_ds_Ven_w2$walking_speed_c
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(t1066_ds_Ven_w2 %>% filter(!vbl %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.001, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- t1066_ds_Ven_w2$walking_speed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_Ven_w2, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_V2, echo=FALSE} 
+```
+
+
+
+
+
+## Urban Peru
+
+### Wave 1
+#### Study-specific variable description
+
+| **Name** | `NEO12B` | 
+|-|-|
+| **Label** | `gait - time in seconds taken to walk 10 metres?` | 
+| **Table name** | `1066-UrbanPeru-Baseline` | 
+| **Units** | `seconds` |
+| **Missing Values** | `2; NA` |
+| **Description** |  |
+
+
+```{r assign__UP1, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_ws','10-66.1066-UrbanPeru-Baseline',
+                         variables=list('NEO12B'), missings = TRUE)
+t1066_ws <- opal.execute(o,'t1066_ws')
+```
+
+```{r local_UP1, echo=FALSE}
+vbl <- t1066_ws$NEO12B
+vbl_miss <- c(0, 2)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = attributes(vbl)$`spss::shortName`)
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+ggplot(t1066_ws, aes(x=NEO12B)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `10m/s -> walking_speed_c`
+* `walking_speed_c <=25% into walking_speed=0`
+* `walking_speed_c >25% into walking_speed=1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_UP1}
+
+t1066_ds_UP_w1 <- t1066_ws %>% structure(spec=NULL) %>%
+  mutate(walking_speed_c = case_when(!NEO12B %in% c(NA, vbl_miss) ~ 10/as.vector(NEO12B),
+                                     NEO12B < 2.5 ~ 991,
+                                     TRUE ~ 999),
+         q = quantile(car::recode(walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE),
+         walking_speed = case_when(walking_speed_c <= q ~ 0, walking_speed_c %in% c(991:999) ~ walking_speed_c, walking_speed_c > q ~ 1)) %>%
+  select(-NEO12B, -q)
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_UP1, echo=FALSE}
+
+vbl <- t1066_ds_UP_w1$walking_speed_c
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(t1066_ds_UP_w1 %>% filter(!vbl %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.001, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- t1066_ds_UP_w1$walking_speed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_UP_w1, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `f_NEO12B` | 
+|-|-|
+| **Label** | `gait - time in seconds taken to walk 10 metres?` | 
+| **Table name** | `1066-UrbanPeru-Followup` | 
+| **Units** | `seconds` |
+| **Missing Values** | `NA` |
+| **Description** |  |
+
+
+```{r assign_UP2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_ws','10-66.1066-UrbanPeru-Followup',
+                         variables=list('f_NEO12B'), missings = TRUE)
+t1066_ws <- opal.execute(o,'t1066_ws')
+```
+
+```{r local_UP2, echo=FALSE} 
+vbl <- t1066_ws$f_NEO12B
+vbl_miss <- c(0)
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = attributes(vbl)$`spss::shortName`)
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+# kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+ggplot(t1066_ws, aes(x=f_NEO12B)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `10m/s -> walking_speed_c`
+* `walking_speed_c <=25% into walking_speed=0`
+* `walking_speed_c >25% into walking_speed=1`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo_UP2, echo=TRUE} 
+
+t1066_ds_UP_w2 <- t1066_ws %>% structure(spec=NULL) %>%
+  mutate(walking_speed_c = case_when(!f_NEO12B %in% c(NA, vbl_miss) ~ 10/as.vector(f_NEO12B),
+                                     f_NEO12B < 2.5 ~ 991,
+                                     TRUE ~ 999),
+         q = quantile(car::recode(walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE),
+         walking_speed = case_when(walking_speed_c <= q ~ 0, walking_speed_c %in% c(991:999) ~ walking_speed_c, walking_speed_c > q ~ 1)) %>%
+  select(-f_NEO12B, -q)
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_UP2, echo=FALSE} 
+
+vbl <- t1066_ds_UP_w2$walking_speed_c
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(t1066_ds_UP_w2 %>% filter(!vbl %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.001, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- t1066_ds_UP_w2$walking_speed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_UP_w2, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_UP2, echo=FALSE} 
+```
+
+
+
+
+## Rural Peru
+
+### Wave 1
+#### Study-specific variable description
+
+| **Name** | `NEO12B` | 
+|-|-|
+| **Label** | `gait - time in seconds taken to walk 10 metres?` | 
+| **Table name** | `1066-RuralPeru-Baseline` | 
+| **Units** | `seconds` |
+| **Missing Values** | `NA` |
+| **Description** |  |
+
+
+```{r assign_RP, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_ws','10-66.1066-RuralPeru-Baseline',
+                         variables=list('NEO12B'), missings = TRUE)
+t1066_ws <- opal.execute(o,'t1066_ws')
+
+```
+
+```{r local_RP, echo=FALSE}
+vbl <- t1066_ws$NEO12B
+vbl_miss <- c(0)
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = attributes(vbl)$`spss::shortName`)
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+# kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+ggplot(t1066_ws, aes(x=NEO12B)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `10m/s -> walking_speed_c`
+* `walking_speed_c <=25% into walking_speed=0`
+* `walking_speed_c >25% into walking_speed=1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_iRP}
+
+t1066_ds_RP_w1 <- t1066_ws %>% structure(spec=NULL) %>%
+  mutate(walking_speed_c = case_when(!NEO12B %in% c(NA, vbl_miss) ~ 10/as.vector(NEO12B),
+                                     NEO12B < 2.5 ~ 991,
+                                     TRUE ~ 999),
+         q = quantile(car::recode(walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE),
+         walking_speed = case_when(walking_speed_c <= q ~ 0, walking_speed_c %in% c(991:999) ~ walking_speed_c, walking_speed_c > q ~ 1)) %>%
+  select(-NEO12B, -q)
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_RP, echo=FALSE}
+
+vbl <- t1066_ds_RP_w1$walking_speed_c
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(t1066_ds_RP_w1 %>% filter(!vbl %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.01, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- t1066_ds_RP_w1$walking_speed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_RP_w1, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+
+
+
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `f_NEO12B` | 
+|-|-|
+| **Label** | `gait - time in seconds taken to walk 10 metres?` | 
+| **Table name** | `1066-RuralPeru-Followup` | 
+| **Units** | `seconds` |
+| **Missing Values** | `NA` |
+| **Description** |  |
+
+
+```{r assign_RP2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_ws','10-66.1066-RuralPeru-Followup',
+                         variables=list('f_NEO12B'), missings = TRUE)
+t1066_ws <- opal.execute(o,'t1066_ws')
+```
+
+```{r local_RP2, echo=FALSE} 
+vbl <- t1066_ws$f_NEO12B
+vbl_miss <- c(0)
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = attributes(vbl)$`spss::shortName`)
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+# kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+ggplot(t1066_ws, aes(x=f_NEO12B)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `10m/s -> walking_speed_c`
+* `walking_speed_c <=25% into walking_speed=0`
+* `walking_speed_c >25% into walking_speed=1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_RP2, echo=TRUE} 
+
+t1066_ds_RP_w2 <- t1066_ws %>% structure(spec=NULL) %>%
+  mutate(walking_speed_c = case_when(!f_NEO12B %in% c(NA, vbl_miss) ~ 10/as.vector(f_NEO12B),
+                                     f_NEO12B < 2.5 ~ 991,
+                                     TRUE ~ 999),
+         q = quantile(car::recode(walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE),
+         walking_speed = case_when(walking_speed_c <= q ~ 0, walking_speed_c %in% c(991:999) ~ walking_speed_c, walking_speed_c > q ~ 1)) %>%
+  select(-f_NEO12B, -q)
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_RP2, echo=FALSE} 
+
+vbl <- t1066_ds_RP_w2$walking_speed_c
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(t1066_ds_RP_w2 %>% filter(!vbl %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.01, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- t1066_ds_RP_w2$walking_speed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_RP_w2, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_RP2, echo=FALSE} 
+```
+
+
+
+
+
+
+
+
+
+## Urban Mexico
+
+### Wave 1
+#### Study-specific variable description
+
+| **Name** | `NEO12B` | 
+|-|-|
+| **Label** | `gait - time in seconds taken to walk 10 metres?` | 
+| **Table name** | `1066-UrbanMexico-Baseline` | 
+| **Units** | `seconds` |
+| **Missing Values** | `NA` |
+| **Description** |  |
+
+
+```{r assign_UM1, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_ws','10-66.1066-UrbanMexico-Baseline',
+                         variables=list('NEO12B'), missings = TRUE)
+t1066_ws <- opal.execute(o,'t1066_ws')
+```
+
+```{r local_UM1, echo=FALSE}
+vbl <- t1066_ws$NEO12B
+vbl_miss <- c(0)
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = attributes(vbl)$`spss::shortName`)
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+ggplot(t1066_ws, aes(x=NEO12B)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+```
+
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `10m/s -> walking_speed_c`
+* `walking_speed_c <=25% into walking_speed=0`
+* `walking_speed_c >25% into walking_speed=1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_UM1}
+
+t1066_ds_UM_w1 <- t1066_ws %>% structure(spec=NULL) %>%
+  mutate(walking_speed_c = case_when(!NEO12B %in% c(NA, vbl_miss) ~ 10/as.vector(NEO12B),
+                                     NEO12B < 2.5 ~ 991,
+                                     TRUE ~ 999),
+         q = quantile(car::recode(walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE),
+         walking_speed = case_when(walking_speed_c <= q ~ 0, walking_speed_c %in% c(991:999) ~ walking_speed_c, walking_speed_c > q ~ 1)) %>%
+  select(-NEO12B, -q)
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_UM1, echo=FALSE}
+
+vbl <- t1066_ds_UM_w1$walking_speed_c
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(t1066_ds_UM_w1 %>% filter(!vbl %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.01, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- t1066_ds_UM_w1$walking_speed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_UM_w1, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+
+
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `f_NEO12B` | 
+|-|-|
+| **Label** | `gait - time in seconds taken to walk 10 metres?` | 
+| **Table name** | `1066-UrbanMexico-Followup` | 
+| **Units** | `seconds` |
+| **Missing Values** | `NA` |
+| **Description** |  |
+
+```{r assign_UM2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_ws','10-66.1066-UrbanMexico-Followup',
+                         variables=list('f_NEO12B'), missings = TRUE)
+t1066_ws <- opal.execute(o,'t1066_ws')
+```
+
+```{r local_UM2, echo=FALSE} 
+vbl <- t1066_ws$f_NEO12B
+vbl_miss <- c(0)
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = attributes(vbl)$`spss::shortName`)
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+# kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+ggplot(t1066_ws, aes(x=f_NEO12B)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `10m/s -> walking_speed_c`
+* `walking_speed_c <=25% into walking_speed=0`
+* `walking_speed_c >25% into walking_speed=1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_UM2, echo=TRUE} 
+
+t1066_ds_UM_w2 <- t1066_ws %>% structure(spec=NULL) %>%
+  mutate(walking_speed_c = case_when(!f_NEO12B %in% c(NA, vbl_miss) ~ 10/as.vector(f_NEO12B),
+                                     f_NEO12B < 2.5 ~ 991,
+                                     TRUE ~ 999),
+         q = quantile(car::recode(walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE),
+         walking_speed = case_when(walking_speed_c <= q ~ 0, walking_speed_c %in% c(991:999) ~ walking_speed_c, walking_speed_c > q ~ 1)) %>%
+  select(-f_NEO12B, -q)
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_UM2, echo=FALSE} 
+
+vbl <- t1066_ds_UM_w2$walking_speed_c
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(t1066_ds_UM_w2 %>% filter(!vbl %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.01, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- t1066_ds_UM_w2$walking_speed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_UM_w2, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+
+#### Validation
+```{r crosstabulation_UM2, echo=FALSE} 
+```
+
+
+
+
+
+
+## Rural Mexico
+
+### Wave 1
+#### Study-specific variable description
+
+| **Name** | `NEO12B` | 
+|-|-|
+| **Label** | `gait - time in seconds taken to walk 10 metres?` | 
+| **Table name** | `1066-RuralMexico-Baseline` | 
+| **Units** | `seconds` |
+| **Missing Values** | `NA` |
+| **Description** |  |
+
+
+```{r assign_RM1, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_ws','10-66.1066-RuralMexico-Baseline',
+                         variables=list('NEO12B'), missings = TRUE)
+t1066_ws <- opal.execute(o,'t1066_ws')
+```
+
+```{r local_RM1, echo=FALSE}
+vbl <- t1066_ws$NEO12B
+vbl_miss <- c(0)
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = attributes(vbl)$`spss::shortName`)
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+# kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+ggplot(t1066_ws, aes(x=NEO12B)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+```
+
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `10m/s -> walking_speed_c`
+* `walking_speed_c <=25% into walking_speed=0`
+* `walking_speed_c >25% into walking_speed=1`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo_RM1}
+
+t1066_ds_RM_w1 <- t1066_ws %>% structure(spec=NULL) %>%
+  mutate(walking_speed_c = case_when(!NEO12B %in% c(NA, vbl_miss) ~ 10/as.vector(NEO12B),
+                                     NEO12B < 2.5 ~ 991,
+                                     TRUE ~ 999),
+         q = quantile(car::recode(walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE),
+         walking_speed = case_when(walking_speed_c <= q ~ 0, walking_speed_c %in% c(991:999) ~ walking_speed_c, walking_speed_c > q ~ 1)) %>%
+  select(-NEO12B, -q)
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_RM1, echo=FALSE}
+
+vbl <- t1066_ds_RM_w1$walking_speed_c
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(t1066_ds_RM_w1 %>% filter(!vbl %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.01, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- t1066_ds_RM_w1$walking_speed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_RM_w1, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+
+
+
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `f_NEO12B` | 
+|-|-|
+| **Label** | `gait - time in seconds taken to walk 10 metres?` | 
+| **Table name** | `1066-RuralMexico-Followup` | 
+| **Units** | `seconds` |
+| **Missing Values** | `NA` |
+| **Description** |  |
+
+
+
+```{r assign_RM2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_ws','10-66.1066-RuralMexico-Followup',
+                         variables=list('f_NEO12B'), missings = TRUE)
+t1066_ws <- opal.execute(o,'t1066_ws')
+```
+
+```{r local_RM2, echo=FALSE} 
+vbl <- t1066_ws$f_NEO12B
+vbl_miss <- c(0)
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = attributes(vbl)$`spss::shortName`)
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+# kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+ggplot(t1066_ws, aes(x=f_NEO12B)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `10m/s -> walking_speed_c`
+* `walking_speed_c <=25% into walking_speed=0`
+* `walking_speed_c >25% into walking_speed=1`
+* `NA into 999`
+
+
+**R script:**
+
+```{r harmo_RM2, echo=TRUE} 
+
+t1066_ds_RM_w2 <- t1066_ws %>% structure(spec=NULL) %>%
+  mutate(walking_speed_c = case_when(!f_NEO12B %in% c(NA, vbl_miss) ~ 10/as.vector(f_NEO12B),
+                                     f_NEO12B < 2.5 ~ 991,
+                                     TRUE ~ 999),
+         q = quantile(car::recode(walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE),
+         walking_speed = case_when(walking_speed_c <= q ~ 0, walking_speed_c %in% c(991:999) ~ walking_speed_c, walking_speed_c > q ~ 1)) %>%
+  select(-f_NEO12B, -q)
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_RM2, echo=FALSE} 
+
+vbl <- t1066_ds_RM_w2$walking_speed_c
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(t1066_ds_RM_w2 %>% filter(!vbl %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.01, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- t1066_ds_RM_w2$walking_speed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_RM_w2, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_RM2, echo=FALSE} 
+```
+
+
+
+
+
+
+
+## Puerto Rico
+
+### Wave 1
+#### Study-specific variable description
+
+| **Name** | `NEO12B` | 
+|-|-|
+| **Label** | `gait - time in seconds taken to walk 10 metres?` | 
+| **Table name** | `1066-PuertoRico-Baseline` | 
+| **Units** | `seconds` |
+| **Missing Values** | `2; NA` |
+| **Description** |  |
+
+
+
+```{r assign_PR1, echo=FALSE}
+opal.assign.table.tibble(o, 't1066_ws','10-66.1066-PuertoRico-Baseline',
+                         variables=list('NEO12B'), missings = TRUE)
+t1066_ws <- opal.execute(o,'t1066_ws')
+```
+
+```{r local_PR1, echo=FALSE}
+vbl <- t1066_ws$NEO12B
+vbl_miss <- c(0,2)
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[3], caption = attributes(vbl)$`spss::shortName`)
+pander(Continuous_summary(vbl, missing_values = vbl_miss)$summary, caption = "Summary")
+kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+ggplot(t1066_ws, aes(x=NEO12B)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+```
+
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `10m/s -> walking_speed_c`
+* `walking_speed_c <=25% into walking_speed=0`
+* `walking_speed_c >25% into walking_speed=1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_PR1}
+
+t1066_ds_PR_w1 <- t1066_ws %>% structure(spec=NULL) %>%
+  mutate(walking_speed_c = case_when(!NEO12B %in% c(NA, vbl_miss) ~ 10/as.vector(NEO12B),
+                                     NEO12B < 2.5 ~ 991,
+                                     TRUE ~ 999),
+         q = quantile(car::recode(walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE),
+         walking_speed = case_when(walking_speed_c <= q ~ 0, walking_speed_c %in% c(991:999) ~ walking_speed_c, walking_speed_c > q ~ 1)) %>%
+  select(-NEO12B, -q)
+```
+
+#### Statistics of the new harmonised variable
+```{r descript_PR1, echo=FALSE}
+
+vbl <- t1066_ds_PR_w1$walking_speed_c
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(t1066_ds_PR_w1 %>% filter(!vbl %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.01, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- t1066_ds_PR_w1$walking_speed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_PR_w1, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+
+
+
+
+
+
+
+### Wave 2
+
+#### Study-specific variable description
+
+| **Name** | `f_NEO12B` | 
+|-|-|
+| **Label** | `gait - time in seconds taken to walk 10 metres?` | 
+| **Table name** | `1066-PuertoRico-Followup` | 
+| **Units** | `seconds` |
+| **Missing Values** | `NA` |
+| **Description** |  |
+
+
+```{r assign_PR2, echo=FALSE} 
+opal.assign.table.tibble(o, 't1066_ws','10-66.1066-PuertoRico-Followup',
+                         variables=list('f_NEO12B'), missings = TRUE)
+t1066_ws <- opal.execute(o,'t1066_ws')
+```
+
+```{r local_PR2, echo=FALSE} 
+vbl <- t1066_ws$f_NEO12B
+vbl_miss <- c(0)
+kable(Continuous_summary(vbl, missing_values = NA)[3], caption = attributes(vbl)$`spss::shortName`)
+pander(Continuous_summary(vbl, missing_values = NA)$summary, caption = "Summary")
+# kable(Continuous_summary(vbl, missing_values = vbl_miss)[2], caption = "Values")
+ggplot(t1066_ws, aes(x=f_NEO12B)) + geom_bar(stat="count", width=0.4, fill="steelblue", data = . %>% filter(!vbl %in% vbl_miss)) + xlab(label(vbl)) + ylab("Frequency")
+```
+
+#### Harmonisation algorithm
+
+To compute the harmonize variable from the study-specific variable it has to be recoded as follows:
+
+* `10m/s -> walking_speed_c`
+* `walking_speed_c <=25% into walking_speed=0`
+* `walking_speed_c >25% into walking_speed=1`
+* `NA into 999`
+
+**R script:**
+
+```{r harmo_PR2, echo=TRUE} 
+
+t1066_ds_PR_w2 <- t1066_ws %>% structure(spec=NULL) %>%
+  mutate(walking_speed_c = case_when(!f_NEO12B %in% c(NA, vbl_miss) ~ 10/as.vector(f_NEO12B),
+                                     f_NEO12B < 2.5 ~ 991,
+                                     TRUE ~ 999),
+         q = quantile(car::recode(walking_speed_c, "999=NA"), probs = 1/4, na.rm = TRUE, names = FALSE),
+         walking_speed = case_when(walking_speed_c <= q ~ 0, walking_speed_c %in% c(991:999) ~ walking_speed_c, walking_speed_c > q ~ 1)) %>%
+  select(-f_NEO12B, -q)
+```
+
+#### Statistical description of the new harmonised variable
+```{r descript_PR2, echo=FALSE} 
+
+vbl <- t1066_ds_PR_w2$walking_speed_c
+kable(Continuous_summary(var = vbl, missing_values = miss_values_vector)[3], caption = ds_label)
+kable(Continuous_summary(vbl, missing_values = miss_values_vector)[2], caption = "Values")
+pander(Continuous_summary(vbl, missing_values = miss_values_vector)$summary, caption = "Summary")
+ggplot(t1066_ds_PR_w2 %>% filter(!vbl %in% miss_values_vector), aes(x=(walking_speed_c))) + geom_bar(stat="count", width=0.001, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+
+vbl <- t1066_ds_PR_w2$walking_speed
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[3], caption = ds_label) 
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[1], caption = "Category")
+kable(Categorical_summary(vbl, missing_values = miss_values_vector)[2], caption = "Type of missing")
+ggplot(t1066_ds_PR_w2, aes(x=factor(walking_speed))) + geom_bar(stat="count", width=0.4, fill="steelblue") + xlab(ds_label) + ylab("Frequency")
+```
+
+#### Validation
+```{r crosstabulation_PR2, echo=FALSE} 
+```
+
+
+
+
+
+```{r helpfunctions, echo=F}
+
+source("../../helpfunctions.r")
+
+```
+
+
+
+```{r populations-waves, echo=F}
+
+
+# All study waves and populations with abbreviated and descriptive names
+
+b1066.cw <- list(cuba_w1 = c("cuba_w1","Cuba w1"), india_w1 = c("india_w1","India w1"), UCh_w1 = c("UCh_w1","Urban China w1"), RCh_w1 = c("RCh_w1","Rural China w1"), DR_w1 = c("DR_w1","Dominican Republic w1"), Ven_w1 = c("Ven_w1","Venezuela w1"), UP_w1 = c("UP_w1","Urban Peru w1"), RP_w1 = c("RP_w1","Rural Peru w1"), UM_w1 = c("UM_w1","Urban Mexico w1"), RM_w1 = c("RM_w1","Rural Mexico w1"), PR_w1 = c("PR_w1","Puerto Rico w1"))
+
+f1066.cw <- list(cuba_w2 = c("cuba_w2","Cuba w2"), UCh_w2 = c("UCh_w2","Urban China w2"), RCh_w2 = c("RCh_w2","Rural China w2"), DR_w2 = c("DR_w2","Dominican Republic w2"), Ven_w2 = c("Ven_w2","Venezuela w2"), UP_w2 = c("UP_w2","Urban Peru w2"), RP_w2 = c("RP_w2","Rural Peru w2"), UM_w2 = c("UM_w2","Urban Mexico w2"), RM_w2 = c("RM_w2","Rural Mexico w2"), PR_w2 = c("PR_w2","Puerto Rico w2"))
+
+
+```
+
+<!--Labelling and saving-->
+
+```{r labelling, echo=FALSE}
+
+# BASELINE
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(b1066.cw, function(wname) if(exists(paste0("t1066_ds_",wname[1]))){wname = list(get(paste0("t1066_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label_walking_speed)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_vbl_c,ds_label_walking_speed_c)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+b1066list <- lmlist
+
+
+# FOLLOW-UP
+# Consider only waves with some variable harmonised
+
+l.hds <- lapply(f1066.cw, function(wname) if(exists(paste0("t1066_ds_",wname[1]))){wname = list(get(paste0("t1066_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+
+if(length(l.hds)>0){
+  # Labelling categorical variable of tibbles
+  lmlist <- labelling(lmlist[[1]],lmlist[[2]],hd_vbl,ds_label_walking_speed)
+  # Labelling continuous variable of tibbles
+  lmlist <- labelling_c(lmlist[[1]],lmlist[[2]],hd_vbl_c,ds_label_walking_speed_c)
+  # Saving tibbles
+  savingRD(lmlist[[1]],vbl_name=hd_vbl)
+}
+
+f1066list <- lmlist
+
+```
+
+
+<!--Descriptives-->
+
+## Descriptive statistics of the harmonised variable `walking_speed` accross populations and waves
+
+Percentages of categories in each harmonised variable:
+
+
+```{r summ, echo=F}
+
+
+# BASELINE
+
+# Consider only harmonised waves
+l.hds <- lapply(b1066.cw, function(wname) if(hd_vbl %in% names(get0(paste0("t1066_ds_",wname[1])))){wname})
+nullw <- which(sapply(l.hds, is.null))
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+if(length(l.hds)>0){
+  lmlist[[1]] <- b1066list[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- b1066list[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label_walking_speed))
+  # # Printing table of trajectories
+  # f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  # print(knitr::kable(f.dbb[f.dbb[,3]>=0.3,]))
+}
+
+
+
+
+# FOLLOW-UP
+
+# Consider only harmonised waves
+l.hds <- lapply(f1066.cw, function(wname) if(hd_vbl %in% names(get0(paste0("t1066_ds_",wname[1])))){wname})
+nullw <- which(sapply(l.hds, is.null))
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+if(length(l.hds)>0){
+  lmlist[[1]] <- f1066list[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- f1066list[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl),caption=ds_label_walking_speed))
+  # # Printing table of trajectories
+  # f.dbb <- trajectories(lmlist[[2]],vbl_name=hd_vbl)
+  # print(knitr::kable(f.dbb[f.dbb[,3]>=0.3,]))
+}
+
+
+
+```
+
+
+
+## Summary of descriptive statistics of the harmonised variable `walking_speed_c` accross populations and waves
+
+
+```{r summ_c, echo=F}
+
+
+# BASELINE
+# Consider only harmonised waves
+l.hds <- lapply(b1066.cw, function(wname) if(hd_vbl_c %in% names(get0(paste0("t1066_ds_",wname[1])))){wname})
+nullw <- which(sapply(l.hds, is.null))
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+if(length(l.hds)>0){
+  lmlist[[1]] <- b1066list[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- b1066list[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl_c),caption=ds_label_walking_speed_c))
+}
+
+
+
+# FOLLOW-UP
+
+# Consider only harmonised waves
+l.hds <- lapply(f1066.cw, function(wname) if(hd_vbl_c %in% names(get0(paste0("t1066_ds_",wname[1])))){wname})
+nullw <- which(sapply(l.hds, is.null))
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+if(length(l.hds)>0){
+  lmlist[[1]] <- f1066list[[1]][sapply(l.hds,function(x)x[[1]])]
+  lmlist[[2]] <- f1066list[[2]][sapply(l.hds,function(x)x[[1]])]
+  
+  # Printing table of categories
+  print(knitr::kable(summaries_c(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]]),hd_vbl_c),caption=ds_label_walking_speed_c))
+}
+
+```
+
+
+
+# Quality estimation
+
+<!--Not available except for India. -->
+
+
+
+```{r closeRsession, echo=FALSE}
+opal.logout(o)
+```
