@@ -10,6 +10,8 @@ output:
     toc_float:
       collapsed: yes
       smooth_scroll: yes
+editor_options: 
+  chunk_output_type: console
 ---
 
 <!-- ########################################################## --> 
@@ -642,59 +644,12 @@ kable(ELSA_w7_age[which(ELSA_w7_age$diff>2),], align = 'c', caption = 'Individua
 
 ```{r helpfunctions, echo=F}
 
-labelling <- function(l.hds,m.hds){
-  
-  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+source("../../helpfunctions.r")
+rm(labelling)
+labelling <- labelling_c
+rm(summaries)
+summaries <- summaries_c
 
-  for(name in names(l.hds)) {
-    # In the aux_object we copy the old tibble to recodify all missing values as NA.
-    aux_object <- l.hds[[name]]
-    # Labelling of variables
-    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
-    # Labelling of categories (for continues variables, only missing values)
-    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
-    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
-    # Saving the recodified tibble in list m.hds
-    m.hds[[name]] <- aux_object
-    rm(aux_object)
-  }
-  return(list(l.hds,m.hds))
-
-}
-
-# Creation of summary tables for continuous data
-
-summaries <- function(l.hds,m.hds,lnames){
-
-  # Creation of column with summary table categories
-  t.summ <- summary(m.hds[[1]][2])[1:6]
-  # Adding of missing/no-missing values categories
-  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[2]],missing_values = miss_values_vector)$values_table)[[2]])
-  # For each wave/population in l.hds, add the correponding values
-  for (i in seq_along(l.hds)){
-    # First, summary values
-    t.summ <- summary(m.hds[[i]][2])[1:6]
-    # Next, missing/no-missing values
-    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[2]],missing_values = miss_values_vector)$values_table[1,])))
-  }
-  # Add sample size for each wave/population
-  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
-  # Add wave/population names
-  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][2]))[[2]],lnames)
-  return(t.hds)
-  
-}
-
-# Save data tables
-
-savingRD <- function(l.hds,vbl_name){
-  
-  for(index in seq_along(l.hds)){
-    assign(vbl_name,l.hds[[index]])
-    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
-  }
-
-}
 
 ```
 
@@ -726,7 +681,6 @@ if(length(l.hds)>0){
   # Printing summaries
   print(knitr::kable(summaries(lmlist[[1]],lmlist[[2]],lapply(l.hds,function(x)x[[2]])),caption=ds_label))
   # Saving tibbles
-  savingRD(lmlist[[1]],vbl_name=hd_vbl)
 }
 
 
@@ -739,6 +693,61 @@ if(length(l.hds)>0){
 # Quality estimation
 
 Individuals with incompatible data are specified in validations along waves.
+
+```{r, echo=FALSE}
+
+elsa_age <- Reduce(full_join, lapply(l.hds, \(.x) rename_with(.x[[1]], .fn = \(.yn) paste(.yn, .x[[2]], sep = "_"), .cols = `age`)))
+elsa_age |> 
+  pivot_longer(cols = -id) |> 
+  arrange(id,name) |> 
+  filter(!is.na(value)) |> 
+  group_by(id) |> 
+  mutate(odd = any(value<=lag(value, default = -Inf))) |> 
+  ungroup() |> 
+  filter(odd) |> 
+  mutate(name = sub("age_", "", name)) |> 
+  pivot_wider(id_cols = "id", names_from = "name") |> 
+  kable(caption = "Imposible age trajectories")
+```
+
+
+**R script:**
+
+```{r}
+# Corrections after previous trajectories and wave control validations
+
+ELSA_ds_w4$age[ELSA_ds_w4$id=="106062"] <- 67
+ELSA_ds_w1$age[ELSA_ds_w1$id=="106246"] <- 51
+ELSA_ds_w2$age[ELSA_ds_w2$id=="106246"] <- 53
+ELSA_ds_w6$age[ELSA_ds_w6$id=="120955"] <- 68
+ELSA_ds_w7$age[ELSA_ds_w7$id=="120955"] <- 70
+ELSA_ds_w4$age[ELSA_ds_w4$id=="150678"] <- 52
+
+```
+
+
+
+``` {r save, echo=F}
+
+
+# Consider only harmonised waves
+l.hds <- lapply(elsa.cw, function(wname) if(exists(paste0("ELSA_ds_",wname[1]))){wname = list(get(paste0("ELSA_ds_",wname[1])),wname[2])})
+nullw <- which(sapply(l.hds, is.null))
+
+if(length(nullw)!=0){
+  l.hds <- l.hds[-nullw]
+}
+
+m.hds <- list()
+
+lmlist <- list(lapply(l.hds,function(x)x[[1]]),m.hds)
+
+lmlist <- labelling(lmlist[[1]],lmlist[[2]])
+# Saving tibbles
+savingRD(lmlist[[1]],vbl_name=hd_vbl)
+
+
+```
 
 
 [^1]:Table from the Harmonised Datasets.

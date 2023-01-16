@@ -77,6 +77,8 @@ JSTAR_ds_aksst_w1$age[which(JSTAR_ds_aksst_w1$id=="2996")] <- 71
 JSTAR_ds_aksst_w1$age[which(JSTAR_ds_aksst_w1$id=="3198")] <- 68
 JSTAR_ds_aksst_w1$age[which(JSTAR_ds_aksst_w1$id=="3535")] <- 51
 JSTAR_ds_aksst_w1$age[which(JSTAR_ds_aksst_w1$id=="386")] <- 69
+JSTAR_ds_aksst_w1$age[which(JSTAR_ds_aksst_w1$id=="2788")] <- 68
+JSTAR_ds_aksst_w1$age[which(JSTAR_ds_aksst_w1$id=="2918")] <- 59
 
 
 ```
@@ -178,6 +180,8 @@ JSTAR_ds_aksst_w2$age[which(JSTAR_ds_aksst_w2$id=="2996")] <- 73
 JSTAR_ds_aksst_w2$age[which(JSTAR_ds_aksst_w2$id=="3198")] <- 70
 JSTAR_ds_aksst_w2$age[which(JSTAR_ds_aksst_w2$id=="3535")] <- 53
 JSTAR_ds_aksst_w2$age[which(JSTAR_ds_aksst_w2$id=="386")] <- 71
+JSTAR_ds_aksst_w2$age[which(JSTAR_ds_aksst_w2$id=="2788")] <- 70
+JSTAR_ds_aksst_w2$age[which(JSTAR_ds_aksst_w2$id=="2918")] <- 61
 
 JSTAR_ds_aksst_w2$age[which(JSTAR_aksst_w2_age$living_status %in% c(1,2))] <- 996
 
@@ -498,7 +502,7 @@ JSTAR_cth_w1_age <- opal.execute(o,'JSTAR_cth_w1_age')
 opal.assign.table.tibble(o, 'JSTAR_cth_w1_yb','JSTAR_HD.jstar_cth_w1_hd', variables=list('ybirth','yintw'), missings = TRUE)
 JSTAR_cth_w1_yb <- opal.execute(o,'JSTAR_cth_w1_yb')
 
-JSTAR_cth_w1_age <- left_join(JSTAR_cth_w1_age,JSTAR_cth_w1_yb)
+JSTAR_cth_w1_age <- left_join(JSTAR_cth_w1_age,JSTAR_cth_w1_yb, by = "id")
 
 ```
 
@@ -572,59 +576,12 @@ kable(JSTAR_cth_w1_age %>% filter(respondent_age_year>75 | respondent_age_year<5
 
 ```{r helpfunctions, echo=F}
 
-labelling <- function(l.hds,m.hds){
-  
-  # Labelling of the tibbles with continuous data and creating new tibbles with all missings recodified as NA
+source("../../helpfunctions.r")
+rm(labelling)
+labelling <- labelling_c
+rm(summaries)
+summaries <- summaries_c
 
-  for(name in names(l.hds)) {
-    # In the aux_object we copy the old tibble to recodify all missing values as NA.
-    aux_object <- l.hds[[name]]
-    # Labelling of variables
-    label(l.hds[[name]][[2]]) <- label(aux_object[[2]]) <- ds_label
-    # Labelling of categories (for continues variables, only missing values)
-    l.hds[[name]][[2]] <- labelled(l.hds[[name]][[2]], labels = cont_label)
-    aux_object[[2]] <- car::recode(aux_object[[2]], "miss_values_vector=NA")
-    # Saving the recodified tibble in list m.hds
-    m.hds[[name]] <- aux_object
-    rm(aux_object)
-  }
-  return(list(l.hds,m.hds))
-
-}
-
-# Creation of summary tables for continuous data
-
-summaries <- function(l.hds,m.hds,lnames){
-
-  # Creation of column with summary table categories
-  t.summ <- summary(m.hds[[1]][2])[1:6]
-  # Adding of missing/no-missing values categories
-  t.hds <- c(substr(t.summ,1,regexpr(":", t.summ, fixed=T)-1),labels(Continuous_summary(l.hds[[1]][[2]],missing_values = miss_values_vector)$values_table)[[2]])
-  # For each wave/population in l.hds, add the correponding values
-  for (i in seq_along(l.hds)){
-    # First, summary values
-    t.summ <- summary(m.hds[[i]][2])[1:6]
-    # Next, missing/no-missing values
-    t.hds <- cbind(t.hds,c(as.numeric(substr(t.summ,regexpr(":", t.summ, fixed=T)+1,nchar(t.summ))),as.numeric(Continuous_summary(l.hds[[i]][[2]],missing_values = miss_values_vector)$values_table[1,])))
-  }
-  # Add sample size for each wave/population
-  t.hds <- rbind(t.hds,c("sample size", sapply(l.hds,function(wave) length(wave[[1]]))))
-  # Add wave/population names
-  dimnames(t.hds)[[2]] <- c(dimnames(summary(m.hds[[1]][2]))[[2]],lnames)
-  return(t.hds)
-  
-}
-
-# Save data tables
-
-savingRD <- function(l.hds,vbl_name){
-  
-  for(index in seq_along(l.hds)){
-    assign(vbl_name,l.hds[[index]])
-    save(vbl_name,list = vbl_name, file = paste0(datafolder,names(l.hds)[index],"/",vbl_name,".RData"))
-  }
-
-}
 
 ```
 
@@ -679,7 +636,6 @@ if(length(l.hds)>0){
 
 * Individuals with incompatible data are specified at each validation.
 * Individuals outside the age interval for the baseline sample are specified at the wave 1 validations.
-
 
 
 ```{r closeRsession, echo=FALSE}
